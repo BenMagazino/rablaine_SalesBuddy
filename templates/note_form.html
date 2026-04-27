@@ -1718,6 +1718,10 @@ function _runAttendeeScrape(meetingTitle, meetingDate, silent, forceRefresh) {
 }
 
 function _showAttendeeReview(attendees) {
+    // We've reached the attendee review - the "routing to attendees" intent
+    // is satisfied. Clear the flag so a subsequent Import Summary click
+    // doesn't get re-routed back through the attendee scrape path.
+    _importAttendeesMode = false;
     var body = document.getElementById('attendeeReviewBody');
     var refreshBtn = document.getElementById('attendeeRefreshBtn');
     if (!attendees || attendees.length === 0) {
