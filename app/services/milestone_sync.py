@@ -92,7 +92,7 @@ def sync_all_customer_milestones() -> Dict[str, Any]:
 
     logger.info(f"Starting milestone sync for {len(customers)} customers")
 
-    all_seen_opp_ids = set()
+    all_seen_msx_ids = set()
 
     for customer in customers:
         # Bail early if VPN block was detected during this sync
@@ -120,8 +120,8 @@ def sync_all_customer_milestones() -> Dict[str, Any]:
                 results["tasks_updated"] += customer_result.get(
                     "tasks_updated", 0
                 )
-                all_seen_opp_ids.update(
-                    customer_result.get("seen_opportunity_ids", set())
+                all_seen_msx_ids.update(
+                    customer_result.get("seen_milestone_ids", set())
                 )
             else:
                 results["customers_failed"] += 1
@@ -135,8 +135,10 @@ def sync_all_customer_milestones() -> Dict[str, Any]:
             )
             logger.exception(f"Error syncing milestones for customer {customer.id}")
 
-    # Sync milestones for stale opportunities not covered by the active sync
-    stale_gen = _sync_stale_opportunity_milestones(all_seen_opp_ids)
+    # Sync milestones the active sync didn't return (out-of-FY, closed opps,
+    # status reset, etc.) - milestone-level so sibling milestones on the same
+    # opp don't get skipped.
+    stale_gen = _sync_stale_opportunity_milestones(all_seen_msx_ids)
     try:
         while True:
             next(stale_gen)
@@ -448,6 +450,7 @@ def sync_all_customer_milestones_stream(
     total_stale_ms_updated = 0
     total_stale_opps_refreshed = 0
     errors: List[str] = []
+    all_seen_msx_ids = set()
     all_seen_opp_ids = set()
 
     write_count = len(customer_tasks)
@@ -466,6 +469,9 @@ def sync_all_customer_milestones_stream(
                 total_opps_created += wr['opportunities_created']
                 all_seen_opp_ids.update(
                     wr.get('seen_opportunity_ids', set())
+                )
+                all_seen_msx_ids.update(
+                    wr.get('seen_milestone_ids', set())
                 )
 
                 pct = 77 + int((i / write_count) * 5)  # 77-82%
@@ -572,12 +578,13 @@ def sync_all_customer_milestones_stream(
     })
 
     # -----------------------------------------------------------------
-    # Phase 3: Sync stale opportunities not covered by active sync
+    # Phase 3: Refresh local milestones the active sync didn't return
+    # (out-of-FY, closed opps, status reset to Completed, etc.)
     # -----------------------------------------------------------------
     yield _sse_event('stale_sync_start', {
-        'message': 'Syncing stale opportunity milestones...',
+        'message': 'Refreshing stale milestones...',
     })
-    stale_gen = _sync_stale_opportunity_milestones(all_seen_opp_ids)
+    stale_gen = _sync_stale_opportunity_milestones(all_seen_msx_ids)
     try:
         while True:
             current_s, total_s, cust_name_s = next(stale_gen)
@@ -585,7 +592,7 @@ def sync_all_customer_milestones_stream(
             yield _sse_event('progress', {
                 'current': current_s,
                 'total': total_s,
-                'customer': f'Stale opps: {cust_name_s}',
+                'customer': f'Stale milestones: {cust_name_s}',
                 'status': 'ok',
                 'progress': 82,
             })
@@ -935,6 +942,7 @@ def _apply_customer_milestones(
                 result["deactivated"] += 1
 
     result["seen_opportunity_ids"] = seen_opp_ids
+    result["seen_milestone_ids"] = seen_msx_ids
 
     try:
         db.session.commit()
@@ -948,20 +956,28 @@ def _apply_customer_milestones(
 
 
 def _sync_stale_opportunity_milestones(
-    seen_opp_ids: set,
+    seen_msx_ids: set,
 ) -> Generator[Tuple[int, int, str], None, Dict[str, Any]]:
     """
-    Refresh milestones for opportunities not covered by the active sync.
+    Refresh local milestones the active sync didn't return.
 
-    The active sync uses open_opportunities_only=True and
-    current_fy_only=True, so it skips milestones on closed/won/lost
-    opportunities and those outside the current fiscal year.  This
-    function finds those stale opportunities in our database and fetches
-    fresh milestone data from MSX so our metrics stay accurate.
+    The active sync uses open_opportunities_only=True and a FY date
+    window, so a local milestone can be missing from results for many
+    reasons besides completion: parent opp got closed, due date slipped
+    out of the window, status reset to Completed by a seller (we still
+    want fresh data on those because Completed often gets reset back to
+    On Track), account re-parented, etc.
+
+    This pass operates at the MILESTONE level (not opportunity level).
+    Doing it at the opp level misses sibling milestones - if any one
+    milestone on an opp came back in the active sync, the opp is "seen"
+    and the others are skipped, which is exactly the bug that produces
+    stale "Completed" rows that should be "On Track".
 
     Args:
-        seen_opp_ids: MSX opportunity GUIDs already covered by the
-            active sync.
+        seen_msx_ids: msp_engagementmilestoneid GUIDs already covered by
+            the active sync.  Local milestones not in this set are
+            considered stale and refreshed.
 
     Yields:
         (current, total, customer_name) tuples for progress reporting.
@@ -977,29 +993,29 @@ def _sync_stale_opportunity_milestones(
         "error": "",
     }
 
-    # Find opportunities in our DB that weren't seen in the active sync
-    # and have at least one milestone with an MSX ID.
+    # Find local milestones with an MSX id that the active sync didn't
+    # return.  Limit to milestones whose customer has a tpid_url so we
+    # can actually query MSX for them.
     stale_q = (
-        db.session.query(Opportunity)
-        .join(Milestone, Milestone.opportunity_id == Opportunity.id)
+        db.session.query(Milestone)
+        .join(Customer, Milestone.customer_id == Customer.id)
         .filter(
-            Opportunity.msx_opportunity_id.isnot(None),
-            Opportunity.customer_id.isnot(None),
             Milestone.msx_milestone_id.isnot(None),
+            Customer.tpid_url.isnot(None),
+            Customer.tpid_url != '',
         )
-        .distinct()
     )
-    if seen_opp_ids:
+    if seen_msx_ids:
         stale_q = stale_q.filter(
-            ~Opportunity.msx_opportunity_id.in_(seen_opp_ids)
+            ~Milestone.msx_milestone_id.in_(seen_msx_ids)
         )
-    stale_opps = stale_q.all()
+    stale_milestones = stale_q.all()
 
-    if not stale_opps:
+    if not stale_milestones:
         return result
 
-    # Group by customer (only customers with tpid_url)
-    customer_ids = {opp.customer_id for opp in stale_opps}
+    # Group stale milestone GUIDs by customer
+    customer_ids = {ms.customer_id for ms in stale_milestones}
     customers = Customer.query.filter(
         Customer.id.in_(customer_ids),
         Customer.tpid_url.isnot(None),
@@ -1012,46 +1028,50 @@ def _sync_stale_opportunity_milestones(
     customer_map = {c.id: c for c in customers}
 
     stale_by_customer: Dict[int, set] = {}
-    for opp in stale_opps:
-        if opp.customer_id in customer_map:
-            stale_by_customer.setdefault(opp.customer_id, set()).add(
-                opp.msx_opportunity_id
+    for ms in stale_milestones:
+        if ms.customer_id in customer_map:
+            stale_by_customer.setdefault(ms.customer_id, set()).add(
+                ms.msx_milestone_id
             )
 
     total = len(stale_by_customer)
     now = datetime.now(timezone.utc)
 
     logger.info(
-        f"Syncing stale opportunities: {sum(len(v) for v in stale_by_customer.values())} "
-        f"opportunities across {total} customers"
+        f"Syncing stale milestones: "
+        f"{sum(len(v) for v in stale_by_customer.values())} "
+        f"milestones across {total} customers"
     )
 
-    for i, (cust_id, stale_opp_msx_ids) in enumerate(
+    for i, (cust_id, stale_ms_ids) in enumerate(
         stale_by_customer.items(), 1
     ):
         customer = customer_map[cust_id]
         yield (i, total, customer.get_display_name())
 
         if is_vpn_blocked():
-            result["error"] = "VPN blocked during stale opportunity sync"
+            result["error"] = "VPN blocked during stale milestone sync"
             break
 
         account_id = extract_account_id_from_url(customer.tpid_url)
         if not account_id:
             continue
 
-        # Fetch ALL milestones for this account (no open/FY filter)
+        # Fetch ALL milestones for this account (no open/FY filter) so
+        # we get fresh data even for milestones that slipped out of the
+        # active sync window or sit on closed opportunities.
         fetch_result = get_milestones_by_account(account_id)
         if not fetch_result.get("success"):
             logger.warning(
-                f"Stale opp sync failed for {customer.get_display_name()}: "
-                f"{fetch_result.get('error')}"
+                f"Stale milestone sync failed for "
+                f"{customer.get_display_name()}: {fetch_result.get('error')}"
             )
             continue
 
         result["customers_queried"] += 1
 
-        # Pre-load existing milestones for this customer
+        # Pre-load existing milestones for this customer so we can
+        # update by GUID.
         existing_milestones = {
             ms.msx_milestone_id: ms
             for ms in Milestone.query.filter_by(customer_id=cust_id).filter(
@@ -1059,27 +1079,24 @@ def _sync_stale_opportunity_milestones(
             ).all()
         }
 
-        # Pre-load existing opportunities for update
+        # Pre-load existing opportunities so _upsert_opportunity can
+        # update them without per-row queries.
         existing_opps = {
             opp.msx_opportunity_id: opp
-            for opp in Opportunity.query.filter(
-                Opportunity.msx_opportunity_id.in_(stale_opp_msx_ids)
+            for opp in Opportunity.query.filter_by(
+                customer_id=cust_id,
             ).all()
+            if opp.msx_opportunity_id
         }
 
         refreshed_opp_ids: set = set()
 
         with db.session.no_autoflush:
             for msx_ms in fetch_result.get("milestones", []):
-                opp_id = msx_ms.get("msx_opportunity_id")
-                if opp_id not in stale_opp_msx_ids:
-                    continue
-
                 msx_id = msx_ms.get("id")
-                if not msx_id:
+                if not msx_id or msx_id not in stale_ms_ids:
                     continue
 
-                # Update milestone if it exists in our DB
                 milestone = existing_milestones.get(msx_id)
                 if milestone:
                     due_date = _parse_msx_date(msx_ms.get("due_date"))
@@ -1088,22 +1105,22 @@ def _sync_stale_opportunity_milestones(
                     )
                     result["milestones_updated"] += 1
 
-                # Update the opportunity from expanded data (once per opp)
-                if opp_id not in refreshed_opp_ids:
+                opp_id = msx_ms.get("msx_opportunity_id")
+                if opp_id and opp_id not in refreshed_opp_ids:
                     _upsert_opportunity(msx_ms, cust_id, existing_opps)
                     refreshed_opp_ids.add(opp_id)
                     result["opportunities_refreshed"] += 1
 
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             logger.exception(
                 f"Error saving stale milestones for customer {cust_id}"
             )
 
     logger.info(
-        f"Stale opportunity sync complete: "
+        f"Stale milestone sync complete: "
         f"{result['milestones_updated']} milestones updated, "
         f"{result['opportunities_refreshed']} opportunities refreshed"
     )

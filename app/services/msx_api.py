@@ -753,10 +753,13 @@ def get_milestones_by_account(
             filters.append("msp_OpportunityId/statecode eq 0")
         if current_fy_only:
             # Microsoft fiscal year starts July 1. FY2026 = July 2025 - June 2026.
+            # Window covers current FY and next FY so milestones that slipped
+            # into the next year (common when sellers reset Completed -> On Track
+            # and push the date out) are still picked up by sync.
             now = dt.now(tz.utc)
             fy_start_year = now.year if now.month >= 7 else now.year - 1
             fy_start = f"{fy_start_year}-07-01"
-            fy_end = f"{fy_start_year + 1}-06-30"
+            fy_end = f"{fy_start_year + 2}-06-30"
             filters.append(
                 f"msp_milestonedate ge {fy_start}"
                 f" and msp_milestonedate le {fy_end}"
@@ -1216,10 +1219,13 @@ def batch_get_milestones(
             " or msp_milestonestatus eq 861980002)"
         )
     if current_fy_only:
+        # Window covers current FY and next FY so milestones whose due date
+        # slips into the following year (e.g. Completed -> On Track reset)
+        # still come back in batched sync results.
         now = dt.now(tz.utc)
         fy_start_year = now.year if now.month >= 7 else now.year - 1
         fy_start = f"{fy_start_year}-07-01"
-        fy_end = f"{fy_start_year + 1}-06-30"
+        fy_end = f"{fy_start_year + 2}-06-30"
         extra_filters.append(
             f"msp_milestonedate ge {fy_start}"
             f" and msp_milestonedate le {fy_end}"

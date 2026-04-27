@@ -490,8 +490,8 @@ class TestMilestoneSyncService:
                 _sync_stale_opportunity_milestones,
             )
 
-            # The active sync saw no opportunities (empty set)
-            # so our stale opp should be picked up
+            # The active sync returned no milestones (empty set)
+            # so our stale milestone should be picked up.
             gen = _sync_stale_opportunity_milestones(set())
             try:
                 while True:
@@ -552,8 +552,8 @@ class TestMilestoneSyncService:
                 _sync_stale_opportunity_milestones,
             )
 
-            # This opp was seen in the active sync, so stale sync should skip it
-            gen = _sync_stale_opportunity_milestones({"seen-opp-guid-001"})
+            # This milestone's GUID is in seen_msx_ids, so stale sync skips it.
+            gen = _sync_stale_opportunity_milestones({"seen-ms-guid-001"})
             try:
                 while True:
                     next(gen)
@@ -1637,7 +1637,7 @@ class TestFiscalYearFilter:
 
     @patch('app.services.msx_api._msx_request')
     def test_fy_boundary_second_half(self, mock_request):
-        """In Oct 2025 (month >= 7), FY starts July 2025 and ends June 2026."""
+        """In Oct 2025 (month >= 7), window covers FY26 + FY27 (Jul 2025 - Jun 2027)."""
         from app.services.msx_api import get_milestones_by_account
         self._setup_mock_request(mock_request)
 
@@ -1647,11 +1647,11 @@ class TestFiscalYearFilter:
 
         url = mock_request.call_args[0][1]
         assert '2025-07-01' in url
-        assert '2026-06-30' in url
+        assert '2027-06-30' in url
 
     @patch('app.services.msx_api._msx_request')
     def test_fy_boundary_first_half(self, mock_request):
-        """In Mar 2026 (month < 7), FY starts July 2025 and ends June 2026."""
+        """In Mar 2026 (month < 7), window covers FY26 + FY27 (Jul 2025 - Jun 2027)."""
         from app.services.msx_api import get_milestones_by_account
         self._setup_mock_request(mock_request)
 
@@ -1661,7 +1661,7 @@ class TestFiscalYearFilter:
 
         url = mock_request.call_args[0][1]
         assert '2025-07-01' in url
-        assert '2026-06-30' in url
+        assert '2027-06-30' in url
 
 
 class TestMilestoneCalendarAPI:
