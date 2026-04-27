@@ -308,7 +308,7 @@ class TestTrackNoteOnMilestones:
                 # Fallback write - note has no existing post on this milestone
                 assert mock_upsert.call_count == 1
                 content = mock_upsert.call_args[0][1]
-                assert 'Fallback Corp' in content
+                assert 'Some call notes.' in content
                 assert f'· note-{note.id} ·' in content
 
     def test_skips_write_when_ai_unavailable_but_post_exists(self, app):

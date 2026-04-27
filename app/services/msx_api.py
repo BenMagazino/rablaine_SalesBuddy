@@ -1564,6 +1564,113 @@ def add_opportunity_comment(
         return {"success": False, "error": str(e)}
 
 
+def upsert_opportunity_comment(
+    opportunity_id: str,
+    comment_text: str,
+    ref_tag: str,
+    comment_date: str | None = None,
+) -> Dict[str, Any]:
+    """Insert or update a comment on an opportunity, matched by ref tag.
+
+    Mirrors upsert_milestone_comment but writes to the opportunity entity.
+    Reads the current comments array, searches for an existing comment
+    authored by the current user (via Sales Buddy) whose text contains the
+    given ref tag.  If found the comment is updated in-place; otherwise a
+    new comment is appended.
+
+    Args:
+        opportunity_id: The opportunity GUID.
+        comment_text: The comment body (should already include the ref tag
+            in its footer, e.g. ``· note-42 ·``).
+        ref_tag: The reference tag to search for (e.g. ``note-42``).
+        comment_date: ISO 8601 string to use as modifiedOn instead of
+            the current time (e.g. the note's call_date).
+
+    Returns:
+        Dict with success bool, comment_count, action ('updated'|'created'),
+        and error string if failed.
+    """
+    if _is_writeback_disabled():
+        logger.info("MSX writeback disabled - skipping upsert_opportunity_comment")
+        return dict(_WRITEBACK_BLOCKED)
+    import json as json_lib
+
+    try:
+        # Step 1: Read current comments
+        read_result = get_opportunity_comments(opportunity_id)
+        if not read_result["success"]:
+            return {
+                "success": False,
+                "error": read_result.get("error", "Failed to read comments"),
+            }
+        current_comments = read_result["comments"]
+
+        # Step 2: Get current user display name
+        user_name = get_msx_user_display_name()
+        display_name = f"{user_name} via Sales Buddy"
+
+        # Step 3: Find existing comment by matching the current user's
+        # display_name AND ref tag in comment body.
+        existing_idx = None
+        ref_marker = f"· {ref_tag} ·"
+        for i, c in enumerate(current_comments):
+            c_user = c.get("userId", "")
+            c_text = c.get("comment", "")
+            if c_user == display_name and ref_marker in c_text:
+                existing_idx = i
+                break
+
+        # Step 4: Build timestamp
+        if comment_date:
+            modified_on = comment_date
+        else:
+            now = dt.now(tz.utc)
+            modified_on = now.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+
+        new_comment = {
+            "userId": display_name,
+            "modifiedOn": modified_on,
+            "comment": comment_text,
+        }
+
+        if existing_idx is not None:
+            current_comments[existing_idx] = new_comment
+            action = "updated"
+        else:
+            current_comments.append(new_comment)
+            action = "created"
+
+        # Step 5: PATCH back to MSX (JSON field only)
+        patch_url = f"{CRM_BASE_URL}/opportunities({opportunity_id})"
+        payload = {
+            "msp_forecastcommentsjsonfield": json_lib.dumps(current_comments),
+        }
+
+        patch_response = _msx_request('PATCH', patch_url, json_data=payload)
+
+        if patch_response.status_code < 400:
+            return {
+                "success": True,
+                "comment_count": len(current_comments),
+                "action": action,
+            }
+        elif patch_response.status_code == 403 and is_vpn_blocked():
+            return {"success": False, "error": "IP address is blocked - connect to VPN and retry.", "vpn_blocked": True}
+        else:
+            return {
+                "success": False,
+                "error": f"PATCH failed: HTTP {patch_response.status_code} - {patch_response.text[:200]}",
+            }
+
+    except requests.exceptions.Timeout:
+        return {"success": False, "error": "Request timed out. Check VPN connection."}
+    except requests.exceptions.ConnectionError as e:
+        return {"success": False, "error": f"Connection error (VPN?): {str(e)[:100]}"}
+    except Exception as e:
+        logger.exception(f"Error upserting comment on opportunity {opportunity_id}")
+        return {"success": False, "error": str(e)}
+
+
 def get_opportunity_comments(opportunity_id: str) -> Dict[str, Any]:
     """Read the current comments array from an opportunity.
 
