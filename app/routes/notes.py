@@ -11,6 +11,7 @@ from app.services.msx_api import TASK_CATEGORIES, add_user_to_milestone_team
 from app.services.seller_mode import get_seller_mode_seller_id as _get_seller_mode_seller_id
 from app.services.backup import schedule_customer_backup as _schedule_customer_backup
 from app.services.milestone_tracking import track_note_on_milestones
+from app.services.opportunity_tracking import track_note_on_opportunities
 
 logger = logging.getLogger(__name__)
 
@@ -449,6 +450,9 @@ def note_create():
         # Auto-track this note on any linked milestones
         track_note_on_milestones(note)
 
+        # Auto-track this note on any linked opportunities (DSS mode)
+        track_note_on_opportunities(note)
+
         db.session.commit()
 
         # Ghost back-linking: if this note was created from a ghost meeting on
@@ -850,6 +854,9 @@ def note_edit(id):
         # Auto-track this note on any linked milestones
         track_note_on_milestones(note)
 
+        # Auto-track this note on any linked opportunities (DSS mode)
+        track_note_on_opportunities(note)
+
         db.session.commit()
 
         # Back up this customer's notes (async, debounced - never blocks save)
@@ -949,10 +956,11 @@ def note_retry_msx(id):
     if not note:
         return jsonify({"error": "Note not found"}), 404
 
-    if not note.milestones:
-        return jsonify({"error": "No milestones linked"}), 400
+    if not note.milestones and not note.opportunities:
+        return jsonify({"error": "No milestones or opportunities linked"}), 400
 
     track_note_on_milestones(note)
+    track_note_on_opportunities(note)
     return jsonify({"ok": True}), 202
 
 

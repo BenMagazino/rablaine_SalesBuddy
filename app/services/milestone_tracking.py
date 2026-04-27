@@ -196,29 +196,30 @@ def _ai_summarize_note(
     topics: str,
     existing_comments: list[str],
     note_id: int | None = None,
+    log_prefix: str = "milestone-tracking",
 ) -> str | None:
-    """Call the AI gateway to summarize a note for a milestone comment.
+    """Call the AI gateway to summarize a note for a milestone/opportunity comment.
 
     Returns the summary string, or None if AI is unavailable or the note
     contains no new information beyond existing comments.
     """
     try:
         from app.gateway_client import gateway_call
-        print(f"[milestone-tracking] AI: calling gateway /v1/summarize-note")
+        print(f"[{log_prefix}] AI: calling gateway /v1/summarize-note")
         result = gateway_call("/v1/summarize-note", {
             "call_notes": plain_text,
             "customer_name": customer_name,
             "topics": topics,
             "existing_comments": existing_comments,
         })
-        print(f"[milestone-tracking] AI: gateway returned: {result}")
+        print(f"[{log_prefix}] AI: gateway returned: {result}")
         if result.get("no_new_info"):
-            print("[milestone-tracking] AI: note contains no new info for milestone comment")
+            print(f"[{log_prefix}] AI: note contains no new info for comment")
             return None
         summary = result.get("summary", "").strip()
         return summary if summary else None
     except Exception as e:
-        print(f"[milestone-tracking] AI FAILED: {e}")
+        print(f"[{log_prefix}] AI FAILED: {e}")
         # Build a user-friendly message based on the error type
         from app.gateway_client import GatewayError
         if isinstance(e, GatewayError) and e.status_code:
@@ -354,15 +355,14 @@ def _build_engagement_html_table(engagement) -> str:
 
 
 def _add_footer(content: str, ref_tag: str) -> str:
-    """Append a Date Updated line and Sales Buddy ref-tag footer.
+    """Append a Sales Buddy ref-tag footer.
 
     Uses <br> line breaks when content contains HTML tags, otherwise plain
     newlines for text-only summaries.
     """
-    updated = datetime.now(timezone.utc).strftime('%b %d, %Y')
     is_html = '<' in content and '>' in content
     lb = '<br>' if is_html else '\n'
-    return f"{content}{lb}{lb}Date Updated: {updated}{lb}· {ref_tag} ·"
+    return f"{content}{lb}{lb}· {ref_tag} ·"
 
 
 # ── Background workers ──────────────────────────────────────────────────────
@@ -420,17 +420,12 @@ def _track_note_worker(
             elif not has_existing_post:
                 # First-time sync for this note - AI said no new info but we
                 # have never posted for this note before. Create a minimal
-                # comment so the note is represented on the milestone.
+                # comment (note body only) so the note is represented on the milestone.
                 print(
                     f"[milestone-tracking] no AI summary but no existing post "
                     f"for {ref_tag} on {msx_id}, creating initial comment"
                 )
-                fallback = (
-                    f"Note: {customer_name}\n"
-                    f"Topics: {topics}\n\n"
-                    f"{plain[:500]}"
-                )
-                content_with_footer = _add_footer(fallback, ref_tag)
+                content_with_footer = f"{plain[:500]}\n\n· {ref_tag} ·"
                 _upsert_to_msx(
                     msx_id, content_with_footer, ref_tag,
                     comment_date=call_date_iso,
