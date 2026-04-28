@@ -200,6 +200,18 @@ def create_app():
     except Exception:
         app.config['BOOT_COMMIT'] = None
 
+    # Capture commit date (YYYY-MM-DD) so the changelog viewer can show
+    # "what just landed" after an update without depending on commit hashes.
+    try:
+        date_result = subprocess.run(
+            ['git', 'log', '-1', '--format=%cs', 'HEAD'],
+            capture_output=True, text=True, timeout=5,
+            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
+        app.config['BOOT_COMMIT_DATE'] = date_result.stdout.strip() or None
+    except Exception:
+        app.config['BOOT_COMMIT_DATE'] = None
+
     # Start background update checker (checks GitHub every 12 hours)
     from app.services.update_checker import start_update_checker
     start_update_checker(interval_seconds=43200)
