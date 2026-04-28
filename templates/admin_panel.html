@@ -2379,7 +2379,9 @@ function loadBackupStatus() {
                 toggle.checked = isEnabled;
                 toggle.disabled = false;
             } else {
-                taskEl.innerHTML = '<span class="badge bg-secondary">Not registered</span>';
+                taskEl.innerHTML = '<span class="badge bg-secondary">Not registered</span> ' +
+                    '<button class="btn btn-sm btn-outline-primary ms-1" onclick="registerTask(\'backup\')">' +
+                    '<i class="bi bi-plus-circle"></i> Register</button>';
                 toggle.checked = false;
                 toggle.disabled = true;
             }
@@ -2445,6 +2447,27 @@ function runDbBackupNow() {
     });
 }
 
+function registerTask(taskKey) {
+    // Register a missing scheduled task. Used when the MSI didn't create
+    // the task or the user removed it manually.
+    const reloadMap = {
+        'backup': loadBackupStatus,
+        'autostart': loadAutoStartStatus,
+    };
+    fetch(`/api/admin/tasks/${taskKey}/register`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            reloadMap[taskKey]();
+        } else {
+            alert('Could not register task: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        alert('Could not register task: ' + err.message);
+    });
+}
+
 function toggleTask(taskKey, enabled) {
     // Determine which toggle to disable during the request
     const toggleMap = {
@@ -2495,7 +2518,9 @@ function loadAutoStartStatus() {
                 toggle.checked = isEnabled;
                 toggle.disabled = false;
             } else {
-                statusEl.innerHTML = '<span class="badge bg-secondary">Not registered</span> <small class="text-muted">Run start.bat to register</small>';
+                statusEl.innerHTML = '<span class="badge bg-secondary">Not registered</span> ' +
+                    '<button class="btn btn-sm btn-outline-primary ms-1" onclick="registerTask(\'autostart\')">' +
+                    '<i class="bi bi-plus-circle"></i> Register</button>';
                 toggle.checked = false;
                 toggle.disabled = true;
             }

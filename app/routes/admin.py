@@ -672,6 +672,71 @@ def _set_scheduled_task_enabled(task_name: str, enabled: bool) -> dict:
         return {'success': False, 'error': str(e)}
 
 
+def _register_scheduled_task(task_key: str) -> dict:
+    """Register a missing Sales Buddy scheduled task via schtasks.exe.
+
+    Used to recover from installs where the MSI didn't register one of the
+    tasks (or the user removed it manually). Mirrors what the MSI custom
+    actions do, so the task ends up identical regardless of how it got
+    created.
+
+    Args:
+        task_key: 'backup' or 'autostart'.
+
+    Returns:
+        dict with ``success`` and optional ``error``.
+    """
+    if sys.platform != 'win32':
+        return {'success': False, 'error': 'Scheduled tasks are only supported on Windows.'}
+
+    # The repo root is the parent of app/ - same layout as the MSI install dir.
+    install_dir = Path(current_app.root_path).parent
+    vbs_launcher = install_dir / 'scripts' / 'run-hidden.vbs'
+
+    if task_key == 'backup':
+        target_script = install_dir / 'scripts' / 'backup.ps1'
+        task_name = _BACKUP_TASK_NAME
+        # Daily at 11:00 - matches MSI + scripts/backup.ps1 -Setup.
+        schedule_args = ['/sc', 'DAILY', '/st', '11:00']
+        script_args = ' -Silent'
+    elif task_key == 'autostart':
+        target_script = install_dir / 'scripts' / 'server.ps1'
+        task_name = _AUTOSTART_TASK_NAME
+        schedule_args = ['/sc', 'ONLOGON']
+        script_args = ''
+    else:
+        return {'success': False, 'error': 'Unknown task key.'}
+
+    if not target_script.is_file() or not vbs_launcher.is_file():
+        return {
+            'success': False,
+            'error': f'Required script not found: {target_script.name} or run-hidden.vbs.',
+        }
+
+    # /tr value is one big quoted string; schtasks parses it as the command
+    # to execute. Same shape the MSI custom actions emit.
+    tr_value = (
+        f'wscript.exe "{vbs_launcher}" "{target_script}"{script_args}'
+    )
+
+    try:
+        proc = subprocess.run(
+            ['schtasks', '/Create', '/TN', task_name, '/TR', tr_value,
+             *schedule_args, '/RL', 'LIMITED', '/F'],
+            capture_output=True, text=True, timeout=15,
+        )
+        if proc.returncode == 0:
+            return {'success': True}
+        return {
+            'success': False,
+            'error': (proc.stderr or proc.stdout or 'schtasks failed').strip(),
+        }
+    except subprocess.TimeoutExpired:
+        return {'success': False, 'error': 'schtasks /Create timed out.'}
+    except (FileNotFoundError, OSError) as e:
+        return {'success': False, 'error': str(e)}
+
+
 @admin_bp.route('/api/admin/backup/status', methods=['GET'])
 def api_backup_status():
     """Return backup configuration and recent backup list."""
@@ -758,6 +823,44 @@ def api_task_toggle(task_key: str):
             'task_exists': task_info['exists'],
         })
     return jsonify(result), 500
+
+
+@admin_bp.route('/api/admin/tasks/<task_key>/register', methods=['POST'])
+def api_task_register(task_key: str):
+    """Register a missing scheduled task.
+
+    Used when the MSI didn't create the task (older installer, partial
+    install, user removed it manually, etc.). Mirrors the MSI's schtasks
+    invocation so the result is identical regardless of code path.
+
+    Args:
+        task_key: 'backup' or 'autostart'.
+    """
+    if task_key not in ('backup', 'autostart'):
+        return jsonify({'success': False, 'error': 'Unknown task key.'}), 400
+
+    # If the task already exists, treat as success (idempotent UX).
+    task_name = _BACKUP_TASK_NAME if task_key == 'backup' else _AUTOSTART_TASK_NAME
+    existing = _check_scheduled_task(task_name)
+    if existing['exists']:
+        return jsonify({
+            'success': True,
+            'task_exists': True,
+            'task_status': existing['status'],
+            'already_existed': True,
+        })
+
+    result = _register_scheduled_task(task_key)
+    if not result['success']:
+        return jsonify(result), 500
+
+    info = _check_scheduled_task(task_name)
+    return jsonify({
+        'success': True,
+        'task_exists': info['exists'],
+        'task_status': info['status'],
+        'task_next_run': info['next_run'],
+    })
 
 
 @admin_bp.route('/api/admin/tasks/autostart/status', methods=['GET'])
