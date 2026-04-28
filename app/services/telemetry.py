@@ -226,6 +226,7 @@ def init_telemetry(app: Flask) -> None:
                 response_time_ms=elapsed_ms,
                 is_api=is_api,
                 app_mode=app_mode,
+                feature=request.endpoint or '',
             )
         except Exception:
             pass  # Central telemetry must never break the request

@@ -13,10 +13,21 @@ Sent (per request):
     - instance_id  (random UUID generated on first run -- not tied to any user)
     - app_version  (git commit hash)
     - category     (e.g. "Notes", "Revenue", "AI")
+    - feature      (Flask view function name, e.g. "reports.whitespace")
     - method       (HTTP verb)
     - status_code
     - response_time_ms
     - is_api       (bool)
+
+Sent (per install, ~once per day):
+    - instance_id, app_version
+    - user_role        ("se", "dss", or "unknown")
+    - feature flags    (msx_auto_writeback, copilot_actions_enabled,
+                       show_stale_milestones, show_hygiene_tasks,
+                       milestone_auto_sync, workiq_connect_impact,
+                       revenue_import_reminder, dark_mode)
+    - entity counts    (notes, customers, engagements, milestones,
+                       projects, partners) - rough usage signal
 
 Sent (per WorkIQ failure):
     - instance_id, app_version
@@ -197,6 +208,7 @@ def queue_event(
     response_time_ms: Optional[float],
     is_api: bool,
     app_mode: str = 'unknown',
+    feature: str = '',
 ) -> None:
     """Add an event to the in-memory buffer for the next flush.
 
@@ -220,6 +232,7 @@ def queue_event(
             'instance_id': _instance_id or get_instance_id(),
             'app_version': _app_version,
             'category': category,
+            'feature': feature or '',
             'method': method,
             'is_api': str(is_api),
             'app_mode': app_mode,
@@ -381,6 +394,125 @@ def get_flush_stats() -> dict[str, Any]:
 
 
 # ===========================================================================
+# Install profile event (role + feature flags + entity counts)
+# ===========================================================================
+
+# Re-emit the install profile this often. Daily is plenty - it lets us see
+# install-level config drift over time without spamming events.
+PROFILE_INTERVAL_SECONDS = 24 * 60 * 60
+
+_last_profile_sent: float = 0.0
+_profile_lock = threading.Lock()
+
+
+def _collect_install_profile(app) -> Optional[dict[str, Any]]:
+    """Build the install profile envelope from UserPreference + entity counts.
+
+    Returns None if we can't read the database (e.g. during early startup
+    before migrations finish). Safe to call from any thread that has an
+    app context available.
+    """
+    try:
+        with app.app_context():
+            from app.models import (
+                db, UserPreference, Note, Customer, Engagement,
+                Milestone, Project, Partner,
+            )
+
+            prefs = UserPreference.query.first()
+            if prefs is None:
+                role = 'unknown'
+                flags = {
+                    'msx_auto_writeback': False,
+                    'copilot_actions_enabled': False,
+                    'show_stale_milestones': False,
+                    'show_hygiene_tasks': False,
+                    'milestone_auto_sync': False,
+                    'workiq_connect_impact': False,
+                    'revenue_import_reminder': False,
+                    'dark_mode': False,
+                    'has_workiq_prompt': False,
+                    'has_default_template_customer': False,
+                    'has_default_template_noncustomer': False,
+                }
+            else:
+                role = prefs.user_role or 'unknown'
+                flags = {
+                    'msx_auto_writeback': bool(prefs.msx_auto_writeback),
+                    'copilot_actions_enabled': bool(prefs.copilot_actions_enabled),
+                    'show_stale_milestones': bool(prefs.show_stale_milestones),
+                    'show_hygiene_tasks': bool(prefs.show_hygiene_tasks),
+                    'milestone_auto_sync': bool(prefs.milestone_auto_sync),
+                    'workiq_connect_impact': bool(prefs.workiq_connect_impact),
+                    'revenue_import_reminder': bool(prefs.revenue_import_reminder),
+                    'dark_mode': bool(prefs.dark_mode) if prefs.dark_mode is not None else False,
+                    'has_workiq_prompt': bool(prefs.workiq_summary_prompt),
+                    'has_default_template_customer': prefs.default_template_customer_id is not None,
+                    'has_default_template_noncustomer': prefs.default_template_noncustomer_id is not None,
+                }
+
+            counts = {
+                'note_count': float(db.session.query(Note).count()),
+                'customer_count': float(db.session.query(Customer).count()),
+                'engagement_count': float(db.session.query(Engagement).count()),
+                'milestone_count': float(db.session.query(Milestone).count()),
+                'project_count': float(db.session.query(Project).count()),
+                'partner_count': float(db.session.query(Partner).count()),
+            }
+
+        properties = {
+            'instance_id': _instance_id or get_instance_id(),
+            'app_version': _app_version,
+            'user_role': role,
+        }
+        # Stringify flags - App Insights properties are strings only
+        for k, v in flags.items():
+            properties[k] = 'true' if v else 'false'
+
+        return _build_custom_event(
+            name='SalesBuddy.InstallProfile',
+            properties=properties,
+            measurements=counts,
+        )
+    except Exception as e:
+        logger.debug('Could not collect install profile: %s', e)
+        return None
+
+
+def queue_install_profile(app, force: bool = False) -> bool:
+    """Queue an install profile event if one hasn't been sent in 24h.
+
+    Args:
+        app: Flask application (needed for app_context).
+        force: If True, send regardless of last-sent time.
+
+    Returns:
+        True if an event was queued, False if skipped.
+    """
+    global _last_profile_sent
+
+    if not is_telemetry_enabled():
+        return False
+
+    with _profile_lock:
+        now = time.time()
+        if not force and (now - _last_profile_sent) < PROFILE_INTERVAL_SECONDS:
+            return False
+        # Optimistically mark as sent; if collection fails we'll retry next interval
+        _last_profile_sent = now
+
+    envelope = _collect_install_profile(app)
+    if envelope is None:
+        return False
+
+    with _buffer_lock:
+        _buffer.append(envelope)
+    with _stats_lock:
+        _stats['events_queued'] += 1
+    return True
+
+
+# ===========================================================================
 # Background flush thread
 # ===========================================================================
 
@@ -411,6 +543,13 @@ def start_flush_thread(
     if app:
         _app_version = app.config.get('BOOT_COMMIT') or 'unknown'
 
+    # Send an install profile on startup (once per day max)
+    if app:
+        try:
+            queue_install_profile(app)
+        except Exception as e:
+            logger.debug('Initial install profile queue failed: %s', e)
+
     def _flush_loop():
         while True:
             time.sleep(interval_seconds)
@@ -418,6 +557,13 @@ def start_flush_thread(
                 flush_buffer()
             except Exception as e:
                 logger.warning('Telemetry flush thread error: %s', e)
+            # Re-emit the install profile if the 24h window has passed.
+            # Cheap no-op when not yet due.
+            if app:
+                try:
+                    queue_install_profile(app)
+                except Exception as e:
+                    logger.debug('Install profile re-emit failed: %s', e)
 
     _flush_thread = threading.Thread(
         target=_flush_loop,
