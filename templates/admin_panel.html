@@ -9,6 +9,11 @@
 <style>
     .spin, .spin-icon { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    /* Smooth content swap on the Updates card */
+    #updateStatus { transition: opacity 180ms ease; }
+    #updateStatus.is-fading { opacity: 0.25; }
+    #updateCheckCard { transition: border-color 220ms ease; }
+    #updateCheckCard .card-header { transition: background-color 220ms ease, color 220ms ease; }
 </style>
 <div class="row">
     <div class="col-12">
@@ -263,15 +268,10 @@
                     <div class="card-header{{ ' bg-danger text-white' if update_available else '' }}">
                         <h5 class="mb-0"><i class="bi bi-cloud-download"></i> Updates{{ ' <span class="badge bg-light text-danger">New</span>' | safe if update_available else '' }}</h5>
                     </div>
-                    <div class="card-body d-flex align-items-center">
+                    <div class="card-body">
                         <div id="updateCheckContent" class="w-100">
-                            <div class="d-flex align-items-center gap-3">
-                                <div id="updateStatus" class="flex-grow-1">
-                                    <span class="text-muted">Checking for updates...</span>
-                                </div>
-                                <button class="btn btn-outline-secondary btn-sm" id="updateCheckBtn" onclick="checkForUpdates(true)">
-                                    <i class="bi bi-arrow-clockwise"></i> Check Now
-                                </button>
+                            <div id="updateStatus">
+                                <span class="text-muted">Checking for updates...</span>
                             </div>
                         </div>
                     </div>
@@ -1717,38 +1717,82 @@ async function retryVpnFromCard(btn) {
 }
 
 // Update Check (outside DOMContentLoaded so inline onclick handlers can access these)
+function renderActionBar(updateButtonHtml, opts) {
+    opts = opts || {};
+    const checking = opts.checking === true;
+    const updateBtn = updateButtonHtml || '';
+    const checkBtnInner = checking
+        ? '<i class="bi bi-arrow-clockwise spin"></i> Checking...'
+        : '<i class="bi bi-arrow-clockwise"></i> Check Now';
+    return `
+        <div class="mt-3 d-flex justify-content-between gap-2 align-items-center">
+            <div>${updateBtn}</div>
+            <button class="btn btn-outline-secondary btn-sm" id="updateCheckBtn" onclick="checkForUpdates(true)" ${checking ? 'disabled' : ''}>
+                ${checkBtnInner}
+            </button>
+        </div>`;
+}
+
 function checkForUpdates(refresh) {
     const statusEl = document.getElementById('updateStatus');
-    const btn = document.getElementById('updateCheckBtn');
-    
+
     if (refresh) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Checking...';
-        statusEl.innerHTML = '<span class="text-muted">Checking for updates...</span>';
+        // Spin the existing Check Now button in place. Don't touch statusEl
+        // or the card border — those should only change when the response
+        // comes back, so the user keeps seeing current state during the call.
+        const existingBtn = document.getElementById('updateCheckBtn');
+        if (existingBtn) {
+            existingBtn.disabled = true;
+            existingBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Checking...';
+        }
     }
-    
+
+    function applyResult(html, finalize) {
+        // Brief fade so the content swap doesn't feel jarring.
+        if (statusEl) statusEl.classList.add('is-fading');
+        setTimeout(() => {
+            if (typeof finalize === 'function') finalize();
+            if (statusEl) {
+                statusEl.innerHTML = html;
+                // Force reflow so removing the class re-triggers the transition.
+                void statusEl.offsetWidth;
+                statusEl.classList.remove('is-fading');
+            }
+            wireChangelogToggle();
+        }, 180);
+    }
+
     const url = '/api/admin/update-check' + (refresh ? '?refresh=1' : '');
     fetch(url)
         .then(r => r.json())
         .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Check Now';
-            
+            // Cache so applyUpdate() can stash the pre-update boot date
+            window._lastUpdateCheckData = data;
+
             if (data.error === 'git_not_found') {
-                statusEl.innerHTML = '<span class="text-muted"><i class="bi bi-info-circle"></i> Git not available -- update checking requires Git</span>';
+                applyResult(
+                    '<span class="text-muted"><i class="bi bi-info-circle"></i> Git not available -- update checking requires Git</span>'
+                    + renderActionBar()
+                );
                 return;
             }
-            
+
             if (data.error) {
-                statusEl.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Could not check for updates</span>';
+                applyResult(
+                    '<span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Could not check for updates</span>'
+                    + renderActionBar()
+                );
                 return;
             }
-            
+
             if (!data.last_checked) {
-                statusEl.innerHTML = '<span class="text-muted">Update check has not run yet. Click "Check Now" to check.</span>';
+                applyResult(
+                    '<span class="text-muted">Update check has not run yet. Click "Check Now" to check.</span>'
+                    + renderActionBar()
+                );
                 return;
             }
-            
+
             // Show or hide navbar badges based on update availability
             const navBadge = document.getElementById('updateBadge');
             const navBadgeText = document.getElementById('updateBadgeText');
@@ -1762,17 +1806,17 @@ function checkForUpdates(refresh) {
                 if (navBadgeText) navBadgeText.classList.add('d-none');
                 if (navMenuBadge) navMenuBadge.classList.add('d-none');
             }
-            
-            // Dynamically update card styling based on update availability
+
             const card = document.getElementById('updateCheckCard');
             const cardHeader = card ? card.querySelector('.card-header') : null;
-            if (data.available) {
-                if (card) card.classList.add('border-danger');
-                if (cardHeader) { cardHeader.classList.add('bg-danger', 'text-white'); }
-            } else {
-                if (card) card.classList.remove('border-danger');
-                if (cardHeader) { cardHeader.classList.remove('bg-danger', 'text-white'); }
-            }
+
+            // Build the next state's HTML and a finalize() that flips the
+            // border classes. applyResult fires both together after the fade.
+            let html = '';
+            let finalize = function() {
+                if (card) card.classList.remove('border-danger', 'border-success');
+                if (cardHeader) cardHeader.classList.remove('bg-danger', 'bg-success', 'text-white');
+            };
 
             if (data.available) {
                 let restartHtml = '';
@@ -1782,22 +1826,33 @@ function checkForUpdates(refresh) {
                             <i class="bi bi-arrow-repeat"></i> New code is on disk but the server is still running <code>${data.boot_commit}</code>. Restart to apply.
                         </div>`;
                 }
-                statusEl.innerHTML = `
+                const updateBtnHtml = `
+                    <button class="btn btn-success btn-sm" id="applyUpdateBtn" onclick="applyUpdate()">
+                        <i class="bi bi-download"></i> Update Now
+                    </button>`;
+                html = `
                     <div class="d-flex align-items-center gap-2">
                         <span>${data.commits_behind} new commit${data.commits_behind !== 1 ? 's' : ''} available</span>
                     </div>
                     <div class="mt-2 small text-muted">
                         ${data.restart_needed ? 'Running' : 'Current'}: <code>${data.boot_commit || data.local_commit}</code> &rarr; Latest: <code>${data.remote_commit}</code>
                     </div>
-                    <div class="mt-3 d-flex align-items-center gap-2">
-                        <button class="btn btn-success btn-sm" id="applyUpdateBtn" onclick="applyUpdate()">
-                            <i class="bi bi-download"></i> Update Now
-                        </button>
-                    </div>
+                    ${renderChangelogSection(data.changelog && data.changelog.pending, "What you'll get")}
                     ${restartHtml}
+                    ${renderActionBar(updateBtnHtml)}
                 `;
+                finalize = function() {
+                    if (card) {
+                        card.classList.remove('border-success');
+                        card.classList.add('border-danger');
+                    }
+                    if (cardHeader) {
+                        cardHeader.classList.remove('bg-success');
+                        cardHeader.classList.add('bg-danger', 'text-white');
+                    }
+                };
             } else if (data.restart_needed) {
-                statusEl.innerHTML = `
+                html = `
                     <div class="d-flex align-items-center gap-2">
                         <span class="text-success"><i class="bi bi-check-circle"></i> Code is up to date</span>
                         <span class="text-muted small">(${data.local_commit})</span>
@@ -1805,24 +1860,126 @@ function checkForUpdates(refresh) {
                     <div class="mt-2 alert alert-warning mb-0 py-2">
                         <i class="bi bi-arrow-repeat"></i> Server is running <code>${data.boot_commit}</code> but disk has <code>${data.local_commit}</code>. Restart to apply the update.
                     </div>
+                    ${renderChangelogSection(data.changelog && data.changelog.pending, "What you'll get")}
+                    ${renderActionBar()}
                 `;
             } else {
-                statusEl.innerHTML = `
-                    <span class="text-success"><i class="bi bi-check-circle"></i> You're on the latest version</span>
-                    <span class="text-muted small ms-2">(${data.boot_commit || data.local_commit})</span>
-                `;
+                // Up to date. If we just finished an update, show "what just landed".
+                // A manual Check Now should clear the sticky state so the card
+                // returns to its normal look once the new status renders.
+                if (refresh) {
+                    try { sessionStorage.removeItem('sb_just_updated_from_date'); } catch (e) {}
+                }
+                const justUpdatedFrom = sessionStorage.getItem('sb_just_updated_from_date');
+                let justLanded = [];
+                if (justUpdatedFrom && data.changelog && Array.isArray(data.changelog.entries)) {
+                    justLanded = data.changelog.entries.filter(e => (e.date || '') > justUpdatedFrom);
+                }
+                if (justLanded.length > 0) {
+                    html = `
+                        <span class="text-success"><i class="bi bi-check-circle-fill"></i> Update installed</span>
+                        <span class="text-muted small ms-2">(${data.boot_commit || data.local_commit})</span>
+                        ${renderChangelogSection(justLanded, "What just landed", { startOpen: true, variant: 'success' })}
+                        ${renderActionBar()}
+                    `;
+                    finalize = function() {
+                        if (card) {
+                            card.classList.remove('border-danger');
+                            card.classList.add('border-success');
+                        }
+                        if (cardHeader) {
+                            cardHeader.classList.remove('bg-danger');
+                            cardHeader.classList.add('bg-success', 'text-white');
+                        }
+                    };
+                } else {
+                    html = `
+                        <span class="text-success"><i class="bi bi-check-circle"></i> You're on the latest version</span>
+                        <span class="text-muted small ms-2">(${data.boot_commit || data.local_commit})</span>
+                        ${renderActionBar()}
+                    `;
+                }
             }
+
+            applyResult(html, finalize);
         })
         .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Check Now';
-            statusEl.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Failed to check for updates</span>';
+            applyResult(
+                '<span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Failed to check for updates</span>'
+                + renderActionBar()
+            );
         });
+}
+
+function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function renderChangelogSection(entries, heading, opts) {
+    opts = opts || {};
+    const startOpen = opts.startOpen !== false;  // default open
+    const variant = opts.variant || 'neutral';   // 'success' | 'neutral'
+    if (!entries || entries.length === 0) return '';
+
+    const totalBullets = entries.reduce((n, e) => n + (e.bullets ? e.bullets.length : 0), 0);
+    const headingClass = variant === 'success' ? 'text-success' : '';
+    const bulletsHtml = entries.map(e => {
+        const lis = (e.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('');
+        return `
+            <div class="mt-2">
+                <div class="small text-muted fw-semibold">${escapeHtml(e.date)}</div>
+                <ul class="mb-0 ps-3 small">${lis}</ul>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="mt-3 changelog-block" data-changelog-open="${startOpen ? '1' : '0'}">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="fw-semibold ${headingClass}">
+                    <i class="bi bi-list-stars"></i> ${escapeHtml(heading)}
+                    <span class="text-muted small fw-normal">(${totalBullets} item${totalBullets !== 1 ? 's' : ''})</span>
+                </div>
+                <button type="button" class="btn btn-link btn-sm p-0 changelog-toggle-btn" aria-label="Toggle changelog">
+                    <i class="bi ${startOpen ? 'bi-chevron-up' : 'bi-chevron-down'}"></i>
+                </button>
+            </div>
+            <div class="changelog-body" style="${startOpen ? '' : 'display:none;'}">
+                ${bulletsHtml}
+            </div>
+        </div>`;
+}
+
+function wireChangelogToggle() {
+    document.querySelectorAll('.changelog-block').forEach(block => {
+        const btn = block.querySelector('.changelog-toggle-btn');
+        const body = block.querySelector('.changelog-body');
+        if (!btn || !body || btn.dataset.wired === '1') return;
+        btn.dataset.wired = '1';
+        btn.addEventListener('click', function() {
+            const isOpen = block.dataset.changelogOpen === '1';
+            const next = !isOpen;
+            block.dataset.changelogOpen = next ? '1' : '0';
+            body.style.display = next ? '' : 'none';
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = 'bi ' + (next ? 'bi-chevron-up' : 'bi-chevron-down');
+        });
+    });
 }
 
 function applyUpdate() {
     const card = document.getElementById('updateCheckContent');
     const btn = document.getElementById('applyUpdateBtn');
+
+    // Stash the pre-update boot commit date so the post-restart page load
+    // can show "what just landed" by filtering changelog entries newer than this.
+    try {
+        const last = window._lastUpdateCheckData || {};
+        const stashDate = last.boot_commit_date || (last.changelog && last.changelog.local_head_date);
+        if (stashDate) sessionStorage.setItem('sb_just_updated_from_date', stashDate);
+    } catch (e) {}
+
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Updating...';

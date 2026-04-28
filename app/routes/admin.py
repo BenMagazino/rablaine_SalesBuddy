@@ -180,17 +180,24 @@ def api_admin_ai_clear_cache():
 def api_update_check():
     """Check for available updates and return current state."""
     from flask import current_app
-    from app.services.update_checker import get_update_state, check_for_updates
-    
+    from app.services.update_checker import (
+        get_update_state, check_for_updates,
+        get_changelog_state, fetch_changelog,
+        get_local_head_date, entries_newer_than,
+    )
+
     # If force refresh requested, run the check now
     if request.args.get('refresh') == '1':
         state = check_for_updates()
+        fetch_changelog()
     else:
         state = get_update_state()
-    
+
     # Include the boot-time commit (what the running server loaded)
     boot_commit = current_app.config.get('BOOT_COMMIT')
+    boot_commit_date = current_app.config.get('BOOT_COMMIT_DATE')
     state['boot_commit'] = boot_commit
+    state['boot_commit_date'] = boot_commit_date
     disk_commit = state.get('local_commit')
     state['restart_needed'] = (
         boot_commit is not None
@@ -201,11 +208,27 @@ def api_update_check():
     # Include dismissed commit from user prefs
     pref = UserPreference.query.first()
     dismissed = pref.dismissed_update_commit if pref else None
-    
+
     # Update is "new" (show badge) if available and not dismissed for this remote commit
     state['dismissed'] = dismissed == state.get('remote_commit')
     state['show_badge'] = state.get('available', False) and not state['dismissed']
-    
+
+    # Attach changelog data: full list, plus pre-filtered "what's new" buckets
+    changelog = get_changelog_state()
+    local_head_date = get_local_head_date()
+    state['changelog'] = {
+        'entries': changelog['entries'],
+        'last_fetched': changelog['last_fetched'],
+        'error': changelog['error'],
+        'local_head_date': local_head_date,
+        # Entries strictly newer than what's running on this machine's disk.
+        # When updates are pending these are "what you'll get."
+        'pending': entries_newer_than(changelog['entries'], local_head_date),
+        # Entries strictly newer than the boot commit. After an update +
+        # restart, these are "what just landed."
+        'since_boot': entries_newer_than(changelog['entries'], boot_commit_date),
+    }
+
     return jsonify(state)
 
 

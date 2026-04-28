@@ -32,9 +32,38 @@ When attempting to commit to `main`, stop and prompt user for feature branch nam
 3. Run scoped tests for the feature you're building (e.g., `pytest tests/test_views.py`)
 4. **Prompt user to manually test new features or bug fixes** - before committing, always ask the user to test the changes in the running app
 5. Commit to feature branch with descriptive message
-6. **STOP AND WAIT for user confirmation** before merging to `main` - **NEVER merge to main without explicit user approval**
-7. When user says ready: merge to `main` with `--no-ff` and push
+6. **Update `CHANGELOG.md`** for any user-visible functionality change (see "Changelog Updates" below)
+7. **STOP AND WAIT for user confirmation** before merging to `main` - **NEVER merge to main without explicit user approval**
+8. When user says ready: merge to `main` with `--no-ff` and push
    - **Always use `git merge --no-ff`** to preserve feature branch history
+
+## Changelog Updates
+
+The admin panel reads `CHANGELOG.md` from the repo root and shows users what's new before and after they apply an update. Keep it accurate or the feature degrades silently.
+
+**Update before merging to `main`** if the change is user-visible functionality. Add a bullet under today's `## YYYY-MM-DD` section (create one at the top of the file if it doesn't exist yet). Newest date at top. One bullet per discrete change.
+
+**Include in CHANGELOG:**
+- New features or pages
+- Removed features (even if "just" a UI control - if a user could see and use it, it counts)
+- Behavior changes (different default, different ordering, new validation)
+- Bug fixes users would notice
+- Performance improvements users would feel
+- Integration changes (new MSX field, changed sync cadence)
+
+**Skip in CHANGELOG:**
+- Pure cosmetic tweaks (color, padding, font size, icon swap)
+- Typo fixes in labels
+- Internal refactors with no user-visible effect
+- Test-only changes
+- Dev tooling / build script changes
+
+**When in doubt, include it.** A short bullet that turns out to be unimportant is far better than silently shipping a change users care about.
+
+**Bullet style:** plain English, present tense, ~1 line. The reader is a busy seller, not a developer. Skip implementation detail unless it's the point of the change.
+
+Good: `Add changelog viewer to admin Updates card so you can see what's new before and after applying an update`
+Bad: `Refactor checkForUpdates to call renderChangelogSection helper`
 
 ## DO NOT Auto-Merge
 
