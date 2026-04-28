@@ -211,6 +211,11 @@ namespace SalesBuddy.CustomActions
                     ProcessRunner.UpdateStatus(session, "Configuring auto-start...");
                     ConfigureAutoStartTask(session, installDir);
                 }
+                // Always register the daily backup task. It runs every day
+                // regardless of the AUTOSTART option, and the backup script
+                // gracefully no-ops if OneDrive hasn't been configured yet
+                // (the user can configure it later from the admin panel).
+                ConfigureBackupTask(session, installDir);
                 AdvanceProgress(session, WeightAutoStart);
 
                 // Step 11: Start server
@@ -1227,6 +1232,34 @@ Write-Host 'winget installation complete.'
                 $"/tr \"wscript.exe \\\"{vbsLauncher}\\\" \\\"{serverScript}\\\"\" " +
                 $"/sc ONLOGON /rl LIMITED /f");
             session.Log("Auto-start task created.");
+        }
+
+        /// <summary>
+        /// Register the SalesBuddy-DailyBackup scheduled task that runs
+        /// backup.ps1 -Silent once a day. Idempotent; /f overwrites if it
+        /// already exists. The backup script no-ops gracefully when no
+        /// OneDrive path is configured, so it is safe to register the task
+        /// even if the user hasn't set up backups yet.
+        /// </summary>
+        private static void ConfigureBackupTask(Session session, string installDir)
+        {
+            string backupScript = Path.Combine(installDir, "scripts", "backup.ps1");
+            string vbsLauncher = Path.Combine(installDir, "scripts", "run-hidden.vbs");
+            if (!File.Exists(backupScript) || !File.Exists(vbsLauncher))
+            {
+                session.Log("backup.ps1 or run-hidden.vbs not found, skipping daily backup task.");
+                return;
+            }
+
+            // wscript + VBS launcher avoids the brief console flash that
+            // powershell.exe -WindowStyle Hidden still produces.
+            // Daily at 11:00 AM matches what scripts/backup.ps1 -Setup
+            // and scripts/server.ps1 register.
+            ProcessRunner.Run(session, "schtasks.exe",
+                $"/create /tn \"SalesBuddy-DailyBackup\" " +
+                $"/tr \"wscript.exe \\\"{vbsLauncher}\\\" \\\"{backupScript}\\\" -Silent\" " +
+                $"/sc DAILY /st 11:00 /rl LIMITED /f");
+            session.Log("Daily backup task created.");
         }
 
         /// <summary>
