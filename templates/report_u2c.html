@@ -160,10 +160,6 @@
             <select id="filterCustomer" class="form-select form-select-sm" style="width: 220px;">
                 <option value="">All Customers</option>
             </select>
-            <div class="form-check form-switch ms-2">
-                <input class="form-check-input" type="checkbox" id="committedBottomToggle" checked>
-                <label class="form-check-label small" for="committedBottomToggle">Committed to bottom</label>
-            </div>
             <span class="badge bg-warning text-dark" id="remainingBadge">{{ attainment.remaining_count }} milestones - ${{ "{:,.0f}".format(attainment.target_total - attainment.committed_total) }}/mo</span>
         </div>
     </div>
@@ -349,14 +345,12 @@
 const WL_KEY = 'u2c_workload_filter';
 const SORT_KEY = 'u2c_sort';
 const FILTER_KEY = 'u2c_filters';
-const COMMIT_BOTTOM_KEY = 'u2c_committed_bottom';
 
 // ==========================================================================
 // State
 // ==========================================================================
 var currentSort = { column: 'acr', direction: 'desc' };
 var currentFilters = { seller: '', customer: '' };
-var committedBottom = true;
 
 // ==========================================================================
 // Helper
@@ -449,16 +443,8 @@ function applySortToBody(tbody) {
     const rows = Array.from(tbody.querySelectorAll('tr'));
     const col = currentSort.column;
     const dir = currentSort.direction === 'asc' ? 1 : -1;
-    const pushCommitted = committedBottom;
 
     rows.sort(function(a, b) {
-        // Committed-to-bottom: committed rows always go after non-committed
-        if (pushCommitted) {
-            const ac = a.dataset.committed === '1' ? 1 : 0;
-            const bc = b.dataset.committed === '1' ? 1 : 0;
-            if (ac !== bc) return ac - bc;
-        }
-
         var va, vb;
         switch (col) {
             case 'customer':
@@ -608,21 +594,7 @@ function applyWorkloadFilter() {
 }
 
 // ==========================================================================
-// 5) Committed-to-bottom toggle
-// ==========================================================================
-function applyCommittedBottom() {
-    const tbody = el('remainingBody');
-    if (!tbody) return;
-    applySortToBody(tbody);
-
-    // Visual dimming for committed rows at bottom
-    tbody.querySelectorAll('tr[data-committed="1"]').forEach(row => {
-        row.style.opacity = committedBottom ? '0.55' : '';
-    });
-}
-
-// ==========================================================================
-// 6) Event wiring + state restore
+// 5) Event wiring + state restore
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', function() {
     populateFilterDropdowns();
@@ -635,14 +607,6 @@ document.addEventListener('DOMContentLoaded', function() {
             currentSort.direction = saved.direction || 'asc';
         }
     } catch(e) {}
-
-    // --- Restore committed-bottom toggle ---
-    try {
-        const savedCB = localStorage.getItem(COMMIT_BOTTOM_KEY);
-        if (savedCB !== null) committedBottom = savedCB === 'true';
-    } catch(e) {}
-    const cbToggle = el('committedBottomToggle');
-    if (cbToggle) cbToggle.checked = committedBottom;
 
     // --- Restore filter state ---
     try {
@@ -669,7 +633,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Apply sort indicators, filters, and sort order
     updateSortIndicators();
     applyAllFilters();
-    applyCommittedBottom();
 
     // --- Wire sort header clicks ---
     document.querySelectorAll('#remainingTable .sortable').forEach(th => {
@@ -697,15 +660,6 @@ document.addEventListener('DOMContentLoaded', function() {
             applyAllFilters();
         });
         // Remove inline onchange since we wire it here
-    }
-
-    // --- Wire committed-bottom toggle ---
-    if (cbToggle) {
-        cbToggle.addEventListener('change', function() {
-            committedBottom = this.checked;
-            localStorage.setItem(COMMIT_BOTTOM_KEY, committedBottom);
-            applyCommittedBottom();
-        });
     }
 });
 
