@@ -426,9 +426,9 @@ class TestMilestoneSyncService:
             db.session.delete(ms)
             db.session.commit()
 
-    @patch('app.services.milestone_sync.get_milestones_by_account')
-    def test_sync_stale_opportunity_milestones(self, mock_get, app, sample_data):
-        """Stale sync should refresh milestones on opportunities missed by the active sync."""
+    @patch('app.services.milestone_sync.batch_get_milestones_by_id')
+    def test_sync_stale_milestones(self, mock_batch, app, sample_data):
+        """Stale sync should refresh milestones missed by the active sync."""
         customer_id = self._create_test_customer_with_tpid_url(app, sample_data)
 
         with app.app_context():
@@ -459,12 +459,11 @@ class TestMilestoneSyncService:
             stale_ms_id = stale_ms.id
             stale_opp_id = stale_opp.id
 
-        # The stale sync will call get_milestones_by_account without filters
-        # and return the updated milestone data
-        mock_get.return_value = {
+        # The stale sync now batches by milestone GUID and returns by_id.
+        mock_batch.return_value = {
             "success": True,
-            "milestones": [
-                {
+            "by_id": {
+                "stale-ms-guid-001": {
                     "id": "stale-ms-guid-001",
                     "name": "Stale Milestone (Updated)",
                     "number": "7-999001",
@@ -478,21 +477,18 @@ class TestMilestoneSyncService:
                     "due_date": "2025-12-31T00:00:00Z",
                     "dollar_value": 25000.0,
                     "url": "https://stale.com",
-                    "opportunity_statecode": 1,
-                    "opportunity_state": "Won",
                 },
-            ],
-            "count": 1,
+            },
         }
 
         with app.app_context():
             from app.services.milestone_sync import (
-                _sync_stale_opportunity_milestones,
+                _sync_stale_milestones,
             )
 
             # The active sync returned no milestones (empty set)
             # so our stale milestone should be picked up.
-            gen = _sync_stale_opportunity_milestones(set())
+            gen = _sync_stale_milestones(set())
             try:
                 while True:
                     next(gen)
@@ -501,7 +497,6 @@ class TestMilestoneSyncService:
 
             assert result["success"] is True
             assert result["milestones_updated"] == 1
-            assert result["opportunities_refreshed"] == 1
 
             ms = db.session.get(Milestone, stale_ms_id)
             assert ms.msx_status == "Completed"
@@ -515,9 +510,9 @@ class TestMilestoneSyncService:
                 db.session.delete(opp)
             db.session.commit()
 
-    @patch('app.services.milestone_sync.get_milestones_by_account')
-    def test_sync_stale_skips_seen_opportunities(self, mock_get, app, sample_data):
-        """Stale sync should not re-fetch opportunities already covered by the active sync."""
+    @patch('app.services.milestone_sync.batch_get_milestones_by_id')
+    def test_sync_stale_skips_seen_opportunities(self, mock_batch, app, sample_data):
+        """Stale sync should not re-fetch milestones already covered by the active sync."""
         customer_id = self._create_test_customer_with_tpid_url(app, sample_data)
 
         with app.app_context():
@@ -549,11 +544,11 @@ class TestMilestoneSyncService:
 
         with app.app_context():
             from app.services.milestone_sync import (
-                _sync_stale_opportunity_milestones,
+                _sync_stale_milestones,
             )
 
             # This milestone's GUID is in seen_msx_ids, so stale sync skips it.
-            gen = _sync_stale_opportunity_milestones({"seen-ms-guid-001"})
+            gen = _sync_stale_milestones({"seen-ms-guid-001"})
             try:
                 while True:
                     next(gen)
@@ -562,10 +557,9 @@ class TestMilestoneSyncService:
 
             # Nothing should have been updated
             assert result["milestones_updated"] == 0
-            assert result["opportunities_refreshed"] == 0
 
             # MSX API should not have been called
-            mock_get.assert_not_called()
+            mock_batch.assert_not_called()
 
             # Cleanup
             ms = db.session.get(Milestone, ms_id)

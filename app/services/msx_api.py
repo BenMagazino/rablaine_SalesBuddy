@@ -1081,19 +1081,32 @@ def get_opportunities_by_account(
 
 def batch_get_opportunities(
     account_ids: List[str],
-    open_only: bool = True,
+    current_fy_only: bool = True,
     batch_size: int = 15,
 ) -> Dict[str, Any]:
     """
-    Get open opportunities for multiple accounts in batched OData queries.
+    Get opportunities for multiple accounts in batched OData queries.
 
     Groups account IDs into batches and uses OR filters to fetch
     opportunities for many accounts per request.
 
     Args:
         account_ids: List of account GUIDs.
-        open_only: If True, only return open opportunities (statecode=0).
+        current_fy_only: If True (default), only return opportunities
+            whose ``estimatedclosedate`` falls in the current Microsoft
+            fiscal year or the next one (covers FY+next FY). The status
+            filter (statecode eq 0) is intentionally NOT applied so
+            recently Won/Lost opportunities still come back when their
+            milestones are still relevant. If False, no status or date
+            filter is applied (account filter only).
         batch_size: Accounts per OData query (default 15).
+
+    Note:
+        Opportunities with no ``estimatedclosedate`` are excluded when
+        ``current_fy_only=True``. ~37% of MSX opps in production lack
+        this field but we have not encountered a case where missing one
+        matters. If we ever do, extend the filter with
+        ``or estimatedclosedate eq null``.
 
     Returns:
         Dict with success, and opportunities keyed by account ID.
@@ -1104,6 +1117,18 @@ def batch_get_opportunities(
     """
     by_account: Dict[str, list] = {aid: [] for aid in account_ids}
 
+    # Compute FY window once per call (current FY + next FY).
+    fy_clause = ""
+    if current_fy_only:
+        now = dt.now(tz.utc)
+        fy_start_year = now.year if now.month >= 7 else now.year - 1
+        fy_start = f"{fy_start_year}-07-01"
+        fy_end = f"{fy_start_year + 2}-06-30"
+        fy_clause = (
+            f" and estimatedclosedate ge {fy_start}"
+            f" and estimatedclosedate le {fy_end}"
+        )
+
     try:
         for i in range(0, len(account_ids), batch_size):
             batch = account_ids[i:i + batch_size]
@@ -1111,10 +1136,7 @@ def batch_get_opportunities(
             acct_filter = " or ".join(
                 f"_parentaccountid_value eq '{aid}'" for aid in batch
             )
-            if open_only:
-                filter_query = f"({acct_filter}) and statecode eq 0"
-            else:
-                filter_query = acct_filter
+            filter_query = f"({acct_filter}){fy_clause}"
 
             result = query_entity(
                 "opportunities",
@@ -1180,6 +1202,66 @@ def batch_get_opportunities(
         return {"success": False, "error": str(e), "by_account": by_account}
 
 
+# Shared select fields and parser for milestone OData responses. Used by
+# batch_get_milestones (filter on opportunity id) and
+# batch_get_milestones_by_id (filter on milestone id).
+_MILESTONE_SELECT_FIELDS = [
+    "msp_engagementmilestoneid", "msp_name", "msp_milestonestatus",
+    "msp_milestonenumber", "_msp_opportunityid_value", "msp_monthlyuse",
+    "_msp_workloadlkid_value", "msp_milestonedate", "msp_bacvrate",
+    "msp_commitmentrecommendation", "msp_committedon", "msp_completedon",
+    "msp_forecastcommentsjsonfield", "createdon", "modifiedon",
+]
+
+
+def _parse_milestone_record(raw: dict) -> Optional[dict]:
+    """Parse a raw MSX milestone record into the dict shape used by
+    milestone_sync (`_update_milestone_from_msx` / `_create_milestone_from_msx`).
+    """
+    ms_id = raw.get("msp_engagementmilestoneid")
+    opp_id = raw.get("_msp_opportunityid_value")
+    if not ms_id or not opp_id:
+        return None
+
+    status = raw.get(
+        "msp_milestonestatus@OData.Community.Display.V1.FormattedValue",
+        "Unknown",
+    )
+    status_code = raw.get("msp_milestonestatus")
+    workload = raw.get(
+        "_msp_workloadlkid_value@OData.Community.Display.V1.FormattedValue",
+        "",
+    )
+    commitment = raw.get(
+        "msp_commitmentrecommendation"
+        "@OData.Community.Display.V1.FormattedValue",
+        "",
+    ) or raw.get("msp_commitmentrecommendation", "")
+
+    return {
+        "id": ms_id,
+        "name": raw.get("msp_name", ""),
+        "number": raw.get("msp_milestonenumber", ""),
+        "status": status,
+        "status_code": status_code,
+        "status_sort": MILESTONE_STATUS_ORDER.get(status, 99),
+        "customer_commitment": (
+            commitment if isinstance(commitment, str) else str(commitment)
+        ),
+        "msx_opportunity_id": opp_id,
+        "workload": workload,
+        "monthly_usage": raw.get("msp_monthlyuse"),
+        "due_date": raw.get("msp_milestonedate"),
+        "dollar_value": raw.get("msp_bacvrate"),
+        "url": build_milestone_url(ms_id),
+        "committed_on": raw.get("msp_committedon"),
+        "completed_on": raw.get("msp_completedon"),
+        "comments_json": raw.get("msp_forecastcommentsjsonfield"),
+        "created_on": raw.get("createdon"),
+        "modified_on": raw.get("modifiedon"),
+    }
+
+
 def batch_get_milestones(
     opportunity_ids: List[str],
     active_only: bool = False,
@@ -1234,61 +1316,6 @@ def batch_get_milestones(
         " and " + " and ".join(extra_filters)
     ) if extra_filters else ""
 
-    select_fields = [
-        "msp_engagementmilestoneid", "msp_name", "msp_milestonestatus",
-        "msp_milestonenumber", "_msp_opportunityid_value", "msp_monthlyuse",
-        "_msp_workloadlkid_value", "msp_milestonedate", "msp_bacvrate",
-        "msp_commitmentrecommendation", "msp_committedon", "msp_completedon",
-        "msp_forecastcommentsjsonfield", "createdon", "modifiedon",
-    ]
-
-    def _parse_milestone(raw: dict) -> Optional[dict]:
-        ms_id = raw.get("msp_engagementmilestoneid")
-        opp_id = raw.get("_msp_opportunityid_value")
-        if not ms_id or not opp_id:
-            return None
-
-        status = raw.get(
-            "msp_milestonestatus"
-            "@OData.Community.Display.V1.FormattedValue",
-            "Unknown",
-        )
-        status_code = raw.get("msp_milestonestatus")
-        workload = raw.get(
-            "_msp_workloadlkid_value"
-            "@OData.Community.Display.V1.FormattedValue",
-            "",
-        )
-        commitment = raw.get(
-            "msp_commitmentrecommendation"
-            "@OData.Community.Display.V1.FormattedValue",
-            "",
-        ) or raw.get("msp_commitmentrecommendation", "")
-
-        return {
-            "id": ms_id,
-            "name": raw.get("msp_name", ""),
-            "number": raw.get("msp_milestonenumber", ""),
-            "status": status,
-            "status_code": status_code,
-            "status_sort": MILESTONE_STATUS_ORDER.get(status, 99),
-            "customer_commitment": (
-                commitment if isinstance(commitment, str)
-                else str(commitment)
-            ),
-            "msx_opportunity_id": opp_id,
-            "workload": workload,
-            "monthly_usage": raw.get("msp_monthlyuse"),
-            "due_date": raw.get("msp_milestonedate"),
-            "dollar_value": raw.get("msp_bacvrate"),
-            "url": build_milestone_url(ms_id),
-            "committed_on": raw.get("msp_committedon"),
-            "completed_on": raw.get("msp_completedon"),
-            "comments_json": raw.get("msp_forecastcommentsjsonfield"),
-            "created_on": raw.get("createdon"),
-            "modified_on": raw.get("modifiedon"),
-        }
-
     try:
         for i in range(0, len(opportunity_ids), batch_size):
             batch = opportunity_ids[i:i + batch_size]
@@ -1300,7 +1327,7 @@ def batch_get_milestones(
 
             result = query_entity(
                 "msp_engagementmilestones",
-                select=select_fields,
+                select=_MILESTONE_SELECT_FIELDS,
                 filter_query=filter_query,
                 order_by="msp_name",
                 top=batch_size * 50,
@@ -1313,7 +1340,7 @@ def batch_get_milestones(
                 continue
 
             for raw in result.get("records", []):
-                ms_dict = _parse_milestone(raw)
+                ms_dict = _parse_milestone_record(raw)
                 if ms_dict and ms_dict["msx_opportunity_id"] in by_opp:
                     by_opp[ms_dict["msx_opportunity_id"]].append(ms_dict)
 
@@ -1324,7 +1351,7 @@ def batch_get_milestones(
                 if not page.get("success"):
                     break
                 for raw in page.get("records", []):
-                    ms_dict = _parse_milestone(raw)
+                    ms_dict = _parse_milestone_record(raw)
                     if ms_dict and ms_dict["msx_opportunity_id"] in by_opp:
                         by_opp[ms_dict["msx_opportunity_id"]].append(ms_dict)
                 next_link = page.get("next_link")
@@ -1334,6 +1361,84 @@ def batch_get_milestones(
     except Exception as e:
         logger.exception("Error in batch milestone query")
         return {"success": False, "error": str(e), "by_opportunity": by_opp}
+
+
+def batch_get_milestones_by_id(
+    milestone_ids: List[str],
+    batch_size: int = 20,
+) -> Dict[str, Any]:
+    """
+    Get milestones by their MSX GUIDs in batched OData queries.
+
+    Used by the stale-milestone refresh pass (Phase 3 of the milestone
+    sync). The active sync (Phase 1) is filtered to a date window and
+    open-ish opportunities, so any local milestone whose GUID isn't in
+    the active sync's response is "stale" and gets refreshed via this
+    helper to pick up status changes (e.g. Completed -> On Track),
+    re-parented opps, slipped due dates, etc.
+
+    Args:
+        milestone_ids: List of msp_engagementmilestoneid GUIDs.
+        batch_size: Milestones per OData query (default 20). Matches
+            ``batch_get_milestones`` to stay well under MSX URL-length
+            and response-size limits.
+
+    Returns:
+        {
+            "success": bool,
+            "by_id": {milestone_id: ms_dict, ...},  # only successful records
+            "error": str (only on hard failure)
+        }
+    """
+    by_id: Dict[str, dict] = {}
+    if not milestone_ids:
+        return {"success": True, "by_id": by_id}
+
+    try:
+        for i in range(0, len(milestone_ids), batch_size):
+            batch = milestone_ids[i:i + batch_size]
+
+            ms_filter = " or ".join(
+                f"msp_engagementmilestoneid eq '{mid}'" for mid in batch
+            )
+            filter_query = f"({ms_filter})"
+
+            result = query_entity(
+                "msp_engagementmilestones",
+                select=_MILESTONE_SELECT_FIELDS,
+                filter_query=filter_query,
+                order_by="msp_name",
+                top=batch_size * 2,  # ~1 result per filter clause expected
+            )
+
+            if not result.get("success"):
+                logger.warning(
+                    "Batch milestone-by-id query failed: %s",
+                    result.get("error"),
+                )
+                continue
+
+            for raw in result.get("records", []):
+                ms_dict = _parse_milestone_record(raw)
+                if ms_dict:
+                    by_id[ms_dict["id"]] = ms_dict
+
+            next_link = result.get("next_link")
+            while next_link:
+                page = query_next_page(next_link)
+                if not page.get("success"):
+                    break
+                for raw in page.get("records", []):
+                    ms_dict = _parse_milestone_record(raw)
+                    if ms_dict:
+                        by_id[ms_dict["id"]] = ms_dict
+                next_link = page.get("next_link")
+
+        return {"success": True, "by_id": by_id}
+
+    except Exception as e:
+        logger.exception("Error in batch milestone-by-id query")
+        return {"success": False, "error": str(e), "by_id": by_id}
 
 
 def build_opportunity_url(opportunity_id: str) -> str:
