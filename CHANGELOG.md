@@ -8,6 +8,7 @@ Recent updates and improvements, newest first.
   - Opportunities: now scoped to the current Microsoft fiscal year through the next FY (a ~24-month window), plus any opp with no close date set. Previously we pulled all open opps regardless of close date but skipped recently-Won / Lost ones - now those come back too while their milestones still matter.
   - Stale milestone refresh: any local milestone that wasn't returned by the active sync (out-of-window, closed opp, etc.) is now refreshed in batches by milestone GUID directly, instead of round-tripping through the parent opportunity one at a time.
 - Sync progress bar now reflects actual time spent per phase so it stops sitting at 82% for half the run.
+- Cache-bust the changelog fetch so the Updates card shows new entries right after a push instead of waiting for GitHub's CDN to expire.
 
 ## 2026-04-28
 

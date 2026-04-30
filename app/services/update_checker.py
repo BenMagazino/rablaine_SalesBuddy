@@ -165,7 +165,15 @@ def parse_changelog(text: str) -> list:
 def fetch_changelog() -> dict:
     """Fetch CHANGELOG.md from the remote and update the cached state."""
     try:
-        resp = requests.get(CHANGELOG_URL, timeout=10)
+        # Cache-bust: raw.githubusercontent.com caches at the CDN edge for
+        # several minutes, so a plain GET will return stale content right
+        # after a push. A unique query param + no-cache header forces fresh.
+        cache_buster = int(time.time())
+        resp = requests.get(
+            f"{CHANGELOG_URL}?_={cache_buster}",
+            timeout=10,
+            headers={'Cache-Control': 'no-cache'},
+        )
         resp.raise_for_status()
         entries = parse_changelog(resp.text)
         with _lock:
