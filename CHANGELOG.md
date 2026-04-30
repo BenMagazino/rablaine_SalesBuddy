@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 4/29/2026
+## 4/29/2026 - 19043e4
 
 - Cache-bust the changelog fetch so the Updates card shows new entries right after a push instead of waiting for GitHub's CDN to expire.
 - Restructure the changelog so each entry is tagged with the merge commit it covers, and the admin Updates card filters by commit hash instead of just date. This means multiple updates on the same day each get their own block, and you can see exactly which ones are pending vs already on your machine.
