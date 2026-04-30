@@ -634,11 +634,63 @@ def prefetch_for_date_full(
         if meeting is not None:
             stored_meetings.append(meeting)
 
+    # Re-resolve any still-unmatched ghosts for this date. Catches the
+    # case where the customer DB grew between yesterday's aura and today's
+    # (e.g. user ran the MSX account import after the morning sync). Only
+    # touches rows where customer_id is already NULL so we never override
+    # a prior match.
+    rematched = _rematch_unmatched_for_date(
+        target_date, domain_map, subject_matchers,
+    )
+    if rematched:
+        logger.info(
+            "Prefetch: rematched %d previously-unmatched ghosts for %s",
+            rematched, date_str,
+        )
+
     db.session.commit()
     picker_list = [_to_picker_dict(m) for m in stored_meetings]
     logger.info("Prefetch: stored %d meetings for %s",
                 len(stored_meetings), date_str)
     return len(stored_meetings), picker_list, None
+
+
+def _rematch_unmatched_for_date(
+    target_date: date,
+    domain_map: Dict[str, Tuple[int, str]],
+    subject_matchers: List[Tuple[re.Pattern, int, str]],
+) -> int:
+    """Try to map previously-unmatched ghosts using a fresh domain map.
+
+    Iterates ``PrefetchedMeeting`` rows for ``target_date`` that have
+    ``customer_id IS NULL`` and runs ``_resolve_customer`` against their
+    cached attendees + subject. Updates rows in place. Returns the count
+    of rows that gained a customer match.
+    """
+    unmatched = (
+        PrefetchedMeeting.query
+        .options(joinedload(PrefetchedMeeting.attendees))
+        .filter_by(meeting_date=target_date, customer_id=None)
+        .all()
+    )
+    if not unmatched:
+        return 0
+
+    fixed = 0
+    for ghost in unmatched:
+        attendee_dicts = [
+            {'email': a.email or '', 'name': a.name or ''}
+            for a in ghost.attendees
+        ]
+        cid, matched_via = _resolve_customer(
+            attendee_dicts, domain_map,
+            subject=ghost.subject, subject_matchers=subject_matchers,
+        )
+        if cid is not None:
+            ghost.customer_id = cid
+            ghost.matched_via = matched_via
+            fixed += 1
+    return fixed
 
 
 def _to_picker_dict(meeting: PrefetchedMeeting) -> Dict[str, Any]:

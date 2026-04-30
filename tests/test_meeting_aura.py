@@ -11,6 +11,7 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 
 from app.models import (
+    Customer,
     DailyMeetingCache,
     DismissedRecurringMeeting,
     PrefetchedMeeting,
@@ -69,6 +70,11 @@ def clean_meeting_tables(app):
         PrefetchedMeeting.query.delete()
         DailyMeetingCache.query.delete()
         DismissedRecurringMeeting.query.delete()
+        # Seed at least one customer so ensure_meeting_aura's "no customers"
+        # guard doesn't short-circuit the test. Tests covering that guard
+        # explicitly delete customers themselves.
+        if Customer.query.count() == 0:
+            db.session.add(Customer(name='Aura Test Customer', tpid=999001))
         db.session.commit()
         yield
         PrefetchedMeetingAttendee.query.delete()
@@ -317,6 +323,39 @@ class TestEnsureMeetingAura:
         cleared = get_sync_state_snapshot()
         assert cleared['running'] is False
         assert cleared['current_date'] is None
+
+
+# ---------------------------------------------------------------------------
+# Empty customer DB guard
+# ---------------------------------------------------------------------------
+
+class TestEnsureMeetingAuraNoCustomersGuard:
+    def test_skips_aura_when_no_customers(
+        self, app, clean_meeting_tables, reset_sync_state, monkeypatch,
+    ):
+        """Fresh install: aura must not run before MSX account import.
+
+        Without customers, every ghost would land with customer_id=NULL
+        because both _build_domain_map and _build_subject_matchers come up
+        empty. Skipping prevents poisoning the cache with garbage that
+        won't get re-resolved unless the user manually clicks Refresh.
+        """
+        from app.services.meeting_sync import ensure_meeting_aura
+        with app.app_context():
+            # clean_meeting_tables seeded a customer; remove it.
+            Customer.query.delete()
+            db.session.commit()
+            assert Customer.query.count() == 0
+
+            called = _stub_workiq(monkeypatch)
+            counts, errors = ensure_meeting_aura(
+                start=date(2026, 4, 24), days_ahead=2,
+            )
+
+            assert called == [], "WorkIQ must not be hit when no customers"
+            assert counts == {}
+            assert '_status' in errors
+            assert 'no customers' in errors['_status'].lower()
 
 
 # ---------------------------------------------------------------------------

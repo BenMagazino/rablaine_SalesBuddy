@@ -258,6 +258,50 @@ class TestPrefetchForDate:
             assert stored == 0
             assert err and 'WorkIQ down' in err
 
+    def test_resync_rematches_previously_unmatched_ghost(
+        self, app, clean_prefetch_tables,
+    ):
+        """If a customer is added between syncs, the next sync should
+        retroactively map orphan ghosts that originally landed unmatched.
+
+        Reproduces the bug observed when a fresh-install user ran the
+        morning aura before completing the MSX account import: every
+        ghost stored with customer_id=NULL even though attendees clearly
+        matched a customer they later imported.
+        """
+        with app.app_context():
+            # First sync: no matching customer exists for redsail.
+            with patch('app.services.workiq_service.query_workiq',
+                       return_value=SAMPLE_RESPONSE):
+                meeting_prefetch.prefetch_for_date('2026-04-22')
+
+            redsail = PrefetchedMeeting.query.filter_by(
+                subject='Redsail - Fabric Cadence',
+            ).first()
+            assert redsail is not None
+            assert redsail.customer_id is None
+
+            # User now imports the customer.
+            db.session.add(Customer(
+                name='Redsail Technologies', tpid=910001,
+                website='https://redsailtechnologies.com',
+            ))
+            db.session.commit()
+
+            # Re-sync with the same WorkIQ response.
+            with patch('app.services.workiq_service.query_workiq',
+                       return_value=SAMPLE_RESPONSE):
+                meeting_prefetch.prefetch_for_date('2026-04-22')
+
+            redsail_after = PrefetchedMeeting.query.filter_by(
+                subject='Redsail - Fabric Cadence',
+            ).first()
+            assert redsail_after.customer_id is not None, (
+                "Re-sync should have retroactively matched the previously "
+                "unmatched ghost now that the customer exists."
+            )
+            assert redsail_after.matched_via == 'website'
+
 
 # ---------------------------------------------------------------------------
 # Subject-based customer matching

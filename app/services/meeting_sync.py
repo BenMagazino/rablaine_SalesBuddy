@@ -194,6 +194,20 @@ def ensure_meeting_aura(
     if start is None:
         start = date.today()
 
+    # Gate on having a populated customer DB. If no customers exist (fresh
+    # install where the user hasn't run the MSX account import yet), every
+    # ghost would be stored with customer_id=NULL because _build_domain_map
+    # and _build_subject_matchers both come up empty. Skipping here avoids
+    # poisoning the cache with unmatched garbage. Caller (e.g. post-MSX-
+    # import hook) is responsible for re-running once customers exist.
+    from app.models import Customer
+    if Customer.query.count() == 0:
+        logger.info(
+            "ensure_meeting_aura: no customers in DB, skipping aura "
+            "(prevents unmatched ghosts)"
+        )
+        return {}, {'_status': 'no customers - run account import first'}
+
     if not _sync_lock.acquire(blocking=False):
         logger.info("ensure_meeting_aura: another sync is in flight, skipping")
         return {}, {'_status': 'already running'}
