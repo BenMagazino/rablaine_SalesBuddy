@@ -2,6 +2,13 @@
 
 Recent updates and improvements, newest first.
 
+## 2026-04-29
+
+- Rewrote milestone sync for a big performance boost (roughly 3-4x faster). Updated how we actually sync from MSX:
+  - Opportunities: now scoped to the current Microsoft fiscal year through the next FY (a ~24-month window), plus any opp with no close date set. Previously we pulled all open opps regardless of close date but skipped recently-Won / Lost ones - now those come back too while their milestones still matter.
+  - Stale milestone refresh: any local milestone that wasn't returned by the active sync (out-of-window, closed opp, etc.) is now refreshed in batches by milestone GUID directly, instead of round-tripping through the parent opportunity one at a time.
+- Sync progress bar now reflects actual time spent per phase so it stops sitting at 82% for half the run.
+
 ## 2026-04-28
 
 - Add changelog viewer to admin Updates card so you can see what's new before and after applying an update
