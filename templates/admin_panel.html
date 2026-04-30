@@ -2028,14 +2028,15 @@ function loadChangelogModal() {
                 body.innerHTML = '<div class="text-muted">No changes in the last 30 days.</div>';
                 return;
             }
-            const html = recent.map(e => {
+            const html = recent.map((e, i) => {
                 const lis = (e.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('');
                 const commitBadge = e.commit
-                    ? ` <code class="text-muted small">${escapeHtml(e.commit)}</code>`
+                    ? ` <span class="badge bg-secondary-subtle text-secondary-emphasis fw-normal">${escapeHtml(e.commit)}</span>`
                     : '';
+                const divider = i > 0 ? ' border-top pt-3' : '';
                 return `
-                    <div class="mb-3">
-                        <div class="fw-semibold">${escapeHtml(e.date)}${commitBadge}</div>
+                    <div class="mb-3${divider}">
+                        <div class="small text-muted fw-semibold mb-1">${escapeHtml(e.date)}${commitBadge}</div>
                         <ul class="mb-0 ps-3 small">${lis}</ul>
                     </div>`;
             }).join('');
@@ -2046,10 +2047,11 @@ function loadChangelogModal() {
         });
 }
 
+// Preload the changelog into the modal on page load so opening it feels
+// instant. The modal itself just gets shown by Bootstrap's data-bs-toggle.
 document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('changelogModal');
-    if (modal) {
-        modal.addEventListener('shown.bs.modal', loadChangelogModal);
+    if (document.getElementById('changelogModalBody')) {
+        loadChangelogModal();
     }
 });
 
