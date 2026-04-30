@@ -41,7 +41,41 @@ When attempting to commit to `main`, stop and prompt user for feature branch nam
 
 The admin panel reads `CHANGELOG.md` from the repo root and shows users what's new before and after they apply an update. Keep it accurate or the feature degrades silently.
 
-**Update before merging to `main`** if the change is user-visible functionality. Add a bullet under today's `## YYYY-MM-DD` section (create one at the top of the file if it doesn't exist yet). Newest date at top. One bullet per discrete change.
+**Update before merging to `main`** if the change is user-visible functionality.
+
+**Format: one section per merge commit, tagged with that merge's short SHA.**
+
+```
+## M/D/YYYY - <merge-short-sha>
+
+- Bullet describing what shipped in that merge
+- Another bullet if relevant
+```
+
+The hash is the SHA of the **merge commit** that brought the change into `main` (e.g. `Merge feature/foo-bar`), NOT any individual commit inside the feature branch. One merge = one user-visible update = one changelog entry.
+
+Multiple sections on the same date are fine and expected - one per merge commit.
+
+**Workflow:**
+
+1. On your feature branch, make your code change(s) and commit them.
+2. Edit `CHANGELOG.md` and prepend a new section like:
+   ```
+   ## 4/29/2026
+
+   - what you did
+   ```
+   Leave the heading without a hash. Commit + push.
+3. After the user signs off and you merge to `main` with `git merge --no-ff` (which creates a merge commit), run `.\scripts\tag-changelog.ps1` from the repo root. It looks up the most recent merge commit on the current branch and rewrites the topmost untagged heading to `## 4/29/2026 - <merge-hash>`, then creates a separate "Tag changelog for <hash>" commit on `main`.
+4. Push the tag commit.
+
+You can also tag manually if you prefer: `git log --merges -1 --format=%h`, then edit the heading.
+
+**Why merge commits:** the admin Updates card filters changelog entries by hash, not just by date. Tagging the merge commit means a single user-visible update maps to a single hash even if the feature branch had multiple internal commits.
+
+**The tag commit is the one allowed exception to the "always use a feature branch" rule** - it's pure bookkeeping (one-line edit, no code), it references something that's already merged, and it has to land on `main` to be discoverable by the update checker.
+
+**Legacy entries** (untagged `## YYYY-MM-DD` headings) still work via a date-based fallback, so don't bother backfilling old sections.
 
 **Include in CHANGELOG:**
 - New features or pages

@@ -121,21 +121,54 @@ def _get_repo_root() -> str:
 # Changelog
 # ---------------------------------------------------------------------------
 
-_DATE_HEADING_RE = re.compile(r'^##\s+(\d{4}-\d{2}-\d{2})\s*$')
+# Heading formats accepted:
+#   ## M/D/YYYY - abc1234     (preferred, hash is short SHA of tagged commit)
+#   ## M/D/YYYY               (untagged, falls back to date filter)
+#   ## YYYY-MM-DD - abc1234   (legacy ISO date with hash)
+#   ## YYYY-MM-DD             (legacy ISO date, untagged)
+_DATE_HEADING_RE = re.compile(
+    r'^##\s+'
+    r'(?P<date>\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})'
+    r'(?:\s+-\s+(?P<commit>[0-9a-f]{7,40}))?'
+    r'\s*$'
+)
 _BULLET_RE = re.compile(r'^\s*[-*]\s+(.+?)\s*$')
 
 
-def parse_changelog(text: str) -> list:
-    """Parse CHANGELOG.md into a list of {date, bullets} entries.
+def _normalize_date(raw: str) -> str:
+    """Convert M/D/YYYY or YYYY-MM-DD to YYYY-MM-DD for comparison."""
+    if '/' in raw:
+        try:
+            m, d, y = raw.split('/')
+            return f"{int(y):04d}-{int(m):02d}-{int(d):02d}"
+        except (ValueError, AttributeError):
+            return raw
+    return raw
 
-    Recognized format:
-        ## YYYY-MM-DD
+
+def parse_changelog(text: str) -> list:
+    """Parse CHANGELOG.md into a list of {date, commit, bullets} entries.
+
+    Recognized heading formats (newest convention first):
+        ## 4/29/2026 - abc1234
         - bullet one
+        ## 4/29/2026                # untagged, will fall back to date filter
         - bullet two
+        ## 2026-04-29 - abc1234     # legacy ISO date format also accepted
+        - bullet three
+
+    Each ``## ...`` heading starts a new entry, even within the same date,
+    so multiple commits on the same day each get their own block.
+
+    Returned entries include:
+        date         - the raw date string as written (for display)
+        date_iso     - normalized YYYY-MM-DD (for sorting / fallback compare)
+        commit       - short SHA, or None if untagged
+        bullets      - list of bullet text strings
 
     Anything outside of date sections (intro paragraphs, etc.) is ignored.
-    Empty sections are dropped. Entries are returned newest-first based on
-    the order they appear in the source (the file convention is newest first).
+    Empty sections are dropped. Entries are returned in source order
+    (the file convention is newest first).
     """
     entries = []
     current = None
@@ -145,7 +178,12 @@ def parse_changelog(text: str) -> list:
         if m:
             if current and current['bullets']:
                 entries.append(current)
-            current = {'date': m.group(1), 'bullets': []}
+            current = {
+                'date': m.group('date'),
+                'date_iso': _normalize_date(m.group('date')),
+                'commit': m.group('commit'),
+                'bullets': [],
+            }
             continue
         if current is None:
             continue
@@ -211,14 +249,67 @@ def get_local_head_date() -> str | None:
         return None
 
 
+def get_commits_in_range(start_ref: str | None, end_ref: str) -> set:
+    """Return a set of short SHAs (7 chars) between two git refs.
+
+    Used to figure out which changelog entries map to commits the user
+    hasn't yet pulled (or has pulled but hasn't restarted into).
+
+    If ``start_ref`` is None or invalid, returns an empty set.
+    Returns short hashes so they match the format we tag in CHANGELOG.md.
+    """
+    if not start_ref or not end_ref:
+        return set()
+    try:
+        result = subprocess.run(
+            ['git', 'log', f'{start_ref}..{end_ref}', '--format=%h'],
+            capture_output=True, text=True, timeout=5, cwd=_get_repo_root()
+        )
+        if result.returncode != 0:
+            return set()
+        return {
+            line.strip()[:7]
+            for line in (result.stdout or '').splitlines()
+            if line.strip()
+        }
+    except Exception:
+        return set()
+
+
+def entries_in_commits(
+    entries: list,
+    commits: set,
+    fallback_cutoff_date: str | None,
+) -> list:
+    """Filter entries to those tagged with a hash in ``commits``.
+
+    Untagged entries (legacy, no commit hash) fall back to the date filter:
+    they're included if their normalized ISO date is strictly greater
+    than ``fallback_cutoff_date``. This keeps older entries working
+    until they roll off the bottom of the changelog.
+    """
+    out = []
+    for e in entries:
+        commit = e.get('commit')
+        if commit:
+            if commit[:7] in commits:
+                out.append(e)
+        elif fallback_cutoff_date:
+            if e.get('date_iso', '') > fallback_cutoff_date:
+                out.append(e)
+    return out
+
+
 def entries_newer_than(entries: list, cutoff_date: str | None) -> list:
     """Return entries whose date is strictly greater than cutoff_date.
 
+    Kept for backward compatibility / display fallback. Compares using
+    the normalized ISO date so M/D/YYYY and YYYY-MM-DD both work.
     If cutoff_date is None, all entries are returned.
     """
     if not cutoff_date:
         return list(entries)
-    return [e for e in entries if e.get('date', '') > cutoff_date]
+    return [e for e in entries if e.get('date_iso', '') > cutoff_date]
 
 
 def _check_loop(interval_seconds: int) -> None:

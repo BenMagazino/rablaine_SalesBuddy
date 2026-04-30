@@ -1873,7 +1873,9 @@ function checkForUpdates(refresh) {
                 const justUpdatedFrom = sessionStorage.getItem('sb_just_updated_from_date');
                 let justLanded = [];
                 if (justUpdatedFrom && data.changelog && Array.isArray(data.changelog.entries)) {
-                    justLanded = data.changelog.entries.filter(e => (e.date || '') > justUpdatedFrom);
+                    // Compare against date_iso (normalized YYYY-MM-DD) so the
+                    // filter works for both M/D/YYYY and YYYY-MM-DD entries.
+                    justLanded = data.changelog.entries.filter(e => (e.date_iso || e.date || '') > justUpdatedFrom);
                 }
                 if (justLanded.length > 0) {
                     html = `
@@ -1927,9 +1929,12 @@ function renderChangelogSection(entries, heading, opts) {
     const headingClass = variant === 'success' ? 'text-success' : '';
     const bulletsHtml = entries.map(e => {
         const lis = (e.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('');
+        const commitBadge = e.commit
+            ? ` <code class="text-muted small">${escapeHtml(e.commit)}</code>`
+            : '';
         return `
             <div class="mt-2">
-                <div class="small text-muted fw-semibold">${escapeHtml(e.date)}</div>
+                <div class="small text-muted fw-semibold">${escapeHtml(e.date)}${commitBadge}</div>
                 <ul class="mb-0 ps-3 small">${lis}</ul>
             </div>`;
     }).join('');
