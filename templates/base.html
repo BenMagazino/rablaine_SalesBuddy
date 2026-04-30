@@ -12,14 +12,6 @@
             try { sessionStorage.removeItem('sb_just_updated_from_date'); } catch (e) {}
         }
     </script>
-    <script>
-        // Capture PWA install prompt early (fires before DOMContentLoaded)
-        window.__pwaInstallPrompt = null;
-        window.addEventListener('beforeinstallprompt', function(e) {
-            e.preventDefault();
-            window.__pwaInstallPrompt = e;
-        });
-    </script>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="manifest" href="/manifest.json">
@@ -1077,26 +1069,6 @@
                             </div>
                         </div>
 
-                        <!-- PWA Install Prompt (hidden unless browser supports it) -->
-                        <div class="card mb-3 d-none" id="pwaInstallCard">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="card-title mb-1"><i class="bi bi-window-stack text-primary"></i> Install as Desktop App <span class="text-muted fw-normal">(optional)</span></h6>
-                                        <p class="text-muted small mb-0">Get a standalone window with no browser tabs or address bar. You can always do this later from the <i class="bi bi-box-arrow-in-down"></i> icon in your browser's URL bar.</p>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2 ms-3">
-                                        <button class="btn btn-outline-primary btn-sm" id="pwaInstallBtn">
-                                            <i class="bi bi-download"></i> Install
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="d-none mt-2" id="pwaInstallSuccess">
-                                    <span class="text-success small"><i class="bi bi-check-circle-fill"></i> Installed! Sales Buddy will open in its own window next time.</span>
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="alert alert-info mb-0">
                             <i class="bi bi-info-circle"></i> <strong>What's next:</strong> We'll sign you in to Azure (which also enables AI features like topic suggestions and engagement summaries), then import your accounts, milestones, and revenue data.
                         </div>
@@ -1126,6 +1098,9 @@
                                     <div class="mb-2">
                                         <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                                         <span class="text-muted ms-2" id="signInStatus">Waiting for sign-in...</span>
+                                    </div>
+                                    <div id="signInStillWaitingNudge" class="alert alert-warning py-2 mb-2 d-none text-start">
+                                        <i class="bi bi-window"></i> <strong>Still waiting?</strong> Look for a separate window or browser tab prompting you to pick your Microsoft account. It might be hidden behind this window.
                                     </div>
                                     <button class="btn btn-outline-secondary btn-sm" id="signInCancelBtn">
                                         <i class="bi bi-x-circle"></i> Cancel
@@ -1818,36 +1793,10 @@
                 const nextBtn = document.getElementById('onboardNextBtn');
                 const backBtn = document.getElementById('onboardBackBtn');
 
-                // --- PWA Install Prompt ---
-                const pwaInstallCard = document.getElementById('pwaInstallCard');
-                const pwaInstallBtn = document.getElementById('pwaInstallBtn');
-                function enablePwaInstall() {
-                    if (!pwaInstallCard || pwaInstallCard.dataset.ready) return;
-                    pwaInstallCard.dataset.ready = '1';
-                    pwaInstallCard.classList.remove('d-none');
-                    pwaInstallBtn.addEventListener('click', async () => {
-                        const prompt = window.__pwaInstallPrompt;
-                        if (!prompt) return;
-                        window.__pwaInstallPrompt = null;
-                        prompt.prompt();
-                        const result = await prompt.userChoice;
-                        if (result.outcome === 'accepted') {
-                            pwaInstallBtn.classList.add('d-none');
-                            document.getElementById('pwaInstallSuccess').classList.remove('d-none');
-                        } else {
-                            window.__pwaInstallPrompt = prompt;
-                        }
-                    });
-                }
-                // Show immediately if event already fired, or wait for it
-                if (window.__pwaInstallPrompt) {
-                    enablePwaInstall();
-                }
-                window.addEventListener('beforeinstallprompt', function(e) {
-                    e.preventDefault();
-                    window.__pwaInstallPrompt = e;
-                    enablePwaInstall();
-                });
+                // PWA install prompt removed from onboarding. Browsers
+                // surface the install affordance on their own (URL-bar
+                // icon); putting it here led non-technical users to install
+                // the app without realizing what they'd done.
 
 
                 function showStep(step) {
@@ -2051,9 +2000,18 @@
                     const startTime = Date.now();
                     if (statusEl) statusEl.textContent = 'Waiting for sign-in...';
 
+                    const stillWaitingNudge = document.getElementById('signInStillWaitingNudge');
+                    if (stillWaitingNudge) stillWaitingNudge.classList.add('d-none');
                     wizardElapsedTimer = setInterval(() => {
                         const elapsed = Math.round((Date.now() - startTime) / 1000);
                         if (statusEl) statusEl.textContent = 'Waiting for sign-in... (' + elapsed + 's)';
+                        // After 10s with no auth, surface the "look for the
+                        // account picker window" nudge. The account picker
+                        // can launch behind other windows and non-technical
+                        // users miss it entirely.
+                        if (elapsed >= 10 && stillWaitingNudge) {
+                            stillWaitingNudge.classList.remove('d-none');
+                        }
                     }, 1000);
 
                     signInPollTimer = setInterval(async () => {
