@@ -239,25 +239,6 @@ def _ms_fetch_worker(
     progress_q.put(('done', None, None, None))
 
 
-# ---------------------------------------------------------------------
-# DEV-ONLY phase timing - remove before final commit. Search this file
-# for `_phase_log` to find every call site.
-# ---------------------------------------------------------------------
-def _phase_log(name: str, started_at: Optional[float] = None, **counts) -> float:
-    """Log phase start/end timing to Flask's console.
-
-    Call once with no ``started_at`` to log the START and capture the time;
-    call again with ``started_at`` set to the captured value to log the END.
-    """
-    now = _time.time()
-    details = (' ' + ' '.join(f'{k}={v}' for k, v in counts.items())) if counts else ''
-    if started_at is None:
-        print(f"[milestone-sync] {name} START{details}", flush=True)
-    else:
-        print(
-            f"[milestone-sync] {name} END {now - started_at:.1f}s{details}",
-            flush=True,
-        )
     return now
 
 
@@ -333,8 +314,6 @@ def sync_all_customer_milestones_stream(
     total_opps_updated = 0
     _OPP_CHUNK = 15  # accounts per OData call
 
-    _t_p1a = _phase_log("Phase 1a (opps)", accts=len(opp_account_ids))  # DEV-ONLY
-
     if opp_account_ids:
         yield _sse_event('opp_sync_start', {
             'message': 'Fetching opportunities...',
@@ -378,22 +357,19 @@ def sync_all_customer_milestones_stream(
                                     acct_id, []
                                 ).append(opp_id)
 
-                pct = int((completed / total_opp_chunks) * 16)  # 0-16%
+                pct = int((completed / total_opp_chunks) * 8)  # 0-8%
                 yield _sse_event('progress', {
                     'current': completed,
                     'total': total_opp_chunks,
                     'customer': f'Opps batch {completed}/{total_opp_chunks}'
                                 f' ({len(opp_map)} so far)',
                     'status': 'fetching',
-                    'progress': min(pct, 16),
+                    'progress': min(pct, 8),
                 })
-
-    _phase_log("Phase 1a (opps)", _t_p1a, opps=len(opp_map))  # DEV-ONLY
 
     # -----------------------------------------------------------------
     # Phase 1b: Batch fetch milestones by opportunity ID (batched OData)
     # -----------------------------------------------------------------
-    _t_p1b = _phase_log("Phase 1b (milestones)", opps=len(opp_map))  # DEV-ONLY
     # milestones_by_customer: cust_id -> [milestone_dicts with opp data]
     milestones_by_customer: Dict[int, List[dict]] = {
         cid: [] for cid, _, _ in customer_tasks
@@ -475,14 +451,14 @@ def sync_all_customer_milestones_stream(
                             milestones_by_customer[cust_id].append(ms)
                             ms_total += 1
 
-                pct = 16 + int((completed / total_chunks) * 61)  # 16-77%
+                pct = 8 + int((completed / total_chunks) * 68)  # 8-76%
                 yield _sse_event('progress', {
                     'current': completed,
                     'total': total_chunks,
                     'customer': f'Milestones batch {completed}/{total_chunks}'
                                 f' ({ms_total} so far)',
                     'status': 'fetching',
-                    'progress': min(pct, 77),
+                    'progress': min(pct, 76),
                 })
 
     ms_count = sum(len(v) for v in milestones_by_customer.values())
@@ -491,15 +467,12 @@ def sync_all_customer_milestones_stream(
         'total': ms_count or 1,
         'customer': f'Fetched {ms_count} milestones',
         'status': 'ok',
-        'progress': 77,
+        'progress': 76,
     })
-
-    _phase_log("Phase 1b (milestones)", _t_p1b, ms=ms_count)  # DEV-ONLY
 
     # -----------------------------------------------------------------
     # Phase 2: Sequential DB writes (milestones + opportunities)
     # -----------------------------------------------------------------
-    _t_p2 = _phase_log("Phase 2 (db writes)", customers=len(customer_tasks))  # DEV-ONLY
     synced = 0
     failed = len(skip_ids)
     total_created = 0
@@ -535,7 +508,7 @@ def sync_all_customer_milestones_stream(
                     wr.get('seen_milestone_ids', set())
                 )
 
-                pct = 77 + int((i / write_count) * 5)  # 77-82%
+                pct = 76 + int((i / write_count) * 3)  # 76-79%
                 yield _sse_event('progress', {
                     'current': i,
                     'total': write_count,
@@ -543,7 +516,7 @@ def sync_all_customer_milestones_stream(
                     'status': 'ok',
                     'created': wr['created'],
                     'updated': wr['updated'],
-                    'progress': min(pct, 82),
+                    'progress': min(pct, 79),
                 })
             else:
                 failed += 1
@@ -556,8 +529,6 @@ def sync_all_customer_milestones_stream(
     # -----------------------------------------------------------------
     # Phase 2 (cont): Upsert opportunities into DB (catches milestone-less opps)
     # -----------------------------------------------------------------
-    _phase_log("Phase 2 (db writes)", _t_p2, synced=synced, failed=failed)  # DEV-ONLY
-    _t_p2c = _phase_log("Phase 2-cont (opps upsert)")  # DEV-ONLY
     for acct_id, opp_ids in opp_by_account.items():
         cid = acct_to_cust.get(acct_id)
         if not cid:
@@ -634,19 +605,16 @@ def sync_all_customer_milestones_stream(
         'total': len(opp_map) or 1,
         'customer': 'Opportunities saved',
         'status': 'ok',
-        'progress': 82,
+        'progress': 81,
     })
     yield _sse_event('opp_sync_end', {
         'opportunities_synced': total_opps_synced,
     })
 
-    _phase_log("Phase 2-cont (opps upsert)", _t_p2c, opps_synced=total_opps_synced)  # DEV-ONLY
-
     # -----------------------------------------------------------------
     # Phase 3: Refresh local milestones the active sync didn't return
     # (out-of-FY, closed opps, status reset to Completed, etc.)
     # -----------------------------------------------------------------
-    _t_p3 = _phase_log("Phase 3 (stale milestones)")  # DEV-ONLY
     yield _sse_event('stale_sync_start', {
         'message': 'Refreshing stale milestones...',
     })
@@ -655,12 +623,13 @@ def sync_all_customer_milestones_stream(
         while True:
             current_s, total_s, label_s = next(stale_gen)
             SyncStatus.update_heartbeat('milestones')
+            pct = 81 + int((current_s / max(total_s, 1)) * 1)  # 81-82%
             yield _sse_event('progress', {
                 'current': current_s,
                 'total': total_s,
                 'customer': f'Stale milestones: {label_s}',
                 'status': 'ok',
-                'progress': 82,
+                'progress': min(pct, 82),
             })
     except StopIteration as stop:
         stale_result = stop.value
@@ -669,12 +638,9 @@ def sync_all_customer_milestones_stream(
         'milestones_updated': total_stale_ms_updated,
     })
 
-    _phase_log("Phase 3 (stale milestones)", _t_p3, updated=total_stale_ms_updated)  # DEV-ONLY
-
     # -----------------------------------------------------------------
     # Phase 4: Batched task sync (per-batch progress)
     # -----------------------------------------------------------------
-    _t_p4 = _phase_log("Phase 4 (tasks)")  # DEV-ONLY
     yield _sse_event('task_sync_start', {
         'message': 'Syncing tasks for milestones...',
     })
@@ -683,13 +649,13 @@ def sync_all_customer_milestones_stream(
         while True:
             batch_num, total_batches, info, status = next(task_gen)
             SyncStatus.update_heartbeat('milestones')
-            pct = 82 + int((batch_num / max(total_batches, 1)) * 10)  # 82-92%
+            pct = 82 + int((batch_num / max(total_batches, 1)) * 11)  # 82-93%
             yield _sse_event('progress', {
                 'current': batch_num,
                 'total': total_batches,
                 'customer': info,
                 'status': status,
-                'progress': min(pct, 92),
+                'progress': min(pct, 93),
             })
     except StopIteration as stop:
         task_result = stop.value
@@ -702,28 +668,22 @@ def sync_all_customer_milestones_stream(
         'tasks_updated': total_tasks_updated,
     })
 
-    _phase_log("Phase 4 (tasks)", _t_p4, created=total_tasks_created, updated=total_tasks_updated)  # DEV-ONLY
-
     # -----------------------------------------------------------------
     # Phase 5: Team membership update (one API call)
     # -----------------------------------------------------------------
-    _t_p5 = _phase_log("Phase 5 (team membership)")  # DEV-ONLY
     yield _sse_event('progress', {
         'current': total,
         'total': total,
         'customer': 'Updating team memberships...',
         'status': 'ok',
-        'progress': 92,
+        'progress': 93,
     })
     _update_team_memberships()
     _update_deal_team_memberships()
 
-    _phase_log("Phase 5 (team membership)", _t_p5)  # DEV-ONLY
-
     # -----------------------------------------------------------------
     # Phase 4: Sync comments for milestones I'm on the team for
     # -----------------------------------------------------------------
-    _t_p6 = _phase_log("Phase 6 (comments)")  # DEV-ONLY
     total_comments_synced = 0
     total_comments_failed = 0
     yield _sse_event('comment_sync_start', {
@@ -755,10 +715,7 @@ def sync_all_customer_milestones_stream(
         'comments_failed': total_comments_failed,
     })
 
-    _phase_log("Phase 6 (comments)", _t_p6, synced=total_comments_synced, failed=total_comments_failed)  # DEV-ONLY
-
     # Sync audit trail for recently-modified milestones
-    _t_p7 = _phase_log("Phase 7 (audits)")  # DEV-ONLY
     yield _sse_event('audit_sync_start', {
         'message': 'Syncing audit trail for recently-modified milestones...',
     })
@@ -768,13 +725,13 @@ def sync_all_customer_milestones_stream(
         while True:
             batch_done, batch_total = next(audit_gen)
             SyncStatus.update_heartbeat('milestones')
-            pct = 95 + int((batch_done / max(batch_total, 1)) * 4)  # 95-99%
+            pct = 95 + int((batch_done / max(batch_total, 1)) * 5)  # 95-100%
             yield _sse_event('progress', {
                 'current': batch_done,
                 'total': batch_total,
                 'customer': f'Audit trail batch {batch_done}/{batch_total}',
                 'status': 'ok',
-                'progress': min(pct, 99),
+                'progress': min(pct, 100),
             })
     except StopIteration as stop:
         audit_result = stop.value
@@ -782,8 +739,6 @@ def sync_all_customer_milestones_stream(
     yield _sse_event('audit_sync_end', {
         'audit_fields_saved': audit_fields_saved,
     })
-
-    _phase_log("Phase 7 (audits)", _t_p7, fields=audit_fields_saved)  # DEV-ONLY
 
     duration = round(_time.time() - start_time, 1)
     sync_success = synced > 0 or failed == 0

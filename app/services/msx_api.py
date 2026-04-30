@@ -1102,11 +1102,9 @@ def batch_get_opportunities(
         batch_size: Accounts per OData query (default 15).
 
     Note:
-        Opportunities with no ``estimatedclosedate`` are excluded when
-        ``current_fy_only=True``. ~37% of MSX opps in production lack
-        this field but we have not encountered a case where missing one
-        matters. If we ever do, extend the filter with
-        ``or estimatedclosedate eq null``.
+        Opportunities with no ``estimatedclosedate`` are included
+        when ``current_fy_only=True`` (via ``estimatedclosedate eq null``)
+        so we don't lose the ~37% of MSX opps that lack this field.
 
     Returns:
         Dict with success, and opportunities keyed by account ID.
@@ -1125,8 +1123,9 @@ def batch_get_opportunities(
         fy_start = f"{fy_start_year}-07-01"
         fy_end = f"{fy_start_year + 2}-06-30"
         fy_clause = (
-            f" and estimatedclosedate ge {fy_start}"
-            f" and estimatedclosedate le {fy_end}"
+            f" and (estimatedclosedate eq null"
+            f" or (estimatedclosedate ge {fy_start}"
+            f" and estimatedclosedate le {fy_end}))"
         )
 
     try:
