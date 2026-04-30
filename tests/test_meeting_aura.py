@@ -24,16 +24,33 @@ from app.models import (
 # ---------------------------------------------------------------------------
 
 def _stub_workiq(monkeypatch, raw_meetings: list[dict] | None = None) -> list[str]:
-    """Patch query_workiq to return an empty meeting list and record dates called."""
-    payload = json.dumps(raw_meetings or [])
+    """Patch query_workiq to return a meeting list and record dates called.
+
+    When ``raw_meetings`` is None, returns a single placeholder meeting per
+    call so ``_extract_json_array`` finds a parseable array. (An empty
+    array string ``[]`` no longer parses as success -- see
+    ``meeting_prefetch._extract_json_array``.)
+    """
     called_with: list[str] = []
 
     def fake_query(prompt, timeout=None, operation=None):  # noqa: ARG001
         # Date is embedded in the prompt; pull it out for assertions.
         import re
         m = re.search(r'(\d{4}-\d{2}-\d{2})', prompt or '')
+        date_str = m.group(1) if m else '2026-01-01'
         if m:
-            called_with.append(m.group(1))
+            called_with.append(date_str)
+        if raw_meetings is None:
+            payload = json.dumps([{
+                'subject': f'Stub meeting for {date_str}',
+                'start_time': f'{date_str}T10:00:00-05:00',
+                'end_time': f'{date_str}T11:00:00-05:00',
+                'organizer_email': 'stub@microsoft.com',
+                'is_recurring': False,
+                'attendees': [{'name': 'Ext', 'email': 'ext@partner.com'}],
+            }])
+        else:
+            payload = json.dumps(raw_meetings)
         return payload
 
     monkeypatch.setattr(
@@ -93,7 +110,7 @@ class TestEnsureMeetingAura:
         # Friday 2026-04-24 + 4 business days = Fri, Mon, Tue, Wed, Thu.
         # Saturday/Sunday in between are skipped.
         anchor = date(2026, 4, 24)
-        called = _stub_workiq(monkeypatch, [])
+        called = _stub_workiq(monkeypatch)
 
         with app.app_context():
             counts, errors = ensure_meeting_aura(start=anchor, days_ahead=4)
@@ -123,7 +140,14 @@ class TestEnsureMeetingAura:
             d = m.group(1) if m else None
             if d == boom_date:
                 raise RuntimeError("simulated workiq failure")
-            return json.dumps([])
+            return json.dumps([{
+                'subject': f'Stub for {d}',
+                'start_time': f'{d}T10:00:00-05:00',
+                'end_time': f'{d}T11:00:00-05:00',
+                'organizer_email': 'stub@microsoft.com',
+                'is_recurring': False,
+                'attendees': [{'name': 'Ext', 'email': 'ext@partner.com'}],
+            }])
 
         monkeypatch.setattr(
             'app.services.workiq_service.query_workiq', fake_query, raising=False,

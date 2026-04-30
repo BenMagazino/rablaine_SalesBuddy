@@ -87,23 +87,26 @@ def _build_prompt(date_str: str) -> str:
 def _extract_json_array(response: str) -> List[Dict[str, Any]]:
     """Pull the JSON meeting array out of a WorkIQ prose response.
 
-    Returns an empty list if no parseable array is found.
+    Raises ``ValueError`` if no parseable array is found OR the JSON is
+    malformed. This is intentional: callers must distinguish "WorkIQ
+    failed / returned garbage" (preserve existing cached meetings, surface
+    error to UI) from "WorkIQ returned a valid but empty list" (wipe
+    cache). An empty list isn't a realistic WorkIQ response - it returns
+    prose like "No meetings found" - so any non-parseable response is
+    treated as a sync failure rather than silently wiping the day.
     """
     if not response:
-        return []
+        raise ValueError("empty WorkIQ response")
     match = _JSON_ARRAY_RE.search(response)
     if not match:
-        logger.warning("Prefetch: no JSON array found in WorkIQ response")
-        return []
+        raise ValueError("no JSON array found in WorkIQ response")
     raw = match.group(0)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        logger.warning("Prefetch: JSON parse failed: %s", exc)
-        return []
+        raise ValueError(f"JSON parse failed: {exc}") from exc
     if not isinstance(data, list):
-        logger.warning("Prefetch: parsed JSON is not a list")
-        return []
+        raise ValueError("parsed JSON is not a list")
     return data
 
 
@@ -124,6 +127,23 @@ def _parse_dt(value: Optional[str]) -> Optional[datetime]:
     if dt.tzinfo is None:
         return dt
     return dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _utc_to_naive_local(dt: Optional[datetime]) -> Optional[datetime]:
+    """Convert a naive-UTC datetime to naive local time.
+
+    PrefetchedMeeting.start_time is stored as naive UTC (per repo datetime
+    conventions). The meeting picker UI and the note ``call_date`` field
+    both expect naive local time (the WorkIQ markdown path historically
+    produced local times). Convert at the serialization boundary so the JS
+    ``new Date(iso_string)`` parses to the correct wall-clock time.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        # Defensive: if somehow tz-aware, normalize to UTC first.
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
 
 
 def _normalize_organizer(value: Optional[str]) -> Optional[str]:
@@ -592,9 +612,16 @@ def prefetch_for_date_full(
         logger.error("Prefetch: WorkIQ call failed for %s: %s", date_str, exc)
         return 0, [], str(exc)
 
-    raw_meetings = _extract_json_array(response)
+    try:
+        raw_meetings = _extract_json_array(response)
+    except ValueError as exc:
+        # Parse failure: do NOT treat this as "zero meetings" -- callers
+        # would wipe the cache. Return as an error so existing rows are
+        # preserved and the UI can show a stale-sync indicator.
+        logger.error("Prefetch: parse failed for %s: %s", date_str, exc)
+        return 0, [], f"parse failed: {exc}"
     if not raw_meetings:
-        logger.warning("Prefetch: no meetings parsed for %s", date_str)
+        logger.warning("Prefetch: empty meeting list for %s", date_str)
         return 0, [], None
 
     domain_map = _build_domain_map()
@@ -632,7 +659,11 @@ def _to_picker_dict(meeting: PrefetchedMeeting) -> Dict[str, Any]:
                 customer_display = att.domain
                 break
 
-    start_local = meeting.start_time
+    # PrefetchedMeeting.start_time is naive UTC; convert to naive local
+    # so the picker JS (which does `new Date(iso)`) and call_date (which
+    # is stored as naive local per repo conventions) get the right wall
+    # clock time. See _utc_to_naive_local for rationale.
+    start_local = _utc_to_naive_local(meeting.start_time)
     return {
         'id': meeting.workiq_id,
         'title': meeting.subject,

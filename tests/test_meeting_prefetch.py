@@ -100,14 +100,17 @@ class TestExtractJsonArray:
         assert len(items) == 2
         assert items[0]['subject'] == 'Redsail - Fabric Cadence'
 
-    def test_returns_empty_on_no_array(self):
-        assert meeting_prefetch._extract_json_array("nothing here") == []
+    def test_raises_on_no_array(self):
+        with pytest.raises(ValueError):
+            meeting_prefetch._extract_json_array("nothing here")
 
-    def test_returns_empty_on_invalid_json(self):
-        assert meeting_prefetch._extract_json_array("[ {bad json} ]") == []
+    def test_raises_on_invalid_json(self):
+        with pytest.raises(ValueError):
+            meeting_prefetch._extract_json_array("[ {bad json} ]")
 
-    def test_handles_empty_input(self):
-        assert meeting_prefetch._extract_json_array("") == []
+    def test_raises_on_empty_input(self):
+        with pytest.raises(ValueError):
+            meeting_prefetch._extract_json_array("")
 
 
 # ---------------------------------------------------------------------------

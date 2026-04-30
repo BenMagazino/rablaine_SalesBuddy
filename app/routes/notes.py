@@ -543,6 +543,7 @@ def note_create():
     from_meeting_data = None
     if from_meeting:
         from app.models import PrefetchedMeeting
+        from app.services.meeting_prefetch import _utc_to_naive_local
         ghost = db.session.get(PrefetchedMeeting, from_meeting)
         if ghost:
             from_meeting_workiq_id = ghost.workiq_id
@@ -550,6 +551,9 @@ def note_create():
             from_meeting_date = (
                 ghost.meeting_date.isoformat() if ghost.meeting_date else None
             )
+            # Convert naive-UTC start_time to naive local so the picker JS
+            # and call_date land on the correct wall-clock time.
+            ghost_start_local = _utc_to_naive_local(ghost.start_time)
             # Minimal meeting dict matching the shape returned by
             # /api/meetings -- lets the picker render this ghost without
             # firing a live WorkIQ fetch when the user clicks Import Summary.
@@ -557,12 +561,12 @@ def note_create():
                 'id': ghost.workiq_id,
                 'title': ghost.subject,
                 'start_time': (
-                    ghost.start_time.isoformat()
-                    if ghost.start_time else None
+                    ghost_start_local.isoformat()
+                    if ghost_start_local else None
                 ),
                 'start_time_display': (
-                    ghost.start_time.strftime('%I:%M %p')
-                    if ghost.start_time else ''
+                    ghost_start_local.strftime('%I:%M %p')
+                    if ghost_start_local else ''
                 ),
                 'customer': (
                     ghost.customer.name
