@@ -184,6 +184,7 @@ def api_update_check():
         get_update_state, check_for_updates,
         get_changelog_state, fetch_changelog,
         get_local_head_date, entries_newer_than,
+        get_commits_in_range, entries_in_commits,
     )
 
     # If force refresh requested, run the check now
@@ -213,9 +214,17 @@ def api_update_check():
     state['dismissed'] = dismissed == state.get('remote_commit')
     state['show_badge'] = state.get('available', False) and not state['dismissed']
 
-    # Attach changelog data: full list, plus pre-filtered "what's new" buckets
+    # Attach changelog data: full list, plus pre-filtered "what's new" buckets.
+    # Filtering is primarily by commit hash (entries tagged ## DATE - HASH),
+    # with a date fallback for legacy/untagged entries.
     changelog = get_changelog_state()
     local_head_date = get_local_head_date()
+
+    pending_commits = get_commits_in_range(
+        state.get('local_commit'), state.get('remote_commit')
+    )
+    since_boot_commits = get_commits_in_range(boot_commit, state.get('local_commit'))
+
     state['changelog'] = {
         'entries': changelog['entries'],
         'last_fetched': changelog['last_fetched'],
@@ -223,10 +232,14 @@ def api_update_check():
         'local_head_date': local_head_date,
         # Entries strictly newer than what's running on this machine's disk.
         # When updates are pending these are "what you'll get."
-        'pending': entries_newer_than(changelog['entries'], local_head_date),
-        # Entries strictly newer than the boot commit. After an update +
-        # restart, these are "what just landed."
-        'since_boot': entries_newer_than(changelog['entries'], boot_commit_date),
+        'pending': entries_in_commits(
+            changelog['entries'], pending_commits, local_head_date
+        ),
+        # Entries that landed on disk after the running server booted.
+        # After an update + restart, these are "what just landed."
+        'since_boot': entries_in_commits(
+            changelog['entries'], since_boot_commits, boot_commit_date
+        ),
     }
 
     return jsonify(state)

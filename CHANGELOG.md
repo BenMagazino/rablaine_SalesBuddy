@@ -2,22 +2,42 @@
 
 Recent updates and improvements, newest first.
 
-## 2026-04-29
+Each entry is tagged with the short SHA of the **merge commit** that
+brought the change into `main`, so the admin Updates card can show
+*exactly* which entries are pending vs already on your machine.
+Format: `## M/D/YYYY - <merge-short-sha>`. See
+`scripts/tag-changelog.ps1` for the helper that fills this in.
+
+## 4/29/2026
+
+- Cache-bust the changelog fetch so the Updates card shows new entries right after a push instead of waiting for GitHub's CDN to expire.
+- Restructure the changelog so each entry is tagged with the merge commit it covers, and the admin Updates card filters by commit hash instead of just date. This means multiple updates on the same day each get their own block, and you can see exactly which ones are pending vs already on your machine.
+
+## 4/29/2026 - eb0ed08
 
 - Rewrote milestone sync for a big performance boost (roughly 3-4x faster). Updated how we actually sync from MSX:
   - Opportunities: now scoped to the current Microsoft fiscal year through the next FY (a ~24-month window), plus any opp with no close date set. Previously we pulled all open opps regardless of close date but skipped recently-Won / Lost ones - now those come back too while their milestones still matter.
   - Stale milestone refresh: any local milestone that wasn't returned by the active sync (out-of-window, closed opp, etc.) is now refreshed in batches by milestone GUID directly, instead of round-tripping through the parent opportunity one at a time.
 - Sync progress bar now reflects actual time spent per phase so it stops sitting at 82% for half the run.
 
-## 2026-04-28
+## 4/28/2026 - 704abcc
 
-- Add changelog viewer to admin Updates card so you can see what's new before and after applying an update
-- Remove dead "Committed to bottom" toggle from U2C report (the toggle never did anything because committed and remaining milestones live in separate tables)
+- Added changelog viewer to admin Updates card so you can see what's new before and after applying an update.
 
-## 2026-04-27
+## 4/28/2026 - 2cccf19
+
+- Removed dead "Committed to bottom" toggle from U2C report (the toggle never did anything because committed and remaining milestones live in separate tables).
+
+## 4/27/2026 - 65d2abb
 
 - Fix Import Attendees getting stuck in "ready" mode after a failed scrape
+
+## 4/27/2026 - 04c8d5e
+
 - Stop milestone sync from re-marking completed milestones as stale
+
+## 4/27/2026 - e1798fa
+
 - Add DSS opportunity comment writeback option when creating notes.  Disabled by default, change in Settings.
 
 ## 2026-04-24
