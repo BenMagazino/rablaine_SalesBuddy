@@ -267,7 +267,7 @@
                 <div class="card mb-4{{ ' border-danger' if update_available else '' }}" id="updateCheckCard">
                     <div class="card-header{{ ' bg-danger text-white' if update_available else '' }} d-flex align-items-center justify-content-between">
                         <h5 class="mb-0"><i class="bi bi-cloud-download"></i> Updates{{ ' <span class="badge bg-light text-danger">New</span>' | safe if update_available else '' }}</h5>
-                        <a href="#" class="small text-decoration-none{{ ' text-white' if update_available else '' }}" data-bs-toggle="modal" data-bs-target="#changelogModal">
+                        <a href="#" id="viewChangelogLink" class="small text-decoration-none{{ ' text-white' if update_available else '' }}" data-bs-toggle="modal" data-bs-target="#changelogModal">
                             <i class="bi bi-list-ul"></i> View changelog
                         </a>
                     </div>
@@ -1755,7 +1755,7 @@ function renderActionBar(updateButtonHtml, opts) {
     return `
         <div class="mt-3 d-flex justify-content-between gap-2 align-items-center">
             <div>${updateBtn}</div>
-            <button class="btn btn-outline-secondary btn-sm" id="updateCheckBtn" onclick="checkForUpdates(true)" ${checking ? 'disabled' : ''}>
+            <button class="btn btn-outline-secondary btn-sm" id="updateCheckBtn" onclick="window._updateCheckManual = true; checkForUpdates(true); window._updateCheckManual = false;" ${checking ? 'disabled' : ''}>
                 ${checkBtnInner}
             </button>
         </div>`;
@@ -1837,13 +1837,17 @@ function checkForUpdates(refresh) {
 
             const card = document.getElementById('updateCheckCard');
             const cardHeader = card ? card.querySelector('.card-header') : null;
+            const changelogLink = document.getElementById('viewChangelogLink');
 
             // Build the next state's HTML and a finalize() that flips the
             // border classes. applyResult fires both together after the fade.
+            // Also keeps the View changelog link legible against any header bg
+            // by toggling text-white whenever the header gets a colored bg.
             let html = '';
             let finalize = function() {
                 if (card) card.classList.remove('border-danger', 'border-success');
                 if (cardHeader) cardHeader.classList.remove('bg-danger', 'bg-success', 'text-white');
+                if (changelogLink) changelogLink.classList.remove('text-white');
             };
 
             if (data.available) {
@@ -1878,6 +1882,7 @@ function checkForUpdates(refresh) {
                         cardHeader.classList.remove('bg-success');
                         cardHeader.classList.add('bg-danger', 'text-white');
                     }
+                    if (changelogLink) changelogLink.classList.add('text-white');
                 };
             } else if (data.restart_needed) {
                 html = `
@@ -1895,7 +1900,9 @@ function checkForUpdates(refresh) {
                 // Up to date. If we just finished an update, show "what just landed".
                 // A manual Check Now should clear the sticky state so the card
                 // returns to its normal look once the new status renders.
-                if (refresh) {
+                // The auto post-restart load also calls with refresh=1, so only
+                // clear when the user explicitly clicked Check Now.
+                if (refresh && window._updateCheckManual) {
                     try { sessionStorage.removeItem('sb_just_updated_from_date'); } catch (e) {}
                 }
                 const justUpdatedFrom = sessionStorage.getItem('sb_just_updated_from_date');
@@ -1921,6 +1928,7 @@ function checkForUpdates(refresh) {
                             cardHeader.classList.remove('bg-danger');
                             cardHeader.classList.add('bg-success', 'text-white');
                         }
+                        if (changelogLink) changelogLink.classList.add('text-white');
                     };
                 } else {
                     html = `
@@ -2162,9 +2170,13 @@ function dismissUpdate() {
     .catch(() => {});
 }
 
-// Check on page load (uses cached state, no git fetch)
+// Check on page load. If we just came back from an auto-restart after an
+// update, force a fresh check so the cached pre-update status doesn't show
+// the "check for updates" placeholder before the "what just landed" banner.
 document.addEventListener('DOMContentLoaded', function() {
-    checkForUpdates(false);
+    let justUpdated = false;
+    try { justUpdated = !!sessionStorage.getItem('sb_just_updated_from_date'); } catch (e) {}
+    checkForUpdates(justUpdated);
     loadBackupStatus();
     loadAutoStartStatus();
     loadMilestoneSyncStatus();
