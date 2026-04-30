@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 4/30/2026
+
+- Added a "View changelog" link in the admin Updates card header that opens a modal with the last 30 days of updates and a link to the full changelog on GitHub.
+
 ## 4/29/2026 - 19043e4
 
 - Cache-bust the changelog fetch so the Updates card shows new entries right after a push instead of waiting for GitHub's CDN to expire.
