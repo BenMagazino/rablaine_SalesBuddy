@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 4/30/2026
+
+- Fixed a bug in "What just landed" post update that caused it to sometimes not show the deployed changes.
+
 ## 4/30/2026 - 50807e7
 
 - Changelog modal now shows the most recent 10 updates instead of the last 30 days, so a busy week doesn't flood it and a quiet stretch doesn't leave it empty.
