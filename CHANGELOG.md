@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 4/30/2026
+## 4/30/2026 - 3ed0c48
 
 - Improved WorkIQ meeting sync: fixed a timezone display bug and made the sync more resilient to flaky responses.
 
