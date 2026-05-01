@@ -604,22 +604,49 @@ def prefetch_for_date_full(
     purge_expired()
 
     prompt = _build_prompt(date_str)
-    logger.info("Prefetch: querying WorkIQ for %s", date_str)
-    try:
-        # Today JSON observed at 131s in Phase 0 probe; give 240s headroom.
-        response = query_workiq(prompt, timeout=240, operation='meeting_list')
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Prefetch: WorkIQ call failed for %s: %s", date_str, exc)
-        return 0, [], str(exc)
+    # WorkIQ is LLM-backed and occasionally produces malformed JSON or
+    # truncates the response. A second/third call usually returns a clean
+    # array, so retry on parse errors before giving up. WorkIQ network
+    # errors (timeout, npx crash) are not retried here -- query_workiq
+    # already has its own retry semantics for those.
+    MAX_PARSE_RETRIES = 3
+    raw_meetings: Optional[List[Dict[str, Any]]] = None
+    last_parse_error: Optional[str] = None
+    for attempt in range(1, MAX_PARSE_RETRIES + 1):
+        logger.info(
+            "Prefetch: querying WorkIQ for %s (attempt %d/%d)",
+            date_str, attempt, MAX_PARSE_RETRIES,
+        )
+        try:
+            # Today JSON observed at 131s in Phase 0 probe; give 240s headroom.
+            response = query_workiq(prompt, timeout=240, operation='meeting_list')
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "Prefetch: WorkIQ call failed for %s: %s", date_str, exc,
+            )
+            return 0, [], str(exc)
 
-    try:
-        raw_meetings = _extract_json_array(response)
-    except ValueError as exc:
-        # Parse failure: do NOT treat this as "zero meetings" -- callers
-        # would wipe the cache. Return as an error so existing rows are
-        # preserved and the UI can show a stale-sync indicator.
-        logger.error("Prefetch: parse failed for %s: %s", date_str, exc)
-        return 0, [], f"parse failed: {exc}"
+        try:
+            raw_meetings = _extract_json_array(response)
+            break  # success
+        except ValueError as exc:
+            last_parse_error = str(exc)
+            logger.warning(
+                "Prefetch: parse failed for %s (attempt %d/%d): %s",
+                date_str, attempt, MAX_PARSE_RETRIES, exc,
+            )
+            # Fall through and retry. The LLM is non-deterministic so
+            # the next call may produce clean JSON.
+
+    if raw_meetings is None:
+        # All retries returned malformed JSON. Preserve existing rows
+        # rather than wiping them; UI surfaces the stale-sync indicator.
+        logger.error(
+            "Prefetch: parse failed for %s after %d attempts: %s",
+            date_str, MAX_PARSE_RETRIES, last_parse_error,
+        )
+        return 0, [], f"parse failed after {MAX_PARSE_RETRIES} attempts: {last_parse_error}"
+
     if not raw_meetings:
         logger.warning("Prefetch: empty meeting list for %s", date_str)
         return 0, [], None

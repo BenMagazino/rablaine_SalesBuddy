@@ -201,6 +201,54 @@ class TestPreSyncPurge:
             assert cache_after is not None
             assert 'keep me' in cache_after.meetings_json
 
+    def test_parse_failure_retries_and_succeeds(
+        self, app, clean_meeting_tables, monkeypatch,
+    ):
+        """A transient malformed WorkIQ response should be retried.
+
+        WorkIQ is LLM-backed and occasionally returns truncated JSON or
+        bad commas. The next call usually returns clean JSON, so the
+        prefetch should retry instead of giving up. Bug observed in prod
+        on 2026-04-30: today's sync gave up on the first parse failure
+        while the next 4 weekdays succeeded on their first attempts.
+        """
+        from app.services.meeting_sync import sync_meetings_for_date
+        with app.app_context():
+            today = date.today()
+            good_payload = json.dumps([{
+                'subject': 'Retry Success',
+                'start_time': datetime.combine(
+                    today, datetime.min.time(),
+                ).replace(hour=14).isoformat(),
+                'end_time': datetime.combine(
+                    today, datetime.min.time(),
+                ).replace(hour=15).isoformat(),
+                'attendees': [],
+                'organizer': 'organizer@example.com',
+            }])
+            calls = {'n': 0}
+
+            def fake_query(prompt, timeout=None, operation=None):  # noqa: ARG001
+                calls['n'] += 1
+                if calls['n'] == 1:
+                    return 'preamble [ {bad: json} ] tail'  # malformed
+                return good_payload
+
+            monkeypatch.setattr(
+                'app.services.workiq_service.query_workiq', fake_query,
+            )
+            monkeypatch.setattr(
+                'app.services.meeting_prefetch.query_workiq', fake_query,
+                raising=False,
+            )
+
+            meetings, err = sync_meetings_for_date(today.strftime('%Y-%m-%d'))
+
+            assert err is None, f"should have recovered, got: {err}"
+            assert calls['n'] == 2, "should have retried exactly once"
+            assert len(meetings) == 1
+            assert meetings[0]['title'] == 'Retry Success'
+
     def test_preserves_dismissed_ghost(
         self, app, clean_meeting_tables, monkeypatch,
     ):
