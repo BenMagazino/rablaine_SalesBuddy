@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 5/1/2026
+
+- Fixed ghost-aura retention so prefetched meetings stay around for 5 business days behind today instead of getting nuked the morning after the meeting. The home calendar will now actually show the trailing ghost aura it was always supposed to.
+
 ## 4/30/2026 - 8f1ce35
 
 - Fixed a bug in "What just landed" post update that caused it to sometimes not show the deployed changes.
