@@ -313,7 +313,13 @@ def entries_newer_than(entries: list, cutoff_date: str | None) -> list:
 
 
 def _check_loop(interval_seconds: int) -> None:
-    """Background loop that checks for updates periodically."""
+    """Background loop that checks for updates periodically.
+
+    Only pings git for the update badge. The changelog is lazy-loaded
+    on first admin-panel open (see /api/admin/update-check) - polling it
+    in the background races with GitHub's CDN right after a push and
+    can pin a stale copy in cache for the whole interval.
+    """
     # Small delay to let the app finish starting up, then check immediately
     time.sleep(5)
     while True:
@@ -321,10 +327,6 @@ def _check_loop(interval_seconds: int) -> None:
             check_for_updates()
         except Exception as e:
             logger.error(f"Update check loop error: {e}")
-        try:
-            fetch_changelog()
-        except Exception as e:
-            logger.error(f"Changelog fetch loop error: {e}")
         time.sleep(interval_seconds)
 
 
