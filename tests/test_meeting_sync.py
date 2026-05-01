@@ -129,7 +129,16 @@ class TestMeetingSyncService:
             assert err is None
             assert len(result) == 1
             assert result[0]['title'] == 'Customer Sync'
-            assert result[0]['start_time_display'] == '07:00 PM'  # UTC-normalized
+            # 14:00-05:00 == 19:00 UTC. Picker displays naive-local; compute
+            # the expected local-clock string from the same source so the
+            # assertion holds regardless of the test machine's timezone.
+            from datetime import datetime as _dt, timezone as _tz
+            expected_local = (
+                _dt(2026, 4, 21, 19, 0, tzinfo=_tz.utc)
+                .astimezone()
+                .strftime('%I:%M %p')
+            )
+            assert result[0]['start_time_display'] == expected_local
 
             # Verify DB row
             cache = DailyMeetingCache.query.filter_by(

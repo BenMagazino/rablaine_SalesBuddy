@@ -87,23 +87,26 @@ def _build_prompt(date_str: str) -> str:
 def _extract_json_array(response: str) -> List[Dict[str, Any]]:
     """Pull the JSON meeting array out of a WorkIQ prose response.
 
-    Returns an empty list if no parseable array is found.
+    Raises ``ValueError`` if no parseable array is found OR the JSON is
+    malformed. This is intentional: callers must distinguish "WorkIQ
+    failed / returned garbage" (preserve existing cached meetings, surface
+    error to UI) from "WorkIQ returned a valid but empty list" (wipe
+    cache). An empty list isn't a realistic WorkIQ response - it returns
+    prose like "No meetings found" - so any non-parseable response is
+    treated as a sync failure rather than silently wiping the day.
     """
     if not response:
-        return []
+        raise ValueError("empty WorkIQ response")
     match = _JSON_ARRAY_RE.search(response)
     if not match:
-        logger.warning("Prefetch: no JSON array found in WorkIQ response")
-        return []
+        raise ValueError("no JSON array found in WorkIQ response")
     raw = match.group(0)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        logger.warning("Prefetch: JSON parse failed: %s", exc)
-        return []
+        raise ValueError(f"JSON parse failed: {exc}") from exc
     if not isinstance(data, list):
-        logger.warning("Prefetch: parsed JSON is not a list")
-        return []
+        raise ValueError("parsed JSON is not a list")
     return data
 
 
@@ -124,6 +127,23 @@ def _parse_dt(value: Optional[str]) -> Optional[datetime]:
     if dt.tzinfo is None:
         return dt
     return dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _utc_to_naive_local(dt: Optional[datetime]) -> Optional[datetime]:
+    """Convert a naive-UTC datetime to naive local time.
+
+    PrefetchedMeeting.start_time is stored as naive UTC (per repo datetime
+    conventions). The meeting picker UI and the note ``call_date`` field
+    both expect naive local time (the WorkIQ markdown path historically
+    produced local times). Convert at the serialization boundary so the JS
+    ``new Date(iso_string)`` parses to the correct wall-clock time.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        # Defensive: if somehow tz-aware, normalize to UTC first.
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
 
 
 def _normalize_organizer(value: Optional[str]) -> Optional[str]:
@@ -584,17 +604,51 @@ def prefetch_for_date_full(
     purge_expired()
 
     prompt = _build_prompt(date_str)
-    logger.info("Prefetch: querying WorkIQ for %s", date_str)
-    try:
-        # Today JSON observed at 131s in Phase 0 probe; give 240s headroom.
-        response = query_workiq(prompt, timeout=240, operation='meeting_list')
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Prefetch: WorkIQ call failed for %s: %s", date_str, exc)
-        return 0, [], str(exc)
+    # WorkIQ is LLM-backed and occasionally produces malformed JSON or
+    # truncates the response. A second/third call usually returns a clean
+    # array, so retry on parse errors before giving up. WorkIQ network
+    # errors (timeout, npx crash) are not retried here -- query_workiq
+    # already has its own retry semantics for those.
+    MAX_PARSE_RETRIES = 3
+    raw_meetings: Optional[List[Dict[str, Any]]] = None
+    last_parse_error: Optional[str] = None
+    for attempt in range(1, MAX_PARSE_RETRIES + 1):
+        logger.info(
+            "Prefetch: querying WorkIQ for %s (attempt %d/%d)",
+            date_str, attempt, MAX_PARSE_RETRIES,
+        )
+        try:
+            # Today JSON observed at 131s in Phase 0 probe; give 240s headroom.
+            response = query_workiq(prompt, timeout=240, operation='meeting_list')
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "Prefetch: WorkIQ call failed for %s: %s", date_str, exc,
+            )
+            return 0, [], str(exc)
 
-    raw_meetings = _extract_json_array(response)
+        try:
+            raw_meetings = _extract_json_array(response)
+            break  # success
+        except ValueError as exc:
+            last_parse_error = str(exc)
+            logger.warning(
+                "Prefetch: parse failed for %s (attempt %d/%d): %s",
+                date_str, attempt, MAX_PARSE_RETRIES, exc,
+            )
+            # Fall through and retry. The LLM is non-deterministic so
+            # the next call may produce clean JSON.
+
+    if raw_meetings is None:
+        # All retries returned malformed JSON. Preserve existing rows
+        # rather than wiping them; UI surfaces the stale-sync indicator.
+        logger.error(
+            "Prefetch: parse failed for %s after %d attempts: %s",
+            date_str, MAX_PARSE_RETRIES, last_parse_error,
+        )
+        return 0, [], f"parse failed after {MAX_PARSE_RETRIES} attempts: {last_parse_error}"
+
     if not raw_meetings:
-        logger.warning("Prefetch: no meetings parsed for %s", date_str)
+        logger.warning("Prefetch: empty meeting list for %s", date_str)
         return 0, [], None
 
     domain_map = _build_domain_map()
@@ -607,11 +661,63 @@ def prefetch_for_date_full(
         if meeting is not None:
             stored_meetings.append(meeting)
 
+    # Re-resolve any still-unmatched ghosts for this date. Catches the
+    # case where the customer DB grew between yesterday's aura and today's
+    # (e.g. user ran the MSX account import after the morning sync). Only
+    # touches rows where customer_id is already NULL so we never override
+    # a prior match.
+    rematched = _rematch_unmatched_for_date(
+        target_date, domain_map, subject_matchers,
+    )
+    if rematched:
+        logger.info(
+            "Prefetch: rematched %d previously-unmatched ghosts for %s",
+            rematched, date_str,
+        )
+
     db.session.commit()
     picker_list = [_to_picker_dict(m) for m in stored_meetings]
     logger.info("Prefetch: stored %d meetings for %s",
                 len(stored_meetings), date_str)
     return len(stored_meetings), picker_list, None
+
+
+def _rematch_unmatched_for_date(
+    target_date: date,
+    domain_map: Dict[str, Tuple[int, str]],
+    subject_matchers: List[Tuple[re.Pattern, int, str]],
+) -> int:
+    """Try to map previously-unmatched ghosts using a fresh domain map.
+
+    Iterates ``PrefetchedMeeting`` rows for ``target_date`` that have
+    ``customer_id IS NULL`` and runs ``_resolve_customer`` against their
+    cached attendees + subject. Updates rows in place. Returns the count
+    of rows that gained a customer match.
+    """
+    unmatched = (
+        PrefetchedMeeting.query
+        .options(joinedload(PrefetchedMeeting.attendees))
+        .filter_by(meeting_date=target_date, customer_id=None)
+        .all()
+    )
+    if not unmatched:
+        return 0
+
+    fixed = 0
+    for ghost in unmatched:
+        attendee_dicts = [
+            {'email': a.email or '', 'name': a.name or ''}
+            for a in ghost.attendees
+        ]
+        cid, matched_via = _resolve_customer(
+            attendee_dicts, domain_map,
+            subject=ghost.subject, subject_matchers=subject_matchers,
+        )
+        if cid is not None:
+            ghost.customer_id = cid
+            ghost.matched_via = matched_via
+            fixed += 1
+    return fixed
 
 
 def _to_picker_dict(meeting: PrefetchedMeeting) -> Dict[str, Any]:
@@ -632,7 +738,11 @@ def _to_picker_dict(meeting: PrefetchedMeeting) -> Dict[str, Any]:
                 customer_display = att.domain
                 break
 
-    start_local = meeting.start_time
+    # PrefetchedMeeting.start_time is naive UTC; convert to naive local
+    # so the picker JS (which does `new Date(iso)`) and call_date (which
+    # is stored as naive local per repo conventions) get the right wall
+    # clock time. See _utc_to_naive_local for rationale.
+    start_local = _utc_to_naive_local(meeting.start_time)
     return {
         'id': meeting.workiq_id,
         'title': meeting.subject,

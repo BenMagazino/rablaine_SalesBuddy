@@ -11,6 +11,7 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 
 from app.models import (
+    Customer,
     DailyMeetingCache,
     DismissedRecurringMeeting,
     PrefetchedMeeting,
@@ -24,16 +25,33 @@ from app.models import (
 # ---------------------------------------------------------------------------
 
 def _stub_workiq(monkeypatch, raw_meetings: list[dict] | None = None) -> list[str]:
-    """Patch query_workiq to return an empty meeting list and record dates called."""
-    payload = json.dumps(raw_meetings or [])
+    """Patch query_workiq to return a meeting list and record dates called.
+
+    When ``raw_meetings`` is None, returns a single placeholder meeting per
+    call so ``_extract_json_array`` finds a parseable array. (An empty
+    array string ``[]`` no longer parses as success -- see
+    ``meeting_prefetch._extract_json_array``.)
+    """
     called_with: list[str] = []
 
     def fake_query(prompt, timeout=None, operation=None):  # noqa: ARG001
         # Date is embedded in the prompt; pull it out for assertions.
         import re
         m = re.search(r'(\d{4}-\d{2}-\d{2})', prompt or '')
+        date_str = m.group(1) if m else '2026-01-01'
         if m:
-            called_with.append(m.group(1))
+            called_with.append(date_str)
+        if raw_meetings is None:
+            payload = json.dumps([{
+                'subject': f'Stub meeting for {date_str}',
+                'start_time': f'{date_str}T10:00:00-05:00',
+                'end_time': f'{date_str}T11:00:00-05:00',
+                'organizer_email': 'stub@microsoft.com',
+                'is_recurring': False,
+                'attendees': [{'name': 'Ext', 'email': 'ext@partner.com'}],
+            }])
+        else:
+            payload = json.dumps(raw_meetings)
         return payload
 
     monkeypatch.setattr(
@@ -52,6 +70,11 @@ def clean_meeting_tables(app):
         PrefetchedMeeting.query.delete()
         DailyMeetingCache.query.delete()
         DismissedRecurringMeeting.query.delete()
+        # Seed at least one customer so ensure_meeting_aura's "no customers"
+        # guard doesn't short-circuit the test. Tests covering that guard
+        # explicitly delete customers themselves.
+        if Customer.query.count() == 0:
+            db.session.add(Customer(name='Aura Test Customer', tpid=999001))
         db.session.commit()
         yield
         PrefetchedMeetingAttendee.query.delete()
@@ -93,7 +116,7 @@ class TestEnsureMeetingAura:
         # Friday 2026-04-24 + 4 business days = Fri, Mon, Tue, Wed, Thu.
         # Saturday/Sunday in between are skipped.
         anchor = date(2026, 4, 24)
-        called = _stub_workiq(monkeypatch, [])
+        called = _stub_workiq(monkeypatch)
 
         with app.app_context():
             counts, errors = ensure_meeting_aura(start=anchor, days_ahead=4)
@@ -123,7 +146,14 @@ class TestEnsureMeetingAura:
             d = m.group(1) if m else None
             if d == boom_date:
                 raise RuntimeError("simulated workiq failure")
-            return json.dumps([])
+            return json.dumps([{
+                'subject': f'Stub for {d}',
+                'start_time': f'{d}T10:00:00-05:00',
+                'end_time': f'{d}T11:00:00-05:00',
+                'organizer_email': 'stub@microsoft.com',
+                'is_recurring': False,
+                'attendees': [{'name': 'Ext', 'email': 'ext@partner.com'}],
+            }])
 
         monkeypatch.setattr(
             'app.services.workiq_service.query_workiq', fake_query, raising=False,
@@ -293,6 +323,39 @@ class TestEnsureMeetingAura:
         cleared = get_sync_state_snapshot()
         assert cleared['running'] is False
         assert cleared['current_date'] is None
+
+
+# ---------------------------------------------------------------------------
+# Empty customer DB guard
+# ---------------------------------------------------------------------------
+
+class TestEnsureMeetingAuraNoCustomersGuard:
+    def test_skips_aura_when_no_customers(
+        self, app, clean_meeting_tables, reset_sync_state, monkeypatch,
+    ):
+        """Fresh install: aura must not run before MSX account import.
+
+        Without customers, every ghost would land with customer_id=NULL
+        because both _build_domain_map and _build_subject_matchers come up
+        empty. Skipping prevents poisoning the cache with garbage that
+        won't get re-resolved unless the user manually clicks Refresh.
+        """
+        from app.services.meeting_sync import ensure_meeting_aura
+        with app.app_context():
+            # clean_meeting_tables seeded a customer; remove it.
+            Customer.query.delete()
+            db.session.commit()
+            assert Customer.query.count() == 0
+
+            called = _stub_workiq(monkeypatch)
+            counts, errors = ensure_meeting_aura(
+                start=date(2026, 4, 24), days_ahead=2,
+            )
+
+            assert called == [], "WorkIQ must not be hit when no customers"
+            assert counts == {}
+            assert '_status' in errors
+            assert 'no customers' in errors['_status'].lower()
 
 
 # ---------------------------------------------------------------------------

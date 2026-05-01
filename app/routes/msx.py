@@ -1408,12 +1408,15 @@ def import_stream():
         logger.exception("import-stream: Database check failed")
         return jsonify({"error": f"Database error: {e}"}), 500
 
+    # Capture app object outside the generator so the post-import background
+    # aura thread has a valid reference even after the response stream ends.
+    _app_for_aura = current_app._get_current_object()
+
     def generate():
         phase = "initializing"
         try:
             import_start_time = time.time()
             progress_q: queue.Queue = queue.Queue()
-
             yield _sse({"message": "Starting parallel MSX import...", "progress": 0})
 
             # ----------------------------------------------------------
@@ -2572,6 +2575,31 @@ def import_stream():
                     "duration": duration,
                 },
             })
+
+            # Kick off the meeting aura in the background now that we have
+            # customers in the DB. Onboarding users were getting a calendar
+            # full of unmatched ghosts because aura ran (or had run) before
+            # the account import completed. Fire-and-forget; aura manages
+            # its own lock and idempotency so a concurrent scheduled run
+            # is harmless.
+            try:
+                import threading
+                from app.services.meeting_sync import (
+                    _run_sync as _run_aura,
+                )
+                threading.Thread(
+                    target=_run_aura,
+                    args=(_app_for_aura,),
+                    daemon=True,
+                ).start()
+                logger.info(
+                    "Post-import: meeting aura kicked off in background"
+                )
+            except Exception:
+                # Non-fatal: scheduled aura will still pick this up at 7 AM.
+                logger.exception(
+                    "Post-import: failed to start background aura"
+                )
 
             logger.info(
                 f"Parallel MSX Import complete in {duration}s: "

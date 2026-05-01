@@ -119,14 +119,135 @@ class TestPreSyncPurge:
                 start_time=datetime.combine(today, datetime.min.time()).replace(hour=10),
                 workiq_id='will-be-purged',
             )
-            _stub_workiq(monkeypatch, [])
+            # WorkIQ returns a *different* meeting -- the ghost should be
+            # purged via the diff (not via empty response, which now
+            # signals a sync failure and preserves data).
+            _stub_workiq(monkeypatch, [{
+                'subject': 'Some Other Meeting',
+                'start_time': datetime.combine(
+                    today, datetime.min.time(),
+                ).replace(hour=14).isoformat(),
+                'end_time': datetime.combine(
+                    today, datetime.min.time(),
+                ).replace(hour=15).isoformat(),
+                'organizer_email': 'org@microsoft.com',
+                'is_recurring': False,
+                'attendees': [{'name': 'Ext', 'email': 'ext@partner.com'}],
+            }])
 
             sync_meetings_for_date(today.strftime('%Y-%m-%d'))
 
             remaining = PrefetchedMeeting.query.filter_by(
-                meeting_date=today,
+                workiq_id='will-be-purged',
             ).all()
             assert len(remaining) == 0
+
+    def test_parse_failure_preserves_existing_meetings(
+        self, app, clean_meeting_tables, monkeypatch,
+    ):
+        """Regression: a malformed WorkIQ response must NOT wipe the day.
+
+        Previously ``_extract_json_array`` swallowed JSON parse errors and
+        returned ``[]``, which made ``sync_meetings_for_date`` think the
+        day was legitimately empty. The post-sync diff then deleted every
+        prefetched meeting for that day. Bug observed in prod on
+        2026-04-30.
+        """
+        from app.services.meeting_sync import sync_meetings_for_date
+        from app.models import DailyMeetingCache
+        with app.app_context():
+            today = date.today()
+            _seed_ghost(
+                meeting_date=today,
+                start_time=datetime.combine(
+                    today, datetime.min.time(),
+                ).replace(hour=10),
+                workiq_id='must-survive-parse-failure',
+            )
+            # Pre-populate the daily cache so we can verify it's preserved.
+            cache = DailyMeetingCache(
+                meeting_date=today,
+                meetings_json='[{"id":"existing","title":"keep me"}]',
+            )
+            db.session.add(cache)
+            db.session.commit()
+
+            # Stub WorkIQ to return garbage that looks like a JSON array
+            # but fails to parse.
+            def fake_query(prompt, timeout=None, operation=None):  # noqa: ARG001
+                return 'preamble [ {bad: json} ] tail'
+
+            monkeypatch.setattr(
+                'app.services.workiq_service.query_workiq', fake_query,
+            )
+            monkeypatch.setattr(
+                'app.services.meeting_prefetch.query_workiq', fake_query,
+                raising=False,
+            )
+
+            meetings, err = sync_meetings_for_date(today.strftime('%Y-%m-%d'))
+
+            assert err is not None, "parse failure should surface as error"
+            assert meetings == []
+            # Ghost row preserved
+            row = PrefetchedMeeting.query.filter_by(
+                workiq_id='must-survive-parse-failure',
+            ).first()
+            assert row is not None
+            # Daily cache untouched
+            cache_after = DailyMeetingCache.query.filter_by(
+                meeting_date=today,
+            ).first()
+            assert cache_after is not None
+            assert 'keep me' in cache_after.meetings_json
+
+    def test_parse_failure_retries_and_succeeds(
+        self, app, clean_meeting_tables, monkeypatch,
+    ):
+        """A transient malformed WorkIQ response should be retried.
+
+        WorkIQ is LLM-backed and occasionally returns truncated JSON or
+        bad commas. The next call usually returns clean JSON, so the
+        prefetch should retry instead of giving up. Bug observed in prod
+        on 2026-04-30: today's sync gave up on the first parse failure
+        while the next 4 weekdays succeeded on their first attempts.
+        """
+        from app.services.meeting_sync import sync_meetings_for_date
+        with app.app_context():
+            today = date.today()
+            good_payload = json.dumps([{
+                'subject': 'Retry Success',
+                'start_time': datetime.combine(
+                    today, datetime.min.time(),
+                ).replace(hour=14).isoformat(),
+                'end_time': datetime.combine(
+                    today, datetime.min.time(),
+                ).replace(hour=15).isoformat(),
+                'attendees': [],
+                'organizer': 'organizer@example.com',
+            }])
+            calls = {'n': 0}
+
+            def fake_query(prompt, timeout=None, operation=None):  # noqa: ARG001
+                calls['n'] += 1
+                if calls['n'] == 1:
+                    return 'preamble [ {bad: json} ] tail'  # malformed
+                return good_payload
+
+            monkeypatch.setattr(
+                'app.services.workiq_service.query_workiq', fake_query,
+            )
+            monkeypatch.setattr(
+                'app.services.meeting_prefetch.query_workiq', fake_query,
+                raising=False,
+            )
+
+            meetings, err = sync_meetings_for_date(today.strftime('%Y-%m-%d'))
+
+            assert err is None, f"should have recovered, got: {err}"
+            assert calls['n'] == 2, "should have retried exactly once"
+            assert len(meetings) == 1
+            assert meetings[0]['title'] == 'Retry Success'
 
     def test_preserves_dismissed_ghost(
         self, app, clean_meeting_tables, monkeypatch,

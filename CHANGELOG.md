@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 4/30/2026
+
+- Improved WorkIQ meeting sync: fixed a timezone display bug and made the sync more resilient to flaky responses.
+
 ## 4/30/2026 - 8fe53c7
 
 - Added a "View changelog" link in the admin Updates card header that opens a modal with the last 30 days of updates and a link to the full changelog on GitHub.
