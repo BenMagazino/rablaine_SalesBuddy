@@ -991,6 +991,71 @@
     // dates beyond the normal retention window will be cleaned up by
     // the next morning sync's purge pass; that's expected and fine for
     // ad-hoc lookups.
+    //
+    // Two cross-render concerns this function handles:
+    //   1. The user can navigate to another month and back while the
+    //      WorkIQ pull is in flight (POST /api/meetings/refresh can take
+    //      30s+). The original wrapEl is detached by loadCalendar's
+    //      innerHTML wipe, so we never reuse it after the fetch returns.
+    //      Instead we track in-flight dates in _inFlightDayRefreshes and
+    //      restore the spinner via _restoreInFlightSpinners() after every
+    //      render, and we look up the current wrap by dateStr when we
+    //      need to clear it.
+    //   2. If the fetch completes while the user is on a DIFFERENT month
+    //      than the one the refresh was launched from, refreshDaysInPlace
+    //      would be a no-op (it queries cells in the current view).
+    //      Stash the date in _pendingRedrawDates so the next loadCalendar
+    //      render of that date's month repaints the cell.
+    //
+    // NOTE: in-flight state does NOT persist across page reloads. If the
+    // user hits F5 mid-refresh, the spinner won't come back; the server's
+    // WorkIQ pull keeps running and the next aura sync (or a fresh manual
+    // click) will surface the result.
+    const _inFlightDayRefreshes = new Set();
+    const _pendingRedrawDates = new Set();
+
+    function _findCurrentDayWrap(dateStr) {
+        return document.querySelector(
+            `#calendarBody td[data-cal-date="${dateStr}"] .cal-day-num-wrap`);
+    }
+
+    function _setSpinnerOnDate(dateStr, on) {
+        const wrap = _findCurrentDayWrap(dateStr);
+        if (!wrap) return;
+        if (on) {
+            wrap.classList.add('cal-day-syncing');
+            wrap.style.pointerEvents = 'none';
+        } else {
+            wrap.classList.remove('cal-day-syncing');
+            wrap.style.pointerEvents = '';
+        }
+    }
+
+    // Re-apply the spinning state and drain any pending redraws for the
+    // current view. Called after every loadCalendar render so navigating
+    // away and back doesn't lose the in-flight visual state.
+    function _restoreInFlightSpinners() {
+        if (_inFlightDayRefreshes.size === 0 && _pendingRedrawDates.size === 0) return;
+        const monthPrefix = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-`;
+
+        _inFlightDayRefreshes.forEach(dateStr => {
+            if (!dateStr.startsWith(monthPrefix)) return;
+            _setSpinnerOnDate(dateStr, true);
+        });
+
+        // Drain pending redraws whose month is now in view.
+        const toRedraw = [];
+        _pendingRedrawDates.forEach(dateStr => {
+            if (dateStr.startsWith(monthPrefix)) toRedraw.push(dateStr);
+        });
+        if (toRedraw.length > 0) {
+            toRedraw.forEach(d => _pendingRedrawDates.delete(d));
+            if (typeof refreshDaysInPlace === 'function') {
+                refreshDaysInPlace(toRedraw);
+            }
+        }
+    }
+
     function triggerDaySync(dateStr, wrapEl) {
         if (!dateStr) return;
         // If the morning aura sync already has this date queued or
@@ -1003,10 +1068,10 @@
                 return;
             }
         }
-        if (wrapEl) {
-            wrapEl.classList.add('cal-day-syncing');
-            wrapEl.style.pointerEvents = 'none';
-        }
+        // Already refreshing this date - don't double-fire.
+        if (_inFlightDayRefreshes.has(dateStr)) return;
+        _inFlightDayRefreshes.add(dateStr);
+        _setSpinnerOnDate(dateStr, true);
 
         fetch('/api/meetings/refresh', {
             method: 'POST',
@@ -1019,23 +1084,29 @@
                     console.error('Day sync failed:', body && body.error);
                     return;
                 }
-                // Repaint just this cell's ghosts (this re-renders the
-                // whole cell including the day number, so the spinner
-                // naturally goes away).
-                if (typeof refreshDaysInPlace === 'function') {
-                    refreshDaysInPlace([dateStr]);
+                // The cell may have been replaced (or may not currently
+                // be in view) if the user navigated months while we
+                // waited on WorkIQ. Repaint if the date is in the
+                // current view; otherwise queue it for the next render
+                // of its month.
+                const monthPrefix = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-`;
+                if (dateStr.startsWith(monthPrefix)) {
+                    if (typeof refreshDaysInPlace === 'function') {
+                        refreshDaysInPlace([dateStr]);
+                    }
+                } else {
+                    _pendingRedrawDates.add(dateStr);
                 }
             })
             .catch(err => {
                 console.error('Day sync error:', err);
             })
             .finally(() => {
-                // If refreshDaysInPlace didn't exist or didn't swap out
-                // this element, make sure we clean up the spinner state.
-                if (wrapEl && wrapEl.isConnected) {
-                    wrapEl.classList.remove('cal-day-syncing');
-                    wrapEl.style.pointerEvents = '';
-                }
+                _inFlightDayRefreshes.delete(dateStr);
+                // Always look up the current wrap by date - the original
+                // wrapEl may have been detached by an intervening
+                // loadCalendar render.
+                _setSpinnerOnDate(dateStr, false);
             });
     }
 
@@ -1294,6 +1365,10 @@
                 checkTodayStatus();
                 // Also paint typing dots on any aura-pending cells in view.
                 checkAuraSync();
+                // Re-apply per-day refresh spinners + drain any pending
+                // redraws for dates whose WorkIQ pull completed while
+                // the user was on a different month.
+                _restoreInFlightSpinners();
             })
             .catch(error => {
                 console.error('Error loading calendar:', error);

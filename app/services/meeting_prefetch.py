@@ -651,7 +651,12 @@ def prefetch_for_date_full(
     except ValueError as exc:
         return 0, [], f"Bad date: {exc}"
 
-    purge_expired()
+    # NOTE: purge_expired() is intentionally NOT called here. Per the
+    # ghost-aura design it should only run during the scheduled morning
+    # aura and the startup catchup aura -- both of which go through
+    # ensure_meeting_aura(). Manual per-day refreshes (the calendar
+    # day-number click, ad-hoc back-fills, etc.) must NOT delete other
+    # days' ghosts as a side effect.
 
     prompt = _build_prompt(date_str)
     # WorkIQ is LLM-backed and occasionally produces malformed JSON or

@@ -11,6 +11,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 ## 5/1/2026
 
 - Fixed ghost-aura retention so prefetched meetings stay around for 5 business days behind today instead of getting nuked the morning after the meeting. The home calendar will now actually show the trailing ghost aura it was always supposed to.
+- Per-day calendar refresh spinners now persist while you navigate to other months and back, and the day auto-redraws with the new ghosts when the WorkIQ pull finishes (no more dead spinners or needing a hard refresh to see the result).
+- Manual per-day refreshes no longer trigger the "purge expired ghosts" pass. That now only runs during the morning aura sync and the startup catchup, so clicking refresh on one day can't delete ghosts from other days.
 
 ## 4/30/2026 - 8f1ce35
 

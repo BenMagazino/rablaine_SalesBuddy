@@ -212,6 +212,18 @@ def ensure_meeting_aura(
         logger.info("ensure_meeting_aura: another sync is in flight, skipping")
         return {}, {'_status': 'already running'}
 
+    # Purge ghosts that have aged out of the retention window. This is
+    # the ONLY place purge_expired() runs -- per the ghost-aura design,
+    # ad-hoc per-day refreshes must not delete other days' ghosts. The
+    # morning scheduled sync and the startup catchup sync both flow
+    # through this function, so doing it once here covers both.
+    try:
+        from app.services.meeting_prefetch import purge_expired
+        purge_expired()
+    except Exception:  # noqa: BLE001
+        # Purging is housekeeping; never let it abort an aura run.
+        logger.exception("ensure_meeting_aura: purge_expired failed")
+
     weekdays = _aura_window_dates(start=start, days_ahead=days_ahead)
     aura_strs = [d.strftime('%Y-%m-%d') for d in weekdays]
 
