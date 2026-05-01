@@ -8,6 +8,11 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 4/30/2026
+
+- Changelog modal now shows the most recent 10 updates instead of the last 30 days, so a busy week doesn't flood it and a quiet stretch doesn't leave it empty.
+- Activity and Action Items calendars on the home page now use a uniform cell height across every day (including weekends and out-of-month filler), so rows line up consistently no matter how full or empty a given day is.
+
 ## 4/30/2026 - 3ed0c48
 
 - Improved WorkIQ meeting sync: fixed a timezone display bug and made the sync more resilient to flaky responses.
