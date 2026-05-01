@@ -956,7 +956,7 @@
         <div class="modal-content">
             <div class="modal-header py-2">
                 <h5 class="modal-title" id="changelogModalLabel">
-                    <i class="bi bi-list-stars"></i> What's new (last 30 days)
+                    <i class="bi bi-list-stars"></i> What's new (last 10 updates)
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -2031,9 +2031,10 @@ function loadChangelogModal() {
         .then(r => r.json())
         .then(data => {
             const entries = (data.changelog && data.changelog.entries) || [];
-            const recent = filterRecentChangelogEntries(entries, 30);
+            // Entries arrive newest-first; show the most recent 10 updates.
+            const recent = entries.slice(0, 10);
             if (recent.length === 0) {
-                body.innerHTML = '<div class="text-muted">No changes in the last 30 days.</div>';
+                body.innerHTML = '<div class="text-muted">No changes yet.</div>';
                 return;
             }
             const html = recent.map((e, i) => {

@@ -1355,10 +1355,11 @@
                 const cell = document.createElement('td');
                 cell.className = 'p-1';
                 cell.style.verticalAlign = 'top';
-                cell.style.minHeight = '80px';
+                // Fixed height for every cell (weekday, weekend, and
+                // out-of-month filler) so all rows are visually consistent.
+                cell.style.height = '120px';
                 const isWeekend = (col === 0 || col === 6);
                 if (isWeekend) {
-                    cell.style.minHeight = '50px';
                     if (document.documentElement.getAttribute('data-bs-theme') === 'dark') {
                         cell.style.backgroundColor = 'rgba(255,255,255,0.02)';
                     } else {
@@ -1865,10 +1866,11 @@
                 var cell = document.createElement('td');
                 cell.className = 'p-1';
                 cell.style.verticalAlign = 'top';
-                cell.style.minHeight = '80px';
+                // Fixed height for every cell (weekday, weekend, and
+                // out-of-month filler) so all rows are visually consistent.
+                cell.style.height = '120px';
                 var isWeekend = (col === 0 || col === 6);
                 if (isWeekend) {
-                    cell.style.minHeight = '50px';
                     cell.style.backgroundColor = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
                 }
 
