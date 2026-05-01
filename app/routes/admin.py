@@ -193,6 +193,13 @@ def api_update_check():
         fetch_changelog()
     else:
         state = get_update_state()
+        # Lazy-load the changelog on first admin-panel open. The background
+        # loop only refreshes the update badge - it does NOT poll the
+        # changelog, because polling races with GitHub's CDN right after a
+        # push and can pin a stale copy. First call after boot fills cache;
+        # users hit ?refresh=1 (or the modal) for a forced re-fetch.
+        if get_changelog_state().get('last_fetched') is None:
+            fetch_changelog()
 
     # Include the boot-time commit (what the running server loaded)
     boot_commit = current_app.config.get('BOOT_COMMIT')
