@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 5/1/2026
+## 5/1/2026 - 9902bb4
 
 - Fixed ghost-aura retention so prefetched meetings stay around for 5 business days behind today instead of getting nuked the morning after the meeting. The home calendar will now actually show the trailing ghost aura it was always supposed to.
 - Per-day calendar refresh spinners now persist while you navigate to other months and back, and the day auto-redraws with the new ghosts when the WorkIQ pull finishes (no more dead spinners or needing a hard refresh to see the result).
