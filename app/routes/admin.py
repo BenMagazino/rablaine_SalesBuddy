@@ -223,7 +223,15 @@ def api_update_check():
     pending_commits = get_commits_in_range(
         state.get('local_commit'), state.get('remote_commit')
     )
-    since_boot_commits = get_commits_in_range(boot_commit, state.get('local_commit'))
+    # The server's BOOT_COMMIT is the commit it loaded at startup. After an
+    # apply-update + restart, BOOT_COMMIT == local_commit, so a
+    # boot..local_commit range would be empty and "What just landed" would
+    # show nothing. The client knows what the boot_commit was BEFORE the
+    # update (it captured it before calling apply-update) and passes it
+    # back as ?since=<old_boot_commit> on the post-restart check, which we
+    # use as the start of the range.
+    since_ref = request.args.get('since') or boot_commit
+    since_boot_commits = get_commits_in_range(since_ref, state.get('local_commit'))
 
     state['changelog'] = {
         'entries': changelog['entries'],
