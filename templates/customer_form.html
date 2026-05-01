@@ -228,7 +228,6 @@ function filterSellers() {
             // Deselect if currently selected but not valid
             if (opt.selected) {
                 sellerSelect.value = '';
-                updateExistingCustomersList();
             }
         }
     });
@@ -238,7 +237,6 @@ function filterSellers() {
         sellerSelect.value = validSellerIds[0];
         // Only show message if user manually changed the territory
         sellerAutoMsg.style.display = territoryChangedByUser ? 'block' : 'none';
-        updateExistingCustomersList();
     } else {
         sellerAutoMsg.style.display = 'none';
     }
@@ -274,48 +272,6 @@ if (!sellerDropdown || sellerDropdown.tagName !== 'SELECT') {
     }
 }
 
-function updateExistingCustomersList() {
-    const sellerEl = document.getElementById('seller_id');
-    const sellerId = sellerEl ? sellerEl.value : '';
-    const existingCard = document.getElementById('existingCustomersCard');
-    const noSellerCard = document.getElementById('noSellerCard');
-    const noSellerMessage = document.getElementById('noSellerMessage');
-    const customersList = document.getElementById('existingCustomersList');
-    
-    if (!sellerId) {
-        // No seller selected
-        existingCard.style.display = 'none';
-        noSellerCard.style.display = 'block';
-        noSellerMessage.textContent = 'Select a seller to see their existing customers';
-        return;
-    }
-    
-    if (!sellerCustomers[sellerId] || sellerCustomers[sellerId].length === 0) {
-        // Seller has no customers
-        existingCard.style.display = 'none';
-        noSellerCard.style.display = 'block';
-        noSellerMessage.textContent = 'This seller has no customers yet';
-        return;
-    }
-    
-    // Show existing customers
-    const customers = sellerCustomers[sellerId];
-    customersList.innerHTML = customers.map(customer => 
-        `<a href="/customer/${customer.id}" target="_blank" class="list-group-item list-group-item-action" title="${customer.name}">
-            <div class="d-flex justify-content-between align-items-start">
-                <div class="text-truncate" style="max-width: 85%;">
-                    <strong class="text-truncate d-block">${customer.name}</strong>
-                    <small class="text-muted">TPID: ${customer.tpid}</small>
-                </div>
-                <i class="bi bi-box-arrow-up-right"></i>
-            </div>
-        </a>`
-    ).join('');
-    
-    existingCard.style.display = 'block';
-    noSellerCard.style.display = 'none';
-}
-
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Apply filters based on pre-selected values (only when dropdowns exist)
@@ -325,7 +281,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sellerDropdown && sellerDropdown.tagName === 'SELECT' && document.getElementById('territory_id').value) {
         filterSellers();
     }
-    updateExistingCustomersList();
 });
 </script>
 {% endblock %}
