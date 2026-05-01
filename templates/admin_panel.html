@@ -1897,21 +1897,14 @@ function checkForUpdates(refresh) {
                     ${renderActionBar()}
                 `;
             } else {
-                // Up to date. If we just finished an update, show "what just landed".
-                // A manual Check Now should clear the sticky state so the card
-                // returns to its normal look once the new status renders.
-                // The auto post-restart load also calls with refresh=1, so only
-                // clear when the user explicitly clicked Check Now.
-                if (refresh && window._updateCheckManual) {
-                    try { sessionStorage.removeItem('sb_just_updated_from_date'); } catch (e) {}
-                }
-                const justUpdatedFrom = sessionStorage.getItem('sb_just_updated_from_date');
-                let justLanded = [];
-                if (justUpdatedFrom && data.changelog && Array.isArray(data.changelog.entries)) {
-                    // Compare against date_iso (normalized YYYY-MM-DD) so the
-                    // filter works for both M/D/YYYY and YYYY-MM-DD entries.
-                    justLanded = data.changelog.entries.filter(e => (e.date_iso || e.date || '') > justUpdatedFrom);
-                }
+                // Up to date. If the server booted on an older commit than
+                // what's currently on disk, the API returns the entries that
+                // landed in between as `since_boot` (filtered by commit hash,
+                // which is reliable even when several updates ship the same
+                // day). That's our "what just landed" list.
+                const justLanded = (data.changelog && Array.isArray(data.changelog.since_boot))
+                    ? data.changelog.since_boot
+                    : [];
                 if (justLanded.length > 0) {
                     html = `
                         <span class="text-success"><i class="bi bi-check-circle-fill"></i> Update installed</span>
@@ -2068,12 +2061,12 @@ function applyUpdate() {
     const card = document.getElementById('updateCheckContent');
     const btn = document.getElementById('applyUpdateBtn');
 
-    // Stash the pre-update boot commit date so the post-restart page load
-    // can show "what just landed" by filtering changelog entries newer than this.
+    // Set a one-shot signal so the post-restart page load forces a fresh
+    // update-check (refresh=1) instead of using cached pre-update status.
+    // The "what just landed" content itself comes from changelog.since_boot
+    // on the server, which compares the running boot commit to disk.
     try {
-        const last = window._lastUpdateCheckData || {};
-        const stashDate = last.boot_commit_date || (last.changelog && last.changelog.local_head_date);
-        if (stashDate) sessionStorage.setItem('sb_just_updated_from_date', stashDate);
+        sessionStorage.setItem('sb_just_updated_from_date', '1');
     } catch (e) {}
 
     if (btn) {
@@ -2174,9 +2167,15 @@ function dismissUpdate() {
 // Check on page load. If we just came back from an auto-restart after an
 // update, force a fresh check so the cached pre-update status doesn't show
 // the "check for updates" placeholder before the "what just landed" banner.
+// The actual "what just landed" filtering is server-side (changelog.since_boot
+// from /api/admin/update-check); this flag just nudges the first poll.
 document.addEventListener('DOMContentLoaded', function() {
     let justUpdated = false;
-    try { justUpdated = !!sessionStorage.getItem('sb_just_updated_from_date'); } catch (e) {}
+    try {
+        justUpdated = !!sessionStorage.getItem('sb_just_updated_from_date');
+        // One-shot: clear so subsequent page loads don't keep forcing refresh.
+        if (justUpdated) sessionStorage.removeItem('sb_just_updated_from_date');
+    } catch (e) {}
     checkForUpdates(justUpdated);
     loadBackupStatus();
     loadAutoStartStatus();
