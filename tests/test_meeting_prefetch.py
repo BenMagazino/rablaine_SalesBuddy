@@ -614,9 +614,11 @@ class TestPurgeExpired:
     def test_drops_expired_keeps_fresh(self, app, clean_prefetch_tables):
         with app.app_context():
             now = datetime.now()
+            # Old: 14 calendar days back -- well outside the 5-business-day
+            # ghost-aura retention window regardless of weekday alignment.
             old = PrefetchedMeeting(
-                workiq_id='old', subject='old', start_time=now - timedelta(days=5),
-                meeting_date=date.today() - timedelta(days=5),
+                workiq_id='old', subject='old', start_time=now - timedelta(days=14),
+                meeting_date=date.today() - timedelta(days=14),
                 expires_at=now - timedelta(days=4),
             )
             new = PrefetchedMeeting(
@@ -631,6 +633,59 @@ class TestPurgeExpired:
             assert purged == 1
             remaining = {m.workiq_id for m in PrefetchedMeeting.query.all()}
             assert remaining == {'new'}
+
+    def test_keeps_meetings_inside_business_day_aura(self, app, clean_prefetch_tables):
+        """Ghost-aura design: rows up to 5 business days back must survive
+        ``purge_expired``, even if their stored ``expires_at`` is stale.
+
+        Regression for the bug where ``_expires_at_for`` set expiry to
+        meeting_date + 1 calendar day, so April 28/29 ghosts were nuked by
+        May 1's morning prefetch despite being well inside the aura.
+        """
+        with app.app_context():
+            now = datetime.now()
+            today = date.today()
+            # Build a row for each of the last 5 business days. None should
+            # be purged regardless of how stale the row's expires_at is.
+            kept_ids = []
+            d = today
+            count = 0
+            while count < meeting_prefetch.GHOST_RETENTION_BUSINESS_DAYS:
+                d = d - timedelta(days=1)
+                if d.weekday() >= 5:
+                    continue
+                count += 1
+                wid = f'biz-{count}'
+                kept_ids.append(wid)
+                db.session.add(PrefetchedMeeting(
+                    workiq_id=wid,
+                    subject=f'biz day -{count}',
+                    start_time=datetime.combine(d, datetime.min.time()),
+                    meeting_date=d,
+                    # Intentionally stale: pre-fix policy would purge these.
+                    expires_at=now - timedelta(days=10),
+                ))
+            db.session.commit()
+
+            purged = meeting_prefetch.purge_expired()
+            assert purged == 0
+            remaining = {m.workiq_id for m in PrefetchedMeeting.query.all()}
+            assert remaining == set(kept_ids)
+
+    def test_expires_at_for_uses_business_days(self, app):
+        """``_expires_at_for`` must skip weekends when extending retention."""
+        with app.app_context():
+            # Monday April 27, 2026 + 5 business days = Monday May 4, 2026.
+            monday = date(2026, 4, 27)
+            assert monday.weekday() == 0
+            expiry = meeting_prefetch._expires_at_for(monday)
+            assert expiry.date() == date(2026, 5, 4)
+            assert expiry.time().hour == 23
+
+            # Friday May 1, 2026 + 5 business days = Friday May 8, 2026.
+            friday = date(2026, 5, 1)
+            assert friday.weekday() == 4
+            assert meeting_prefetch._expires_at_for(friday).date() == date(2026, 5, 8)
 
 
 # ---------------------------------------------------------------------------

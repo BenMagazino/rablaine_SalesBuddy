@@ -179,8 +179,16 @@ class TestEnsureMeetingAura:
         from app.services.meeting_prefetch import _synthetic_id
         from app.models import Customer, Note
 
-        anchor = date(2026, 4, 20)  # Monday
-        start = datetime(2026, 4, 20, 10, 0)
+        # Anchor to today (or the previous weekday) so the seeded ghost
+        # falls inside the 5-business-day retention window enforced by
+        # purge_expired(). Hard-coding a historical date here would cause
+        # purge_expired to nuke the seeded row before ensure_meeting_aura
+        # could exercise the upsert/preservation path.
+        anchor = date.today()
+        while anchor.weekday() >= 5:  # back up to Friday over the weekend
+            anchor = anchor - timedelta(days=1)
+        anchor_str = anchor.isoformat()
+        start = datetime.combine(anchor, datetime.min.time()).replace(hour=10)
         organizer = 'rerun@example.com'
         subject_d = 'Recurring Standup'
         subject_n = 'Customer Sync'
@@ -241,7 +249,7 @@ class TestEnsureMeetingAura:
             import re
             m = re.search(r'(\d{4}-\d{2}-\d{2})', prompt or '')
             d = m.group(1) if m else None
-            if d == '2026-04-20':
+            if d == anchor_str:
                 return json.dumps(monday_payload)
             return json.dumps([])
 

@@ -461,12 +461,40 @@ def _resolve_customer(
 # Upsert + purge
 # ---------------------------------------------------------------------------
 
+# Ghost-aura retention: a prefetched meeting stays in the cache for this many
+# business days AFTER the meeting date so the home-page calendar shows a
+# trailing aura behind today (matching the forward aura built by
+# meeting_sync.ensure_meeting_aura). 5 business days = roughly a working week.
+GHOST_RETENTION_BUSINESS_DAYS = 5
+
+
+def _add_business_days(start: date, n: int) -> date:
+    """Return the date that is ``n`` business days after ``start`` (Mon-Fri).
+
+    Weekends do not count. ``n=0`` returns ``start`` unchanged. If ``start``
+    is itself a weekend day, it is treated as the prior Friday for counting
+    purposes (we still consume ``n`` weekdays from there).
+    """
+    d = start
+    remaining = n
+    while remaining > 0:
+        d = d + timedelta(days=1)
+        if d.weekday() < 5:  # Mon=0 .. Fri=4
+            remaining -= 1
+    return d
+
+
 def _expires_at_for(meeting_date: date) -> datetime:
-    """Meetings live until end-of-day local on the day after they occur."""
-    return datetime.combine(
-        meeting_date + timedelta(days=1),
-        time(23, 59, 59),
-    )
+    """When a prefetched meeting row should be purged.
+
+    Meetings live until end-of-day local on the date that is
+    ``GHOST_RETENTION_BUSINESS_DAYS`` business days after ``meeting_date``.
+    This matches the "ghost aura" design: a configurable number of business
+    days of meetings remain visible behind today on the home calendar so
+    sellers can backfill notes for recent calls.
+    """
+    expiry_date = _add_business_days(meeting_date, GHOST_RETENTION_BUSINESS_DAYS)
+    return datetime.combine(expiry_date, time(23, 59, 59))
 
 
 def _upsert_meeting(
@@ -558,17 +586,39 @@ def _upsert_meeting(
 
 
 def purge_expired() -> int:
-    """Delete meetings past ``expires_at``. Returns rows deleted."""
-    now = datetime.now()
+    """Delete meetings outside the ghost-aura retention window.
+
+    Computes the cutoff live from ``meeting_date`` rather than trusting the
+    ``expires_at`` column. This way changes to
+    ``GHOST_RETENTION_BUSINESS_DAYS`` take effect immediately for existing
+    rows, and rows stamped by an older (shorter) retention policy don't get
+    nuked the moment a new build ships.
+
+    Returns the number of rows deleted.
+    """
+    today = date.today()
+    # Walk back GHOST_RETENTION_BUSINESS_DAYS business days from today.
+    # Anything whose meeting_date is BEFORE that cutoff is outside the
+    # trailing aura and safe to delete.
+    cutoff_date = today
+    remaining = GHOST_RETENTION_BUSINESS_DAYS
+    while remaining > 0:
+        cutoff_date = cutoff_date - timedelta(days=1)
+        if cutoff_date.weekday() < 5:  # Mon=0 .. Fri=4
+            remaining -= 1
+
     expired = PrefetchedMeeting.query.filter(
-        PrefetchedMeeting.expires_at < now
+        PrefetchedMeeting.meeting_date < cutoff_date
     ).all()
     count = len(expired)
     for m in expired:
         db.session.delete(m)
     if count:
         db.session.commit()
-        logger.info("Prefetch: purged %d expired meetings", count)
+        logger.info(
+            "Prefetch: purged %d meetings older than %s (>%d business days back)",
+            count, cutoff_date.isoformat(), GHOST_RETENTION_BUSINESS_DAYS,
+        )
     return count
 
 
@@ -601,7 +651,12 @@ def prefetch_for_date_full(
     except ValueError as exc:
         return 0, [], f"Bad date: {exc}"
 
-    purge_expired()
+    # NOTE: purge_expired() is intentionally NOT called here. Per the
+    # ghost-aura design it should only run during the scheduled morning
+    # aura and the startup catchup aura -- both of which go through
+    # ensure_meeting_aura(). Manual per-day refreshes (the calendar
+    # day-number click, ad-hoc back-fills, etc.) must NOT delete other
+    # days' ghosts as a side effect.
 
     prompt = _build_prompt(date_str)
     # WorkIQ is LLM-backed and occasionally produces malformed JSON or
