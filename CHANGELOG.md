@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 5/1/2026
+## 5/1/2026 - c5bb242
 
 - Fixed admin "What just landed" sometimes coming up empty right after an update. The changelog used to be polled hourly in the background, which meant the first poll could grab a stale copy from GitHub's CDN seconds after a push and then sit on it for an hour. Now the changelog is lazy-loaded the first time you open the admin panel after boot, so what you see is always fresh.
 
