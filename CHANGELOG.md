@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 5/1/2026
+## 5/1/2026 - 9c6efba
 
 - Removed dead JS from the customer edit form that was throwing a non impacting error.
 
