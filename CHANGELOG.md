@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 5/5/2026
+
+- Updated the MSX Account Teams API outage error message to ask users to send the error to Alex so he can engage the MSX team. The previous "try again in a few hours" wording implied the issue would self-resolve, which it won't.
+
 ## 5/5/2026 - 5bb2472
 
 - Renamed the "New Synapse Customers" report to "Synapse Customers" with two tabs: **New** (customers who started using Azure Synapse Analytics in the last 6 months, same as before) and **Current** (every customer with any Synapse spend). The Current view replaces the "First Usage" column with an "Avg (Last 4mo)" column so you can spot drop-off, and customers within each seller group are sorted by latest month revenue descending. Old `/reports/new-synapse-users` URLs redirect to the new page.
