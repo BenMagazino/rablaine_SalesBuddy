@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 5/5/2026
+## 5/5/2026 - eb0c138
 
 - Synapse Customers report polish: the Current tab now uses the most recent **complete** month for "Latest Month" and the 4-month average (so on May 5 it shows April's numbers, not May's partial data). The active tab is also remembered across visits via localStorage and applied before the page renders, so you no longer see the wrong tab flash on load.
 
