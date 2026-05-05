@@ -1942,6 +1942,15 @@ function checkForUpdates(refresh) {
             }
 
             applyResult(html, finalize);
+
+            // If the user pressed Check Now (refresh=true), the server just
+            // forced a fresh fetch of CHANGELOG.md from GitHub. Re-render the
+            // preloaded modal so it picks up any new entries that landed
+            // since the page first loaded - otherwise opening "View
+            // changelog" would still show the stale snapshot from boot.
+            if (refresh && document.getElementById('changelogModalBody')) {
+                loadChangelogModal();
+            }
         })
         .catch(() => {
             applyResult(
