@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 5/5/2026
+
+- Synapse Customers report polish: the Current tab now uses the most recent **complete** month for "Latest Month" and the 4-month average (so on May 5 it shows April's numbers, not May's partial data). The active tab is also remembered across visits via localStorage and applied before the page renders, so you no longer see the wrong tab flash on load.
+
 ## 5/5/2026 - b0e43c9
 
 - Updated the MSX Account Teams API outage error message to ask users to send the error to Alex so he can engage the MSX team. The previous "try again in a few hours" wording implied the issue would self-resolve, which it won't.

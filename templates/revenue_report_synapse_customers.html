@@ -1,6 +1,28 @@
 {% extends "base.html" %}
 {% block title %}Synapse Customers - Sales Buddy{% endblock %}
 
+{% block extra_head %}
+<script>
+// Run BEFORE the body renders so the user never sees the wrong tab flash.
+// If they landed without an explicit ?mode= and a different tab was saved
+// last visit, redirect immediately. window.location.replace() aborts the
+// current navigation so nothing paints.
+(function () {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('mode')) return;  // explicit mode wins
+        const saved = localStorage.getItem('synapseCustomersMode');
+        if (saved === 'new' || saved === 'current') {
+            const currentMode = {{ mode|tojson }};
+            if (saved !== currentMode) {
+                window.location.replace('?mode=' + encodeURIComponent(saved));
+            }
+        }
+    } catch (e) { /* localStorage unavailable - just stay on default */ }
+})();
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
 
@@ -174,4 +196,16 @@
     {% endfor %}
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Persist the active tab so the next visit lands here. The redirect logic
+// runs in extra_head before paint; this just records the current state.
+(function () {
+    try {
+        localStorage.setItem('synapseCustomersMode', {{ mode|tojson }});
+    } catch (e) {}
+})();
+</script>
 {% endblock %}

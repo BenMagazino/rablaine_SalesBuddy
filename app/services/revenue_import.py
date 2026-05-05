@@ -1298,15 +1298,26 @@ def get_new_product_users(consolidated_product: str, months_lookback: int = 6) -
         List of dicts with customer info, seller, first usage month, and current usage
     """
     from app.models import RevenueAnalysis
-    
+    from datetime import date as _date
+
     # Get the recent months in the database (sorted chronologically - newest first from query)
     months = get_months_in_database()
     if not months:
         return []
-    
+
     # Reverse to get chronological order (oldest first) for easier reasoning
     months_chrono = list(reversed(months))
-    
+
+    # Drop the current (in-progress) calendar month so "latest" means latest *complete* month.
+    # Revenue data for the current month is partial and would understate usage.
+    today = _date.today()
+    months_chrono = [
+        m for m in months_chrono
+        if not (m['month_date'].year == today.year and m['month_date'].month == today.month)
+    ]
+    if not months_chrono:
+        return []
+
     # Get the lookback threshold - we want customers whose first usage is within the last N months
     # If we have 7 months and want 6 months lookback, we exclude only month[0] (the oldest)
     if len(months_chrono) > months_lookback:
@@ -1449,6 +1460,16 @@ def get_current_product_users(consolidated_product: str) -> list[dict]:
         return []
 
     months_chrono = list(reversed(months))
+
+    # Drop the current (in-progress) calendar month so "latest" means latest *complete* month.
+    from datetime import date as _date
+    today = _date.today()
+    months_chrono = [
+        m for m in months_chrono
+        if not (m['month_date'].year == today.year and m['month_date'].month == today.month)
+    ]
+    if not months_chrono:
+        return []
 
     # Find all products that belong to this consolidated group
     matching_products: list[str] = []

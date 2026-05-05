@@ -1060,7 +1060,18 @@ def report_synapse_customers():
             )
 
     months = get_months_in_database()
-    lookback_months = months[-6:] if len(months) >= 6 else months
+    # months is sorted newest -> oldest. Drop the current (in-progress) calendar
+    # month so "latest" means latest *complete* month (matches the service-side
+    # filter used to compute latest_month_revenue and avg_4mo_revenue).
+    from datetime import date as _date
+    _today = _date.today()
+    months_complete = [
+        m for m in months
+        if not (m['month_date'].year == _today.year and m['month_date'].month == _today.month)
+    ]
+    # Take the most recent 6 complete months in chronological order for the
+    # header range label (oldest -> newest).
+    lookback_months = list(reversed(months_complete[:6]))
 
     return render_template(
         'revenue_report_synapse_customers.html',
