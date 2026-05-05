@@ -4488,7 +4488,8 @@ def scan_init() -> Dict[str, Any]:
                     "error": (
                         "MSX Account Teams API is currently unavailable (HTTP 400). "
                         "This is an MSX-side issue, not a Sales Buddy problem. "
-                        "Try again in a few hours."
+                        "Please send this error to Alex and he will engage the MSX team to fix it. "
+                        "It will not resolve itself if you do not."
                         "\n\n"
                         "Details: HTTP 400 on msp_accountteam entity, "
                         "error code 0x80040224 (\"Both header name and value should be specified\"), "
