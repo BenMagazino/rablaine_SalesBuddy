@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 5/5/2026
+## 5/5/2026 - b0e43c9
 
 - Updated the MSX Account Teams API outage error message to ask users to send the error to Alex so he can engage the MSX team. The previous "try again in a few hours" wording implied the issue would self-resolve, which it won't.
 
