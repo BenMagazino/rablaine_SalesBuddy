@@ -41,7 +41,12 @@ def _redirect_revenue_dashboard():
 
 @revenue_bp.route('/revenue/reports/new-synapse-users')
 def _redirect_new_synapse_users():
-    return redirect(url_for('revenue.report_new_synapse_users'), code=301)
+    return redirect(url_for('revenue.report_synapse_customers', mode='new'), code=301)
+
+
+@revenue_bp.route('/reports/new-synapse-users')
+def _redirect_new_synapse_users_short():
+    return redirect(url_for('revenue.report_synapse_customers', mode='new'), code=301)
 
 
 @revenue_bp.route('/revenue/reports')
@@ -996,56 +1001,76 @@ def reports_list():
     """List of available bespoke reports."""
     reports = [
         {
-            'id': 'new-synapse-users',
-            'name': 'New Synapse Customers',
-            'description': 'Customers who have started using Azure Synapse Analytics in the last 6 months, grouped by seller.',
+            'id': 'synapse-customers',
+            'name': 'Synapse Customers',
+            'description': 'New and current customers using Azure Synapse Analytics, grouped by seller.',
             'icon': 'bi-database-gear',
-            'url': url_for('revenue.report_new_synapse_users')
+            'url': url_for('revenue.report_synapse_customers')
         },
     ]
     
     return render_template('revenue_reports_list.html', reports=reports)
 
 
-@revenue_bp.route('/reports/new-synapse-users')
-def report_new_synapse_users():
-    """Report: Customers who recently started using Azure Synapse Analytics."""
+@revenue_bp.route('/reports/synapse-customers')
+def report_synapse_customers():
+    """Report: New and current customers using Azure Synapse Analytics."""
+    mode = request.args.get('mode', 'new').lower()
+    if mode not in ('new', 'current'):
+        mode = 'new'
+
+    product_name = 'Azure Synapse Analytics'
     has_revenue_data = SyncStatus.is_complete('revenue_import')
+
     if not has_revenue_data:
         return render_template(
-            'revenue_report_new_synapse_users.html',
+            'revenue_report_synapse_customers.html',
             has_revenue_data=False,
+            mode=mode,
             sellers={},
-            new_users=[],
+            users=[],
             total_count=0,
             lookback_months=[],
-            product_name='Azure Synapse Analytics',
+            product_name=product_name,
         )
-    from app.services.revenue_import import get_new_product_users, get_months_in_database
-    
-    # Get new users for Azure Synapse Analytics
-    new_users = get_new_product_users('Azure Synapse Analytics', months_lookback=6)
-    
+
+    from app.services.revenue_import import (
+        get_new_product_users,
+        get_current_product_users,
+        get_months_in_database,
+    )
+
+    if mode == 'current':
+        users = get_current_product_users(product_name)
+    else:
+        users = get_new_product_users(product_name, months_lookback=6)
+
     # Group by seller
-    sellers = {}
-    for user in new_users:
+    sellers: dict = {}
+    for user in users:
         seller = user['seller_name'] or '(No Seller Assigned)'
-        if seller not in sellers:
-            sellers[seller] = []
-        sellers[seller].append(user)
-    
-    # Get months for context
+        sellers.setdefault(seller, []).append(user)
+
+    # In current mode, sort each seller group by latest month revenue desc
+    if mode == 'current':
+        for seller_customers in sellers.values():
+            seller_customers.sort(
+                key=lambda c: c.get('latest_month_revenue') or 0,
+                reverse=True,
+            )
+
     months = get_months_in_database()
     lookback_months = months[-6:] if len(months) >= 6 else months
-    
+
     return render_template(
-        'revenue_report_new_synapse_users.html',
+        'revenue_report_synapse_customers.html',
         has_revenue_data=True,
+        mode=mode,
         sellers=sellers,
-        new_users=new_users,
-        total_count=len(new_users),
+        users=users,
+        total_count=len(users),
         lookback_months=lookback_months,
-        product_name='Azure Synapse Analytics'
+        product_name=product_name,
     )
 
 

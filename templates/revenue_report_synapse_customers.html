@@ -1,31 +1,51 @@
 {% extends "base.html" %}
-{% block title %}New Synapse Customers - Sales Buddy{% endblock %}
+{% block title %}Synapse Customers - Sales Buddy{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
 
     <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
-            <h2><i class="bi bi-database-gear"></i> New Synapse Customers</h2>
+            <h2><i class="bi bi-database-gear"></i> Synapse Customers</h2>
             <p class="text-muted mb-0">
+                {% if mode == 'current' %}
+                All customers with any spend on {{ product_name }}.
+                {% else %}
                 Customers who started using {{ product_name }} in the last 6 months
                 {% if lookback_months %}
                 <br><small>({{ lookback_months[0].fiscal_month }} through {{ lookback_months[-1].fiscal_month }})</small>
+                {% endif %}
                 {% endif %}
             </p>
         </div>
         <div class="d-flex gap-2">
             {% set export_table_id = 'table.table' %}
-            {% set export_filename = 'new-synapse-customers' %}
+            {% set export_filename = 'synapse-customers-' ~ mode %}
             {% include 'partials/_report_export.html' %}
         </div>
     </div>
+
+    <!-- Mode tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link {% if mode == 'new' %}active{% endif %}"
+               href="{{ url_for('revenue.report_synapse_customers', mode='new') }}">
+                <i class="bi bi-person-plus"></i> New Synapse Customers
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if mode == 'current' %}active{% endif %}"
+               href="{{ url_for('revenue.report_synapse_customers', mode='current') }}">
+                <i class="bi bi-people"></i> Current Synapse Customers
+            </a>
+        </li>
+    </ul>
 
     {% if not has_revenue_data %}
     <div class="text-center py-5">
         <i class="bi bi-inbox display-1 text-muted"></i>
         <h4 class="mt-3">No revenue data yet</h4>
-        <p class="text-muted">Import revenue data to see new {{ product_name }} users.</p>
+        <p class="text-muted">Import revenue data to see {{ product_name }} customers.</p>
         <a href="{{ url_for('revenue.revenue_import') }}" class="btn btn-primary">
             <i class="bi bi-upload"></i> Import Data
         </a>
@@ -36,9 +56,15 @@
         <div class="col-md-3">
             <div class="card bg-success text-white">
                 <div class="card-body">
+                    {% if mode == 'current' %}
+                    <h6 class="card-title"><i class="bi bi-people"></i> Customers</h6>
+                    <h3>{{ total_count }}</h3>
+                    <small>customers using {{ product_name }}</small>
+                    {% else %}
                     <h6 class="card-title"><i class="bi bi-person-plus"></i> New Users</h6>
                     <h3>{{ total_count }}</h3>
                     <small>customers started using {{ product_name }}</small>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -47,7 +73,7 @@
                 <div class="card-body">
                     <h6 class="card-title"><i class="bi bi-people"></i> Sellers</h6>
                     <h3>{{ sellers|length }}</h3>
-                    <small>sellers with new {{ product_name }} users</small>
+                    <small>sellers with {{ product_name }} customers</small>
                 </div>
             </div>
         </div>
@@ -55,7 +81,7 @@
             <div class="card bg-info text-white">
                 <div class="card-body">
                     <h6 class="card-title"><i class="bi bi-currency-dollar"></i> Total Revenue</h6>
-                    <h3>${{ '{:,.0f}'.format(new_users|sum(attribute='total_revenue')) }}</h3>
+                    <h3>${{ '{:,.0f}'.format(users|sum(attribute='total_revenue')) }}</h3>
                     <small>cumulative {{ product_name }} revenue</small>
                 </div>
             </div>
@@ -64,7 +90,7 @@
             <div class="card bg-warning text-dark">
                 <div class="card-body">
                     <h6 class="card-title"><i class="bi bi-calendar-check"></i> Latest Month</h6>
-                    <h3>${{ '{:,.0f}'.format(new_users|sum(attribute='latest_month_revenue')) }}</h3>
+                    <h3>${{ '{:,.0f}'.format(users|sum(attribute='latest_month_revenue')) }}</h3>
                     <small>{{ lookback_months[-1].fiscal_month if lookback_months else 'current' }} revenue</small>
                 </div>
             </div>
@@ -88,7 +114,11 @@
                     <thead class="table-dark">
                         <tr>
                             <th>Customer</th>
+                            {% if mode == 'current' %}
+                            <th class="text-end">Avg (Last 4mo)</th>
+                            {% else %}
                             <th class="text-center">First Usage</th>
+                            {% endif %}
                             <th class="text-end">Total Revenue</th>
                             <th class="text-end">Latest Month</th>
                         </tr>
@@ -105,9 +135,19 @@
                                 {{ customer.customer_name }}
                                 {% endif %}
                             </td>
+                            {% if mode == 'current' %}
+                            <td class="text-end">
+                                {% if customer.avg_4mo_revenue and customer.avg_4mo_revenue > 0 %}
+                                ${{ '{:,.0f}'.format(customer.avg_4mo_revenue) }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            {% else %}
                             <td class="text-center">
                                 <span class="badge bg-success">{{ customer.first_usage_fiscal or 'Unknown' }}</span>
                             </td>
+                            {% endif %}
                             <td class="text-end">${{ '{:,.0f}'.format(customer.total_revenue) }}</td>
                             <td class="text-end">
                                 {% if customer.latest_month_revenue > 0 %}
@@ -125,7 +165,11 @@
     </div>
     {% else %}
     <div class="alert alert-info">
+        {% if mode == 'current' %}
+        <i class="bi bi-info-circle"></i> No customers have any spend on {{ product_name }}.
+        {% else %}
         <i class="bi bi-info-circle"></i> No customers have started using {{ product_name }} in the last 6 months.
+        {% endif %}
     </div>
     {% endfor %}
     {% endif %}

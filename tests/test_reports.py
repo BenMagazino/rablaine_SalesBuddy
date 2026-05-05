@@ -30,7 +30,7 @@ class TestReportsHub:
         """Reports hub should link to revenue reports."""
         with app.app_context():
             resp = client.get('/reports')
-            assert b'New Synapse Customers' in resp.data
+            assert b'Synapse Customers' in resp.data
 
 
 class TestOneOnOneReport:
@@ -713,11 +713,25 @@ class TestReportRoutes:
             assert b'Revenue Analyzer' in resp.data
 
     def test_new_synapse_customers_loads(self, client, app):
-        """New Synapse Customers report should return 200."""
+        """Synapse Customers report (new mode) should return 200."""
         with app.app_context():
-            resp = client.get('/reports/new-synapse-users')
+            resp = client.get('/reports/synapse-customers?mode=new')
             assert resp.status_code == 200
             assert b'New Synapse Customers' in resp.data
+
+    def test_current_synapse_customers_loads(self, client, app):
+        """Synapse Customers report (current mode) should return 200."""
+        with app.app_context():
+            resp = client.get('/reports/synapse-customers?mode=current')
+            assert resp.status_code == 200
+            assert b'Current Synapse Customers' in resp.data
+
+    def test_old_synapse_users_url_redirects(self, client, app):
+        """Old /reports/new-synapse-users should 301 to new URL."""
+        with app.app_context():
+            resp = client.get('/reports/new-synapse-users')
+            assert resp.status_code == 301
+            assert '/reports/synapse-customers' in resp.headers['Location']
 
 
 class TestReportRedirects:
@@ -742,7 +756,7 @@ class TestReportRedirects:
         with app.app_context():
             resp = client.get('/revenue/reports/new-synapse-users')
             assert resp.status_code == 301
-            assert '/reports/new-synapse-users' in resp.headers['Location']
+            assert '/reports/synapse-customers' in resp.headers['Location']
 
 
 class TestReportExportPartial:
