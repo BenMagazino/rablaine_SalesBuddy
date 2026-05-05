@@ -1424,3 +1424,135 @@ def get_new_product_users(consolidated_product: str, months_lookback: int = 6) -
     results.sort(key=lambda x: (x['seller_name'] is None, x['seller_name'] or '', x['customer_name']))
     
     return results
+
+
+def get_current_product_users(consolidated_product: str) -> list[dict]:
+    """Find all customers with any spend on a consolidated product.
+
+    Unlike ``get_new_product_users``, this does not filter by when the
+    customer started using the product - any customer with non-zero
+    revenue on the product (across the entire revenue dataset) is
+    included.
+
+    Args:
+        consolidated_product: The consolidated product name (e.g.,
+            'Azure Synapse Analytics')
+
+    Returns:
+        List of dicts with customer info, seller, first usage month,
+        and current usage. Same shape as ``get_new_product_users``.
+    """
+    from app.models import RevenueAnalysis
+
+    months = get_months_in_database()
+    if not months:
+        return []
+
+    months_chrono = list(reversed(months))
+
+    # Find all products that belong to this consolidated group
+    matching_products: list[str] = []
+    for prefix in PRODUCT_CONSOLIDATION_PREFIXES:
+        if consolidated_product == prefix:
+            product_rows = db.session.query(
+                db.distinct(ProductRevenueData.product)
+            ).filter(
+                ProductRevenueData.product.like(f"{prefix}%")
+            ).all()
+            matching_products.extend([p[0] for p in product_rows])
+            break
+
+    if not matching_products:
+        matching_products = [consolidated_product]
+
+    # First usage date per customer (any non-zero month, anywhere in the dataset)
+    first_usage_rows = db.session.query(
+        ProductRevenueData.customer_name,
+        db.func.min(ProductRevenueData.month_date).label('first_usage_date')
+    ).filter(
+        ProductRevenueData.product.in_(matching_products),
+        ProductRevenueData.revenue > 0
+    ).group_by(
+        ProductRevenueData.customer_name
+    ).all()
+
+    if not first_usage_rows:
+        return []
+
+    customer_first_usage = {r.customer_name: r.first_usage_date for r in first_usage_rows}
+
+    # Customer ID mapping
+    customer_id_map = dict(
+        db.session.query(
+            ProductRevenueData.customer_name,
+            db.func.max(ProductRevenueData.customer_id)
+        ).filter(
+            ProductRevenueData.product.in_(matching_products),
+            ProductRevenueData.customer_id.isnot(None)
+        ).group_by(
+            ProductRevenueData.customer_name
+        ).all()
+    )
+
+    latest_month = months_chrono[-1]['month_date']
+    # Last 4 months (oldest first); fewer if dataset is smaller
+    last_4_months = [m['month_date'] for m in months_chrono[-4:]]
+    last_4_count = len(last_4_months)
+
+    results = []
+    for customer_name, first_usage_date in customer_first_usage.items():
+        analysis = RevenueAnalysis.query.filter_by(customer_name=customer_name).first()
+        seller_name = analysis.seller_name if analysis else None
+
+        total_rev = db.session.query(
+            db.func.sum(ProductRevenueData.revenue)
+        ).filter(
+            ProductRevenueData.customer_name == customer_name,
+            ProductRevenueData.product.in_(matching_products)
+        ).scalar() or 0
+
+        latest_rev = db.session.query(
+            db.func.sum(ProductRevenueData.revenue)
+        ).filter(
+            ProductRevenueData.customer_name == customer_name,
+            ProductRevenueData.product.in_(matching_products),
+            ProductRevenueData.month_date == latest_month
+        ).scalar() or 0
+
+        # Average revenue across the last 4 months (sum / month count, includes zeros)
+        last_4_sum = db.session.query(
+            db.func.sum(ProductRevenueData.revenue)
+        ).filter(
+            ProductRevenueData.customer_name == customer_name,
+            ProductRevenueData.product.in_(matching_products),
+            ProductRevenueData.month_date.in_(last_4_months)
+        ).scalar() or 0
+        avg_4mo_revenue = (last_4_sum / last_4_count) if last_4_count else 0
+
+        first_usage_fiscal = None
+        for m in months_chrono:
+            if m['month_date'] == first_usage_date:
+                first_usage_fiscal = m['fiscal_month']
+                break
+
+        cust_id = customer_id_map.get(customer_name)
+        tpid_url = None
+        if cust_id:
+            cust_obj = Customer.query.get(cust_id)
+            if cust_obj:
+                tpid_url = cust_obj.tpid_url
+
+        results.append({
+            'customer_name': customer_name,
+            'seller_name': seller_name,
+            'first_usage_date': first_usage_date,
+            'first_usage_fiscal': first_usage_fiscal,
+            'total_revenue': total_rev,
+            'latest_month_revenue': latest_rev,
+            'avg_4mo_revenue': avg_4mo_revenue,
+            'customer_id': cust_id,
+            'tpid_url': tpid_url,
+        })
+
+    results.sort(key=lambda x: (x['seller_name'] is None, x['seller_name'] or '', x['customer_name']))
+    return results

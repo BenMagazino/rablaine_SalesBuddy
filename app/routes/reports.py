@@ -106,14 +106,14 @@ def reports_hub():
                     'url': url_for('reports.report_whitespace'),
                 },
                 {
-                    'id': 'new-synapse-users',
-                    'name': 'New Synapse Customers',
+                    'id': 'synapse-customers',
+                    'name': 'Synapse Customers',
                     'description': (
-                        'Customers who have started using Azure Synapse Analytics '
-                        'in the last 6 months, grouped by seller.'
+                        'New and current customers using Azure Synapse Analytics, '
+                        'grouped by seller.'
                     ),
                     'icon': 'bi-database-gear',
-                    'url': url_for('revenue.report_new_synapse_users'),
+                    'url': url_for('revenue.report_synapse_customers'),
                 },
             ],
         },
