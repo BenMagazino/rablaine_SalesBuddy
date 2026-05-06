@@ -159,6 +159,7 @@ def create_app():
     from app.routes.connect_export import connect_export_bp
     from app.routes.backup import backup_bp
     from app.routes.reports import bp as reports_bp
+    from app.routes.metrics import metrics_bp
     
     app.register_blueprint(admin_bp)
     app.register_blueprint(ai_bp)
@@ -182,6 +183,7 @@ def create_app():
     app.register_blueprint(connect_export_bp)
     app.register_blueprint(backup_bp)
     app.register_blueprint(reports_bp)
+    app.register_blueprint(metrics_bp)
     
     # Start MSX token refresh job (background thread)
     # This keeps the az login token fresh for CRM API calls
@@ -239,5 +241,9 @@ def create_app():
         from app.services.meeting_sync import start_meeting_sync_background, start_daily_meeting_scheduler
         start_meeting_sync_background(app)
         start_daily_meeting_scheduler(app)
+
+        # Start MSX Account Teams health probe (hourly, with per-instance offset)
+        from app.services.msx_health_probe import start_probe_thread
+        start_probe_thread()
 
     return app

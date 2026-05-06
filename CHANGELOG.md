@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 5/5/2026 - PENDING
+
+- Added background telemetry that probes the MSX Account Teams endpoint hourly so we can monitor when the recurring outage is happening.
+
 ## 5/5/2026 - d79313e
 
 - "Check Now" in the admin Updates card now also refreshes the "View changelog" modal, so a forced re-fetch picks up brand-new entries in both places at once instead of just the card.

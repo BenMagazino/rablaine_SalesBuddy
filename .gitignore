@@ -127,3 +127,7 @@ installer/obj/
 installer/SalesBuddy.CustomActions/bin/
 installer/SalesBuddy.CustomActions/obj/
 paste_to_word.docx
+
+# Local-only planning docs
+docs/PLAN_*.md
+

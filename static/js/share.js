@@ -385,6 +385,13 @@ const Share = (function () {
       el.textContent = onlineUsers.length;
       el.style.display = (shareEnabled && onlineUsers.length > 0) ? '' : 'none';
     });
+
+    // Broadcast allowlist state so other features can gate UI on it
+    // (e.g. /metrics page hides its sign-in button for non-allowlisted users).
+    document.body.classList.toggle('share-enabled', shareEnabled);
+    document.dispatchEvent(new CustomEvent('share:enabled-changed', {
+      detail: { enabled: shareEnabled },
+    }));
   }
 
   function _resetShareState() {
@@ -661,6 +668,10 @@ const Share = (function () {
     return connected;
   }
 
+  function isShareEnabled() {
+    return shareEnabled;
+  }
+
   // ── Public API ──────────────────────────────────────────────────────
 
   return {
@@ -672,6 +683,7 @@ const Share = (function () {
     declineOffer,
     getOnlineCount,
     isConnected,
+    isShareEnabled,
     confirmImport,
     toggleAllImport,
     selectNewOnly,
