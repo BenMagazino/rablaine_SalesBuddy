@@ -16,10 +16,19 @@ Cards (in order):
 from __future__ import annotations
 
 import logging
+import shutil
+import subprocess
+import sys
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, abort, jsonify, render_template, request
 
-from app.services.app_insights import AppInsightsError, query_to_dicts
+from app.services.app_insights import (
+    AppInsightsError,
+    TENANT_ID as APP_INSIGHTS_TENANT_ID,
+    is_auth_error,
+    query_to_dicts,
+    reset_token_cache,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -298,49 +307,128 @@ def _safe_query(title: str, kql: str, timespan: str) -> dict:
             'rows': [],
             'error': str(exc),
             'status_code': exc.status_code,
+            # The UI uses this flag to show a "sign in to BlaineCorp"
+            # button instead of just the raw error text.
+            'auth_required': is_auth_error(exc),
         }
     except Exception as exc:  # noqa: BLE001
         logger.exception(f'Metrics card "{title}" raised unexpectedly')
         return {'title': title, 'rows': [], 'error': str(exc)}
 
 
-@metrics_bp.route('/metrics')
-def metrics_dashboard():
-    """Render the (unadvertised) App Insights-backed metrics dashboard."""
+def _coerce_days(raw) -> int:
     try:
-        days = int(request.args.get('days', 7))
+        days = int(raw)
     except (TypeError, ValueError):
-        days = 7
-    if days not in (1, 7, 30, 90):
-        days = 7
-    timespan = f'P{days}D'
+        return 7
+    return days if days in (1, 7, 30, 90) else 7
 
-    cards = {
-        'probe_status':     _safe_query('Probe results',          _q_probe_status(days),     timespan),
-        'probe_timeline':   _safe_query('Probe timeline (hourly)', _q_probe_timeline(days),  timespan),
-        'probe_recent':     _safe_query('Recent probe events',    _q_probe_recent(days),     timespan),
-        'dau':              _safe_query('Daily active users',     _q_dau(days),              timespan),
-        'installs_by_role': _safe_query('Installs by role',       _q_installs_by_role(),     'P30D'),
-        'flag_adoption':    _safe_query('Feature flag adoption',  _q_flag_adoption(),        'P30D'),
-        'adoption_by_role': _safe_query('Adoption by role',       _q_adoption_by_role(),     'P30D'),
-        'entity_counts':    _safe_query('Entity-count distribution', _q_entity_counts(),     'P30D'),
-        'top_features':     _safe_query('Top 30 features',        _q_top_features(days),     timespan),
-        'reports':          _safe_query('Reports opened',         _q_reports(days),          timespan),
-        'power_features':   _safe_query('Power-feature adoption', _q_power_features(days),   timespan),
-        'errors':           _safe_query('Error rate & latency',   _q_errors(days),           timespan),
-        'workiq_failures':  _safe_query('WorkIQ failures',        _q_workiq_failures(days),  timespan),
-        'app_versions':     _safe_query('App version distribution', _q_app_versions(),       'P30D'),
+
+# Card key -> (title, builder(days) -> kql, timespan_resolver(days) -> timespan).
+# Cards whose query depends on `days` use the dynamic timespan; cards that
+# always look at the last 30d use a fixed P30D so the App Insights backend
+# can short-circuit the scan.
+def _card_specs(days: int) -> dict[str, tuple[str, str, str]]:
+    timespan = f'P{days}D'
+    return {
+        'probe_status':     ('Probe results',                  _q_probe_status(days),     timespan),
+        'probe_timeline':   ('Probe timeline (hourly)',         _q_probe_timeline(days),   timespan),
+        'probe_recent':     ('Recent probe events',             _q_probe_recent(days),     timespan),
+        'dau':              ('Daily active users',              _q_dau(days),              timespan),
+        'installs_by_role': ('Installs by role',                _q_installs_by_role(),     'P30D'),
+        'flag_adoption':    ('Feature flag adoption',           _q_flag_adoption(),        'P30D'),
+        'adoption_by_role': ('Adoption by role',                _q_adoption_by_role(),     'P30D'),
+        'entity_counts':    ('Entity-count distribution',       _q_entity_counts(),        'P30D'),
+        'top_features':     ('Top 30 features',                 _q_top_features(days),     timespan),
+        'reports':          ('Reports opened',                  _q_reports(days),          timespan),
+        'power_features':   ('Power-feature adoption',          _q_power_features(days),   timespan),
+        'errors':           ('Error rate & latency',            _q_errors(days),           timespan),
+        'workiq_failures':  ('WorkIQ failures',                 _q_workiq_failures(days),  timespan),
+        'app_versions':     ('App version distribution',        _q_app_versions(),         'P30D'),
     }
 
-    # Headline status for the probe card: derive from probe_status counts.
-    probe_summary = _summarize_probe(cards['probe_status'])
 
-    return render_template(
-        'metrics.html',
-        days=days,
-        cards=cards,
-        probe_summary=probe_summary,
-    )
+@metrics_bp.route('/metrics')
+def metrics_dashboard():
+    """Render the (unadvertised) dashboard shell. Cards load via /api/metrics/<card>."""
+    days = _coerce_days(request.args.get('days', 7))
+    return render_template('metrics.html', days=days)
+
+
+@metrics_bp.route('/api/metrics/card/<card_id>')
+def api_metrics_card(card_id: str):
+    """Run a single dashboard card's KQL and return JSON.
+
+    Each card is fetched independently so the page can paint immediately
+    and stream results as they arrive. Errors are returned in the JSON
+    body (with status 200) so the client can render a per-card error
+    state without triggering generic browser error UI.
+    """
+    days = _coerce_days(request.args.get('days', 7))
+    specs = _card_specs(days)
+    spec = specs.get(card_id)
+    if not spec:
+        abort(404)
+    title, kql, timespan = spec
+    result = _safe_query(title, kql, timespan)
+
+    payload = {
+        'card_id': card_id,
+        'title': result['title'],
+        'rows': result['rows'],
+        'error': result.get('error'),
+        'status_code': result.get('status_code'),
+        'auth_required': result.get('auth_required', False),
+    }
+    # Probe status card also returns a derived banner summary so the
+    # client doesn't need to duplicate the logic.
+    if card_id == 'probe_status':
+        payload['summary'] = _summarize_probe(result)
+    return jsonify(payload)
+
+
+@metrics_bp.route('/api/metrics/sign-in', methods=['POST'])
+def api_metrics_sign_in():
+    """Pop an interactive ``az login`` for the App Insights tenant.
+
+    Used by the metrics dashboard when the user lands on a 403 because
+    they cleared their ``az`` cache (``az account clear``) or have never
+    completed the BlaineCorp guest MFA. Sales Buddy is single-user and
+    runs on the user's own machine, so the browser popup goes straight
+    to them.
+
+    The route returns immediately after spawning the process. The client
+    polls a card endpoint to detect when authentication completes.
+    """
+    az = shutil.which('az') or shutil.which('az.cmd')
+    if not az:
+        return jsonify({'error': 'Azure CLI (az) not found on PATH'}), 500
+
+    cmd = [
+        az, 'login',
+        '--tenant', APP_INSIGHTS_TENANT_ID,
+        '--scope', 'https://api.applicationinsights.io/.default',
+    ]
+    try:
+        # We want the popup to be visible so the user can complete MFA.
+        # Don't capture stdio - that would block on the prompt. Don't
+        # wait either - we return immediately.
+        creationflags = 0
+        if sys.platform == 'win32':
+            CREATE_NEW_CONSOLE = 0x00000010
+            creationflags = CREATE_NEW_CONSOLE
+        subprocess.Popen(cmd, creationflags=creationflags, close_fds=True)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception('Failed to spawn az login')
+        return jsonify({'error': f'Failed to spawn az login: {exc}'}), 500
+
+    # Drop the in-process cache so the next card request acquires a
+    # fresh token from the new disk cache.
+    reset_token_cache()
+    return jsonify({
+        'success': True,
+        'message': 'A browser window should open to complete sign-in.',
+    })
 
 
 def _summarize_probe(card: dict) -> dict:

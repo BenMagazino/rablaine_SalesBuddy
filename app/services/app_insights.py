@@ -33,6 +33,13 @@ class AppInsightsError(Exception):
 # we ship to).
 APP_ID = '84a49533-d8f7-4720-a3cf-9da762f11a64'
 
+# The App Insights resource lives in the BlaineCorp tenant. We pin the
+# tenant when acquiring tokens so guest users (e.g. a Microsoft account
+# invited as a guest) get a token issued by the resource's home tenant
+# instead of their own. Without this pin, az login -> Microsoft tenant
+# would mint a token that App Insights rejects with HTTP 403.
+TENANT_ID = '96d12531-723e-46c1-842b-0480739c7419'
+
 _API_BASE = 'https://api.applicationinsights.io/v1/apps'
 _TOKEN_SCOPE = 'https://api.applicationinsights.io/.default'
 
@@ -52,12 +59,15 @@ def _get_token() -> str:
 
     if _credential is None:
         # Prefer AzureCliCredential for local dev - faster, no prompts.
+        # Pin the tenant so guest users get a BlaineCorp-issued token.
         try:
-            cred = AzureCliCredential()
+            cred = AzureCliCredential(tenant_id=TENANT_ID)
             cred.get_token(_TOKEN_SCOPE)
             _credential = cred
         except Exception:
-            _credential = DefaultAzureCredential()
+            _credential = DefaultAzureCredential(
+                additionally_allowed_tenants=[TENANT_ID],
+            )
 
     try:
         token_obj = _credential.get_token(_TOKEN_SCOPE)
@@ -69,6 +79,37 @@ def _get_token() -> str:
     _cached_token = token_obj.token
     _token_expiry = token_obj.expires_on
     return _cached_token
+
+
+def reset_token_cache() -> None:
+    """Drop the in-process token + credential cache.
+
+    Call this after the user has done a fresh ``az login`` so the next
+    request acquires a token from the new disk cache instead of reusing
+    the stale in-memory one.
+    """
+    global _credential, _cached_token, _token_expiry
+    _credential = None
+    _cached_token = None
+    _token_expiry = 0
+
+
+def is_auth_error(exc: 'AppInsightsError') -> bool:
+    """True if the error looks like 'user is not signed in to BlaineCorp'.
+
+    Used by the metrics UI to decide whether to surface the
+    "sign in to BlaineCorp" button. We treat any 401/403 as an auth
+    issue, plus token-acquisition failures (which never get a status code).
+    """
+    if exc.status_code in (401, 403):
+        return True
+    msg = str(exc).lower()
+    return (
+        'failed to acquire' in msg
+        or 'invalid_grant' in msg
+        or 'interaction_required' in msg
+        or 'aadsts' in msg
+    )
 
 
 def query(

@@ -6,14 +6,27 @@
 <style>
   .metric-card { margin-bottom: 1.25rem; }
   .metric-card .card-header { font-weight: 600; }
+
+  /* Make table headers readable in BOTH light and dark themes by leaning
+     on Bootstrap's CSS vars instead of hardcoding colors. */
+  .metric-table { font-size: 0.875rem; margin-bottom: 0; }
+  .metric-table thead th {
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+    font-weight: 600;
+    border-bottom: 2px solid var(--bs-border-color);
+  }
+  .metric-table tbody td { color: var(--bs-body-color); }
+
   .metric-error {
-    background: #fff8e1;
-    border: 1px solid #ffe0b2;
-    color: #6d4c00;
+    background: var(--bs-warning-bg-subtle, #fff8e1);
+    border: 1px solid var(--bs-warning-border-subtle, #ffe0b2);
+    color: var(--bs-warning-text-emphasis, #6d4c00);
     padding: 0.5rem 0.75rem;
     border-radius: 4px;
     font-size: 0.85rem;
   }
+
   .probe-bar { display: flex; align-items: stretch; gap: 1px; height: 18px; }
   .probe-bar-cell { flex: 1; min-width: 4px; border-radius: 1px; }
   .probe-bar-cell.ok { background: #28a745; }
@@ -21,49 +34,29 @@
   .probe-bar-cell.skipped_no_token { background: #adb5bd; }
   .probe-bar-cell.skipped_no_vpn { background: #6c757d; }
   .probe-bar-cell.error { background: #ffc107; }
-  .probe-bar-cell.empty { background: #f1f3f5; }
+
   .probe-status-banner {
     padding: 1rem 1.25rem;
     border-radius: 4px;
     margin-bottom: 1rem;
     font-size: 1rem;
   }
-  .probe-status-banner.healthy { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-  .probe-status-banner.outage { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  .probe-status-banner.healthy { background: var(--bs-success-bg-subtle, #d4edda); color: var(--bs-success-text-emphasis, #155724); border: 1px solid var(--bs-success-border-subtle, #c3e6cb); }
+  .probe-status-banner.outage  { background: var(--bs-danger-bg-subtle, #f8d7da);  color: var(--bs-danger-text-emphasis, #721c24);  border: 1px solid var(--bs-danger-border-subtle, #f5c6cb); }
   .probe-status-banner.no-data,
-  .probe-status-banner.unknown { background: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
-  .metric-table { font-size: 0.875rem; }
-  .metric-table thead th { background: #f8f9fa; }
+  .probe-status-banner.unknown { background: var(--bs-secondary-bg-subtle, #e2e3e5); color: var(--bs-secondary-text-emphasis, #383d41); border: 1px solid var(--bs-border-color, #d6d8db); }
+  .probe-status-banner.loading { background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); border: 1px dashed var(--bs-border-color); }
+
   .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+  .card-loading {
+    color: var(--bs-secondary-color);
+    font-size: 0.875rem;
+    padding: 0.5rem 0;
+  }
+  .card-loading .spinner-border { width: 1rem; height: 1rem; border-width: .15em; vertical-align: -2px; margin-right: 6px; }
 </style>
 {% endblock %}
-
-{% macro render_table(card, key_cols=None) %}
-  {% if card.error %}
-    <div class="metric-error">
-      <i class="bi bi-exclamation-triangle"></i> {{ card.error }}
-    </div>
-  {% elif not card.rows %}
-    <p class="text-muted small mb-0">No data in window.</p>
-  {% else %}
-    <div class="table-responsive">
-      <table class="table table-sm table-hover metric-table mb-0">
-        <thead>
-          <tr>
-            {% for col in card.rows[0].keys() %}<th>{{ col }}</th>{% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in card.rows %}
-          <tr>
-            {% for v in row.values() %}<td>{{ v if v is not none else '' }}</td>{% endfor %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% endif %}
-{% endmacro %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-start mb-3">
@@ -71,8 +64,9 @@
     <h2><i class="bi bi-graph-up"></i> Metrics</h2>
     <p class="text-muted mb-0 small">
       Live App Insights data from the <code>NoteHelper_Telemetry</code> workspace.
-      Authentication uses your <code>az login</code> credential. If a card shows a 403,
-      grant your account read on the App Insights resource.
+      Authentication uses your <code>az login</code> credential. Cards load
+      independently; if one shows a 403, grant your account read on the
+      App Insights resource.
     </p>
   </div>
   <div class="btn-group" role="group" aria-label="Time range">
@@ -84,83 +78,352 @@
   </div>
 </div>
 
-<!-- =====================================================================
-     Card 1: MSX Account Teams probe
-     ===================================================================== -->
+<!-- Probe card -->
 <div class="card metric-card">
   <div class="card-header d-flex align-items-center justify-content-between">
     <span><i class="bi bi-shield-check"></i> MSX Account Teams probe</span>
     <small class="text-muted">last {{ days }}d</small>
   </div>
   <div class="card-body">
-    <div class="probe-status-banner {{ probe_summary.state }}">
-      <strong>{{ probe_summary.label }}</strong>
-      <div class="small">{{ probe_summary.detail }}</div>
+    <div id="probe-summary" class="probe-status-banner loading">
+      <span class="spinner-border spinner-border-sm" role="status"></span>
+      Loading probe status...
     </div>
-
     <div class="row">
       <div class="col-md-4">
         <h6 class="text-muted mb-2">Result counts</h6>
-        {{ render_table(cards.probe_status) }}
+        <div data-card="probe_status" class="card-loading">
+          <span class="spinner-border" role="status"></span>Loading...
+        </div>
       </div>
       <div class="col-md-8">
         <h6 class="text-muted mb-2">Hourly timeline</h6>
-        {% if cards.probe_timeline.error %}
-          <div class="metric-error">
-            <i class="bi bi-exclamation-triangle"></i> {{ cards.probe_timeline.error }}
-          </div>
-        {% elif not cards.probe_timeline.rows %}
-          <p class="text-muted small">No probe events yet in this window.</p>
-        {% else %}
-          <div class="probe-bar mb-2">
-            {% for row in cards.probe_timeline.rows %}
-              <div
-                class="probe-bar-cell {{ row.result }}"
-                title="{{ row.timestamp }} - {{ row.result }} ({{ row.events }})"
-              ></div>
-            {% endfor %}
-          </div>
-          <div class="small text-muted">
-            <span class="legend-dot" style="background:#28a745;"></span> ok
-            <span class="legend-dot" style="background:#dc3545; margin-left:8px;"></span> outage
-            <span class="legend-dot" style="background:#adb5bd; margin-left:8px;"></span> no token
-            <span class="legend-dot" style="background:#6c757d; margin-left:8px;"></span> no vpn
-            <span class="legend-dot" style="background:#ffc107; margin-left:8px;"></span> error
-          </div>
-        {% endif %}
+        <div data-card="probe_timeline" data-render="probe_timeline" class="card-loading">
+          <span class="spinner-border" role="status"></span>Loading...
+        </div>
       </div>
     </div>
-
     <hr>
     <h6 class="text-muted mb-2">Recent probe events</h6>
-    {{ render_table(cards.probe_recent) }}
+    <div data-card="probe_recent" class="card-loading">
+      <span class="spinner-border" role="status"></span>Loading...
+    </div>
   </div>
 </div>
 
-<!-- =====================================================================
-     Cards 2-N: ported workbook queries
-     ===================================================================== -->
 {% set ported_cards = [
-  ('dau',              'Daily active users'),
-  ('installs_by_role', 'Installs by role (last 30d)'),
-  ('flag_adoption',    'Feature flag adoption (last 30d)'),
-  ('adoption_by_role', 'Adoption by role: SE vs DSS (last 30d)'),
-  ('entity_counts',    'Entity-count distribution by role (last 30d)'),
-  ('top_features',     'Top 30 features'),
-  ('reports',          'Reports - which ones get opened'),
-  ('power_features',   'Power-feature adoption'),
-  ('errors',           'Error rate & latency by feature'),
-  ('workiq_failures',  'WorkIQ failures'),
-  ('app_versions',     'App version distribution (last 30d)'),
+  ('dau',              'Daily active users', 'dau_line'),
+  ('installs_by_role', 'Installs by role (last 30d)', None),
+  ('flag_adoption',    'Feature flag adoption (last 30d)', None),
+  ('adoption_by_role', 'Adoption by role: SE vs DSS (last 30d)', None),
+  ('entity_counts',    'Entity-count distribution by role (last 30d)', None),
+  ('top_features',     'Top 30 features', None),
+  ('reports',          'Reports - which ones get opened', None),
+  ('power_features',   'Power-feature adoption', None),
+  ('errors',           'Error rate & latency by feature', None),
+  ('workiq_failures',  'WorkIQ failures', None),
+  ('app_versions',     'App version distribution (last 30d)', None),
 ] %}
 
-{% for key, title in ported_cards %}
+{% for key, title, render_mode in ported_cards %}
 <div class="card metric-card">
   <div class="card-header">{{ title }}</div>
   <div class="card-body">
-    {{ render_table(cards[key]) }}
+    <div data-card="{{ key }}"{% if render_mode %} data-render="{{ render_mode }}"{% endif %} class="card-loading">
+      <span class="spinner-border" role="status"></span>Loading...
+    </div>
   </div>
 </div>
 {% endfor %}
+{% endblock %}
 
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
+<script>
+(function() {
+  const DAYS = {{ days }};
+
+  function escapeHtml(v) {
+    if (v === null || v === undefined) return '';
+    return String(v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function renderError(msg) {
+    return `<div class="metric-error"><i class="bi bi-exclamation-triangle"></i> ${escapeHtml(msg)}</div>`;
+  }
+
+  function renderAuthRequired() {
+    // Special "you're not signed into BlaineCorp" state. The sign-in
+    // button is only shown to users on the gateway's share allowlist
+    // (i.e. Alex or Ben) - everyone else would just hit a tenant they
+    // don't have guest access to, so we don't tease them with a button.
+    const allowed = (window.Share && typeof window.Share.isShareEnabled === 'function')
+      ? window.Share.isShareEnabled()
+      : false;
+    const button = allowed ? `
+        <div class="mt-2">
+          <button type="button" class="btn btn-sm btn-warning" data-action="metrics-sign-in">
+            <i class="bi bi-box-arrow-in-right"></i> Sign in to BlaineCorp
+          </button>
+          <span class="signin-status text-muted small ms-2"></span>
+        </div>` : '';
+    return `
+      <div class="metric-error" data-state="auth-required">
+        <i class="bi bi-shield-lock"></i>
+        Not signed in to App Insights (BlaineCorp tenant).${button}
+      </div>`;
+  }
+
+  function renderTable(rows) {
+    if (!rows || rows.length === 0) {
+      return '<p class="text-muted small mb-0">No data in window.</p>';
+    }
+    const cols = Object.keys(rows[0]);
+    const head = cols.map(c => `<th>${escapeHtml(c)}</th>`).join('');
+    const body = rows.map(r => {
+      const cells = cols.map(c => `<td>${escapeHtml(r[c])}</td>`).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+    return `
+      <div class="table-responsive">
+        <table class="table table-sm table-hover metric-table">
+          <thead><tr>${head}</tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function renderProbeTimeline(rows) {
+    if (!rows || rows.length === 0) {
+      return '<p class="text-muted small mb-0">No probe events yet in this window.</p>';
+    }
+    const cells = rows.map(r => {
+      const result = r.result || 'error';
+      const tip = `${escapeHtml(r.timestamp)} - ${escapeHtml(result)} (${escapeHtml(r.events)})`;
+      return `<div class="probe-bar-cell ${escapeHtml(result)}" title="${tip}"></div>`;
+    }).join('');
+    return `
+      <div class="probe-bar mb-2">${cells}</div>
+      <div class="small text-muted">
+        <span class="legend-dot" style="background:#28a745;"></span> ok
+        <span class="legend-dot" style="background:#dc3545; margin-left:8px;"></span> outage
+        <span class="legend-dot" style="background:#adb5bd; margin-left:8px;"></span> no token
+        <span class="legend-dot" style="background:#6c757d; margin-left:8px;"></span> no vpn
+        <span class="legend-dot" style="background:#ffc107; margin-left:8px;"></span> error
+      </div>`;
+  }
+
+  function renderProbeSummary(summary) {
+    const banner = document.getElementById('probe-summary');
+    if (!banner || !summary) return;
+    banner.className = 'probe-status-banner ' + (summary.state || 'unknown');
+    banner.innerHTML = `
+      <strong>${escapeHtml(summary.label)}</strong>
+      <div class="small">${escapeHtml(summary.detail)}</div>
+    `;
+  }
+
+  // Read theme-aware colors from the active Bootstrap CSS variables so
+  // the chart matches light/dark mode without us hardcoding hex values.
+  function themeColors() {
+    const css = getComputedStyle(document.body);
+    return {
+      text:    css.getPropertyValue('--bs-body-color').trim() || '#333',
+      muted:   css.getPropertyValue('--bs-secondary-color').trim() || '#6c757d',
+      grid:    css.getPropertyValue('--bs-border-color').trim() || '#dee2e6',
+      bg:      css.getPropertyValue('--bs-body-bg').trim() || '#fff',
+    };
+  }
+
+  function renderDauLine(el, rows) {
+    if (!rows || rows.length === 0) {
+      el.innerHTML = '<p class="text-muted small mb-0">No data in window.</p>';
+      return;
+    }
+    // Pivot rows into {date -> {role -> DAU}} so we can build a labeled
+    // x axis with one entry per day.
+    const byDate = new Map();
+    const roleSet = new Set();
+    rows.forEach(r => {
+      const role = r.user_role || 'unknown';
+      const ts = r.timestamp;
+      const dau = Number(r.DAU) || 0;
+      if (!byDate.has(ts)) byDate.set(ts, {});
+      byDate.get(ts)[role] = dau;
+      roleSet.add(role);
+    });
+    const dates = Array.from(byDate.keys()).sort();
+    const roles = Array.from(roleSet);
+
+    // Format date labels using UTC because the KQL bins by UTC day. A
+    // local-tz format would show "4/28" for the 4/29 UTC bin in PST.
+    const labels = dates.map(d => {
+      const dt = new Date(d);
+      return (dt.getUTCMonth() + 1) + '/' + dt.getUTCDate();
+    });
+
+    const totalData = dates.map(d => {
+      let s = 0;
+      const entry = byDate.get(d);
+      for (const k in entry) s += entry[k];
+      return s;
+    });
+
+    const PALETTE = ['#0d6efd', '#dc3545', '#198754', '#fd7e14', '#6610f2', '#20c997', '#d63384'];
+    const datasets = [
+      {
+        label: 'Total',
+        data: totalData,
+        borderColor: themeColors().text,
+        backgroundColor: themeColors().text,
+        borderDash: [6, 4],
+        borderWidth: 2.5,
+        tension: 0,
+        pointRadius: 3,
+      },
+      ...roles.map((role, i) => ({
+        label: role,
+        data: dates.map(d => byDate.get(d)[role] ?? 0),
+        borderColor: PALETTE[i % PALETTE.length],
+        backgroundColor: PALETTE[i % PALETTE.length],
+        borderWidth: 2,
+        tension: 0,
+        pointRadius: 3,
+      })),
+    ];
+
+    el.innerHTML = '<div style="position:relative; height:260px;"><canvas></canvas></div>';
+    const canvas = el.querySelector('canvas');
+    const colors = themeColors();
+    new Chart(canvas, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: colors.text, boxWidth: 12, boxHeight: 3 },
+          },
+          tooltip: {
+            // Shared tooltip showing every series for the hovered day.
+            mode: 'index',
+            intersect: false,
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: colors.muted, autoSkip: false, maxRotation: 0 },
+            grid: { color: colors.grid },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: colors.muted, precision: 0, stepSize: 1 },
+            grid: { color: colors.grid },
+          },
+        },
+      },
+    });
+  }
+
+  function loadCard(el) {
+    const cardId = el.getAttribute('data-card');
+    const renderMode = el.getAttribute('data-render');
+    fetch(`/api/metrics/card/${cardId}?days=${DAYS}`, { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.auth_required) {
+          el.innerHTML = renderAuthRequired();
+        } else if (data.error) {
+          el.innerHTML = renderError(data.error);
+        } else if (renderMode === 'probe_timeline') {
+          el.innerHTML = renderProbeTimeline(data.rows);
+        } else if (renderMode === 'dau_line') {
+          renderDauLine(el, data.rows);
+        } else {
+          el.innerHTML = renderTable(data.rows);
+        }
+        if (data.summary) {
+          renderProbeSummary(data.summary);
+        }
+      })
+      .catch(err => {
+        el.innerHTML = renderError('Network error: ' + err.message);
+      });
+  }
+
+  function reloadAllCards() {
+    document.querySelectorAll('[data-card]').forEach(el => {
+      el.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Loading...';
+      el.classList.add('card-loading');
+    });
+    document.querySelectorAll('[data-card]').forEach(loadCard);
+  }
+
+  // Sign-in flow: spawn az login, then poll a card endpoint until the
+  // token starts working. Each click of the button triggers a fresh
+  // popup attempt and starts polling.
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-action="metrics-sign-in"]');
+    if (!btn) return;
+    ev.preventDefault();
+    const status = btn.parentElement.querySelector('.signin-status');
+    btn.disabled = true;
+    status.textContent = 'Opening sign-in window...';
+    fetch('/api/metrics/sign-in', { method: 'POST', credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          status.textContent = 'Error: ' + data.error;
+          btn.disabled = false;
+          return;
+        }
+        status.textContent = 'Waiting for sign-in to complete...';
+        // Poll the cheapest card until it stops returning auth_required.
+        let tries = 0;
+        const maxTries = 60;  // ~5 min at 5s intervals
+        const poll = () => {
+          tries++;
+          fetch(`/api/metrics/card/probe_status?days=1`, { credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(d => {
+              if (!d.auth_required) {
+                status.textContent = 'Signed in! Reloading...';
+                setTimeout(reloadAllCards, 400);
+              } else if (tries < maxTries) {
+                setTimeout(poll, 5000);
+              } else {
+                status.textContent = 'Timed out waiting for sign-in.';
+                btn.disabled = false;
+              }
+            })
+            .catch(() => {
+              if (tries < maxTries) setTimeout(poll, 5000);
+            });
+        };
+        setTimeout(poll, 5000);
+      })
+      .catch(err => {
+        status.textContent = 'Network error: ' + err.message;
+        btn.disabled = false;
+      });
+  });
+
+  // When the share allowlist signal flips (Share connects/disconnects),
+  // re-render any cards currently in the auth-required state so the
+  // sign-in button appears for Alex/Ben and stays hidden for everyone else.
+  document.addEventListener('share:enabled-changed', () => {
+    document.querySelectorAll('[data-card] [data-state="auth-required"]').forEach(el => {
+      const card = el.closest('[data-card]');
+      if (card) card.innerHTML = renderAuthRequired();
+    });
+  });
+
+  document.querySelectorAll('[data-card]').forEach(loadCard);
+})();
+</script>
 {% endblock %}
