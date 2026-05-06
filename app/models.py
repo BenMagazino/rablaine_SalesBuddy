@@ -1370,6 +1370,8 @@ class UserPreference(db.Model):
     first_run_modal_dismissed = db.Column(db.Boolean, default=False, nullable=False)  # Track if welcome modal has been dismissed
     guided_tour_completed = db.Column(db.Boolean, default=False, nullable=False)  # Track if product tour has been shown
     dismissed_update_commit = db.Column(db.String(7), nullable=True)  # Last dismissed update commit hash (short)
+    current_commit = db.Column(db.String(40), nullable=True)  # Commit the running server is on (updated each boot)
+    previous_commit = db.Column(db.String(40), nullable=True)  # Commit the running server WAS on before the most recent update
     workiq_summary_prompt = db.Column(db.Text, nullable=True)  # Custom WorkIQ meeting summary prompt (null = use default)
     workiq_connect_impact = db.Column(db.Boolean, default=True, nullable=False)  # Extract Connect impact signals from WorkIQ summaries
     default_template_customer_id = db.Column(db.Integer, db.ForeignKey('note_templates.id', ondelete='SET NULL'), nullable=True)  # Default template for customer notes

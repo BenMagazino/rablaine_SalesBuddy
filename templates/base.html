@@ -5,13 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Sales Buddy{% endblock %}</title>
     <script>if(window.matchMedia('(display-mode: standalone)').matches){document.title=document.title.replace(/ - Sales Buddy$/,'')}</script>
-    <script>
-        // The "What just landed" admin card is sticky across refreshes of the
-        // admin panel but should clear once the user navigates away.
-        if (window.location.pathname !== '/admin') {
-            try { sessionStorage.removeItem('sb_just_updated_from_date'); } catch (e) {}
-        }
-    </script>
     {% if dark_mode is none %}
     <script>
         // Auto-detect OS theme on first launch, before Bootstrap paints, to

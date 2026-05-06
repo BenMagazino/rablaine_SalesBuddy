@@ -214,6 +214,33 @@ def create_app():
     except Exception:
         app.config['BOOT_COMMIT_DATE'] = None
 
+    # Persist the current boot commit to the DB so the admin Updates card
+    # can resolve "what just landed" after an update without depending on
+    # per-tab sessionStorage.
+    #
+    # Important: we ONLY update current_commit here. previous_commit is
+    # written by /api/admin/update-apply right before it triggers the
+    # restart, so a plain restart (crash, config tweak, dev reload) never
+    # rotates the pair and the "last update" view stays accurate
+    # indefinitely until the user actually deploys again.
+    try:
+        boot_commit = app.config.get('BOOT_COMMIT')
+        if boot_commit:
+            with app.app_context():
+                from app.models import UserPreference, db as _db
+                pref = UserPreference.query.first()
+                if pref is None:
+                    pref = UserPreference(current_commit=boot_commit)
+                    _db.session.add(pref)
+                    _db.session.commit()
+                elif pref.current_commit != boot_commit:
+                    pref.current_commit = boot_commit
+                    _db.session.commit()
+    except Exception as e:
+        # Don't block boot on this - it's a UX nicety, not critical.
+        import logging
+        logging.getLogger(__name__).warning(f"Could not record boot commit: {e}")
+
     # Start background update checker (checks GitHub every 12 hours)
     from app.services.update_checker import start_update_checker
     start_update_checker(interval_seconds=43200)

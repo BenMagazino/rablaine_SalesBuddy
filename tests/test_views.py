@@ -859,60 +859,14 @@ def test_update_check_no_restart_when_boot_commit_none(client, app):
     assert data['restart_needed'] is False
 
 
-def test_update_check_lazy_loads_changelog_on_first_call(client, app):
-    """First admin-panel open fetches the changelog (lazy load).
+def test_update_check_always_refetches_changelog(client, app):
+    """Every call to /api/admin/update-check re-fetches the changelog.
 
-    The background update loop intentionally does NOT poll the changelog -
-    polling races with GitHub's CDN right after a push and can pin a stale
-    copy. So /api/admin/update-check fills the cache on first call when
-    last_fetched is None.
-    """
-    app.config['BOOT_COMMIT'] = 'aaaaaaa'
-    app.config['BOOT_COMMIT_DATE'] = '2026-04-01'
-    mock_state = {
-        'available': False,
-        'local_commit': 'bbbbbbb',
-        'remote_commit': 'bbbbbbb',
-        'commits_behind': 0,
-        'last_checked': '2026-05-01T12:00:00+00:00',
-        'error': None,
-    }
-    empty_cache = {'entries': [], 'last_fetched': None, 'error': None}
-    fresh_cache = {
-        'entries': [
-            {'commit': 'bbbbbbb', 'date': '5/1/2026', 'date_iso': '2026-05-01', 'bullets': ['new entry']},
-        ],
-        'last_fetched': '2026-05-01T12:00:01+00:00',
-        'error': None,
-    }
-    cache_state = {'current': empty_cache}
-
-    def _get_changelog():
-        return cache_state['current']
-
-    def _fetch_changelog():
-        cache_state['current'] = fresh_cache
-        return fresh_cache
-
-    with patch('app.services.update_checker.get_update_state', return_value=mock_state), \
-         patch('app.services.update_checker.get_changelog_state', side_effect=_get_changelog), \
-         patch('app.services.update_checker.fetch_changelog', side_effect=_fetch_changelog) as mock_fetch, \
-         patch('app.services.update_checker.get_commits_in_range', side_effect=[set(), {'bbbbbbb'}]), \
-         patch('app.services.update_checker.get_local_head_date', return_value='2026-05-01'):
-        response = client.get('/api/admin/update-check?since=aaaaaaa')
-        data = response.get_json()
-
-    mock_fetch.assert_called_once()
-    since = data['changelog']['since_boot']
-    assert any(e.get('commit') == 'bbbbbbb' for e in since), \
-        'expected post-update changelog to surface the new commit after lazy fetch'
-
-
-def test_update_check_does_not_refetch_when_cache_already_populated(client, app):
-    """When cache has been fetched at least once, don't hit GitHub again.
-
-    Manual ?refresh=1 (or the changelog modal) is the only way to force
-    a re-fetch on a populated cache.
+    The previous lazy-load model raced with GitHub's CDN and the cached
+    state was sometimes stale for hours. The current behaviour always
+    pulls fresh on every admin-panel open and Check Now click - the
+    extra HTTP call is cheap and eliminates the entire "stale until you
+    click Check Now" class of bug.
     """
     app.config['BOOT_COMMIT'] = 'aaaaaaa'
     app.config['BOOT_COMMIT_DATE'] = '2026-04-01'
@@ -925,16 +879,89 @@ def test_update_check_does_not_refetch_when_cache_already_populated(client, app)
         'error': None,
     }
     populated_cache = {
-        'entries': [{'commit': 'bbbbbbb', 'date': '5/1/2026', 'date_iso': '2026-05-01', 'bullets': ['new']}],
-        'last_fetched': '2026-05-01T12:00:00+00:00',
+        'entries': [
+            {'commit': 'bbbbbbb', 'date': '5/1/2026', 'date_iso': '2026-05-01', 'bullets': ['new entry']},
+        ],
+        'last_fetched': '2026-05-01T12:00:01+00:00',
         'error': None,
     }
     with patch('app.services.update_checker.get_update_state', return_value=mock_state), \
          patch('app.services.update_checker.get_changelog_state', return_value=populated_cache), \
          patch('app.services.update_checker.fetch_changelog') as mock_fetch, \
-         patch('app.services.update_checker.get_commits_in_range', side_effect=[set(), {'bbbbbbb'}]), \
+         patch('app.services.update_checker.get_commits_in_range', side_effect=[set(), set()]), \
          patch('app.services.update_checker.get_local_head_date', return_value='2026-05-01'):
-        response = client.get('/api/admin/update-check?since=aaaaaaa')
+        response = client.get('/api/admin/update-check')
         assert response.status_code == 200
 
-    mock_fetch.assert_not_called()
+    mock_fetch.assert_called_once()
+
+
+def test_update_check_refresh_param_runs_git_fetch(client, app):
+    """?refresh=1 triggers check_for_updates (git fetch); default does not."""
+    app.config['BOOT_COMMIT'] = 'aaaaaaa'
+    mock_state = {
+        'available': False,
+        'local_commit': 'bbbbbbb',
+        'remote_commit': 'bbbbbbb',
+        'commits_behind': 0,
+        'last_checked': '2026-05-01T12:00:00+00:00',
+        'error': None,
+    }
+    populated_cache = {
+        'entries': [],
+        'last_fetched': '2026-05-01T12:00:00+00:00',
+        'error': None,
+    }
+    with patch('app.services.update_checker.get_update_state', return_value=mock_state), \
+         patch('app.services.update_checker.check_for_updates', return_value=mock_state) as mock_check, \
+         patch('app.services.update_checker.get_changelog_state', return_value=populated_cache), \
+         patch('app.services.update_checker.fetch_changelog'), \
+         patch('app.services.update_checker.get_commits_in_range', side_effect=[set(), set()]), \
+         patch('app.services.update_checker.get_local_head_date', return_value='2026-05-01'):
+        client.get('/api/admin/update-check')
+        mock_check.assert_not_called()
+        client.get('/api/admin/update-check?refresh=1')
+        mock_check.assert_called_once()
+
+
+def test_update_check_last_deployed_uses_db_commit_pair(client, app):
+    """changelog.last_deployed is built from previous_commit..current_commit
+    in UserPreference, not the per-tab sessionStorage hack of the old design.
+    """
+    from app.models import UserPreference, db as _db
+    app.config['BOOT_COMMIT'] = 'newhead'
+    app.config['BOOT_COMMIT_DATE'] = '2026-05-01'
+    with app.app_context():
+        pref = UserPreference.query.first() or UserPreference()
+        pref.previous_commit = 'oldhead'
+        pref.current_commit = 'newhead'
+        if pref.id is None:
+            _db.session.add(pref)
+        _db.session.commit()
+
+    mock_state = {
+        'available': False,
+        'local_commit': 'newhead',
+        'remote_commit': 'newhead',
+        'commits_behind': 0,
+        'last_checked': '2026-05-01T12:00:00+00:00',
+        'error': None,
+    }
+    cache = {
+        'entries': [
+            {'commit': 'newhead', 'date': '5/1/2026', 'date_iso': '2026-05-01', 'bullets': ['just landed']},
+        ],
+        'last_fetched': '2026-05-01T12:00:00+00:00',
+        'error': None,
+    }
+    with patch('app.services.update_checker.get_update_state', return_value=mock_state), \
+         patch('app.services.update_checker.get_changelog_state', return_value=cache), \
+         patch('app.services.update_checker.fetch_changelog'), \
+         patch('app.services.update_checker.get_commits_in_range', side_effect=[set(), {'newhead'}]), \
+         patch('app.services.update_checker.get_local_head_date', return_value='2026-05-01'):
+        response = client.get('/api/admin/update-check')
+        data = response.get_json()
+
+    last = data['changelog']['last_deployed']
+    assert any(e.get('commit') == 'newhead' for e in last), \
+        'expected last_deployed to surface entries between previous_commit and current_commit'

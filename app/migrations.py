@@ -103,6 +103,9 @@ def run_migrations(db):
     
     # Migration: Add dismissed_update_commit to user_preferences
     _migrate_dismissed_update_commit(db, inspector)
+
+    # Migration: Add current_commit/previous_commit to user_preferences
+    _migrate_commit_tracking(db, inspector)
     
     # Migration: Drop orphan tables from old auth/migration systems
     _drop_orphan_tables(db, existing_tables)
@@ -848,6 +851,21 @@ def _migrate_dismissed_update_commit(db, inspector):
         _add_column_if_not_exists(
             db, inspector, 'user_preferences', 'dismissed_update_commit',
             'VARCHAR(7)'
+        )
+
+
+def _migrate_commit_tracking(db, inspector):
+    """Add current_commit and previous_commit columns to user_preferences.
+
+    Used by the admin Updates card to show "what just landed" without
+    relying on per-tab sessionStorage.
+    """
+    if 'user_preferences' in inspector.get_table_names():
+        _add_column_if_not_exists(
+            db, inspector, 'user_preferences', 'current_commit', 'VARCHAR(40)'
+        )
+        _add_column_if_not_exists(
+            db, inspector, 'user_preferences', 'previous_commit', 'VARCHAR(40)'
         )
 
 

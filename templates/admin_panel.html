@@ -274,7 +274,10 @@
                     <div class="card-body">
                         <div id="updateCheckContent" class="w-100">
                             <div id="updateStatus">
-                                <span class="text-muted">Checking for updates...</span>
+                                <div class="d-flex align-items-center text-muted">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span>Checking for updates...</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1755,25 +1758,44 @@ function renderActionBar(updateButtonHtml, opts) {
     return `
         <div class="mt-3 d-flex justify-content-between gap-2 align-items-center">
             <div>${updateBtn}</div>
-            <button class="btn btn-outline-secondary btn-sm" id="updateCheckBtn" onclick="window._updateCheckManual = true; try { sessionStorage.removeItem('sb_pre_update_boot_commit'); sessionStorage.removeItem('sb_just_updated_from_date'); } catch(e){} checkForUpdates(true); window._updateCheckManual = false;" ${checking ? 'disabled' : ''}>
+            <button class="btn btn-outline-secondary btn-sm" id="updateCheckBtn" onclick="checkForUpdates(true);" ${checking ? 'disabled' : ''}>
                 ${checkBtnInner}
             </button>
         </div>`;
 }
 
+// Render a "Checking for updates..." state into the card. Used on page
+// load and again every time the user clicks Check Now, so the user sees
+// immediate visual feedback that something is happening regardless of
+// whether the previous render had a button or a green banner.
+function renderCheckingState(statusEl) {
+    if (!statusEl) return;
+    statusEl.innerHTML = `
+        <div class="d-flex align-items-center text-muted">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <span>Checking for updates...</span>
+        </div>
+        ${renderActionBar('', { checking: true })}
+    `;
+    // Reset card chrome so the spinner state is always neutral, even if the
+    // previous state had colored borders/header.
+    const card = document.getElementById('updateCheckCard');
+    const cardHeader = card ? card.querySelector('.card-header') : null;
+    const changelogLink = document.getElementById('viewChangelogLink');
+    if (card) card.classList.remove('border-danger', 'border-success');
+    if (cardHeader) cardHeader.classList.remove('bg-danger', 'bg-success', 'text-white');
+    if (changelogLink) changelogLink.classList.remove('text-white');
+}
+
 function checkForUpdates(refresh) {
     const statusEl = document.getElementById('updateStatus');
 
-    if (refresh) {
-        // Spin the existing Check Now button in place. Don't touch statusEl
-        // or the card border — those should only change when the response
-        // comes back, so the user keeps seeing current state during the call.
-        const existingBtn = document.getElementById('updateCheckBtn');
-        if (existingBtn) {
-            existingBtn.disabled = true;
-            existingBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Checking...';
-        }
-    }
+    // Always show the spinner immediately so the user knows something is
+    // happening. The previous behaviour only spun the Check Now button on
+    // refresh and otherwise left the stale card visible, which made the
+    // page-load case look like "card is already correct" when really we
+    // were still waiting on the network.
+    renderCheckingState(statusEl);
 
     function applyResult(html, finalize) {
         // Brief fade so the content swap doesn't feel jarring.
@@ -1787,23 +1809,20 @@ function checkForUpdates(refresh) {
                 statusEl.classList.remove('is-fading');
             }
             wireChangelogToggle();
+            wireViewLastUpdate();
         }, 180);
     }
 
-    const params = new URLSearchParams();
-    if (refresh) params.set('refresh', '1');
-    // After an update we want "since" to be the OLD boot commit, not the
-    // new one (which equals disk HEAD post-restart). Stashed by applyUpdate.
-    try {
-        const since = sessionStorage.getItem('sb_pre_update_boot_commit');
-        if (since) params.set('since', since);
-    } catch (e) {}
-    const qs = params.toString();
-    const url = '/api/admin/update-check' + (qs ? ('?' + qs) : '');
+    // Always send refresh=1 on user-facing checks (page load + Check Now
+    // button). The hourly background poll keeps the navbar dot fresh; we
+    // only hit this endpoint when someone is actively looking at the card,
+    // and the cost (a single ~1-3s git fetch) is worth eliminating the
+    // "stale until you click Check Now" class of bug entirely.
+    const url = '/api/admin/update-check?refresh=1';
     fetch(url)
         .then(r => r.json())
         .then(data => {
-            // Cache so applyUpdate() can stash the pre-update boot date
+            // Cache for any inline handlers that need state context.
             window._lastUpdateCheckData = data;
 
             if (data.error === 'git_not_found') {
@@ -1906,19 +1925,29 @@ function checkForUpdates(refresh) {
                     ${renderActionBar()}
                 `;
             } else {
-                // Up to date. If the server booted on an older commit than
-                // what's currently on disk, the API returns the entries that
-                // landed in between as `since_boot` (filtered by commit hash,
-                // which is reliable even when several updates ship the same
-                // day). That's our "what just landed" list.
-                const justLanded = (data.changelog && Array.isArray(data.changelog.since_boot))
-                    ? data.changelog.since_boot
+                // Up to date. The DB tracks previous_commit -> current_commit
+                // transitions at boot, so changelog.last_deployed is what
+                // landed in the most recent update regardless of which tab
+                // / browser / restart path was used.
+                //
+                // We auto-show the green "What just landed" panel ONLY when
+                // the user just hit Update Now in this same tab (sessionStorage
+                // one-shot flag). Otherwise we show a small "View last update"
+                // link they can click to expand the panel inline.
+                const lastDeployed = (data.changelog && Array.isArray(data.changelog.last_deployed))
+                    ? data.changelog.last_deployed
                     : [];
-                if (justLanded.length > 0) {
+                let justUpdated = false;
+                try {
+                    justUpdated = sessionStorage.getItem('sb_just_updated') === '1';
+                    if (justUpdated) sessionStorage.removeItem('sb_just_updated');
+                } catch (e) {}
+
+                if (justUpdated && lastDeployed.length > 0) {
                     html = `
                         <span class="text-success"><i class="bi bi-check-circle-fill"></i> Update installed</span>
                         <span class="text-muted small ms-2">(${data.boot_commit || data.local_commit})</span>
-                        ${renderChangelogSection(justLanded, "What just landed", { startOpen: true, variant: 'success' })}
+                        ${renderChangelogSection(lastDeployed, "What just landed", { startOpen: true, variant: 'success' })}
                         ${renderActionBar()}
                     `;
                     finalize = function() {
@@ -1932,6 +1961,22 @@ function checkForUpdates(refresh) {
                         }
                         if (changelogLink) changelogLink.classList.add('text-white');
                     };
+                } else if (lastDeployed.length > 0) {
+                    // Idle up-to-date with a known prior update available.
+                    // Hidden panel + link to expand it on demand.
+                    html = `
+                        <span class="text-success"><i class="bi bi-check-circle"></i> You're on the latest version</span>
+                        <span class="text-muted small ms-2">(${data.boot_commit || data.local_commit})</span>
+                        <div class="mt-2">
+                            <a href="#" class="small text-decoration-none" id="viewLastUpdateLink">
+                                <i class="bi bi-clock-history"></i> View last update
+                            </a>
+                        </div>
+                        <div id="lastUpdatePanel" style="display:none;">
+                            ${renderChangelogSection(lastDeployed, "What just landed", { startOpen: true, variant: 'success' })}
+                        </div>
+                        ${renderActionBar()}
+                    `;
                 } else {
                     html = `
                         <span class="text-success"><i class="bi bi-check-circle"></i> You're on the latest version</span>
@@ -2020,6 +2065,24 @@ function wireChangelogToggle() {
     });
 }
 
+// Wire the "View last update" link in the idle up-to-date state. Toggles
+// the hidden green panel inline so the user can review what shipped in
+// the last update without committing to the loud post-update banner.
+function wireViewLastUpdate() {
+    const link = document.getElementById('viewLastUpdateLink');
+    const panel = document.getElementById('lastUpdatePanel');
+    if (!link || !panel || link.dataset.wired === '1') return;
+    link.dataset.wired = '1';
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const visible = panel.style.display !== 'none';
+        panel.style.display = visible ? 'none' : '';
+        link.innerHTML = visible
+            ? '<i class="bi bi-clock-history"></i> View last update'
+            : '<i class="bi bi-clock-history"></i> Hide last update';
+    });
+}
+
 // Filter changelog entries to those whose normalized ISO date is within
 // the last `days` days. Uses date_iso so both M/D/YYYY and YYYY-MM-DD work.
 function filterRecentChangelogEntries(entries, days) {
@@ -2079,36 +2142,42 @@ function applyUpdate() {
     const card = document.getElementById('updateCheckContent');
     const btn = document.getElementById('applyUpdateBtn');
 
-    // Stash the current boot_commit BEFORE applying the update. After
-    // restart, BOOT_COMMIT == disk HEAD, so we'd lose the range start.
-    // The post-restart update-check passes this back as ?since=<sha> so
-    // the server can compute changelog.since_boot relative to where the
-    // server WAS, not where it is now.
-    try {
-        const last = window._lastUpdateCheckData || {};
-        if (last.boot_commit) {
-            sessionStorage.setItem('sb_pre_update_boot_commit', last.boot_commit);
-        }
-        sessionStorage.setItem('sb_just_updated_from_date', '1');
-    } catch (e) {}
+    // One-shot flag: when the post-restart page reload comes back here
+    // and runs checkForUpdates(), this tells the up-to-date branch to
+    // auto-show the green "What just landed" panel. Per-tab on purpose -
+    // if the user opens admin in a different tab/browser later, they get
+    // the quiet "View last update" link instead, which is correct.
+    try { sessionStorage.setItem('sb_just_updated', '1'); } catch (e) {}
 
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Updating...';
     }
+
+    // Keep the pending changelog visible while the deploy runs - the user
+    // is staring at the spinner anyway, might as well let them re-read
+    // what's being shipped. We just rewrite the leading status line and
+    // disable the buttons.
+    const last = window._lastUpdateCheckData || {};
+    const pending = (last.changelog && Array.isArray(last.changelog.pending)) ? last.changelog.pending : [];
     card.innerHTML = `
-        <div class="text-center py-3">
-            <div class="spinner-border text-primary mb-3" role="status"></div>
-            <div class="fw-bold">Updating Sales Buddy...</div>
-            <div class="text-muted small mt-1" id="updateProgressMsg">Stopping server and pulling latest code...</div>
+        <div class="d-flex align-items-center mb-2">
+            <span class="spinner-border spinner-border-sm text-primary me-2" role="status"></span>
+            <div>
+                <div class="fw-bold">Deploying update...</div>
+                <div class="text-muted small" id="updateProgressMsg">Stopping server and pulling latest code...</div>
+            </div>
         </div>
+        ${pending.length > 0 ? renderChangelogSection(pending, "Changes being deployed", { startOpen: true, variant: 'neutral' }) : ''}
     `;
+    wireChangelogToggle();
 
     fetch('/api/admin/update-apply', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
         .then(r => r.json())
         .then(data => {
             if (!data.success) {
                 card.innerHTML = `<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle"></i> ${data.error || 'Update failed.'}</div>`;
+                try { sessionStorage.removeItem('sb_just_updated'); } catch (e) {}
                 return;
             }
             const msgEl = document.getElementById('updateProgressMsg');
@@ -2187,19 +2256,12 @@ function dismissUpdate() {
     .catch(() => {});
 }
 
-// Check on page load. If we just came back from an auto-restart after an
-// update, force a fresh check so the cached pre-update status doesn't show
-// the "check for updates" placeholder before the "what just landed" banner.
-// The actual "what just landed" filtering is server-side (changelog.since_boot
-// from /api/admin/update-check); this flag just nudges the first poll.
+// Check on page load. Always passes refresh=1 so we get fresh git fetch +
+// changelog state - eliminates the "stale until you click Check Now" bug.
+// The card already shows a spinner via initial HTML; checkForUpdates
+// will redraw that spinner immediately and then swap to truth.
 document.addEventListener('DOMContentLoaded', function() {
-    let justUpdated = false;
-    try {
-        justUpdated = !!sessionStorage.getItem('sb_just_updated_from_date');
-        // One-shot: clear so subsequent page loads don't keep forcing refresh.
-        if (justUpdated) sessionStorage.removeItem('sb_just_updated_from_date');
-    } catch (e) {}
-    checkForUpdates(justUpdated);
+    checkForUpdates(true);
     loadBackupStatus();
     loadAutoStartStatus();
     loadMilestoneSyncStatus();

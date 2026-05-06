@@ -22,6 +22,13 @@ CHANGELOG_URL = (
     'https://raw.githubusercontent.com/rablaine/SalesBuddy/refs/heads/main/CHANGELOG.md'
 )
 
+# GitHub Contents API always reads from HEAD of the default branch (no CDN
+# lag like raw.githubusercontent.com). Used as the primary source so the
+# changelog reflects what just merged within seconds of the push.
+CHANGELOG_API_URL = (
+    'https://api.github.com/repos/rablaine/SalesBuddy/contents/CHANGELOG.md'
+)
+
 # Cached update state (module-level singleton)
 _update_state = {
     'available': False,
@@ -201,16 +208,22 @@ def parse_changelog(text: str) -> list:
 
 
 def fetch_changelog() -> dict:
-    """Fetch CHANGELOG.md from the remote and update the cached state."""
+    """Fetch CHANGELOG.md from the remote and update the cached state.
+
+    Uses the GitHub Contents API with the raw media type so we always get
+    the latest committed version of the file - the raw.githubusercontent.com
+    CDN lags by minutes after a push, which used to cause "What you'll get"
+    to come up empty right after a release.
+    """
     try:
-        # Cache-bust: raw.githubusercontent.com caches at the CDN edge for
-        # several minutes, so a plain GET will return stale content right
-        # after a push. A unique query param + no-cache header forces fresh.
-        cache_buster = int(time.time())
         resp = requests.get(
-            f"{CHANGELOG_URL}?_={cache_buster}",
+            CHANGELOG_API_URL,
             timeout=10,
-            headers={'Cache-Control': 'no-cache'},
+            headers={
+                'Accept': 'application/vnd.github.raw',
+                'Cache-Control': 'no-cache',
+                'User-Agent': 'SalesBuddy-UpdateChecker',
+            },
         )
         resp.raise_for_status()
         entries = parse_changelog(resp.text)
