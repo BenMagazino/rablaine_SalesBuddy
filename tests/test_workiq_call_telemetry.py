@@ -1,10 +1,11 @@
 """
-Tests for WorkIQ failure telemetry.
+Tests for WorkIQ call telemetry.
 
-Verifies that ``queue_workiq_failure`` is called with the correct
-operation/failure_type taxonomy from each failure path in
-``app.services.workiq_service``, and that the helper itself respects
-the opt-out flag and the allowed taxonomy.
+Verifies that ``queue_workiq_call`` is invoked with the correct
+operation/status/failure_type taxonomy from each call path in
+``app.services.workiq_service`` and the parser sites, and that the
+helper itself respects the opt-out flag and clamps to the allowed
+taxonomy.
 """
 import subprocess
 from unittest.mock import patch, MagicMock
@@ -13,10 +14,10 @@ import pytest
 
 
 # =============================================================================
-# queue_workiq_failure helper
+# queue_workiq_call helper
 # =============================================================================
 
-class TestQueueWorkiqFailure:
+class TestQueueWorkiqCall:
     """Unit tests for the telemetry shipper helper."""
 
     def test_emits_envelope_when_enabled(self):
@@ -24,24 +25,39 @@ class TestQueueWorkiqFailure:
 
         with patch.object(telemetry_shipper, 'is_telemetry_enabled', return_value=True), \
              patch.object(telemetry_shipper, '_buffer', []) as buf:
-            telemetry_shipper.queue_workiq_failure(
-                'meeting_summary', 'subprocess_timeout', duration_ms=12345.6
+            telemetry_shipper.queue_workiq_call(
+                'meeting_summary', 'server_down',
+                failure_type='subprocess_timeout', duration_ms=12345.6,
             )
             assert len(buf) == 1
-            envelope = buf[0]
-            base = envelope['data']['baseData']
-            assert base['name'] == 'SalesBuddy.WorkIQFailure'
+            base = buf[0]['data']['baseData']
+            assert base['name'] == 'SalesBuddy.WorkIQCall'
             assert base['properties']['operation'] == 'meeting_summary'
+            assert base['properties']['status'] == 'server_down'
             assert base['properties']['failure_type'] == 'subprocess_timeout'
             assert base['measurements']['count'] == 1.0
             assert base['measurements']['duration_ms'] == 12345.6
+
+    def test_ok_status_drops_failure_type(self):
+        from app.services import telemetry_shipper
+
+        with patch.object(telemetry_shipper, 'is_telemetry_enabled', return_value=True), \
+             patch.object(telemetry_shipper, '_buffer', []) as buf:
+            telemetry_shipper.queue_workiq_call(
+                'attendee_scrape', 'ok', duration_ms=420.0,
+            )
+            base = buf[0]['data']['baseData']
+            assert base['properties']['status'] == 'ok'
+            assert 'failure_type' not in base['properties']
+            assert base['measurements']['duration_ms'] == 420.0
 
     def test_no_op_when_opted_out(self):
         from app.services import telemetry_shipper
 
         with patch.object(telemetry_shipper, 'is_telemetry_enabled', return_value=False), \
              patch.object(telemetry_shipper, '_buffer', []) as buf:
-            telemetry_shipper.queue_workiq_failure('query', 'nonzero_exit')
+            telemetry_shipper.queue_workiq_call('query', 'server_down',
+                                                failure_type='nonzero_exit')
             assert buf == []
 
     def test_unknown_operation_is_normalized(self):
@@ -49,23 +65,37 @@ class TestQueueWorkiqFailure:
 
         with patch.object(telemetry_shipper, 'is_telemetry_enabled', return_value=True), \
              patch.object(telemetry_shipper, '_buffer', []) as buf:
-            telemetry_shipper.queue_workiq_failure('definitely-not-real', 'server_error')
+            telemetry_shipper.queue_workiq_call('definitely-not-real',
+                                                'server_down',
+                                                failure_type='server_error')
             assert buf[0]['data']['baseData']['properties']['operation'] == 'query'
+
+    def test_unknown_status_is_normalized_to_server_down(self):
+        from app.services import telemetry_shipper
+
+        with patch.object(telemetry_shipper, 'is_telemetry_enabled', return_value=True), \
+             patch.object(telemetry_shipper, '_buffer', []) as buf:
+            telemetry_shipper.queue_workiq_call('query', 'totally-bogus',
+                                                failure_type='nonzero_exit')
+            assert buf[0]['data']['baseData']['properties']['status'] == 'server_down'
 
     def test_unknown_failure_type_is_normalized(self):
         from app.services import telemetry_shipper
 
         with patch.object(telemetry_shipper, 'is_telemetry_enabled', return_value=True), \
              patch.object(telemetry_shipper, '_buffer', []) as buf:
-            telemetry_shipper.queue_workiq_failure('query', 'free-form-error-text')
-            assert buf[0]['data']['baseData']['properties']['failure_type'] == 'nonzero_exit'
+            telemetry_shipper.queue_workiq_call('query', 'server_down',
+                                                failure_type='free-form-error-text')
+            base = buf[0]['data']['baseData']
+            assert base['properties']['failure_type'] == 'nonzero_exit'
 
     def test_duration_omitted_when_none(self):
         from app.services import telemetry_shipper
 
         with patch.object(telemetry_shipper, 'is_telemetry_enabled', return_value=True), \
              patch.object(telemetry_shipper, '_buffer', []) as buf:
-            telemetry_shipper.queue_workiq_failure('query', 'npx_missing')
+            telemetry_shipper.queue_workiq_call('query', 'server_down',
+                                                failure_type='npx_missing')
             assert 'duration_ms' not in buf[0]['data']['baseData']['measurements']
 
 
@@ -74,7 +104,7 @@ class TestQueueWorkiqFailure:
 # =============================================================================
 
 class TestQueryWorkiqFailures:
-    """Verifies query_workiq emits failure telemetry for each failure path."""
+    """Each failure path emits a server_down event via _record_workiq_failure."""
 
     def test_npx_missing_records_failure(self):
         from app.services import workiq_service
@@ -85,7 +115,7 @@ class TestQueryWorkiqFailures:
             with pytest.raises(RuntimeError, match='npx not found'):
                 workiq_service.query_workiq('hi', operation='meeting_list')
             rec.assert_called_once()
-            args, kwargs = rec.call_args
+            args, _ = rec.call_args
             assert args[0] == 'meeting_list'
             assert args[1] == 'npx_missing'
 
@@ -135,6 +165,28 @@ class TestQueryWorkiqFailures:
 
 
 # =============================================================================
+# query_workiq success path
+# =============================================================================
+
+class TestQueryWorkiqSuccess:
+    """A successful query emits an ok call event so uptime % is computable."""
+
+    def test_success_records_ok_call(self):
+        from app.services import workiq_service
+
+        fake_result = MagicMock(returncode=0, stderr='', stdout='clean response')
+        with patch('shutil.which', return_value='/usr/bin/npx'), \
+             patch('platform.system', return_value='Linux'), \
+             patch('subprocess.run', return_value=fake_result), \
+             patch.object(workiq_service, '_record_workiq_call') as rec:
+            workiq_service.query_workiq('hi', operation='meeting_summary')
+            ok_calls = [c for c in rec.call_args_list
+                        if len(c.args) >= 2 and c.args[1] == 'ok']
+            assert len(ok_calls) == 1
+            assert ok_calls[0].args[0] == 'meeting_summary'
+
+
+# =============================================================================
 # get_meeting_summary soft-failure coverage
 # =============================================================================
 
@@ -166,7 +218,6 @@ class TestMeetingSummarySoftFailures:
     def test_planning_narration_records_failure(self):
         from app.services import workiq_service
 
-        # Two planning phrases trigger the planning_narration branch.
         narration = (
             "I need to retrieve the meeting data first. "
             "I'm going to search your Microsoft 365 mailbox to ground the summary in "
@@ -181,30 +232,71 @@ class TestMeetingSummarySoftFailures:
 
 
 # =============================================================================
-# Attendee scrape JSON parse failure
+# Parser site failure coverage
 # =============================================================================
 
 class TestAttendeeScrapeFailures:
-    """Verifies attendee scrape emits json_parse_failed when WorkIQ returns prose."""
+    """Verifies attendee scrape emits parse_failed when WorkIQ returns prose."""
 
     def test_non_json_response_records_failure(self):
         from app.services import meeting_attendee_scrape
 
-        # Prose response with no JSON braces - common when meeting has no transcript.
         prose = "I don't have a transcript for that meeting yet, sorry."
-        with patch('app.services.telemetry_shipper.queue_workiq_failure') as q:
+        with patch('app.services.telemetry_shipper.queue_workiq_call') as q:
             result = meeting_attendee_scrape._parse_response(prose)
             assert result == []
-            q.assert_called_once_with('attendee_scrape', 'json_parse_failed')
+            q.assert_called_once_with(
+                'attendee_scrape', 'parse_failed',
+                failure_type='parse_attendee_json',
+            )
 
     def test_valid_json_does_not_record_failure(self):
         from app.services import meeting_attendee_scrape
 
         valid = '{"attendees": [{"name": "X", "email": "x@y.com", "title": null}]}'
-        with patch('app.services.telemetry_shipper.queue_workiq_failure') as q:
+        with patch('app.services.telemetry_shipper.queue_workiq_call') as q:
             result = meeting_attendee_scrape._parse_response(valid)
             assert len(result) == 1
             q.assert_not_called()
+
+
+class TestCustomerScrapeParseFailure:
+    def test_non_json_response_records_parse_failed(self):
+        from app.services import customer_scrape
+
+        with patch('app.services.telemetry_shipper.queue_workiq_call') as q:
+            result = customer_scrape._parse_response('no json here at all')
+            assert result == {'contacts': [], 'meetings_found': 0}
+            q.assert_called_once_with(
+                'customer_scrape', 'parse_failed',
+                failure_type='parse_customer_json',
+            )
+
+
+class TestPartnerScrapeParseFailure:
+    def test_non_json_response_records_parse_failed(self):
+        from app.services import partner_scrape
+
+        with patch('app.services.telemetry_shipper.queue_workiq_call') as q:
+            result = partner_scrape._parse_response('still no json')
+            assert result['contacts'] == []
+            q.assert_called_once_with(
+                'partner_scrape', 'parse_failed',
+                failure_type='parse_partner_json',
+            )
+
+
+class TestCopilotActionsParseFailure:
+    def test_non_json_response_records_parse_failed(self):
+        from app.services import copilot_actions
+
+        with patch('app.services.telemetry_shipper.queue_workiq_call') as q:
+            result = copilot_actions.parse_action_items('definitely no array here')
+            assert result == []
+            q.assert_called_once_with(
+                'copilot_actions', 'parse_failed',
+                failure_type='parse_copilot_actions_json',
+            )
 
 
 # =============================================================================
@@ -212,7 +304,7 @@ class TestAttendeeScrapeFailures:
 # =============================================================================
 
 class TestAnsiStripping:
-    """WorkIQ wraps every line in `\\x1b[90m...\\x1b[0m` on Windows.
+    """WorkIQ wraps every line in ``\\x1b[90m...\\x1b[0m`` on Windows.
 
     These escapes are invisible in the terminal but break every JSON parser
     downstream. ``query_workiq`` strips them at the boundary so callers see
@@ -244,5 +336,4 @@ class TestAnsiStripping:
 
         assert _ANSI_ESCAPE_RE.sub('', '\x1b[90mhi\x1b[0m') == 'hi'
         assert _ANSI_ESCAPE_RE.sub('', '\x1b[1;31mred\x1b[0m') == 'red'
-        # No false positives on literal `[90m` text without ESC prefix.
         assert _ANSI_ESCAPE_RE.sub('', 'array [90m]') == 'array [90m]'

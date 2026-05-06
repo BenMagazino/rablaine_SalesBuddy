@@ -266,19 +266,62 @@ customEvents
 """
 
 
-def _q_workiq_failures(days: int) -> str:
+def _q_workiq_uptime_timeline(days: int) -> str:
+    """Hourly bucket showing whether WorkIQ subprocess succeeded.
+
+    Mirrors the MSX probe timeline: one cell per hour, color by status.
+    Powered by SalesBuddy.WorkIQCall events that workiq_service emits at
+    every call site (status='ok' or 'server_down'). parse_failed events
+    are excluded - parser drift is a separate concern from uptime.
+    """
     return f"""
 customEvents
-| where name == "SalesBuddy.WorkIQFailure"
+| where name == "SalesBuddy.WorkIQCall"
 | where timestamp > ago({days}d)
-| extend operation = tostring(customDimensions.operation),
+| extend status = tostring(customDimensions.status)
+| where status in ("ok", "server_down")
+| summarize events = count() by bin(timestamp, 1h), status
+| order by timestamp asc
+"""
+
+
+def _q_workiq_parse_failures(days: int) -> str:
+    """Per-(operation, failure_type) parse failure counts.
+
+    A non-empty result means a WorkIQ output format drifted and the
+    matching parser needs updating. Each row identifies which
+    query_workiq() caller couldn't read the response.
+    """
+    return f"""
+customEvents
+| where name == "SalesBuddy.WorkIQCall"
+| where timestamp > ago({days}d)
+| extend status = tostring(customDimensions.status),
+         operation = tostring(customDimensions.operation),
          failure_type = tostring(customDimensions.failure_type),
          instance_id = tostring(customDimensions.instance_id)
+| where status == "parse_failed"
 | summarize
     failures = count(),
     installs_affected = dcount(instance_id)
     by operation, failure_type
 | order by failures desc
+"""
+
+
+def _q_workiq_uptime_summary(days: int) -> str:
+    """Single-row uptime % over the window for the card header."""
+    return f"""
+customEvents
+| where name == "SalesBuddy.WorkIQCall"
+| where timestamp > ago({days}d)
+| extend status = tostring(customDimensions.status)
+| where status in ("ok", "server_down")
+| summarize
+    total = count(),
+    ok = countif(status == "ok"),
+    server_down = countif(status == "server_down")
+| extend uptime_pct = iff(total > 0, round(100.0 * ok / total, 1), real(null))
 """
 
 
@@ -328,24 +371,32 @@ def _coerce_days(raw) -> int:
 # Cards whose query depends on `days` use the dynamic timespan; cards that
 # always look at the last 30d use a fixed P30D so the App Insights backend
 # can short-circuit the scan.
-def _card_specs(days: int) -> dict[str, tuple[str, str, str]]:
+def _card_specs(days: int) -> tuple[dict[str, tuple[str, str, str]], list[str]]:
+    """Return (specs, ordered_keys).
+
+    The metrics page renders cards in ``ordered_keys`` order. New cards
+    should be added in the desired position rather than appended.
+    """
     timespan = f'P{days}D'
-    return {
-        'probe_status':     ('Probe results',                  _q_probe_status(days),     timespan),
-        'probe_timeline':   ('Probe timeline (hourly)',         _q_probe_timeline(days),   timespan),
-        'probe_recent':     ('Recent probe events',             _q_probe_recent(days),     timespan),
-        'dau':              ('Daily active users',              _q_dau(days),              timespan),
-        'installs_by_role': ('Installs by role',                _q_installs_by_role(),     'P30D'),
-        'flag_adoption':    ('Feature flag adoption',           _q_flag_adoption(),        'P30D'),
-        'adoption_by_role': ('Adoption by role',                _q_adoption_by_role(),     'P30D'),
-        'entity_counts':    ('Entity-count distribution',       _q_entity_counts(),        'P30D'),
-        'top_features':     ('Top 30 features',                 _q_top_features(days),     timespan),
-        'reports':          ('Reports opened',                  _q_reports(days),          timespan),
-        'power_features':   ('Power-feature adoption',          _q_power_features(days),   timespan),
-        'errors':           ('Error rate & latency',            _q_errors(days),           timespan),
-        'workiq_failures':  ('WorkIQ failures',                 _q_workiq_failures(days),  timespan),
-        'app_versions':     ('App version distribution',        _q_app_versions(),         'P30D'),
+    specs = {
+        'dau':                   ('Daily active users',         _q_dau(days),                    timespan),
+        'workiq_uptime':         ('WorkIQ uptime',              _q_workiq_uptime_timeline(days), timespan),
+        'workiq_uptime_summary': ('WorkIQ uptime summary',      _q_workiq_uptime_summary(days),  timespan),
+        'workiq_parse_failures': ('WorkIQ parser failures',     _q_workiq_parse_failures(days),  timespan),
+        'probe_status':          ('MSX probe results',          _q_probe_status(days),           timespan),
+        'probe_timeline':        ('MSX probe timeline (hourly)', _q_probe_timeline(days),         timespan),
+        'probe_recent':          ('Recent MSX probe events',    _q_probe_recent(days),           timespan),
+        'installs_by_role':      ('Installs by role',           _q_installs_by_role(),           'P30D'),
+        'flag_adoption':         ('Feature flag adoption',      _q_flag_adoption(),              'P30D'),
+        'adoption_by_role':      ('Adoption by role',           _q_adoption_by_role(),           'P30D'),
+        'entity_counts':         ('Entity-count distribution',  _q_entity_counts(),              'P30D'),
+        'top_features':          ('Top 30 features',            _q_top_features(days),           timespan),
+        'reports':               ('Reports opened',             _q_reports(days),                timespan),
+        'power_features':        ('Power-feature adoption',     _q_power_features(days),         timespan),
+        'errors':                ('Error rate & latency',       _q_errors(days),                 timespan),
+        'app_versions':          ('App version distribution',   _q_app_versions(),               'P30D'),
     }
+    return specs, list(specs.keys())
 
 
 @metrics_bp.route('/metrics')
@@ -365,7 +416,7 @@ def api_metrics_card(card_id: str):
     state without triggering generic browser error UI.
     """
     days = _coerce_days(request.args.get('days', 7))
-    specs = _card_specs(days)
+    specs, _order = _card_specs(days)
     spec = specs.get(card_id)
     if not spec:
         abort(404)
