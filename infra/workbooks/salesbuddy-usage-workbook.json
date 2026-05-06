@@ -335,7 +335,7 @@
                     "type": 3,
                     "content": {
                         "version": "KqlItem/1.0",
-                        "query": "customEvents\n| where name == \"SalesBuddy.WorkIQFailure\"\n| where timestamp {TimeRange}\n| extend operation = tostring(customDimensions.operation),\n         failure_type = tostring(customDimensions.failure_type),\n         instance_id = tostring(customDimensions.instance_id)\n| summarize\n    failures = count(),\n    installs_affected = dcount(instance_id)\n    by operation, failure_type\n| order by failures desc",
+                        "query": "customEvents\n| where name == \"SalesBuddy.WorkIQCall\"\n| where timestamp {TimeRange}\n| extend status = tostring(customDimensions.status),\n         operation = tostring(customDimensions.operation),\n         failure_type = tostring(customDimensions.failure_type),\n         instance_id = tostring(customDimensions.instance_id)\n| where status != \"ok\"\n| summarize\n    failures = count(),\n    installs_affected = dcount(instance_id)\n    by status, operation, failure_type\n| order by failures desc",
                         "size": 0,
                         "title": "WorkIQ failures",
                         "queryType": 0,

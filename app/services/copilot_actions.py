@@ -139,12 +139,24 @@ def parse_action_items(response: str) -> list[dict]:
     arr_start = text.find('[')
     arr_end = text.rfind(']')
     if arr_start == -1 or arr_end == -1 or arr_end <= arr_start:
+        try:
+            from app.services.telemetry_shipper import queue_workiq_call
+            queue_workiq_call('copilot_actions', 'parse_failed',
+                              failure_type='parse_copilot_actions_json')
+        except Exception:
+            pass
         return []
 
     try:
         import json
         items = json.loads(text[arr_start:arr_end + 1])
     except (json.JSONDecodeError, ValueError):
+        try:
+            from app.services.telemetry_shipper import queue_workiq_call
+            queue_workiq_call('copilot_actions', 'parse_failed',
+                              failure_type='parse_copilot_actions_json')
+        except Exception:
+            pass
         return []
 
     if not isinstance(items, list):
@@ -195,7 +207,8 @@ def sync_copilot_action_items(app=None) -> dict:
             logger.info("Copilot prompt: %s", prompt[:200])
 
             # Query WorkIQ (this takes ~30-60 seconds)
-            response = query_workiq(prompt, timeout=120)
+            response = query_workiq(prompt, timeout=120,
+                                    operation='copilot_actions')
             if not response or not response.strip():
                 logger.warning("WorkIQ returned empty response for Copilot action items")
                 return {"success": False, "error": "Empty response from WorkIQ"}

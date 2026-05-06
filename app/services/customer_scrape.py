@@ -33,7 +33,8 @@ def scrape_customer_contacts(customer: Customer) -> Dict[str, Any]:
     question = _build_scrape_prompt(customer.name, domain_hint)
 
     try:
-        raw_response = query_workiq(question, timeout=180)
+        raw_response = query_workiq(question, timeout=180,
+                                    operation='customer_scrape')
     except Exception as e:
         logger.error(f"WorkIQ query failed for customer {customer.name}: {e}")
         raise
@@ -154,6 +155,12 @@ def _parse_response(raw: str) -> Dict[str, Any]:
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse WorkIQ JSON response: {e}")
         logger.debug(f"Raw response: {raw[:500]}")
+        try:
+            from app.services.telemetry_shipper import queue_workiq_call
+            queue_workiq_call('customer_scrape', 'parse_failed',
+                              failure_type='parse_customer_json')
+        except Exception:
+            pass
         return {"contacts": [], "meetings_found": 0}
 
 

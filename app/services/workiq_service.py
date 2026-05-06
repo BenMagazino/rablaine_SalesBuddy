@@ -37,18 +37,28 @@ def _strip_terminal_escapes(text: str) -> str:
     return text
 
 
-def _record_workiq_failure(operation: str, failure_type: str,
-                           duration_ms: Optional[float] = None) -> None:
-    """Best-effort: emit a WorkIQ failure telemetry event.
+def _record_workiq_call(operation: str, status: str,
+                        failure_type: Optional[str] = None,
+                        duration_ms: Optional[float] = None) -> None:
+    """Best-effort: emit a WorkIQ call telemetry event.
 
     Wrapped so any telemetry import or shipping failure can never break
-    the actual WorkIQ call path.
+    the actual WorkIQ call path. Used both by query_workiq() (for
+    server_down + ok) and by downstream parsers (for parse_failed).
     """
     try:
-        from app.services.telemetry_shipper import queue_workiq_failure
-        queue_workiq_failure(operation, failure_type, duration_ms=duration_ms)
+        from app.services.telemetry_shipper import queue_workiq_call
+        queue_workiq_call(operation, status, failure_type=failure_type,
+                          duration_ms=duration_ms)
     except Exception:
         pass
+
+
+def _record_workiq_failure(operation: str, failure_type: str,
+                           duration_ms: Optional[float] = None) -> None:
+    """Compatibility shim: routes server_down failures to the new event."""
+    _record_workiq_call(operation, 'server_down',
+                        failure_type=failure_type, duration_ms=duration_ms)
 
 # Default meeting summary prompt template.
 # Users can customize this in Settings. Use {title} and {date} as placeholders.
@@ -407,6 +417,8 @@ def query_workiq(question: str, timeout: int = 120,
                 "won't help - try again later."
             )
 
+        _record_workiq_call(operation, 'ok',
+                            duration_ms=(time.perf_counter() - started) * 1000)
         return stdout
         
     except subprocess.TimeoutExpired:

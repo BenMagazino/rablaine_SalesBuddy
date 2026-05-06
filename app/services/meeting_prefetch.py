@@ -696,6 +696,12 @@ def prefetch_for_date_full(
     if raw_meetings is None:
         # All retries returned malformed JSON. Preserve existing rows
         # rather than wiping them; UI surfaces the stale-sync indicator.
+        try:
+            from app.services.telemetry_shipper import queue_workiq_call
+            queue_workiq_call('meeting_list', 'parse_failed',
+                              failure_type='parse_meeting_list_json')
+        except Exception:
+            pass
         logger.error(
             "Prefetch: parse failed for %s after %d attempts: %s",
             date_str, MAX_PARSE_RETRIES, last_parse_error,

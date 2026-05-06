@@ -257,66 +257,97 @@ def queue_event(
 
 # Allowed WorkIQ failure_type values. Anything outside this set is rejected
 # so we don't accidentally leak free-form error text into telemetry.
+# Two flavors:
+#   - server_down failures: WorkIQ itself didn't respond properly
+#   - parse_failed failures: WorkIQ responded but our parser couldn't
+#     handle the output, identified per call site so a regression in one
+#     parser is easy to spot
 _WORKIQ_FAILURE_TYPES = frozenset({
+    # server_down flavors
     'npx_missing',
     'subprocess_timeout',
     'nonzero_exit',
     'eula_failed',
     'server_error',
-    'planning_narration',
-    'refusal',
-    'too_short',
-    'empty',
-    'json_parse_failed',
+    # parse_failed flavors, one per query_workiq() caller
+    'parse_attendee_json',
+    'parse_customer_json',
+    'parse_partner_json',
+    'parse_meeting_list_json',
+    'parse_copilot_actions_json',
 })
 
-# Allowed WorkIQ operation values.
+# Allowed WorkIQ operation values. Mirrors the operation= argument
+# threaded through query_workiq() for telemetry tagging.
 _WORKIQ_OPERATIONS = frozenset({
     'query',
     'meeting_summary',
     'meeting_list',
     'attendee_scrape',
+    'customer_scrape',
+    'partner_scrape',
+    'copilot_actions',
 })
 
+# Allowed status values for SalesBuddy.WorkIQCall.
+#   ok          - WorkIQ subprocess returned and downstream parser succeeded
+#   server_down - WorkIQ subprocess failed (npx, exit code, server_error, ...)
+#   parse_failed - WorkIQ responded but our parser couldn't read it
+_WORKIQ_STATUSES = frozenset({'ok', 'server_down', 'parse_failed'})
 
-def queue_workiq_failure(
+
+def queue_workiq_call(
     operation: str,
-    failure_type: str,
+    status: str,
+    failure_type: Optional[str] = None,
     duration_ms: Optional[float] = None,
 ) -> None:
-    """Record a WorkIQ failure as a custom telemetry event.
+    """Record a WorkIQ call outcome as a custom telemetry event.
 
-    Emits ``SalesBuddy.WorkIQFailure`` with anonymous instance/app metadata
-    plus a small fixed taxonomy of operation and failure_type. No raw
-    error text, meeting titles, or stderr is included.
+    Emits ``SalesBuddy.WorkIQCall`` with anonymous instance/app metadata
+    plus a small fixed taxonomy of operation, status, and (for failures)
+    failure_type. No raw error text, meeting titles, or stderr is
+    included.
+
+    Used by the /metrics WorkIQ uptime card to compute uptime % and to
+    surface which parser is breaking when WorkIQ output drifts.
 
     Args:
-        operation: One of ``query``, ``meeting_summary``, ``meeting_list``.
-        failure_type: One of the values in :data:`_WORKIQ_FAILURE_TYPES`.
-        duration_ms: Optional elapsed time before the failure was detected.
+        operation: One of :data:`_WORKIQ_OPERATIONS`.
+        status: One of :data:`_WORKIQ_STATUSES`.
+        failure_type: For non-ok statuses, one of :data:`_WORKIQ_FAILURE_TYPES`.
+        duration_ms: Optional elapsed time before the call resolved.
     """
     if not is_telemetry_enabled():
         return
 
-    # Defensive: reject anything outside the known taxonomy so a future
-    # caller can't accidentally ship free-form text.
+    # Defensive: clamp to known taxonomy so a future caller can't
+    # accidentally ship free-form text.
     if operation not in _WORKIQ_OPERATIONS:
         operation = 'query'
-    if failure_type not in _WORKIQ_FAILURE_TYPES:
+    if status not in _WORKIQ_STATUSES:
+        status = 'server_down'
+    if status == 'ok':
+        failure_type = None
+    elif failure_type not in _WORKIQ_FAILURE_TYPES:
         failure_type = 'nonzero_exit'
 
     measurements: dict[str, float] = {'count': 1.0}
     if duration_ms is not None:
         measurements['duration_ms'] = round(float(duration_ms), 1)
 
+    properties = {
+        'instance_id': _instance_id or get_instance_id(),
+        'app_version': _app_version,
+        'operation': operation,
+        'status': status,
+    }
+    if failure_type:
+        properties['failure_type'] = failure_type
+
     envelope = _build_custom_event(
-        name='SalesBuddy.WorkIQFailure',
-        properties={
-            'instance_id': _instance_id or get_instance_id(),
-            'app_version': _app_version,
-            'operation': operation,
-            'failure_type': failure_type,
-        },
+        name='SalesBuddy.WorkIQCall',
+        properties=properties,
         measurements=measurements,
     )
 

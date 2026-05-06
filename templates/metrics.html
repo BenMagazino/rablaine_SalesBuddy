@@ -34,6 +34,8 @@
   .probe-bar-cell.skipped_no_token { background: #adb5bd; }
   .probe-bar-cell.skipped_no_vpn { background: #6c757d; }
   .probe-bar-cell.error { background: #ffc107; }
+  .probe-bar-cell.no-data { background: #e9ecef; }
+  [data-bs-theme="dark"] .probe-bar-cell.no-data { background: #343a40; }
 
   .probe-status-banner {
     padding: 1rem 1.25rem;
@@ -78,7 +80,49 @@
   </div>
 </div>
 
-<!-- Probe card -->
+<!-- 1. DAU card (top of page - this is the headline metric) -->
+<div class="card metric-card">
+  <div class="card-header">Daily active users</div>
+  <div class="card-body">
+    <div data-card="dau" data-render="dau_line" class="card-loading">
+      <span class="spinner-border" role="status"></span>Loading...
+    </div>
+  </div>
+</div>
+
+<!-- 2. WorkIQ uptime card -->
+<div class="card metric-card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-activity"></i> WorkIQ uptime</span>
+    <small class="text-muted">last {{ days }}d</small>
+  </div>
+  <div class="card-body">
+    <div id="workiq-summary" class="probe-status-banner loading">
+      <span class="spinner-border spinner-border-sm" role="status"></span>
+      Loading WorkIQ status...
+    </div>
+    <h6 class="text-muted mb-2">Hourly uptime</h6>
+    <div data-card="workiq_uptime" data-render="workiq_uptime" class="card-loading">
+      <span class="spinner-border" role="status"></span>Loading...
+    </div>
+    <div class="small text-muted mt-1">
+      <span class="legend-dot" style="background:#28a745"></span>OK
+      <span class="legend-dot ms-2" style="background:#dc3545"></span>Server down
+      <span class="legend-dot ms-2" style="background:#e9ecef"></span>No data
+    </div>
+    <hr>
+    <h6 class="text-muted mb-2">Parser failures</h6>
+    <div class="small text-muted mb-2">
+      Each row is a WorkIQ call site whose response we couldn't parse.
+      Non-zero rows mean the LLM output drifted and that parser needs updating.
+    </div>
+    <div data-card="workiq_parse_failures" class="card-loading">
+      <span class="spinner-border" role="status"></span>Loading...
+    </div>
+  </div>
+</div>
+
+<!-- 3. MSX Account Teams probe -->
 <div class="card metric-card">
   <div class="card-header d-flex align-items-center justify-content-between">
     <span><i class="bi bi-shield-check"></i> MSX Account Teams probe</span>
@@ -112,7 +156,6 @@
 </div>
 
 {% set ported_cards = [
-  ('dau',              'Daily active users', 'dau_line'),
   ('installs_by_role', 'Installs by role (last 30d)', None),
   ('flag_adoption',    'Feature flag adoption (last 30d)', None),
   ('adoption_by_role', 'Adoption by role: SE vs DSS (last 30d)', None),
@@ -121,7 +164,6 @@
   ('reports',          'Reports - which ones get opened', None),
   ('power_features',   'Power-feature adoption', None),
   ('errors',           'Error rate & latency by feature', None),
-  ('workiq_failures',  'WorkIQ failures', None),
   ('app_versions',     'App version distribution (last 30d)', None),
 ] %}
 
@@ -222,6 +264,72 @@
     banner.innerHTML = `
       <strong>${escapeHtml(summary.label)}</strong>
       <div class="small">${escapeHtml(summary.detail)}</div>
+    `;
+  }
+
+  // WorkIQ uptime: bucket the (timestamp, status, events) rows into one
+  // cell per hour across the window. Each cell is colored by the worst
+  // status we saw that hour (server_down > ok > no data) so a single
+  // outage in an otherwise-healthy hour stays visible.
+  function renderWorkIQTimeline(rows) {
+    const buckets = new Map();  // hourIso -> {ok, server_down}
+    (rows || []).forEach(r => {
+      const ts = String(r.timestamp || '').slice(0, 13);  // YYYY-MM-DDTHH
+      if (!ts) return;
+      const status = String(r.status || '');
+      const events = Number(r.events) || 0;
+      if (!buckets.has(ts)) buckets.set(ts, { ok: 0, server_down: 0 });
+      const b = buckets.get(ts);
+      if (status === 'ok') b.ok += events;
+      else if (status === 'server_down') b.server_down += events;
+    });
+
+    // Build a contiguous hour grid for the full DAYS window.
+    const totalHours = DAYS * 24;
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    const cells = [];
+    for (let i = totalHours - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 3600 * 1000);
+      const iso = d.toISOString().slice(0, 13);
+      const b = buckets.get(iso);
+      let cls, tip;
+      if (!b) {
+        cls = 'no-data';
+        tip = `${iso}:00 - no calls`;
+      } else if (b.server_down > 0) {
+        cls = 'outage';
+        tip = `${iso}:00 - ${b.server_down} server_down, ${b.ok} ok`;
+      } else if (b.ok > 0) {
+        cls = 'ok';
+        tip = `${iso}:00 - ${b.ok} ok`;
+      } else {
+        cls = 'no-data';
+        tip = `${iso}:00 - no calls`;
+      }
+      cells.push(`<div class="probe-bar-cell ${cls}" title="${escapeHtml(tip)}"></div>`);
+    }
+    return `<div class="probe-bar mb-2">${cells.join('')}</div>`;
+  }
+
+  function renderWorkIQSummary(rows) {
+    const banner = document.getElementById('workiq-summary');
+    if (!banner) return;
+    const r = (rows && rows[0]) || null;
+    if (!r || r.total === 0 || r.total === null) {
+      banner.className = 'probe-status-banner no-data';
+      banner.innerHTML = '<strong>No WorkIQ calls in this window.</strong>';
+      return;
+    }
+    const pct = r.uptime_pct;
+    const down = Number(r.server_down) || 0;
+    let state = 'healthy';
+    if (down > 0 && pct !== null && pct < 99) state = 'outage';
+    else if (down > 0) state = 'unknown';
+    banner.className = 'probe-status-banner ' + state;
+    banner.innerHTML = `
+      <strong>${escapeHtml(pct)}% uptime</strong>
+      <div class="small">${escapeHtml(r.ok)} ok / ${escapeHtml(down)} server_down across ${escapeHtml(r.total)} calls</div>
     `;
   }
 
@@ -342,6 +450,8 @@
           el.innerHTML = renderError(data.error);
         } else if (renderMode === 'probe_timeline') {
           el.innerHTML = renderProbeTimeline(data.rows);
+        } else if (renderMode === 'workiq_uptime') {
+          el.innerHTML = renderWorkIQTimeline(data.rows);
         } else if (renderMode === 'dau_line') {
           renderDauLine(el, data.rows);
         } else {
@@ -424,6 +534,24 @@
   });
 
   document.querySelectorAll('[data-card]').forEach(loadCard);
+
+  // Fetch the WorkIQ uptime summary independently to populate the
+  // banner above the timeline. It uses its own card endpoint rather
+  // than piggybacking on the timeline so the calculations stay in KQL.
+  fetch(`/api/metrics/card/workiq_uptime_summary?days=${DAYS}`, { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.error && !data.auth_required) {
+        renderWorkIQSummary(data.rows);
+      } else {
+        const banner = document.getElementById('workiq-summary');
+        if (banner) {
+          banner.className = 'probe-status-banner unknown';
+          banner.textContent = data.error || 'Sign in to view WorkIQ uptime.';
+        }
+      }
+    })
+    .catch(() => {});
 })();
 </script>
 {% endblock %}

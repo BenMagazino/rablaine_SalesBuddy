@@ -119,8 +119,9 @@ def _parse_response(raw: str) -> List[Dict[str, str]]:
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse WorkIQ attendee JSON: {e}")
         try:
-            from app.services.telemetry_shipper import queue_workiq_failure
-            queue_workiq_failure('attendee_scrape', 'json_parse_failed')
+            from app.services.telemetry_shipper import queue_workiq_call
+            queue_workiq_call('attendee_scrape', 'parse_failed',
+                              failure_type='parse_attendee_json')
         except Exception:
             pass
         return []
