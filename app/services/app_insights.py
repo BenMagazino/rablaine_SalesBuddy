@@ -16,6 +16,8 @@ from typing import Any, Optional
 
 import requests
 from azure.identity import AzureCliCredential, DefaultAzureCredential
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +49,46 @@ _credential = None
 _cached_token: Optional[str] = None
 _token_expiry: float = 0
 _DEFAULT_TIMEOUT_SECONDS = 10
+
+# Shared HTTP session with connection pooling + transient-error retries.
+# The App Insights edge occasionally drops TLS handshakes mid-flight
+# (observed as ``SSLEOFError: UNEXPECTED_EOF_WHILE_READING``). Without
+# retries even a ~20% drop rate paints the whole metrics dashboard red,
+# because the page fans out one request per card in parallel. We retry
+# on connection-level failures only - never on 4xx, since those are
+# real auth/permission problems that won't fix themselves.
+_session: Optional[requests.Session] = None
+
+
+def _build_session() -> requests.Session:
+    sess = requests.Session()
+    # Total of 6 attempts with exponential backoff:
+    #   0.5s, 1s, 2s, 4s, 8s -> ~15.5s of waiting + 6 actual requests.
+    # The App Insights edge sometimes drops TLS handshakes for a stretch
+    # of 30-60s; with 6 attempts plus a 10s per-request timeout we cover
+    # roughly the full bad-minute window before surfacing the error to
+    # the user. urllib3 caps the per-sleep at BACKOFF_MAX (120s default).
+    retry = Retry(
+        total=6,
+        connect=6,
+        read=4,
+        backoff_factor=0.5,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset(['GET', 'POST']),
+        raise_on_status=False,
+        respect_retry_after_header=True,
+    )
+    adapter = HTTPAdapter(max_retries=retry, pool_connections=4, pool_maxsize=16)
+    sess.mount('https://', adapter)
+    sess.mount('http://', adapter)
+    return sess
+
+
+def _get_session() -> requests.Session:
+    global _session
+    if _session is None:
+        _session = _build_session()
+    return _session
 
 
 def _get_token() -> str:
@@ -141,7 +183,7 @@ def query(
     body = {'query': kql, 'timespan': timespan}
 
     try:
-        resp = requests.post(
+        resp = _get_session().post(
             url, headers=headers, json=body, timeout=timeout_seconds,
         )
     except requests.RequestException as exc:
