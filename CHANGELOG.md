@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 5/6/2026
+## 5/6/2026 - 3aee1d7
 
 - Reworked the admin Updates card to be more resilient. The card now always shows the latest state when you open admin (no more "click Check Now to see what's actually there"), pulls the changelog directly from GitHub's API to avoid CDN staleness, and tracks the last deployed update in the database so "View last update" works across restarts, tabs, and browsers instead of only in the same tab that ran the update.
 
