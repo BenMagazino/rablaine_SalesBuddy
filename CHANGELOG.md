@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 5/5/2026 - PENDING
+## 5/5/2026 - a0a20e4
 
 - Added better WorkIQ tracking: every WorkIQ call now records whether it succeeded, the server was down, or the response failed to parse. This will give us a real picture of WorkIQ reliability over time.
 
