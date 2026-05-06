@@ -330,6 +330,86 @@ def queue_workiq_failure(
         threading.Thread(target=flush_buffer, daemon=True).start()
 
 
+# Allowed result values for the MSX Account Teams probe. See
+# ``queue_msx_outage`` below for semantics.
+_MSX_PROBE_RESULTS = frozenset({
+    'ok',
+    'outage',
+    'skipped_no_token',
+    'skipped_no_vpn',
+    'error',
+})
+
+# In-memory dedupe state for queue_msx_outage. Keyed by result value, holds
+# the UTC hour bucket (YYYYMMDDHH) the result was last emitted in. Same
+# (result, hour) only emits once per process, so the startup probe + hourly
+# probe colliding in the same hour can't double-count.
+_msx_probe_dedupe_lock = threading.Lock()
+_msx_probe_last_hour: dict[str, str] = {}
+
+
+def _current_hour_bucket() -> str:
+    """Return the current UTC hour as a string like ``2026050514``."""
+    return datetime.now(timezone.utc).strftime('%Y%m%d%H')
+
+
+def queue_msx_outage(result: str, error_code: Optional[str] = None) -> bool:
+    """Record the outcome of an MSX Account Teams probe.
+
+    Emits a ``SalesBuddy.MsxAccountTeamProbe`` custom event so the metrics
+    dashboard can chart real coverage (absence of data does not imply
+    outage). Same ``result`` value within the same UTC hour from this
+    process is deduped to a single emission.
+
+    Args:
+        result: One of ``ok``, ``outage``, ``skipped_no_token``,
+            ``skipped_no_vpn``, ``error``. Any unknown value is mapped to
+            ``error``.
+        error_code: Optional short error code (e.g. ``"0x80040224"``) for
+            outage / error results.
+
+    Returns:
+        True if the event was queued, False if it was deduped or telemetry
+        is disabled.
+    """
+    if not is_telemetry_enabled():
+        return False
+
+    if result not in _MSX_PROBE_RESULTS:
+        result = 'error'
+
+    bucket = _current_hour_bucket()
+    with _msx_probe_dedupe_lock:
+        if _msx_probe_last_hour.get(result) == bucket:
+            return False
+        _msx_probe_last_hour[result] = bucket
+
+    properties: dict[str, str] = {
+        'instance_id': _instance_id or get_instance_id(),
+        'app_version': _app_version,
+        'result': result,
+    }
+    if error_code:
+        properties['error_code'] = str(error_code)[:64]
+
+    envelope = _build_custom_event(
+        name='SalesBuddy.MsxAccountTeamProbe',
+        properties=properties,
+        measurements={'count': 1.0},
+    )
+
+    with _buffer_lock:
+        _buffer.append(envelope)
+
+    with _stats_lock:
+        _stats['events_queued'] += 1
+
+    if len(_buffer) >= MAX_BUFFER_SIZE:
+        threading.Thread(target=flush_buffer, daemon=True).start()
+
+    return True
+
+
 def flush_buffer() -> dict[str, Any]:
     """Flush all buffered events to App Insights.
 

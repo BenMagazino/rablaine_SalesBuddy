@@ -4483,17 +4483,19 @@ def scan_init() -> Dict[str, Any]:
             # Detect broken msp_accountteams entity (MSX-side outage)
             if "0x80040224" in error_msg or "header name and value" in error_msg.lower():
                 logger.error("MSX msp_accountteams entity is returning 400 - likely an MSX-side outage")
+                # Emit a probe event so the metrics dashboard sees real
+                # user-triggered outages alongside the background probes.
+                try:
+                    from app.services.telemetry_shipper import queue_msx_outage
+                    queue_msx_outage("outage", error_code="0x80040224")
+                except Exception:
+                    logger.exception("Failed to emit MSX outage telemetry")
                 return {
                     "success": False,
                     "error": (
-                        "MSX Account Teams API is currently unavailable (HTTP 400). "
-                        "This is an MSX-side issue, not a Sales Buddy problem. "
-                        "Please send this error to Alex and he will engage the MSX team to fix it. "
-                        "It will not resolve itself if you do not."
-                        "\n\n"
-                        "Details: HTTP 400 on msp_accountteam entity, "
-                        "error code 0x80040224 (\"Both header name and value should be specified\"), "
-                        "plugin: ODataRetrieveMultiplePlugin."
+                        "The MSX Account Team API is broken right now. "
+                        "Message Alex Blaine on Teams so he can engage MSX to fix it - "
+                        "this is a known recurring issue and won't resolve on its own."
                     ),
                     "msx_outage": True,
                 }
