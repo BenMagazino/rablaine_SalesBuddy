@@ -178,30 +178,42 @@ def api_admin_ai_clear_cache():
 
 @admin_bp.route('/api/admin/update-check', methods=['GET'])
 def api_update_check():
-    """Check for available updates and return current state."""
+    """Check for available updates and return current state.
+
+    Behaviour:
+      - Always re-fetches CHANGELOG.md from GitHub (cheap HTTP call).
+      - If ``?refresh=1`` is set, also runs ``git fetch origin main`` to
+        recompute the local-vs-remote diff. Otherwise returns the cached
+        diff from the hourly background poll. Page-load and Check-Now
+        both pass ``refresh=1``; the navbar dot uses the cached value.
+
+    Returns the standard update state plus a ``changelog`` block with two
+    pre-filtered lists:
+      - ``pending``: entries between the running commit and the remote
+        (i.e. "What you'll get").
+      - ``last_deployed``: entries between ``previous_commit`` and
+        ``current_commit`` from UserPreference (i.e. "What just landed"
+        / "View last update"). DB-backed so it survives any restart, any
+        tab, any browser - replaces the old per-tab sessionStorage hack.
+    """
     from flask import current_app
     from app.services.update_checker import (
         get_update_state, check_for_updates,
         get_changelog_state, fetch_changelog,
-        get_local_head_date, entries_newer_than,
-        get_commits_in_range, entries_in_commits,
+        get_local_head_date, get_commits_in_range, entries_in_commits,
     )
 
-    # If force refresh requested, run the check now
+    # Always pull a fresh changelog. Cheap HTTP call, removes the entire
+    # "stale until you click Check Now" class of bugs. ``refresh=1`` adds
+    # a git fetch on top so we also catch newly-pushed commits.
     if request.args.get('refresh') == '1':
         state = check_for_updates()
-        fetch_changelog()
     else:
         state = get_update_state()
-        # Lazy-load the changelog on first admin-panel open. The background
-        # loop only refreshes the update badge - it does NOT poll the
-        # changelog, because polling races with GitHub's CDN right after a
-        # push and can pin a stale copy. First call after boot fills cache;
-        # users hit ?refresh=1 (or the modal) for a forced re-fetch.
-        if get_changelog_state().get('last_fetched') is None:
-            fetch_changelog()
+    fetch_changelog()
 
-    # Include the boot-time commit (what the running server loaded)
+    # Boot commit (what the running server actually loaded) - frozen at
+    # startup, immune to git pulls happening underneath us.
     boot_commit = current_app.config.get('BOOT_COMMIT')
     boot_commit_date = current_app.config.get('BOOT_COMMIT_DATE')
     state['boot_commit'] = boot_commit
@@ -213,49 +225,46 @@ def api_update_check():
         and boot_commit != disk_commit
     )
 
-    # Include dismissed commit from user prefs
+    # Dismissal: the navbar dot hides if the user clicked "dismiss" on the
+    # current remote commit. Doesn't affect the card itself.
     pref = UserPreference.query.first()
     dismissed = pref.dismissed_update_commit if pref else None
-
-    # Update is "new" (show badge) if available and not dismissed for this remote commit
     state['dismissed'] = dismissed == state.get('remote_commit')
     state['show_badge'] = state.get('available', False) and not state['dismissed']
 
-    # Attach changelog data: full list, plus pre-filtered "what's new" buckets.
-    # Filtering is primarily by commit hash (entries tagged ## DATE - HASH),
-    # with a date fallback for legacy/untagged entries.
+    # Build the "What you'll get" list from the local..remote git range.
     changelog = get_changelog_state()
     local_head_date = get_local_head_date()
-
     pending_commits = get_commits_in_range(
         state.get('local_commit'), state.get('remote_commit')
     )
-    # The server's BOOT_COMMIT is the commit it loaded at startup. After an
-    # apply-update + restart, BOOT_COMMIT == local_commit, so a
-    # boot..local_commit range would be empty and "What just landed" would
-    # show nothing. The client knows what the boot_commit was BEFORE the
-    # update (it captured it before calling apply-update) and passes it
-    # back as ?since=<old_boot_commit> on the post-restart check, which we
-    # use as the start of the range.
-    since_ref = request.args.get('since') or boot_commit
-    since_boot_commits = get_commits_in_range(since_ref, state.get('local_commit'))
+
+    # Build the "Last deployed" list from previous_commit..current_commit
+    # in the DB. These are persisted at boot whenever BOOT_COMMIT changes,
+    # so this works even if the user switched browsers or restarted via
+    # update.bat instead of the admin button.
+    last_deployed = []
+    if pref and pref.previous_commit and pref.current_commit \
+            and pref.previous_commit != pref.current_commit:
+        deployed_commits = get_commits_in_range(
+            pref.previous_commit, pref.current_commit
+        )
+        last_deployed = entries_in_commits(
+            changelog['entries'], deployed_commits, None
+        )
 
     state['changelog'] = {
         'entries': changelog['entries'],
         'last_fetched': changelog['last_fetched'],
         'error': changelog['error'],
         'local_head_date': local_head_date,
-        # Entries strictly newer than what's running on this machine's disk.
-        # When updates are pending these are "what you'll get."
         'pending': entries_in_commits(
             changelog['entries'], pending_commits, local_head_date
         ),
-        # Entries that landed on disk after the running server booted.
-        # After an update + restart, these are "what just landed."
-        'since_boot': entries_in_commits(
-            changelog['entries'], since_boot_commits, boot_commit_date
-        ),
+        'last_deployed': last_deployed,
     }
+    state['previous_commit'] = pref.previous_commit if pref else None
+    state['current_commit'] = pref.current_commit if pref else None
 
     return jsonify(state)
 
@@ -295,6 +304,28 @@ def api_update_apply():
 
     if not server_script.exists():
         return jsonify({'error': 'server.ps1 not found'}), 500
+
+    # Record what we're updating FROM. previous_commit is only ever written
+    # here (and one mirror in update.bat / scripts), never on plain restart -
+    # that way the "View last update" panel keeps showing the most recent
+    # real deployment indefinitely, even if the server restarts later for
+    # unrelated reasons. After server.ps1 finishes the pull and the new
+    # process boots, app/__init__.py records the new current_commit, and
+    # the pair previous..current describes exactly what shipped.
+    try:
+        boot_commit = current_app.config.get('BOOT_COMMIT')
+        if boot_commit:
+            pref = UserPreference.query.first()
+            if pref is None:
+                pref = UserPreference(current_commit=boot_commit, previous_commit=boot_commit)
+                db.session.add(pref)
+            else:
+                pref.previous_commit = boot_commit
+            db.session.commit()
+    except Exception:
+        # Don't block the deploy on bookkeeping. Worst case: the next
+        # "View last update" is empty until the user updates again.
+        db.session.rollback()
 
     # Read PORT from .env so we can pass through elevation if needed
     port = int(os.environ.get('PORT', '5151'))
