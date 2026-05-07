@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 5/7/2026
+## 5/7/2026 - 95517f9
 
 - Improved the MSX Account Team endpoint probe. Probes now return in seconds instead of minutes when the endpoint is hung, classify timeouts as real failures (not VPN drops), and every real account-sync call to the same endpoint now contributes a free up/down signal to telemetry.
 
