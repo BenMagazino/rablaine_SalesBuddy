@@ -144,10 +144,16 @@ def get_instance_id() -> str:
 def is_telemetry_enabled() -> bool:
     """Check whether central telemetry shipping is enabled.
 
-    Disabled when ``SALESBUDDY_TELEMETRY_OPT_OUT`` is set to a truthy value.
+    Disabled when ``SALESBUDDY_TELEMETRY_OPT_OUT`` is set to a truthy
+    value, or when ``FLASK_ENV=development`` (so dev work doesn't pollute
+    production telemetry by default).
     """
     opt_out = os.environ.get('SALESBUDDY_TELEMETRY_OPT_OUT', '').lower()
-    return opt_out not in ('true', '1', 'yes')
+    if opt_out in ('true', '1', 'yes'):
+        return False
+    if os.environ.get('FLASK_ENV', '').lower() == 'development':
+        return False
+    return True
 
 
 # ===========================================================================
