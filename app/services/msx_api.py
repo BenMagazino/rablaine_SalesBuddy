@@ -3491,6 +3491,8 @@ def batch_query_account_teams(
                 filter_query=filter_query,
                 top=100  # With server-side filtering, 100 should be enough for 3 accounts
             )
+            from app.services.msx_health_probe import record_msp_accountteams_call
+            record_msp_accountteams_call(result)
             
             if not result.get("success"):
                 logger.warning(f"Batch account teams query failed: {result.get('error')}")
@@ -3566,6 +3568,8 @@ def batch_query_account_csams(
                 filter_query=filter_query,
                 top=100,
             )
+            from app.services.msx_health_probe import record_msp_accountteams_call
+            record_msp_accountteams_call(result)
 
             if not result.get("success"):
                 logger.warning(f"CSAM batch query failed: {result.get('error')}")
@@ -3643,6 +3647,8 @@ def batch_query_account_dss(
                 filter_query=filter_query,
                 top=100,
             )
+            from app.services.msx_health_probe import record_msp_accountteams_call
+            record_msp_accountteams_call(result)
 
             if not result.get("success"):
                 logger.warning(f"DSS batch query failed: {result.get('error')}")
@@ -3766,6 +3772,8 @@ def query_pod_ses_from_account(account_id: str) -> Dict[str, Any]:
             filter_query=filter_query,
             top=100
         )
+        from app.services.msx_health_probe import record_msp_accountteams_call
+        record_msp_accountteams_call(result)
         
         if not result.get("success"):
             logger.warning(f"Pod SE query failed: {result.get('error')}")
@@ -3817,6 +3825,8 @@ def find_account_seller(account_id: str) -> Dict[str, Any]:
             filter_query=filter_query,
             top=100
         )
+        from app.services.msx_health_probe import record_msp_accountteams_call
+        record_msp_accountteams_call(result)
         
         if not result.get("success"):
             logger.warning(f"Seller query failed: {result.get('error')}")
@@ -4310,6 +4320,8 @@ def find_my_territories(atu_filter: Optional[str] = None) -> Dict[str, Any]:
             filter_query=f"_msp_systemuserid_value eq {user_id}",
             top=500  # Get up to 500 assignments
         )
+        from app.services.msx_health_probe import record_msp_accountteams_call
+        record_msp_accountteams_call(team_result)
         
         if not team_result.get("success"):
             return team_result
@@ -4477,19 +4489,14 @@ def scan_init() -> Dict[str, Any]:
             filter_query=f"_msp_systemuserid_value eq {user_id}",
             top=500
         )
+        from app.services.msx_health_probe import record_msp_accountteams_call
+        record_msp_accountteams_call(team_result)
         
         if not team_result.get("success"):
             error_msg = team_result.get("error", "")
             # Detect broken msp_accountteams entity (MSX-side outage)
             if "0x80040224" in error_msg or "header name and value" in error_msg.lower():
                 logger.error("MSX msp_accountteams entity is returning 400 - likely an MSX-side outage")
-                # Emit a probe event so the metrics dashboard sees real
-                # user-triggered outages alongside the background probes.
-                try:
-                    from app.services.telemetry_shipper import queue_msx_outage
-                    queue_msx_outage("outage", error_code="0x80040224")
-                except Exception:
-                    logger.exception("Failed to emit MSX outage telemetry")
                 return {
                     "success": False,
                     "error": (
@@ -4757,6 +4764,8 @@ def get_pod_team_members(sample_account_id: str) -> Dict[str, Any]:
             filter_query=f"_msp_accountid_value eq {sample_account_id}",
             top=50
         )
+        from app.services.msx_health_probe import record_msp_accountteams_call
+        record_msp_accountteams_call(team_result)
         
         if not team_result.get("success"):
             return team_result
