@@ -19,6 +19,78 @@ param(
 $RepoRoot = Split-Path $PSScriptRoot -Parent
 Set-Location $RepoRoot
 
+# Always pin Azure CLI state to an environment-specific path under USERPROFILE.
+# Production uses %USERPROFILE%\SalesBuddy\.azure, development uses
+# %USERPROFILE%\SalesBuddyDev\.azure, and all other values default to production.
+function Initialize-IsolatedAzCliContext {
+    $baseUserProfile = $env:USERPROFILE
+    if (-not $baseUserProfile) {
+        $baseUserProfile = [Environment]::GetFolderPath('UserProfile')
+    }
+    if (-not $baseUserProfile) {
+        throw "Unable to resolve user profile path for Sales Buddy runtime context."
+    }
+
+    $flaskEnv = 'production'
+    $envFile = Join-Path $RepoRoot '.env'
+    if (Test-Path $envFile) {
+        foreach ($line in Get-Content $envFile) {
+            if ($line -match '^\s*FLASK_ENV\s*=\s*(.+?)\s*$') {
+                $flaskEnv = $Matches[1].Trim().Trim('"').Trim("'")
+                break
+            }
+        }
+    }
+
+    switch -Regex ($flaskEnv) {
+        '^(?i)production$' { $profileFolder = 'SalesBuddy'; break }
+        '^(?i)development$' { $profileFolder = 'SalesBuddyDev'; break }
+        default { $profileFolder = 'SalesBuddy' }
+    }
+    $salesBuddyHome = Join-Path $baseUserProfile $profileFolder
+    $azureConfigDir = Join-Path $salesBuddyHome '.azure'
+    $defaultAzureConfigDir = Join-Path $baseUserProfile '.azure'
+
+    if (-not (Test-Path $salesBuddyHome)) {
+        New-Item -Path $salesBuddyHome -ItemType Directory -Force | Out-Null
+    }
+
+    # First run bootstrap: if the env-specific .azure folder does not exist yet,
+    # migrate existing default Azure CLI state automatically when available.
+    # Also retry migration if target exists but is empty (failed copy recovery).
+    $azureDirEmpty = @(Get-ChildItem -Path $azureConfigDir -Force -ErrorAction SilentlyContinue).Count -eq 0
+    if (-not (Test-Path $azureConfigDir) -or $azureDirEmpty) {
+        if (Test-Path $defaultAzureConfigDir) {
+            try {
+                Copy-Item -Path $defaultAzureConfigDir -Destination $salesBuddyHome -Recurse -Force -ErrorAction Stop
+            } catch {
+                Write-Host "  [WARNING] Could not migrate Azure CLI config to ${azureConfigDir}: $($_.Exception.Message)" -ForegroundColor Yellow
+                New-Item -Path $azureConfigDir -ItemType Directory -Force | Out-Null
+            }
+        } else {
+            New-Item -Path $azureConfigDir -ItemType Directory -Force | Out-Null
+            $script:AzCliContextFresh = $true
+        }
+    }
+
+    $env:SALESBUDDY_HOME = $salesBuddyHome
+    $env:AZURE_CONFIG_DIR = $azureConfigDir
+
+    # Expose the resolved environment label for the banner
+    switch -Regex ($flaskEnv) {
+        '^(?i)production$' { $script:ResolvedEnvLabel = 'Production'; break }
+        '^(?i)development$' { $script:ResolvedEnvLabel = 'Development'; break }
+        default { $script:ResolvedEnvLabel = 'Production' }
+    }
+}
+
+try {
+    Initialize-IsolatedAzCliContext
+} catch {
+    # Deferred: error is reported after the banner in Main
+    $script:AzCliContextError = $_
+}
+
 # ==============================================================================
 # Helper Functions
 # ==============================================================================
@@ -224,7 +296,26 @@ function Start-Server {
     $serverArgs = @('--host=0.0.0.0', "--port=$Port", '--call', 'app:create_app')
 
     Write-Host "  Starting server on port $Port..." -ForegroundColor Yellow
-    Start-Process -FilePath $waitress -ArgumentList $serverArgs -WorkingDirectory $RepoRoot -WindowStyle Hidden
+    
+    # Use ProcessStartInfo to explicitly pass environment variables (e.g., AZURE_CONFIG_DIR)
+    # to the waitress subprocess, ensuring Azure CLI commands inherit the correct config path.
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $waitress
+    $psi.Arguments = $serverArgs -join ' '
+    $psi.WorkingDirectory = $RepoRoot
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.CreateNoWindow = $true
+    
+    # Copy current environment and set AZURE_CONFIG_DIR for the subprocess
+    foreach ($key in [System.Environment]::GetEnvironmentVariables([System.EnvironmentVariableTarget]::Process).Keys) {
+        $psi.EnvironmentVariables[$key] = [System.Environment]::GetEnvironmentVariable($key, [System.EnvironmentVariableTarget]::Process)
+    }
+    $psi.EnvironmentVariables['AZURE_CONFIG_DIR'] = $env:AZURE_CONFIG_DIR
+    $psi.EnvironmentVariables['SALESBUDDY_HOME'] = $env:SALESBUDDY_HOME
+    
+    $process = [System.Diagnostics.Process]::Start($psi)
     Start-Sleep -Seconds 3
     if (Test-ServerRunning -Port $Port) {
         Write-Host "  [OK] Server running at http://localhost:$Port" -ForegroundColor Green
@@ -338,6 +429,24 @@ Write-Host ""
 Write-Host "  Sales Buddy" -ForegroundColor Cyan
 Write-Host "  ==========" -ForegroundColor Cyan
 Write-Host ""
+if ($script:AzCliContextError) {
+    $err = $script:AzCliContextError
+    $pos = $err.InvocationInfo
+    $location = if ($pos -and $pos.ScriptName) {
+        "$($pos.ScriptName):$($pos.ScriptLineNumber)"
+    } else { 'unknown' }
+    Write-Host "  [FAILURE] Config directory setup failed" -ForegroundColor Red
+    Write-Host "            Error: $($err.Exception.Message)" -ForegroundColor Red
+    Write-Host "            Location: $location" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  Azure CLI isolation is not active. The server will start but az commands" -ForegroundColor Yellow
+    Write-Host "  may use the default Azure CLI config (~\.azure) instead of the isolated one." -ForegroundColor Yellow
+    Write-Host ""
+} elseif ($script:AzCliContextFresh) {
+    Write-Host "  [WARNING] No existing Az CLI context detected, new Az Login required" -ForegroundColor Yellow
+} else {
+    Write-Host "  [OK] Config directory and environment variables set as $script:ResolvedEnvLabel" -ForegroundColor Green
+}
 
 # -StopOnly: Read port from .env, stop the server, and exit immediately.
 # Skips all prereq checks (Python, Git, venv, etc.) for instant execution.

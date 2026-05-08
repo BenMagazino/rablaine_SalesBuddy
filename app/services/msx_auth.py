@@ -23,6 +23,7 @@ import time
 import logging
 import re
 import sys
+import os
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
@@ -630,6 +631,7 @@ def start_az_login(scope: str | None = None) -> Dict[str, Any]:
                 cmd,
                 shell=True,
                 creationflags=_sp.CREATE_NEW_CONSOLE,
+                env=os.environ.copy(),  # Explicit inheritance for isolated Azure CLI config
             )
         else:
             # On Linux/Mac, launch in background
@@ -637,6 +639,7 @@ def start_az_login(scope: str | None = None) -> Dict[str, Any]:
                 args,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                env=os.environ.copy(),  # Explicit inheritance for isolated Azure CLI config
             )
 
         _az_login_state = {
@@ -775,7 +778,8 @@ def start_device_code_flow() -> Dict[str, Any]:
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
-            shell=IS_WINDOWS  # Required on Windows to find az in PATH
+            shell=IS_WINDOWS,  # Required on Windows to find az in PATH
+            env=os.environ.copy(),  # Explicit inheritance for isolated Azure CLI config
         )
         _device_code_state["process"] = process
         

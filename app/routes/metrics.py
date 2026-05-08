@@ -16,6 +16,7 @@ Cards (in order):
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -468,7 +469,7 @@ def api_metrics_sign_in():
         if sys.platform == 'win32':
             CREATE_NEW_CONSOLE = 0x00000010
             creationflags = CREATE_NEW_CONSOLE
-        subprocess.Popen(cmd, creationflags=creationflags, close_fds=True)
+        subprocess.Popen(cmd, creationflags=creationflags, close_fds=True, env=os.environ.copy())
     except Exception as exc:  # noqa: BLE001
         logger.exception('Failed to spawn az login')
         return jsonify({'error': f'Failed to spawn az login: {exc}'}), 500

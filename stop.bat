@@ -4,9 +4,22 @@ REM Auto-elevates (admin) only if PORT < 1024 (e.g. port 80)
 cd /d "%~dp0"
 
 set PORT=5151
+set "FLASK_ENV=production"
 if exist .env (
     for /f "tokens=1,2 delims==" %%a in (.env) do (
         if "%%a"=="PORT" set PORT=%%b
+        if "%%a"=="FLASK_ENV" set FLASK_ENV=%%b
+    )
+)
+
+REM Use default USERPROFILE with environment-specific Azure CLI config directory.
+if /I "%FLASK_ENV%"=="production" (
+    set "AZURE_CONFIG_DIR=%USERPROFILE%\SalesBuddy\.azure"
+) else (
+    if /I "%FLASK_ENV%"=="development" (
+        set "AZURE_CONFIG_DIR=%USERPROFILE%\SalesBuddyDev\.azure"
+    ) else (
+        set "AZURE_CONFIG_DIR=%USERPROFILE%\SalesBuddy\.azure"
     )
 )
 
