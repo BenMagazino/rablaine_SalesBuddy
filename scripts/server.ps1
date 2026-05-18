@@ -99,8 +99,8 @@ try {
 $HasWinget = $false
 try { if (Get-Command winget -ErrorAction SilentlyContinue) { $HasWinget = $true } } catch {}
 
-# Pause for interactive use (skipped when -Force for non-interactive updates)
-function Pause-WithMessage {
+# Wait for interactive use (skipped when -Force for non-interactive updates)
+function Wait-WithMessage {
     param([string]$Message = "Press any key to close...", [string]$Color = "Gray")
     if ($Force) { return }
     Write-Host "`n$Message" -ForegroundColor $Color
@@ -315,7 +315,7 @@ function Start-Server {
     $psi.EnvironmentVariables['AZURE_CONFIG_DIR'] = $env:AZURE_CONFIG_DIR
     $psi.EnvironmentVariables['SALESBUDDY_HOME'] = $env:SALESBUDDY_HOME
     
-    $process = [System.Diagnostics.Process]::Start($psi)
+    [System.Diagnostics.Process]::Start($psi) | Out-Null
     Start-Sleep -Seconds 3
     if (Test-ServerRunning -Port $Port) {
         Write-Host "  [OK] Server running at http://localhost:$Port" -ForegroundColor Green
@@ -325,7 +325,7 @@ function Start-Server {
 }
 
 # One-time rename from legacy database filename
-function Migrate-DatabaseName {
+function Invoke-DatabaseMigration {
     $oldDb = Join-Path $RepoRoot 'data\notehelper.db'
     $newDb = Join-Path $RepoRoot 'data\salesbuddy.db'
     if ((Test-Path $oldDb) -and -not (Test-Path $newDb)) {
@@ -357,7 +357,7 @@ function Backup-Database {
 }
 
 # Pull latest from git (handles stashing dirty files)
-function Pull-Updates {
+function Sync-Updates {
     $dirty = git status --porcelain
     if ($dirty) {
         Write-Host "  Stashing local changes..." -ForegroundColor Gray
@@ -403,7 +403,7 @@ function Install-Dependencies {
 }
 
 # Run database migrations
-function Run-Migrations {
+function Invoke-Migrations {
     Write-Host "  Running migrations..." -ForegroundColor Yellow
     $pythonExe = Join-Path $RepoRoot 'venv\Scripts\python.exe'
     $migrationOutput = & $pythonExe -c "from app import create_app, db; from app.migrations import run_migrations; app = create_app(); app.app_context().push(); run_migrations(db)" 2>&1
@@ -503,7 +503,7 @@ if ($pyVersion) {
 }
 
 if (-not $pythonOk) {
-    if ($pyVersion -eq $null) {
+    if ($null -eq $pyVersion) {
         Write-Host "  [ERROR] Python not found." -ForegroundColor Red
     } else {
         Write-Host "  [ERROR] Python found, but 3.13+ is required." -ForegroundColor Red
@@ -815,7 +815,7 @@ if ($Force) {
     Backup-Database
 
     if ($isGitRepo) {
-        if (-not (Pull-Updates)) {
+        if (-not (Sync-Updates)) {
             Write-Host "  Restarting server with current code..." -ForegroundColor Yellow
             Start-Server -Port $Port
             Pause-WithMessage "UPDATE FAILED - press any key to close..." "Red"
@@ -861,7 +861,7 @@ if ($hasUpdates) {
     Migrate-DatabaseName
     Backup-Database
 
-    if (-not (Pull-Updates)) {
+    if (-not (Sync-Updates)) {
         Write-Host "  Starting server with current code..." -ForegroundColor Yellow
         Start-Server -Port $Port
         Pause-WithMessage "UPDATE FAILED - press any key to close..." "Red"
