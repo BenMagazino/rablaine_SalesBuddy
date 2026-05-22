@@ -1217,6 +1217,12 @@ function updateMsxStatusDisplay(state, detail) {
 // This is the single entry point: check token, try auto-acquiring if needed,
 // only show "Not Connected" if everything fails.
 async function loadMsxStatus() {
+    // Clear any stale test result alerts when refreshing status
+    const testResult = document.getElementById('msxTestResult');
+    if (testResult) testResult.innerHTML = '';
+    const testHr = document.getElementById('msxTestResultHr');
+    if (testHr) testHr.classList.add('d-none');
+
     try {
         const response = await fetch('/api/msx/status');
         const data = await response.json();
@@ -1504,6 +1510,8 @@ document.getElementById('msxTestBtn').addEventListener('click', async function()
             if (data.vpn_blocked && window.showVpnBanner) {
                 window.showVpnBanner();
             }
+            // Show sign-in section if not authenticated
+            loadMsxStatus();
         }
     } catch (err) {
         resultDiv.innerHTML = `

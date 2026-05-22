@@ -51,6 +51,7 @@ data/
 # OS
 .DS_Store
 Thumbs.db
+/Microsoft/
 
 # Sentinel reports
 .sentinel/

@@ -19,6 +19,78 @@ param(
 $RepoRoot = Split-Path $PSScriptRoot -Parent
 Set-Location $RepoRoot
 
+# Always pin Azure CLI state to an environment-specific path under USERPROFILE.
+# Production uses %USERPROFILE%\SalesBuddy\.azure, development uses
+# %USERPROFILE%\SalesBuddyDev\.azure, and all other values default to production.
+function Initialize-IsolatedAzCliContext {
+    $baseUserProfile = $env:USERPROFILE
+    if (-not $baseUserProfile) {
+        $baseUserProfile = [Environment]::GetFolderPath('UserProfile')
+    }
+    if (-not $baseUserProfile) {
+        throw "Unable to resolve user profile path for Sales Buddy runtime context."
+    }
+
+    $flaskEnv = 'production'
+    $envFile = Join-Path $RepoRoot '.env'
+    if (Test-Path $envFile) {
+        foreach ($line in Get-Content $envFile) {
+            if ($line -match '^\s*FLASK_ENV\s*=\s*(.+?)\s*$') {
+                $flaskEnv = $Matches[1].Trim().Trim('"').Trim("'")
+                break
+            }
+        }
+    }
+
+    switch -Regex ($flaskEnv) {
+        '^(?i)production$' { $profileFolder = 'SalesBuddy'; break }
+        '^(?i)development$' { $profileFolder = 'SalesBuddyDev'; break }
+        default { $profileFolder = 'SalesBuddy' }
+    }
+    $salesBuddyHome = Join-Path $baseUserProfile $profileFolder
+    $azureConfigDir = Join-Path $salesBuddyHome '.azure'
+    $defaultAzureConfigDir = Join-Path $baseUserProfile '.azure'
+
+    if (-not (Test-Path $salesBuddyHome)) {
+        New-Item -Path $salesBuddyHome -ItemType Directory -Force | Out-Null
+    }
+
+    # First run bootstrap: if the env-specific .azure folder does not exist yet,
+    # migrate existing default Azure CLI state automatically when available.
+    # Also retry migration if target exists but is empty (failed copy recovery).
+    $azureDirEmpty = @(Get-ChildItem -Path $azureConfigDir -Force -ErrorAction SilentlyContinue).Count -eq 0
+    if (-not (Test-Path $azureConfigDir) -or $azureDirEmpty) {
+        if (Test-Path $defaultAzureConfigDir) {
+            try {
+                Copy-Item -Path $defaultAzureConfigDir -Destination $salesBuddyHome -Recurse -Force -ErrorAction Stop
+            } catch {
+                Write-Host "  [WARNING] Could not migrate Azure CLI config to ${azureConfigDir}: $($_.Exception.Message)" -ForegroundColor Yellow
+                New-Item -Path $azureConfigDir -ItemType Directory -Force | Out-Null
+            }
+        } else {
+            New-Item -Path $azureConfigDir -ItemType Directory -Force | Out-Null
+            $script:AzCliContextFresh = $true
+        }
+    }
+
+    $env:SALESBUDDY_HOME = $salesBuddyHome
+    $env:AZURE_CONFIG_DIR = $azureConfigDir
+
+    # Expose the resolved environment label for the banner
+    switch -Regex ($flaskEnv) {
+        '^(?i)production$' { $script:ResolvedEnvLabel = 'Production'; break }
+        '^(?i)development$' { $script:ResolvedEnvLabel = 'Development'; break }
+        default { $script:ResolvedEnvLabel = 'Production' }
+    }
+}
+
+try {
+    Initialize-IsolatedAzCliContext
+} catch {
+    # Deferred: error is reported after the banner in Main
+    $script:AzCliContextError = $_
+}
+
 # ==============================================================================
 # Helper Functions
 # ==============================================================================
@@ -27,8 +99,8 @@ Set-Location $RepoRoot
 $HasWinget = $false
 try { if (Get-Command winget -ErrorAction SilentlyContinue) { $HasWinget = $true } } catch {}
 
-# Pause for interactive use (skipped when -Force for non-interactive updates)
-function Pause-WithMessage {
+# Wait for interactive use (skipped when -Force for non-interactive updates)
+function Wait-WithMessage {
     param([string]$Message = "Press any key to close...", [string]$Color = "Gray")
     if ($Force) { return }
     Write-Host "`n$Message" -ForegroundColor $Color
@@ -224,7 +296,26 @@ function Start-Server {
     $serverArgs = @('--host=0.0.0.0', "--port=$Port", '--call', 'app:create_app')
 
     Write-Host "  Starting server on port $Port..." -ForegroundColor Yellow
-    Start-Process -FilePath $waitress -ArgumentList $serverArgs -WorkingDirectory $RepoRoot -WindowStyle Hidden
+    
+    # Use ProcessStartInfo to explicitly pass environment variables (e.g., AZURE_CONFIG_DIR)
+    # to the waitress subprocess, ensuring Azure CLI commands inherit the correct config path.
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $waitress
+    $psi.Arguments = $serverArgs -join ' '
+    $psi.WorkingDirectory = $RepoRoot
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.CreateNoWindow = $true
+    
+    # Copy current environment and set AZURE_CONFIG_DIR for the subprocess
+    foreach ($key in [System.Environment]::GetEnvironmentVariables([System.EnvironmentVariableTarget]::Process).Keys) {
+        $psi.EnvironmentVariables[$key] = [System.Environment]::GetEnvironmentVariable($key, [System.EnvironmentVariableTarget]::Process)
+    }
+    $psi.EnvironmentVariables['AZURE_CONFIG_DIR'] = $env:AZURE_CONFIG_DIR
+    $psi.EnvironmentVariables['SALESBUDDY_HOME'] = $env:SALESBUDDY_HOME
+    
+    [System.Diagnostics.Process]::Start($psi) | Out-Null
     Start-Sleep -Seconds 3
     if (Test-ServerRunning -Port $Port) {
         Write-Host "  [OK] Server running at http://localhost:$Port" -ForegroundColor Green
@@ -234,7 +325,7 @@ function Start-Server {
 }
 
 # One-time rename from legacy database filename
-function Migrate-DatabaseName {
+function Invoke-DatabaseMigration {
     $oldDb = Join-Path $RepoRoot 'data\notehelper.db'
     $newDb = Join-Path $RepoRoot 'data\salesbuddy.db'
     if ((Test-Path $oldDb) -and -not (Test-Path $newDb)) {
@@ -266,7 +357,7 @@ function Backup-Database {
 }
 
 # Pull latest from git (handles stashing dirty files)
-function Pull-Updates {
+function Sync-Updates {
     $dirty = git status --porcelain
     if ($dirty) {
         Write-Host "  Stashing local changes..." -ForegroundColor Gray
@@ -312,7 +403,7 @@ function Install-Dependencies {
 }
 
 # Run database migrations
-function Run-Migrations {
+function Invoke-Migrations {
     Write-Host "  Running migrations..." -ForegroundColor Yellow
     $pythonExe = Join-Path $RepoRoot 'venv\Scripts\python.exe'
     $migrationOutput = & $pythonExe -c "from app import create_app, db; from app.migrations import run_migrations; app = create_app(); app.app_context().push(); run_migrations(db)" 2>&1
@@ -338,6 +429,24 @@ Write-Host ""
 Write-Host "  Sales Buddy" -ForegroundColor Cyan
 Write-Host "  ==========" -ForegroundColor Cyan
 Write-Host ""
+if ($script:AzCliContextError) {
+    $err = $script:AzCliContextError
+    $pos = $err.InvocationInfo
+    $location = if ($pos -and $pos.ScriptName) {
+        "$($pos.ScriptName):$($pos.ScriptLineNumber)"
+    } else { 'unknown' }
+    Write-Host "  [FAILURE] Config directory setup failed" -ForegroundColor Red
+    Write-Host "            Error: $($err.Exception.Message)" -ForegroundColor Red
+    Write-Host "            Location: $location" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  Azure CLI isolation is not active. The server will start but az commands" -ForegroundColor Yellow
+    Write-Host "  may use the default Azure CLI config (~\.azure) instead of the isolated one." -ForegroundColor Yellow
+    Write-Host ""
+} elseif ($script:AzCliContextFresh) {
+    Write-Host "  [WARNING] No existing Az CLI context detected, new Az Login required" -ForegroundColor Yellow
+} else {
+    Write-Host "  [OK] Config directory and environment variables set as $script:ResolvedEnvLabel" -ForegroundColor Green
+}
 
 # -StopOnly: Read port from .env, stop the server, and exit immediately.
 # Skips all prereq checks (Python, Git, venv, etc.) for instant execution.
@@ -394,7 +503,7 @@ if ($pyVersion) {
 }
 
 if (-not $pythonOk) {
-    if ($pyVersion -eq $null) {
+    if ($null -eq $pyVersion) {
         Write-Host "  [ERROR] Python not found." -ForegroundColor Red
     } else {
         Write-Host "  [ERROR] Python found, but 3.13+ is required." -ForegroundColor Red
@@ -412,7 +521,7 @@ if (-not $pythonOk) {
 }
 
 if (-not $pythonOk) {
-    Pause-WithMessage "Press any key to close..." "Red"
+    Wait-WithMessage "Press any key to close..." "Red"
     exit 1
 }
 
@@ -478,7 +587,7 @@ if (-not (Test-Path (Join-Path $RepoRoot 'venv\Scripts\python.exe'))) {
     & python -m venv (Join-Path $RepoRoot 'venv')
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  [ERROR] Failed to create virtual environment." -ForegroundColor Red
-        Pause-WithMessage "Press any key to close..." "Red"
+        Wait-WithMessage "Press any key to close..." "Red"
         exit 1
     }
     Write-Host "  [OK] Virtual environment created." -ForegroundColor Green
@@ -489,7 +598,7 @@ if (-not (Test-Path (Join-Path $RepoRoot 'venv\Scripts\python.exe'))) {
 # -- Step 6: Install dependencies ---------------------------------------------
 if (-not (Install-Dependencies)) {
     Write-Host "  [ERROR] Failed to install dependencies." -ForegroundColor Red
-    Pause-WithMessage "Press any key to close..." "Red"
+    Wait-WithMessage "Press any key to close..." "Red"
     exit 1
 }
 Write-Host "  [OK] Dependencies installed." -ForegroundColor Green
@@ -702,14 +811,14 @@ if ($Force) {
     Write-Host "  Updating..." -ForegroundColor Cyan
 
     if ($serverRunning) { Stop-Server -Port $Port }
-    Migrate-DatabaseName
+    Invoke-DatabaseMigration
     Backup-Database
 
     if ($isGitRepo) {
-        if (-not (Pull-Updates)) {
+        if (-not (Sync-Updates)) {
             Write-Host "  Restarting server with current code..." -ForegroundColor Yellow
             Start-Server -Port $Port
-            Pause-WithMessage "UPDATE FAILED - press any key to close..." "Red"
+            Wait-WithMessage "UPDATE FAILED - press any key to close..." "Red"
             exit 1
         }
     }
@@ -717,21 +826,21 @@ if ($Force) {
     if (-not (Install-Dependencies)) {
         Write-Host "  [ERROR] pip install failed!" -ForegroundColor Red
         Start-Server -Port $Port
-        Pause-WithMessage "UPDATE FAILED - press any key to close..." "Red"
+        Wait-WithMessage "UPDATE FAILED - press any key to close..." "Red"
         exit 1
     }
 
-    if (-not (Run-Migrations)) {
+    if (-not (Invoke-Migrations)) {
         Write-Host "  [ERROR] Migrations failed!" -ForegroundColor Red
         Start-Server -Port $Port
-        Pause-WithMessage "UPDATE FAILED - press any key to close..." "Red"
+        Wait-WithMessage "UPDATE FAILED - press any key to close..." "Red"
         exit 1
     }
 
     Start-Server -Port $Port
     Write-Host ""
     Write-Host "  Update complete!" -ForegroundColor Green
-    Pause-WithMessage "Press any key to close..."
+    Wait-WithMessage "Press any key to close..."
     exit 0
 }
 
@@ -740,7 +849,7 @@ if ($Force) {
 if ($serverRunning -and -not $hasUpdates) {
     Write-Host ""
     Write-Host "  Server is already running on port $Port and up to date." -ForegroundColor Green
-    Pause-WithMessage "Press any key to close..."
+    Wait-WithMessage "Press any key to close..."
     exit 0
 }
 
@@ -749,13 +858,13 @@ if ($hasUpdates) {
     Write-Host "  Applying updates..." -ForegroundColor Cyan
 
     if ($serverRunning) { Stop-Server -Port $Port }
-    Migrate-DatabaseName
+    Invoke-DatabaseMigration
     Backup-Database
 
-    if (-not (Pull-Updates)) {
+    if (-not (Sync-Updates)) {
         Write-Host "  Starting server with current code..." -ForegroundColor Yellow
         Start-Server -Port $Port
-        Pause-WithMessage "UPDATE FAILED - press any key to close..." "Red"
+        Wait-WithMessage "UPDATE FAILED - press any key to close..." "Red"
         exit 1
     }
 
@@ -763,7 +872,7 @@ if ($hasUpdates) {
         Write-Host "  [ERROR] pip install failed!" -ForegroundColor Red
     }
 
-    if (-not (Run-Migrations)) {
+    if (-not (Invoke-Migrations)) {
         Write-Host "  [ERROR] Migrations failed!" -ForegroundColor Red
     }
 }
@@ -778,4 +887,4 @@ Write-Host "  Sales Buddy is running! Open in your browser:" -ForegroundColor Gr
 Write-Host ""
 Write-Host "  http://localhost:$Port" -ForegroundColor Cyan
 Write-Host ""
-Pause-WithMessage "Press any key to close this window..."
+Wait-WithMessage "Press any key to close this window..."
