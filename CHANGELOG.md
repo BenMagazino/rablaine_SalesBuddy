@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 5/22/2026 - c72af75
+
+- Updated auth system for better interoperability with operating-system-level `az login`. Sales Buddy now keeps its Azure CLI state in an isolated per-environment directory (`%USERPROFILE%\SalesBuddy\.azure` for production, `%USERPROFILE%\SalesBuddyDev\.azure` for development) so signing out of `az` in your normal terminal no longer logs the app out, and vice versa. Existing credentials are auto-migrated on first run - no re-authentication required.
+
 ## 5/7/2026 - 95517f9
 
 - Improved the MSX Account Team endpoint probe. Probes now return in seconds instead of minutes when the endpoint is hung, classify timeouts as real failures (not VPN drops), and every real account-sync call to the same endpoint now contributes a free up/down signal to telemetry.
