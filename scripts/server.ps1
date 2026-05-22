@@ -521,7 +521,7 @@ if (-not $pythonOk) {
 }
 
 if (-not $pythonOk) {
-    Pause-WithMessage "Press any key to close..." "Red"
+    Wait-WithMessage "Press any key to close..." "Red"
     exit 1
 }
 
@@ -587,7 +587,7 @@ if (-not (Test-Path (Join-Path $RepoRoot 'venv\Scripts\python.exe'))) {
     & python -m venv (Join-Path $RepoRoot 'venv')
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  [ERROR] Failed to create virtual environment." -ForegroundColor Red
-        Pause-WithMessage "Press any key to close..." "Red"
+        Wait-WithMessage "Press any key to close..." "Red"
         exit 1
     }
     Write-Host "  [OK] Virtual environment created." -ForegroundColor Green
@@ -598,7 +598,7 @@ if (-not (Test-Path (Join-Path $RepoRoot 'venv\Scripts\python.exe'))) {
 # -- Step 6: Install dependencies ---------------------------------------------
 if (-not (Install-Dependencies)) {
     Write-Host "  [ERROR] Failed to install dependencies." -ForegroundColor Red
-    Pause-WithMessage "Press any key to close..." "Red"
+    Wait-WithMessage "Press any key to close..." "Red"
     exit 1
 }
 Write-Host "  [OK] Dependencies installed." -ForegroundColor Green
@@ -811,14 +811,14 @@ if ($Force) {
     Write-Host "  Updating..." -ForegroundColor Cyan
 
     if ($serverRunning) { Stop-Server -Port $Port }
-    Migrate-DatabaseName
+    Invoke-DatabaseMigration
     Backup-Database
 
     if ($isGitRepo) {
         if (-not (Sync-Updates)) {
             Write-Host "  Restarting server with current code..." -ForegroundColor Yellow
             Start-Server -Port $Port
-            Pause-WithMessage "UPDATE FAILED - press any key to close..." "Red"
+            Wait-WithMessage "UPDATE FAILED - press any key to close..." "Red"
             exit 1
         }
     }
@@ -826,21 +826,21 @@ if ($Force) {
     if (-not (Install-Dependencies)) {
         Write-Host "  [ERROR] pip install failed!" -ForegroundColor Red
         Start-Server -Port $Port
-        Pause-WithMessage "UPDATE FAILED - press any key to close..." "Red"
+        Wait-WithMessage "UPDATE FAILED - press any key to close..." "Red"
         exit 1
     }
 
-    if (-not (Run-Migrations)) {
+    if (-not (Invoke-Migrations)) {
         Write-Host "  [ERROR] Migrations failed!" -ForegroundColor Red
         Start-Server -Port $Port
-        Pause-WithMessage "UPDATE FAILED - press any key to close..." "Red"
+        Wait-WithMessage "UPDATE FAILED - press any key to close..." "Red"
         exit 1
     }
 
     Start-Server -Port $Port
     Write-Host ""
     Write-Host "  Update complete!" -ForegroundColor Green
-    Pause-WithMessage "Press any key to close..."
+    Wait-WithMessage "Press any key to close..."
     exit 0
 }
 
@@ -849,7 +849,7 @@ if ($Force) {
 if ($serverRunning -and -not $hasUpdates) {
     Write-Host ""
     Write-Host "  Server is already running on port $Port and up to date." -ForegroundColor Green
-    Pause-WithMessage "Press any key to close..."
+    Wait-WithMessage "Press any key to close..."
     exit 0
 }
 
@@ -858,13 +858,13 @@ if ($hasUpdates) {
     Write-Host "  Applying updates..." -ForegroundColor Cyan
 
     if ($serverRunning) { Stop-Server -Port $Port }
-    Migrate-DatabaseName
+    Invoke-DatabaseMigration
     Backup-Database
 
     if (-not (Sync-Updates)) {
         Write-Host "  Starting server with current code..." -ForegroundColor Yellow
         Start-Server -Port $Port
-        Pause-WithMessage "UPDATE FAILED - press any key to close..." "Red"
+        Wait-WithMessage "UPDATE FAILED - press any key to close..." "Red"
         exit 1
     }
 
@@ -872,7 +872,7 @@ if ($hasUpdates) {
         Write-Host "  [ERROR] pip install failed!" -ForegroundColor Red
     }
 
-    if (-not (Run-Migrations)) {
+    if (-not (Invoke-Migrations)) {
         Write-Host "  [ERROR] Migrations failed!" -ForegroundColor Red
     }
 }
@@ -887,4 +887,4 @@ Write-Host "  Sales Buddy is running! Open in your browser:" -ForegroundColor Gr
 Write-Host ""
 Write-Host "  http://localhost:$Port" -ForegroundColor Cyan
 Write-Host ""
-Pause-WithMessage "Press any key to close this window..."
+Wait-WithMessage "Press any key to close this window..."
