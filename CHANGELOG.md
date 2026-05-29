@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 5/29/2026
+
+- Fixed a bug where the server would silently lock up some time after auto-starting at login. The startup script was capturing the server's output through a pipe that nothing ever read, so once the OS pipe buffer filled, every waitress worker thread blocked on its next log write and the server stopped responding (manual `start.bat` launches were unaffected). The script now writes server output to a rotated log file at `%LOCALAPPDATA%\SalesBuddy\logs\server.log` (5 MB cap, one prior file kept), and no longer blocks on a "press any key" prompt when running headless under the scheduled task.
+
 ## 5/22/2026 - c72af75
 
 - Updated auth system for better interoperability with operating-system-level `az login`. Sales Buddy now keeps its Azure CLI state in an isolated per-environment directory (`%USERPROFILE%\SalesBuddy\.azure` for production, `%USERPROFILE%\SalesBuddyDev\.azure` for development) so signing out of `az` in your normal terminal no longer logs the app out, and vice versa. Existing credentials are auto-migrated on first run - no re-authentication required.

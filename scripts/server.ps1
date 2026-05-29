@@ -103,8 +103,19 @@ try { if (Get-Command winget -ErrorAction SilentlyContinue) { $HasWinget = $true
 function Wait-WithMessage {
     param([string]$Message = "Press any key to close...", [string]$Color = "Gray")
     if ($Force) { return }
+    # Skip ReadKey when there's no usable console (auto-start via wscript). Blocking
+    # here would keep this script alive holding handles for the waitress subprocess.
+    try {
+        $null = $Host.UI.RawUI.KeyAvailable
+    } catch {
+        return
+    }
     Write-Host "`n$Message" -ForegroundColor $Color
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    try {
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    } catch {
+        return
+    }
 }
 
 # Prompt to install something via winget (skipped when -Force)
@@ -289,6 +300,37 @@ function Register-ProtocolHandler {
     }
 }
 
+# Resolve the directory used for runtime server logs.
+function Get-ServerLogDir {
+    $base = $env:LOCALAPPDATA
+    if (-not $base) { $base = Join-Path $env:USERPROFILE 'AppData\Local' }
+    $dir = Join-Path $base 'SalesBuddy\logs'
+    if (-not (Test-Path $dir)) {
+        New-Item -Path $dir -ItemType Directory -Force | Out-Null
+    }
+    return $dir
+}
+
+# Rotate server.log -> server.log.1 when it exceeds the size cap. Keeps one old
+# file so total disk use is bounded at ~2x the cap.
+function Invoke-ServerLogRotation {
+    param([string]$LogPath, [int]$MaxBytes = 5MB)
+    if (-not (Test-Path $LogPath)) { return }
+    try {
+        $size = (Get-Item $LogPath -ErrorAction Stop).Length
+    } catch { return }
+    if ($size -lt $MaxBytes) { return }
+    $rolled = "$LogPath.1"
+    try {
+        if (Test-Path $rolled) { Remove-Item $rolled -Force -ErrorAction Stop }
+        Move-Item $LogPath $rolled -Force -ErrorAction Stop
+    } catch {
+        # If the live log is locked by a previous server still shutting down,
+        # truncate in place as a fallback so it can't grow without bound.
+        try { Set-Content -Path $LogPath -Value '' -Force } catch {}
+    }
+}
+
 # Start waitress in a hidden window (no lingering console)
 function Start-Server {
     param([int]$Port)
@@ -296,31 +338,39 @@ function Start-Server {
     $serverArgs = @('--host=0.0.0.0', "--port=$Port", '--call', 'app:create_app')
 
     Write-Host "  Starting server on port $Port..." -ForegroundColor Yellow
-    
+
+    $logDir = Get-ServerLogDir
+    $logPath = Join-Path $logDir 'server.log'
+    Invoke-ServerLogRotation -LogPath $logPath
+
     # Use ProcessStartInfo to explicitly pass environment variables (e.g., AZURE_CONFIG_DIR)
     # to the waitress subprocess, ensuring Azure CLI commands inherit the correct config path.
+    # Redirect stdout/stderr via cmd.exe to a rotated log file. Redirecting through
+    # ProcessStartInfo pipes without a reader deadlocks waitress once the pipe buffer
+    # fills (~4-64 KB), which is why headless auto-start used to wedge after a while.
     $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = $waitress
-    $psi.Arguments = $serverArgs -join ' '
+    $psi.FileName = $env:ComSpec
+    $argLine = ($serverArgs -join ' ')
+    $psi.Arguments = '/d /c ""' + $waitress + '" ' + $argLine + ' >> "' + $logPath + '" 2>&1"'
     $psi.WorkingDirectory = $RepoRoot
     $psi.UseShellExecute = $false
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
-    
+
     # Copy current environment and set AZURE_CONFIG_DIR for the subprocess
     foreach ($key in [System.Environment]::GetEnvironmentVariables([System.EnvironmentVariableTarget]::Process).Keys) {
         $psi.EnvironmentVariables[$key] = [System.Environment]::GetEnvironmentVariable($key, [System.EnvironmentVariableTarget]::Process)
     }
     $psi.EnvironmentVariables['AZURE_CONFIG_DIR'] = $env:AZURE_CONFIG_DIR
     $psi.EnvironmentVariables['SALESBUDDY_HOME'] = $env:SALESBUDDY_HOME
-    
+
     [System.Diagnostics.Process]::Start($psi) | Out-Null
     Start-Sleep -Seconds 3
     if (Test-ServerRunning -Port $Port) {
         Write-Host "  [OK] Server running at http://localhost:$Port" -ForegroundColor Green
+        Write-Host "  Logs: $logPath" -ForegroundColor DarkGray
     } else {
         Write-Host "  Server may still be starting..." -ForegroundColor Yellow
+        Write-Host "  Logs: $logPath" -ForegroundColor DarkGray
     }
 }
 
