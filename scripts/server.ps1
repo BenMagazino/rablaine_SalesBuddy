@@ -76,6 +76,55 @@ function Initialize-IsolatedAzCliContext {
     $env:SALESBUDDY_HOME = $salesBuddyHome
     $env:AZURE_CONFIG_DIR = $azureConfigDir
 
+    # Disable the Windows broker (WAM) inside this isolated config dir.
+    # With the broker enabled (az CLI default since 2.61), refresh tokens live
+    # in WAM keyed by {client_id, account} and are SHARED across every
+    # AZURE_CONFIG_DIR on the machine -- defeating the isolation. An `az logout`
+    # in any other shell flips the broker account to Status_AccountUnusable
+    # and Sales Buddy starts returning 401 on every MSX/gateway call.
+    # File-backed MSAL cache (DPAPI-encrypted, lives in msal_token_cache.bin
+    # inside this dir) is per-AZURE_CONFIG_DIR and gives us real isolation.
+    $configFile = Join-Path $azureConfigDir 'config'
+    $needsBrokerWrite = $true
+    if (Test-Path $configFile) {
+        $existing = Get-Content $configFile -Raw -ErrorAction SilentlyContinue
+        if ($existing -match '(?im)^\s*enable_broker_on_windows\s*=\s*false\s*$') {
+            $needsBrokerWrite = $false
+        }
+    }
+    if ($needsBrokerWrite) {
+        try {
+            $lines = @()
+            if (Test-Path $configFile) {
+                $lines = @(Get-Content $configFile -ErrorAction Stop)
+            }
+            # Strip any existing enable_broker_on_windows line
+            $lines = $lines | Where-Object { $_ -notmatch '(?i)^\s*enable_broker_on_windows\s*=' }
+            # Ensure a [core] section exists, then append the setting under it
+            $hasCore = $lines | Where-Object { $_ -match '(?i)^\s*\[core\]\s*$' }
+            if (-not $hasCore) {
+                if ($lines.Count -gt 0 -and $lines[-1].Trim() -ne '') { $lines += '' }
+                $lines += '[core]'
+                $lines += 'enable_broker_on_windows = false'
+            } else {
+                # Insert the setting immediately after the [core] header
+                $out = New-Object System.Collections.Generic.List[string]
+                $inserted = $false
+                foreach ($line in $lines) {
+                    $out.Add($line)
+                    if (-not $inserted -and $line -match '(?i)^\s*\[core\]\s*$') {
+                        $out.Add('enable_broker_on_windows = false')
+                        $inserted = $true
+                    }
+                }
+                $lines = $out.ToArray()
+            }
+            Set-Content -Path $configFile -Value $lines -Encoding ASCII -ErrorAction Stop
+        } catch {
+            Write-Host "  [WARNING] Could not disable Az CLI broker in ${configFile}: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+
     # Expose the resolved environment label for the banner
     switch -Regex ($flaskEnv) {
         '^(?i)production$' { $script:ResolvedEnvLabel = 'Production'; break }

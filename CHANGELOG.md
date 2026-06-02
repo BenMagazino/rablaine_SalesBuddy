@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 6/2/2026
+
+- Fixed a bug where Sales Buddy could lose its sign-in if you signed out of `az` in any other terminal, even though the app is supposed to keep its own separate session. Sales Buddy's session is now truly independent - signing in or out of `az` elsewhere no longer affects the app.
+
 ## 5/29/2026 - 9c53e89
 
 - Fixed a bug where the server would silently lock up some time after auto-starting at login. The startup script was capturing the server's output through a pipe that nothing ever read, so once the OS pipe buffer filled, every waitress worker thread blocked on its next log write and the server stopped responding (manual `start.bat` launches were unaffected). The script now writes server output to a rotated log file at `%LOCALAPPDATA%\SalesBuddy\logs\server.log` (5 MB cap, one prior file kept), and no longer blocks on a "press any key" prompt when running headless under the scheduled task.
