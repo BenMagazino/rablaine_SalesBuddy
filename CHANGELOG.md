@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 6/2/2026
+## 6/2/2026 - 852ce79
 
 - Fixed a bug where Sales Buddy could lose its sign-in if you signed out of `az` in any other terminal, even though the app is supposed to keep its own separate session. Sales Buddy's session is now truly independent - signing in or out of `az` elsewhere no longer affects the app.
 
