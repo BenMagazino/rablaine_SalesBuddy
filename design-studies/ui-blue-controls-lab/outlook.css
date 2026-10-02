@@ -1,0 +1,78 @@
+[data-theme="midnight"], [data-theme="graphite-blue"] {
+  --accent: oklch(84% .10 250);
+  --blue: var(--accent);
+  --teal: var(--accent);
+  --meeting: oklch(94% .025 250);
+  --engagement: var(--meeting);
+  --ghost: oklch(85% .035 250);
+  --ghost-fill: oklch(27% .035 250);
+  --ghost-rail: oklch(67% .085 250);
+  --note-fill: oklch(38% .09 250);
+  --note-rail: oklch(79% .10 250);
+  --meeting-bg: var(--note-fill);
+  --engagement-bg: var(--note-fill);
+  --today-bg: color-mix(in oklch, var(--surface) 90%, var(--accent));
+  --today-outline: oklch(60% .065 250);
+  --selection: oklch(36% .075 250);
+  --event-hover: oklch(44% .09 250);
+  --status-bg: var(--context);
+  --action-ink: oklch(19% .025 250);
+}
+.color-study .calendar-event {
+  border-radius: 0;
+  border: 1px solid transparent;
+  border-left: 3px solid var(--note-rail);
+  padding-left: 5px;
+  color: var(--meeting);
+}
+.color-study .saved-note,
+.color-study .saved-note.has-engagement {
+  background: var(--note-fill);
+  color: var(--meeting);
+}
+.color-study .ghost-meeting {
+  position: relative;
+  background: var(--ghost-fill);
+  color: var(--ghost);
+  border: 1px dashed var(--ghost-rail);
+  border-left: 3px solid transparent;
+}
+.color-study .ghost-meeting::before,
+.tonal-key i:not(.note-level):not(.active-level)::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -3px;
+  width: 3px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ghost-rail) 0 2px,
+    var(--ghost-fill) 2px 4px
+  );
+  pointer-events: none;
+}
+.color-study .calendar-event:hover {
+  background: var(--event-hover);
+  color: var(--ink);
+}
+.color-study .calendar-event:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.color-study .calendar-cell.today {
+  border-color: var(--today-outline);
+  outline: 1px solid var(--today-outline);
+  outline-offset: -1px;
+}
+.tonal-key {
+  display: flex;
+  gap: 26px;
+  padding: 14px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.tonal-key span { display: flex; gap: 8px; align-items: center; }
+.tonal-key i { position: relative; width: 24px; height: 12px; background: var(--ghost-fill); border-left: 3px solid transparent; }
+.tonal-key .note-level { background: var(--note-fill); border-color: var(--note-rail); }
+.tonal-key .active-level { background: var(--accent); border-color: var(--accent); }

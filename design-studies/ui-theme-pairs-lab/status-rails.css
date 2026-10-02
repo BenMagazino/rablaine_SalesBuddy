@@ -1,0 +1,30 @@
+[data-theme] {
+  --milestone-rail: oklch(68% .115 160);
+  --task-rail: oklch(78% .14 265);
+  --hva-rail: oklch(84% .12 85);
+  --plain-rail: oklch(69% .008 250);
+}
+.calendar-status-plain { --event-rail: var(--plain-rail); }
+.calendar-status-milestone, .rail-milestone { --event-rail: var(--milestone-rail); }
+.calendar-status-task, .rail-task { --event-rail: var(--task-rail); }
+.calendar-status-hva, .rail-hva { --event-rail: var(--hva-rail); }
+.calendar-status-ghost,
+.calendar-status-unmatched { --event-rail: var(--ghost-rail); }
+.color-study .saved-note {
+  border-left-color: var(--event-rail);
+}
+.color-study .ghost-meeting::before {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--event-rail) 0 2px,
+    var(--ghost-fill) 2px 4px
+  );
+}
+.rail-swatch {
+  display: inline-block;
+  width: 3px;
+  height: 13px;
+  flex: 0 0 3px;
+  margin: 0 4px;
+  background: var(--event-rail);
+}

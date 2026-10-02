@@ -21,6 +21,10 @@ The MSI installer handles everything: prerequisites (Git, Python, Azure CLI, Nod
 
 ## Features
 
+Browse the [offline design-study archive](design-studies/index.html) for twelve
+standalone UI iterations using entirely fictional data. See the
+[archive guide](design-studies/README.md) for validation and capture instructions.
+
 - **Unified Customer View** - notes, engagements, milestones, opportunities, revenue, and partners on one page
 - **Call Notes** - rich text editor with topic/seller/customer tagging, templates, and meeting import
 - **Revenue Analyzer** - automatic MSXI sync, trend charts, growth alerts, seller/customer/product drill-downs

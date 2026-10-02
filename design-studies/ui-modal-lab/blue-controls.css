@@ -1,0 +1,43 @@
+[data-blue-control="muted"] {
+  --control-fill: oklch(43% .075 260);
+  --control-hover: oklch(47% .075 260);
+  --control-ink: oklch(95% .015 250);
+  --control-edge: oklch(64% .065 250);
+}
+[data-blue-control="outline"] {
+  --control-fill: transparent;
+  --control-hover: oklch(33% .042 260);
+  --control-ink: oklch(80% .065 250);
+  --control-edge: oklch(62% .065 250);
+}
+[data-blue-control="ink"] {
+  --control-fill: oklch(32% .026 260);
+  --control-hover: oklch(37% .035 260);
+  --control-ink: oklch(80% .065 250);
+  --control-edge: transparent;
+}
+.color-study.blue-controls .new-note,
+.color-study.blue-controls .today .day-label > button:first-child {
+  background: var(--control-fill);
+  color: var(--control-ink);
+  box-shadow: inset 0 0 0 1px var(--control-edge);
+}
+.color-study.blue-controls .new-note:hover,
+.color-study.blue-controls .today .day-label > button:first-child:hover {
+  background: var(--control-hover);
+  color: var(--control-ink);
+}
+.color-study.blue-controls[data-blue-control="ink"]
+  .today .day-label > button:first-child {
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--control-ink);
+}
+.color-study.blue-controls[data-blue-control="ink"]
+  .today .day-label > button:first-child:hover {
+  background: var(--control-hover);
+}
+.color-study.blue-controls .new-note:focus-visible,
+.color-study.blue-controls .today .day-label > button:first-child:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

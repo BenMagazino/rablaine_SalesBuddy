@@ -1,0 +1,750 @@
+{
+  "version": 1,
+  "viewport": {
+    "width": 1587,
+    "height": 1087
+  },
+  "instructions": "Resolve URLs from design-studies. Capture full-page previews with the study toolbar visible. Only regenerate from these fictional fixtures.",
+  "captures": [
+    {
+      "url": "ui-accent-lab/preview.html?theme=ice-cyan",
+      "output": "ui-accent-lab/ice-cyan.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=ice-cyan&menu=reports",
+      "output": "ui-accent-lab/ice-cyan-reports.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=ice-cyan&menu=browse",
+      "output": "ui-accent-lab/ice-cyan-browse.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=lavender",
+      "output": "ui-accent-lab/lavender.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=lavender&menu=reports",
+      "output": "ui-accent-lab/lavender-reports.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=lavender&menu=browse",
+      "output": "ui-accent-lab/lavender-browse.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=copper",
+      "output": "ui-accent-lab/copper.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=copper&menu=reports",
+      "output": "ui-accent-lab/copper-reports.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=copper&menu=browse",
+      "output": "ui-accent-lab/copper-browse.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=ivory",
+      "output": "ui-accent-lab/ivory.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=ivory&menu=reports",
+      "output": "ui-accent-lab/ivory-reports.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=ivory&menu=browse",
+      "output": "ui-accent-lab/ivory-browse.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=silver-blue",
+      "output": "ui-accent-lab/silver-blue.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=silver-blue&menu=reports",
+      "output": "ui-accent-lab/silver-blue-reports.png"
+    },
+    {
+      "url": "ui-accent-lab/preview.html?theme=silver-blue&menu=browse",
+      "output": "ui-accent-lab/silver-blue-browse.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=graphite",
+      "output": "ui-color-lab/graphite.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=graphite&menu=reports",
+      "output": "ui-color-lab/graphite-reports.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=graphite&menu=browse",
+      "output": "ui-color-lab/graphite-browse.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=graphite-blue",
+      "output": "ui-color-lab/graphite-blue.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=graphite-blue&menu=reports",
+      "output": "ui-color-lab/graphite-blue-reports.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=graphite-blue&menu=browse",
+      "output": "ui-color-lab/graphite-blue-browse.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=graphite-contrast",
+      "output": "ui-color-lab/graphite-contrast.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=graphite-contrast&menu=reports",
+      "output": "ui-color-lab/graphite-contrast-reports.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=graphite-contrast&menu=browse",
+      "output": "ui-color-lab/graphite-contrast-browse.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=midnight",
+      "output": "ui-color-lab/midnight.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=midnight&menu=reports",
+      "output": "ui-color-lab/midnight-reports.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=midnight&menu=browse",
+      "output": "ui-color-lab/midnight-browse.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=pine",
+      "output": "ui-color-lab/pine.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=pine&menu=reports",
+      "output": "ui-color-lab/pine-reports.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=pine&menu=browse",
+      "output": "ui-color-lab/pine-browse.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=carbon",
+      "output": "ui-color-lab/carbon.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=carbon&menu=reports",
+      "output": "ui-color-lab/carbon-reports.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=carbon&menu=browse",
+      "output": "ui-color-lab/carbon-browse.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=harbor",
+      "output": "ui-color-lab/harbor.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=harbor&menu=reports",
+      "output": "ui-color-lab/harbor-reports.png"
+    },
+    {
+      "url": "ui-color-lab/preview.html?theme=harbor&menu=browse",
+      "output": "ui-color-lab/harbor-browse.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=left-icons",
+      "output": "ui-navigation-lab/left-icons.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=left-icons&menu=reports",
+      "output": "ui-navigation-lab/left-icons-reports.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=left-icons&menu=browse",
+      "output": "ui-navigation-lab/left-icons-browse.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=left-text",
+      "output": "ui-navigation-lab/left-text.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=left-text&menu=reports",
+      "output": "ui-navigation-lab/left-text-reports.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=left-text&menu=browse",
+      "output": "ui-navigation-lab/left-text-browse.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=left-mixed",
+      "output": "ui-navigation-lab/left-mixed.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=left-mixed&menu=reports",
+      "output": "ui-navigation-lab/left-mixed-reports.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=left-mixed&menu=browse",
+      "output": "ui-navigation-lab/left-mixed-browse.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=top-icons",
+      "output": "ui-navigation-lab/top-icons.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=top-icons&menu=reports",
+      "output": "ui-navigation-lab/top-icons-reports.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=top-icons&menu=browse",
+      "output": "ui-navigation-lab/top-icons-browse.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=top-text",
+      "output": "ui-navigation-lab/top-text.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=top-text&menu=reports",
+      "output": "ui-navigation-lab/top-text-reports.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=top-text&menu=browse",
+      "output": "ui-navigation-lab/top-text-browse.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=top-mixed",
+      "output": "ui-navigation-lab/top-mixed.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=top-mixed&menu=reports",
+      "output": "ui-navigation-lab/top-mixed-reports.png"
+    },
+    {
+      "url": "ui-navigation-lab/preview.html?style=top-mixed&menu=browse",
+      "output": "ui-navigation-lab/top-mixed-browse.png"
+    },
+    {
+      "url": "ui-style-lab/preview.html?style=workbench",
+      "output": "ui-style-lab/workbench.png"
+    },
+    {
+      "url": "ui-style-lab/preview.html?style=fluent",
+      "output": "ui-style-lab/fluent.png"
+    },
+    {
+      "url": "ui-style-lab/preview.html?style=editorial",
+      "output": "ui-style-lab/editorial.png"
+    },
+    {
+      "url": "ui-style-lab/preview.html?style=operations",
+      "output": "ui-style-lab/operations.png"
+    },
+    {
+      "url": "ui-style-lab/preview.html?style=studio",
+      "output": "ui-style-lab/studio.png"
+    },
+    {
+      "url": "ui-style-lab/preview.html?style=lcars",
+      "output": "ui-style-lab/lcars.png"
+    },
+    {
+      "url": "ui-style-lab-round-2/preview.html?style=docked",
+      "output": "ui-style-lab-round-2/docked.png"
+    },
+    {
+      "url": "ui-style-lab-round-2/preview.html?style=navigator",
+      "output": "ui-style-lab-round-2/navigator.png"
+    },
+    {
+      "url": "ui-style-lab-round-2/preview.html?style=panes",
+      "output": "ui-style-lab-round-2/panes.png"
+    },
+    {
+      "url": "ui-style-lab-round-2/preview.html?style=focus",
+      "output": "ui-style-lab-round-2/focus.png"
+    },
+    {
+      "url": "ui-style-lab-round-2/preview.html?style=reverse",
+      "output": "ui-style-lab-round-2/reverse.png"
+    },
+    {
+      "url": "ui-outlook-lab/preview.html?theme=midnight",
+      "output": "ui-outlook-lab/midnight.png"
+    },
+    {
+      "url": "ui-outlook-lab/preview.html?theme=midnight&menu=reports",
+      "output": "ui-outlook-lab/midnight-reports.png"
+    },
+    {
+      "url": "ui-outlook-lab/preview.html?theme=midnight&menu=browse",
+      "output": "ui-outlook-lab/midnight-browse.png"
+    },
+    {
+      "url": "ui-outlook-lab/preview.html?theme=graphite-blue",
+      "output": "ui-outlook-lab/graphite-blue.png"
+    },
+    {
+      "url": "ui-outlook-lab/preview.html?theme=graphite-blue&menu=reports",
+      "output": "ui-outlook-lab/graphite-blue-reports.png"
+    },
+    {
+      "url": "ui-outlook-lab/preview.html?theme=graphite-blue&menu=browse",
+      "output": "ui-outlook-lab/graphite-blue-browse.png"
+    },
+    {
+      "url": "ui-status-rails-lab/preview.html?theme=midnight",
+      "output": "ui-status-rails-lab/midnight.png"
+    },
+    {
+      "url": "ui-status-rails-lab/preview.html?theme=midnight&menu=reports",
+      "output": "ui-status-rails-lab/midnight-reports.png"
+    },
+    {
+      "url": "ui-status-rails-lab/preview.html?theme=midnight&menu=browse",
+      "output": "ui-status-rails-lab/midnight-browse.png"
+    },
+    {
+      "url": "ui-status-rails-lab/preview.html?theme=graphite-blue",
+      "output": "ui-status-rails-lab/graphite-blue.png"
+    },
+    {
+      "url": "ui-status-rails-lab/preview.html?theme=graphite-blue&menu=reports",
+      "output": "ui-status-rails-lab/graphite-blue-reports.png"
+    },
+    {
+      "url": "ui-status-rails-lab/preview.html?theme=graphite-blue&menu=browse",
+      "output": "ui-status-rails-lab/graphite-blue-browse.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=midnight-quiet-blue",
+      "output": "ui-note-surfaces-lab/midnight-quiet-blue.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=midnight-quiet-blue&menu=reports",
+      "output": "ui-note-surfaces-lab/midnight-quiet-blue-reports.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=midnight-quiet-blue&menu=browse",
+      "output": "ui-note-surfaces-lab/midnight-quiet-blue-browse.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=midnight-neutral",
+      "output": "ui-note-surfaces-lab/midnight-neutral.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=midnight-neutral&menu=reports",
+      "output": "ui-note-surfaces-lab/midnight-neutral-reports.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=midnight-neutral&menu=browse",
+      "output": "ui-note-surfaces-lab/midnight-neutral-browse.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=graphite-quiet-blue",
+      "output": "ui-note-surfaces-lab/graphite-quiet-blue.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=graphite-quiet-blue&menu=reports",
+      "output": "ui-note-surfaces-lab/graphite-quiet-blue-reports.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=graphite-quiet-blue&menu=browse",
+      "output": "ui-note-surfaces-lab/graphite-quiet-blue-browse.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=graphite-neutral",
+      "output": "ui-note-surfaces-lab/graphite-neutral.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=graphite-neutral&menu=reports",
+      "output": "ui-note-surfaces-lab/graphite-neutral-reports.png"
+    },
+    {
+      "url": "ui-note-surfaces-lab/preview.html?theme=graphite-neutral&menu=browse",
+      "output": "ui-note-surfaces-lab/graphite-neutral-browse.png"
+    },
+    {
+      "url": "ui-customer-colors-lab/preview.html?theme=midnight",
+      "output": "ui-customer-colors-lab/midnight.png"
+    },
+    {
+      "url": "ui-customer-colors-lab/preview.html?theme=midnight&menu=reports",
+      "output": "ui-customer-colors-lab/midnight-reports.png"
+    },
+    {
+      "url": "ui-customer-colors-lab/preview.html?theme=midnight&menu=browse",
+      "output": "ui-customer-colors-lab/midnight-browse.png"
+    },
+    {
+      "url": "ui-customer-colors-lab/preview.html?theme=graphite-blue",
+      "output": "ui-customer-colors-lab/graphite-blue.png"
+    },
+    {
+      "url": "ui-customer-colors-lab/preview.html?theme=graphite-blue&menu=reports",
+      "output": "ui-customer-colors-lab/graphite-blue-reports.png"
+    },
+    {
+      "url": "ui-customer-colors-lab/preview.html?theme=graphite-blue&menu=browse",
+      "output": "ui-customer-colors-lab/graphite-blue-browse.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=midnight-muted",
+      "output": "ui-blue-controls-lab/midnight-muted.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=midnight-muted&menu=reports",
+      "output": "ui-blue-controls-lab/midnight-muted-reports.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=midnight-muted&menu=browse",
+      "output": "ui-blue-controls-lab/midnight-muted-browse.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=midnight-outline",
+      "output": "ui-blue-controls-lab/midnight-outline.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=midnight-outline&menu=reports",
+      "output": "ui-blue-controls-lab/midnight-outline-reports.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=midnight-outline&menu=browse",
+      "output": "ui-blue-controls-lab/midnight-outline-browse.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=midnight-ink",
+      "output": "ui-blue-controls-lab/midnight-ink.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=midnight-ink&menu=reports",
+      "output": "ui-blue-controls-lab/midnight-ink-reports.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=midnight-ink&menu=browse",
+      "output": "ui-blue-controls-lab/midnight-ink-browse.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=graphite-muted",
+      "output": "ui-blue-controls-lab/graphite-muted.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=graphite-muted&menu=reports",
+      "output": "ui-blue-controls-lab/graphite-muted-reports.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=graphite-muted&menu=browse",
+      "output": "ui-blue-controls-lab/graphite-muted-browse.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=graphite-outline",
+      "output": "ui-blue-controls-lab/graphite-outline.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=graphite-outline&menu=reports",
+      "output": "ui-blue-controls-lab/graphite-outline-reports.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=graphite-outline&menu=browse",
+      "output": "ui-blue-controls-lab/graphite-outline-browse.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=graphite-ink",
+      "output": "ui-blue-controls-lab/graphite-ink.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=graphite-ink&menu=reports",
+      "output": "ui-blue-controls-lab/graphite-ink-reports.png"
+    },
+    {
+      "url": "ui-blue-controls-lab/preview.html?theme=graphite-ink&menu=browse",
+      "output": "ui-blue-controls-lab/graphite-ink-browse.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=graphite-dark",
+      "output": "ui-theme-pairs-lab/graphite-dark.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=graphite-dark&menu=reports",
+      "output": "ui-theme-pairs-lab/graphite-dark-reports.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=graphite-dark&menu=browse",
+      "output": "ui-theme-pairs-lab/graphite-dark-browse.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=graphite-light",
+      "output": "ui-theme-pairs-lab/graphite-light.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=graphite-light&menu=reports",
+      "output": "ui-theme-pairs-lab/graphite-light-reports.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=graphite-light&menu=browse",
+      "output": "ui-theme-pairs-lab/graphite-light-browse.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=midnight-dark",
+      "output": "ui-theme-pairs-lab/midnight-dark.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=midnight-dark&menu=reports",
+      "output": "ui-theme-pairs-lab/midnight-dark-reports.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=midnight-dark&menu=browse",
+      "output": "ui-theme-pairs-lab/midnight-dark-browse.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=midnight-light",
+      "output": "ui-theme-pairs-lab/midnight-light.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=midnight-light&menu=reports",
+      "output": "ui-theme-pairs-lab/midnight-light-reports.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=midnight-light&menu=browse",
+      "output": "ui-theme-pairs-lab/midnight-light-browse.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=harbor-dark",
+      "output": "ui-theme-pairs-lab/harbor-dark.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=harbor-dark&menu=reports",
+      "output": "ui-theme-pairs-lab/harbor-dark-reports.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=harbor-dark&menu=browse",
+      "output": "ui-theme-pairs-lab/harbor-dark-browse.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=harbor-light",
+      "output": "ui-theme-pairs-lab/harbor-light.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=harbor-light&menu=reports",
+      "output": "ui-theme-pairs-lab/harbor-light-reports.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=harbor-light&menu=browse",
+      "output": "ui-theme-pairs-lab/harbor-light-browse.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=carbon-dark",
+      "output": "ui-theme-pairs-lab/carbon-dark.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=carbon-dark&menu=reports",
+      "output": "ui-theme-pairs-lab/carbon-dark-reports.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=carbon-dark&menu=browse",
+      "output": "ui-theme-pairs-lab/carbon-dark-browse.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=carbon-light",
+      "output": "ui-theme-pairs-lab/carbon-light.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=carbon-light&menu=reports",
+      "output": "ui-theme-pairs-lab/carbon-light-reports.png"
+    },
+    {
+      "url": "ui-theme-pairs-lab/preview.html?theme=carbon-light&menu=browse",
+      "output": "ui-theme-pairs-lab/carbon-light-browse.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-dark",
+      "output": "ui-modal-lab/graphite-dark.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-dark&menu=reports",
+      "output": "ui-modal-lab/graphite-dark-reports.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-dark&menu=browse",
+      "output": "ui-modal-lab/graphite-dark-browse.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-dark&modal=action",
+      "output": "ui-modal-lab/graphite-dark-action.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-dark&modal=milestone",
+      "output": "ui-modal-lab/graphite-dark-milestone.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-dark&modal=note",
+      "output": "ui-modal-lab/graphite-dark-note.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-light",
+      "output": "ui-modal-lab/graphite-light.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-light&menu=reports",
+      "output": "ui-modal-lab/graphite-light-reports.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-light&menu=browse",
+      "output": "ui-modal-lab/graphite-light-browse.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-light&modal=action",
+      "output": "ui-modal-lab/graphite-light-action.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-light&modal=milestone",
+      "output": "ui-modal-lab/graphite-light-milestone.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=graphite-light&modal=note",
+      "output": "ui-modal-lab/graphite-light-note.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-dark",
+      "output": "ui-modal-lab/midnight-dark.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-dark&menu=reports",
+      "output": "ui-modal-lab/midnight-dark-reports.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-dark&menu=browse",
+      "output": "ui-modal-lab/midnight-dark-browse.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-dark&modal=action",
+      "output": "ui-modal-lab/midnight-dark-action.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-dark&modal=milestone",
+      "output": "ui-modal-lab/midnight-dark-milestone.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-dark&modal=note",
+      "output": "ui-modal-lab/midnight-dark-note.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-light",
+      "output": "ui-modal-lab/midnight-light.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-light&menu=reports",
+      "output": "ui-modal-lab/midnight-light-reports.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-light&menu=browse",
+      "output": "ui-modal-lab/midnight-light-browse.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-light&modal=action",
+      "output": "ui-modal-lab/midnight-light-action.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-light&modal=milestone",
+      "output": "ui-modal-lab/midnight-light-milestone.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=midnight-light&modal=note",
+      "output": "ui-modal-lab/midnight-light-note.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-dark",
+      "output": "ui-modal-lab/harbor-dark.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-dark&menu=reports",
+      "output": "ui-modal-lab/harbor-dark-reports.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-dark&menu=browse",
+      "output": "ui-modal-lab/harbor-dark-browse.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-dark&modal=action",
+      "output": "ui-modal-lab/harbor-dark-action.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-dark&modal=milestone",
+      "output": "ui-modal-lab/harbor-dark-milestone.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-dark&modal=note",
+      "output": "ui-modal-lab/harbor-dark-note.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-light",
+      "output": "ui-modal-lab/harbor-light.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-light&menu=reports",
+      "output": "ui-modal-lab/harbor-light-reports.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-light&menu=browse",
+      "output": "ui-modal-lab/harbor-light-browse.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-light&modal=action",
+      "output": "ui-modal-lab/harbor-light-action.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-light&modal=milestone",
+      "output": "ui-modal-lab/harbor-light-milestone.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=harbor-light&modal=note",
+      "output": "ui-modal-lab/harbor-light-note.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-dark",
+      "output": "ui-modal-lab/carbon-dark.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-dark&menu=reports",
+      "output": "ui-modal-lab/carbon-dark-reports.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-dark&menu=browse",
+      "output": "ui-modal-lab/carbon-dark-browse.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-dark&modal=action",
+      "output": "ui-modal-lab/carbon-dark-action.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-dark&modal=milestone",
+      "output": "ui-modal-lab/carbon-dark-milestone.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-dark&modal=note",
+      "output": "ui-modal-lab/carbon-dark-note.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-light",
+      "output": "ui-modal-lab/carbon-light.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-light&menu=reports",
+      "output": "ui-modal-lab/carbon-light-reports.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-light&menu=browse",
+      "output": "ui-modal-lab/carbon-light-browse.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-light&modal=action",
+      "output": "ui-modal-lab/carbon-light-action.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-light&modal=milestone",
+      "output": "ui-modal-lab/carbon-light-milestone.png"
+    },
+    {
+      "url": "ui-modal-lab/preview.html?theme=carbon-light&modal=note",
+      "output": "ui-modal-lab/carbon-light-note.png"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customer colors | Sales Buddy</title>
+  <link rel="icon" href="brand.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="navigation.css">
+  <link rel="stylesheet" href="themes.css">
+  <link rel="stylesheet" href="outlook.css">
+  <link rel="stylesheet" href="status-rails.css">
+  <link rel="stylesheet" href="customer-colors.css">
+  <script src="themes.js" defer></script>
+  <script src="gallery.js" defer></script>
+  <link rel="stylesheet" href="../archive.css">
+</head>
+<body class="gallery color-gallery">
+  <nav class="archive-nav" aria-label="Design archive"><a href="../index.html">Design archive</a><span aria-hidden="true">/</span><a href="index.html">Iteration gallery</a><span>Fictional data only</span></nav>
+  <header class="gallery-header">
+    <div class="gallery-topline">
+      <div><img src="brand.svg" alt=""><span>Round nine / Customer-colored calendar</span></div>
+      <a href="preview.html?theme=midnight">Open Midnight</a>
+    </div>
+    <h1>Recognize the customer. Follow the work.</h1>
+    <p>Restore customer-color continuity: solid saved notes, subtler same-hue matched ghosts, and customer-wide highlighting. Work status stays in the left rail; Today retains the approved 10% blue tint.</p>
+    <div class="customer-palette" aria-label="Fifteen reusable customer color slots">
+      <span data-customer-color="1" title="Red"></span><span data-customer-color="2" title="Green"></span><span data-customer-color="3" title="Blue"></span><span data-customer-color="4" title="Yellow"></span><span data-customer-color="5" title="Purple"></span><span data-customer-color="6" title="Orange"></span><span data-customer-color="7" title="Pink"></span><span data-customer-color="8" title="Cyan"></span><span data-customer-color="9" title="Indigo"></span><span data-customer-color="10" title="Teal"></span><span data-customer-color="11" title="Brown"></span><span data-customer-color="12" title="Dark teal"></span><span data-customer-color="13" title="Tomato"></span><span data-customer-color="14" title="Dark indigo"></span><span data-customer-color="15" title="Dark gold"></span>
+    </div>
+    <div class="tonal-key" data-theme="midnight" aria-label="Status rail colors">
+      <span><b class="rail-swatch rail-milestone"></b>Milestone</span>
+      <span><b class="rail-swatch rail-task"></b>MSX task</span>
+      <span><b class="rail-swatch rail-hva"></b>HVA</span>
+    </div>
+  </header>
+  <main class="gallery-main">
+    <div class="gallery-controls" role="group" aria-label="Choose screenshot state">
+      <span>Compare the workspace or its menus. Click a sample for the interactive preview.</span>
+      <button data-state="workspace" aria-pressed="true">Workspace</button>
+      <button data-state="reports" aria-pressed="false">Reports open</button>
+      <button data-state="browse" aria-pressed="false">Browse open</button>
+    </div>
+    <div class="study-grid" id="study-grid"></div>
+  </main>
+  <footer class="gallery-footer">
+    Colors are assigned for the displayed month: saved-note customers first, then additional matched-ghost customers, cycling through fifteen slots. They are not permanent customer colors. Matched ghosts share their customer's hue; unmatched ghosts have no customer slot.<br>
+    Hover or keyboard-focus a customer entry to highlight its notes and matched ghosts together. Leave or blur to clear highlighting. Names and full entry descriptions remain the source of identity; colors repeat after fifteen customers.<br>
+    The live color families are adapted to restrained, opaque dark surfaces rather than copied Bootstrap RGBA fills. Gray, blue, dim emerald, and gold work rails retain their meanings. Today uses the approved 10% blue tint; its outline and date badge remain.<br>
+    Same 23 fictional entries and approved layout. Today reuses four fictional customers so their note/ghost colors and cross-calendar highlighting can be compared. Offline only; no application or database changes.
+  </footer>
+</body>
+</html>

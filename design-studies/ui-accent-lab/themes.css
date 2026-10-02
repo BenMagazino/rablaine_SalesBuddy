@@ -1,0 +1,112 @@
+[data-theme] {
+  --ink: oklch(93% .012 240);
+  --muted: oklch(79% .018 240);
+  --warning: oklch(86% .09 85);
+  --danger: oklch(84% .075 15);
+  --warning-bg: oklch(29% .025 80);
+  --danger-bg: oklch(29% .025 15);
+  --meeting: var(--engagement);
+  --engagement: oklch(92% .025 245);
+  --action-ink: oklch(19% .009 250);
+  --control-line: oklch(62% .025 240);
+  --divider: oklch(52% .025 240);
+  --ghost: oklch(80% .021 240);
+  --canvas: oklch(17% .008 250); --surface: oklch(23% .009 250);
+  --header: oklch(29% .012 250); --context: oklch(20% .009 250);
+  --raised: oklch(32% .014 250); --line: oklch(43% .015 250);
+  --grid-line: oklch(35% .012 250); --weekend: oklch(21% .009 250);
+  --today-bg: color-mix(in oklch, var(--accent) 9%, var(--surface));
+  --selection: color-mix(in oklch, var(--accent) 16%, var(--surface));
+  --teal: oklch(82% .085 170); --blue: oklch(84% .062 245);
+  --meeting-bg: var(--engagement-bg);
+  --engagement-bg: oklch(30% .03 250); --popup: oklch(28% .013 250);
+  --status-bg: oklch(24% .009 250);
+}
+[data-theme="ice-cyan"] {
+  --accent: oklch(from #91d4e2 l c h);
+}
+[data-theme="lavender"] {
+  --accent: oklch(from #b7abdd l c h);
+}
+[data-theme="copper"] {
+  --accent: oklch(from #d4ae91 l c h);
+}
+[data-theme="ivory"] {
+  --accent: oklch(from #dcd4bd l c h);
+}
+[data-theme="silver-blue"] {
+  --accent: oklch(from #bccbdd l c h);
+}
+.color-study .app-bar, .color-study .panel-header { background: var(--header); }
+.color-study .panel-header { min-height: 40px; padding: 9px 13px; }
+.color-study .panel-heading h2 { white-space: nowrap; flex-shrink: 0; }
+.color-study .panel-context { display: inline; margin: 0; white-space: nowrap; }
+.color-study .actions .panel-heading > .icon,
+.color-study .document-tab .icon { color: var(--accent); }
+.color-study .document-tab, .color-study .weekday,
+.color-study .list-caption, .color-study .search { background: var(--context); }
+.color-study .weekend, .color-study .outside { background: var(--weekend); }
+.color-study .today { background: var(--today-bg); }
+.color-study .today .day-label > button:first-child,
+.color-study .new-note { background: var(--accent); color: var(--action-ink); }
+.color-study .new-note:hover { background: color-mix(in oklch, var(--accent) 80%, var(--ink)); color: var(--action-ink); }
+.color-study .day-label > span, .color-study .view-switch .active { color: var(--accent); }
+.color-study .view-switch .active { background: var(--selection); }
+.color-study .panel-footer { background: var(--context); color: var(--accent); }
+.color-study .status-bar { background: var(--status-bg); color: var(--muted); }
+.color-study .local-dot { background: var(--teal); }
+.color-study .attention-panel + .attention-panel { border-top-color: var(--divider); }
+.color-study .ghost-meeting { color: var(--ghost); border-color: var(--control-line); }
+.color-study .indicator-ghost { color: var(--ghost); }
+.color-study .search, .color-study kbd,
+.color-study .month-controls .today-button, .color-study .month-step,
+.color-study #note-form input, .color-study #note-form textarea { border-color: var(--control-line); }
+.color-study .task-row:hover, .color-study .milestone-row:hover,
+.color-study .alert-row:hover, .color-study .panel-footer:hover { background: var(--raised); }
+.color-study .state { background: var(--danger-bg); color: var(--danger); }
+.color-study .state.volatile { background: var(--warning-bg); color: var(--warning); }
+.color-study .legend-caption, .color-study .list-caption > span,
+.color-study .indicator-eyebrow, .color-study .indicator-description { color: var(--muted); }
+.color-study .nav-trigger { color: var(--muted); border-color: var(--line); }
+.color-study .nav-trigger:first-child { border-color: var(--line); }
+.color-study .nav-trigger:hover, .color-study .nav-trigger.menu-open { background: var(--selection); color: var(--ink); }
+.color-study .nav-trigger.selected { color: var(--accent); }
+.color-study .nav-trigger.menu-open::before { background: var(--accent); }
+.color-study #nav-flyout, .color-study #nav-tooltip,
+.color-study #calendar-indicator-preview, .color-study #detail,
+.color-study #notice { background: var(--popup); color: var(--ink); border-color: var(--control-line); }
+.color-study .menu-group + .menu-group { border-color: var(--line); }
+.color-study .menu-group-label, .color-study .menu-entry > .icon { color: var(--muted); }
+.color-study .menu-entry { color: var(--ink); }
+.color-study .menu-entry:hover, .color-study .menu-entry:focus { background: var(--selection); color: var(--ink); }
+.color-study .menu-entry:hover > .icon, .color-study .menu-entry:focus > .icon { color: var(--accent); }
+.color-study .menu-entry:focus-visible { outline-color: var(--accent); }
+.color-study button:focus-visible, .color-study a:focus-visible,
+.color-study input:focus-visible, .color-study textarea:focus-visible,
+.color-study [tabindex="0"]:focus-visible { outline-color: var(--accent); }
+.color-study .study-bar { background: var(--canvas); color: var(--muted); gap: 22px; }
+.color-study .study-bar nav { margin-left: auto; gap: 4px; }
+.color-study .study-bar nav a { width: auto; padding: 0 10px; }
+.color-study .study-bar nav [aria-current] { background: var(--selection); color: var(--accent); }
+.color-study .study-bar > button { color: var(--muted); border-color: var(--line); }
+.color-study .study-bar > span b { color: var(--accent); }
+.color-study .calendar-cell, .color-study .panel-body,
+.color-study .flyout-items { scrollbar-color: var(--control-line) transparent; }
+.color-study .eyebrow, .color-study .detail-customer,
+.color-study .disclaimer, .color-study dt { color: var(--muted); }
+.color-study .detail-entry, .color-study dl > div { border-color: var(--line); }
+
+.color-gallery { background: oklch(19% .012 250); color: oklch(93% .012 240); }
+.color-gallery .gallery-header { padding-bottom: 20px; }
+.color-gallery .gallery-topline { margin-bottom: 20px; }
+.color-gallery .gallery-header p { max-width: 1150px; }
+.color-gallery .study-grid { gap: 30px 26px; }
+.color-gallery .study-card:last-child { grid-column: auto; display: block; }
+.color-gallery .study-image { aspect-ratio: auto; border-radius: 0; }
+.color-gallery .study-image::after { content: "Try this theme"; border-radius: 0; }
+.color-gallery .theme-swatch { display: inline-block; width: 24px; height: 12px; border: 1px solid #a8b4c350; }
+.color-gallery .theme-swatches { display: flex; gap: 5px; margin-top: 12px; }
+.color-gallery .study-title { margin-bottom: 8px; }
+.color-gallery .study-copy .distinction { margin-top: 10px; padding-top: 10px; }
+.color-gallery .gallery-controls { padding-bottom: 20px; }
+.color-gallery .open-menu-link { color: #b5d4ea; text-decoration: underline; text-underline-offset: 3px; font-size: .8rem; display: inline-block; margin-top: 10px; }

@@ -1,0 +1,58 @@
+[data-customer-color="1"] { --customer-hue: 25; }
+[data-customer-color="2"] { --customer-hue: 155; }
+[data-customer-color="3"] { --customer-hue: 260; }
+[data-customer-color="4"] { --customer-hue: 90; }
+[data-customer-color="5"] { --customer-hue: 300; }
+[data-customer-color="6"] { --customer-hue: 55; }
+[data-customer-color="7"] { --customer-hue: 350; }
+[data-customer-color="8"] { --customer-hue: 215; }
+[data-customer-color="9"] { --customer-hue: 285; }
+[data-customer-color="10"] { --customer-hue: 175; }
+[data-customer-color="11"] { --customer-hue: 45; }
+[data-customer-color="12"] { --customer-hue: 195; }
+[data-customer-color="13"] { --customer-hue: 30; }
+[data-customer-color="14"] { --customer-hue: 310; }
+[data-customer-color="15"] { --customer-hue: 80; }
+[data-customer-color] {
+  --customer-fill: oklch(37% .075 var(--customer-hue));
+  --customer-hover: oklch(40% .08 var(--customer-hue));
+  --customer-ghost-fill: oklch(27% .025 var(--customer-hue));
+  --customer-ghost-hover: oklch(31% .04 var(--customer-hue));
+  --customer-outline: oklch(65% .065 var(--customer-hue));
+}
+.color-study .saved-note[data-customer-color] {
+  background: var(--customer-fill);
+  color: var(--meeting);
+}
+.color-study .ghost-meeting[data-customer-color] {
+  --event-rail: var(--customer-outline);
+  --ghost-fill: var(--customer-ghost-fill);
+  background: var(--customer-ghost-fill);
+  border-color: var(--customer-outline);
+  border-left-color: transparent;
+}
+.color-study .saved-note[data-customer-color].customer-highlight {
+  background: var(--customer-hover);
+  outline: 1px solid var(--customer-outline);
+  outline-offset: -1px;
+}
+.color-study .ghost-meeting[data-customer-color].customer-highlight {
+  background: var(--customer-ghost-hover);
+  outline: 1px dashed var(--customer-outline);
+  outline-offset: -1px;
+}
+.color-study .calendar-event[data-customer-color]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.customer-palette {
+  display: flex;
+  gap: 6px;
+  padding-top: 16px;
+}
+.customer-palette span {
+  width: 25px;
+  height: 14px;
+  background: var(--customer-fill);
+  border: 1px solid var(--customer-outline);
+}
