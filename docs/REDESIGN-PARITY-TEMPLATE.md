@@ -8,7 +8,7 @@ Create cards on demand, not 90 empty files up front. This file is not a checkoff
 - Tracker ID / page:
 - URLs, aliases and entry points:
 - Status:
-- Owner / tester:
+- Owner / pre-release reviewer (the user):
 - Product revision audited:
 - Implementation revision tested:
 - Last product reconciliation SHA:
@@ -63,7 +63,7 @@ status VERIFY or BLOCKED until required parity is resolved.
 
 - All required rows passed:
 - No unapproved omissions or unresolved parity failures:
-- Tester / approval date:
+- User validation / approval date:
 - Audited product SHA:
 - Tested implementation SHA:
 - Evidence links / scoped tests:

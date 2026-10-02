@@ -15,6 +15,31 @@ the offline studies already have production feature parity.
 The tracker is the durable source of progress across chats and working days.
 Do not rely on conversation memory or a screenshot to declare a page complete.
 
+## Review ownership and commit cadence
+
+The user is the pre-release reviewer. References to "tester approval" in this
+process mean the user's own validation, not approval from an external tester.
+The user's tester and other users provide post-release QA after deployment;
+their review is not a prerequisite for a checkpoint commit or page sign-off.
+
+Commit each coherent, verified checkpoint on `feature/ui-redesign`, including
+its implementation, scoped tests and tracking/evidence updates. The user has
+authorized this cadence; no separate commit request is needed each time.
+A page can span several commits. Committing progress does not mark the page DONE.
+
+- Run relevant checks and confirm the dev app remains usable before committing.
+- For user-visible checkpoints, show the running app and obtain the user's
+  validation before committing, following the project's existing review gate.
+- Infrastructure-only checkpoints can be committed after technical verification.
+- Do not commit broken intermediate work merely because a session is ending.
+  If interrupted, preserve it locally and record status, failures and next action.
+- Record the checkpoint commit SHA in the handoff. When beginning the next
+  checkpoint, carry that SHA into the evidence card so it identifies the tested
+  implementation without requiring a self-referential commit hash.
+- Keep commits focused and use conventional messages plus the Copilot trailer.
+- Pushing, merging to main and deployment remain separately approved actions.
+  Checkpoint commit permission does not authorize any of those.
+
 ## Starting baseline
 
 - Product baseline: `ef552587a6514e116840b19f27c9b79ea6db0708` (current main
@@ -116,7 +141,7 @@ be replaced by an equivalent behavioral assertion, not simply deleted.
 
 ### 4. Sign off and stop cleanly
 
-The tester verifies the page in the running app. Record the audited product SHA,
+The user verifies the page in the running app. Record the audited product SHA,
 tested implementation SHA, date, tester, evidence and remaining issues.
 All required rows must pass with no unapproved omissions before marking DONE.
 If working-tree code was tested, keep VERIFY until its resulting commit is

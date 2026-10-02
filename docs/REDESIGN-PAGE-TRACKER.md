@@ -6,9 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: none yet
-- Next action: prove shared primitives plus
-  HOME, NOTE-NEW/EDIT/VIEW and FR-NOTE/FR-MS workflows before broad conversion
+- Current page/surface: GLOBAL-SHELL, checkpoint 1 (theme token foundation)
+- Next action: inventory global navigation and conditional controls, then replace
+  the shared shell/menus using the new tokens; prove note/milestone partial flows next
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
@@ -16,6 +16,8 @@ Inventory date: October 2, 2026. Baseline product SHA:
 - Shared fragment/helper progress: 0 / 24 DONE
 - Global/shell/error progress: 0 / 17 DONE
 - Additional pages discovered after baseline: none recorded
+- Commit cadence: each coherent, verified checkpoint; no automatic push or merge
+- Pre-release reviewer: the user; external tester/users provide post-release QA
 
 Statuses: TODO, AUDITED, BUILDING, VERIFY, DONE, REOPEN, BLOCKED.
 Replace the dash in Evidence with a link to the page card when work starts.
@@ -168,7 +170,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 
 | ID | Surface | Location | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| GLOBAL-SHELL | Navigation, page frame, theme, flash/status messages, global controls | `templates/base.html` | TODO | - |
+| GLOBAL-SHELL | Navigation, page frame, theme, flash/status messages, global controls | `templates/base.html` | BUILDING | [Card](redesign-pages/GLOBAL-SHELL.md) |
 | GLOBAL-SETUP | Welcome/sign-in/onboarding | `base.html`, welcome modal | TODO | - |
 | GLOBAL-NOTE | Quick-note customer picker | `base.html`, quick-note modal | TODO | - |
 | GLOBAL-ENG | Quick-engagement customer picker | `base.html`, quick-engagement modal | TODO | - |

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" {% if dark_mode is not none %}data-bs-theme="{{ 'dark' if dark_mode else 'light' }}"{% endif %}>
+<html lang="en" data-sb-family="graphite" {% if dark_mode is not none %}data-bs-theme="{{ 'dark' if dark_mode else 'light' }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,6 +24,8 @@
         })();
     </script>
     {% endif %}
+    <script src="{{ url_for('static', filename='js/ui-theme.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-tokens.css') }}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon.png') }}">
     
@@ -4120,7 +4122,6 @@
     {% endif %}
 </body>
 </html>
-
 
 
 
