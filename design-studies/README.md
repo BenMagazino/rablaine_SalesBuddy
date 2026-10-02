@@ -88,6 +88,10 @@ The [Bootstrap removal audit](BOOTSTRAP-AUDIT.md) inventories styling and behavi
 dependencies for an informed framework-removal decision. No runtime changes are
 included in the audit.
 
+The [implementation workflow](../docs/REDESIGN-WORKFLOW.md) and
+[page tracker](../docs/REDESIGN-PAGE-TRACKER.md) define page-by-page feature-parity
+checks, tester approval and reconciliation with ongoing product changes.
+
 Every study with grouped navigation uses `DIRECTORY` above All Sellers and
 `OVERVIEW` above All Reports. Link destinations and other groups are unchanged.
 The menu headings are shared by all theme variants, not a Graphite-only override.
