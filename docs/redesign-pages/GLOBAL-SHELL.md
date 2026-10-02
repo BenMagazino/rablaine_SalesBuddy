@@ -1,17 +1,17 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING, checkpoint 1 implemented and verified; not page-approved
+- Status: BUILDING; checkpoint 2 is technically verified and user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
-- Implementation revision tested: working tree based on `84cb361`
+- Checkpoint 1 implementation revision: `e84b675e9fadbc3ab3b7a31eaac1e3e64b6680d3`
+- Checkpoint 2 implementation revision tested: working tree based on `e84b675`
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
-- Next action: finish the global control/information inventory before replacing
-  navigation. Role/seller conditions, search, sync/status controls and global
-  overlays must be mapped, not copied blindly from the offline fixture.
+- Next action: continue the remaining global surfaces after this checkpoint;
+  homepage and shared note/milestone dialogs are not approved by this checkpoint.
 
 ## Checkpoint 1 scope
 
@@ -27,9 +27,33 @@ It does not modify the database, change the existing choice, or persist a
 family selection. Remove this bridge when all consumers own `data-sb-mode`
 directly. Family selection/persistence remains a later PREFS requirement.
 
+## Checkpoint 2 scope
+
+Replace only the shared header, menu controller and inline customer-search
+presentation with app-owned code. The page bodies, status banners and global
+dialogs retain their existing implementation. The header uses the approved
+46px workbench frame, logo-only Home, compact icon navigation, centered search
+and quiet blue New note control.
+
+Inventory includes all 38 original header route expressions, dynamic seller
+links, DSS/SE and seller-mode conditions, debug role/chat controls, update badges,
+theme/settings actions, search behavior and existing dialog launchers. All
+original destinations remain. Bootstrap dropdown/collapse behavior is removed
+from this header; Bootstrap modal launchers and Icons remain intentionally.
+
+Sellers and Reports now open their menus on click instead of navigating directly.
+All Sellers under Directory and All Reports under Overview retain the direct
+destinations. This is an intentional placement/interaction change requiring the
+user's checkpoint approval. Desktop navigation no longer uses a mobile toggler.
+
+The related admin update renderer uses native `hidden` properties for the new
+header badges. Search renders customer labels as text, reports failed requests
+visibly and permits retry. Customer detail pages highlight Customers or Browse
+according to role. Escape from search/menu does not trigger page-level Cancel.
+
 ## Original-to-redesign parity matrix (partial inventory)
 
-This is the theme slice only. No claim of a complete global audit yet.
+This covers theme infrastructure and the header only, not a complete global audit.
 
 | ID | Original contract | New behavior / destination | Evidence | Result |
 | --- | --- | --- | --- | --- |
@@ -40,6 +64,17 @@ This is the theme slice only. No claim of a complete global audit yet.
 | SHELL-T05 | Existing page appearance and controls remain intact while migrating | Tokens declare custom properties only; no legacy selector/property overrides | Isolation test; live dev body retains existing background | PASS |
 | SHELL-T06 | Corrupt theme mode is not silently presented as success | Log invalid value; retain last valid token mode | Scoped error-path test | PASS |
 | SHELL-T07 | Persist optional theme family independently from mode | Not implemented; no picker exposed yet | Requires PREFS / shared theme persistence work | NOT TESTED |
+| SHELL-N01 | Logo navigates Home; all header destinations remain available | Logo-only Home and original links, including all 16 reports and Browse destinations | Original route-expression comparison; rendered navigation/report tests | PASS |
+| SHELL-N02 | Role/seller conditions choose the correct controls and seller links | Existing conditional rendering and role-switch POST retained | Isolated rendering checks for SE, DSS, seller mode, dynamic sellers and debug state | PASS |
+| SHELL-N03 | Sellers/Reports direct navigation and dropdown access | Click/hover opens menu; direct destinations are All Sellers/All Reports | Live menus and preserved hrefs; user must approve interaction change | VERIFY |
+| SHELL-N04 | Menus open, switch and dismiss predictably | Native popovers; hover crossing, outside dismissal, arrows, Home/End, Escape and Tab | Scoped Node checks and live pointer/keyboard checks | PASS |
+| SHELL-N05 | Customer search lists, filters and navigates real customers | First ten on empty focus; name/nickname/TPID filtering, selection and native links retained | Live initial/empty states and keyboard navigation to real customer; text-rendering test | PASS |
+| SHELL-N06 | Search failure is visible, retryable and does not crash | HTTP/shape guards, logged error and explicit retry hint | Node HTTP/malformed-response tests; live 503 and real-data retry | PASS |
+| SHELL-N07 | Active destination remains identifiable | Reports precedence retained; customer details choose role-appropriate destination | Role-aware regression test and live customer/report navigation | PASS |
+| SHELL-N08 | Updates remain visible and can be dismissed | Existing update state; native hidden attributes and admin updater aligned | Both rendered badge states; related admin mutations inspected | PASS |
+| SHELL-N09 | New note, help and debug chat launchers remain available | Existing IDs and launch hooks retained; legacy dialogs still own their content | Live New note/help open-close; conditional/debug launcher rendering tests | PASS |
+| SHELL-N10 | Header respects theme and avoids clipping at desktop viewport | App-owned token styling and bounded native menu placement | All eight variants measured live; 46px header, no horizontal overlap, menu text contrast at least 11.83:1 | PASS |
+| SHELL-N11 | Embedded partial views omit the global header | Existing embed condition retained; controller safely skips absent header | Rendered embed test and Node no-header test | PASS |
 
 ## Verification
 
@@ -53,12 +88,32 @@ This is the theme slice only. No claim of a complete global audit yet.
 - Editor diagnostics: no CSS or JS errors in the new files.
 - The existing calendar quick-create and daily-refresh controls have not changed.
 
+### Checkpoint 2 verification
+
+- 17 scoped pytest checks pass: navigation rendering, Reports hub and two
+  homepage rendering checks. The full suite was not run.
+- 19 Node checks pass across navigation/search behavior and theme foundation.
+- Live dev checks cover hover crossing/replacement/dismissal, menu keyboard
+  behavior, search selection/navigation, empty result, Escape, failed request
+  and recovery, active destinations and New note/help dialog opening/closing.
+- Temporary failure interception was removed. Theme attributes were restored;
+  no note was saved, preference posted or daily meeting refresh invoked.
+- Geometry and theme checks use the existing desktop viewport, not resized
+  mobile previews. No real-data screenshot is added to the design archive.
+- Debug chat launcher is preserved; its full interaction audit remains
+  GLOBAL-CHAT. Full admin update workflows remain ADMIN.
+- Editor checks and `git diff --check` are clean.
+- The user approved the live header/menu checkpoint for commit on October 2,
+  2026, including the Sellers/Reports menu interaction change. Record its commit
+  SHA in the next checkpoint, avoiding a self-referential documentation commit.
+
 ## Remaining work and sign-off
 
-The full shell audit, replacement navigation/menus, global controls and overlays,
-theme-family persistence, Bootstrap removal and tester approval are outstanding.
-No page is DONE. Theme token verification is not workflow parity approval.
-Checkpoint 1 may be committed after technical verification under the agreed
-infrastructure cadence. Record its SHA in the handoff and carry it into this
-card at the next checkpoint. Page completion still requires user validation;
-no merge or deployment is implied.
+Remaining scope includes global status/sync/auth/FY banners, shared overlays and
+their injected-partial lifecycle, theme-family persistence, full Bootstrap removal
+and page approval. Bootstrap Icons remains a separate dependency decision.
+
+No page is DONE. Header verification does not approve its hosted page bodies,
+dialog workflows or the full global shell. Checkpoint 1 is committed. Checkpoint
+2 is technically verified and user-approved for its checkpoint commit under the
+agreed cadence. No push, merge or deployment is implied.

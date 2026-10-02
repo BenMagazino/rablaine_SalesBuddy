@@ -2377,13 +2377,13 @@ function checkForUpdates(refresh) {
             const navBadgeText = document.getElementById('updateBadgeText');
             const navMenuBadge = document.getElementById('updateMenuBadge');
             if (data.show_badge) {
-                if (navBadge) navBadge.classList.remove('d-none');
+                if (navBadge) navBadge.hidden = false;
                 if (navBadgeText) navBadgeText.classList.remove('d-none');
-                if (navMenuBadge) navMenuBadge.classList.remove('d-none');
+                if (navMenuBadge) navMenuBadge.hidden = false;
             } else {
-                if (navBadge) navBadge.classList.add('d-none');
+                if (navBadge) navBadge.hidden = true;
                 if (navBadgeText) navBadgeText.classList.add('d-none');
-                if (navMenuBadge) navMenuBadge.classList.add('d-none');
+                if (navMenuBadge) navMenuBadge.hidden = true;
             }
 
             const card = document.getElementById('updateCheckCard');
@@ -2842,11 +2842,11 @@ function dismissUpdate() {
     .then(() => {
         // Hide the badges from the navbar
         const badge = document.getElementById('updateBadge');
-        if (badge) badge.classList.add('d-none');
+        if (badge) badge.hidden = true;
         const badgeText = document.getElementById('updateBadgeText');
         if (badgeText) badgeText.classList.add('d-none');
         const menuBadge = document.getElementById('updateMenuBadge');
-        if (menuBadge) menuBadge.classList.add('d-none');
+        if (menuBadge) menuBadge.hidden = true;
         // Refresh the update status display
         checkForUpdates(false);
     })
@@ -5189,7 +5189,6 @@ setupMergeSearch('mergeSourceSearch', 'mergeSourceResults', 'mergeSourceId', 'me
 setupMergeSearch('mergeDestSearch', 'mergeDestResults', 'mergeDestId', 'mergeDestSelected');
 </script>
 {% endblock %}
-
 
 
 

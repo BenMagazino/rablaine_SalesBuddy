@@ -322,165 +322,11 @@
             border-bottom-color: var(--sb-border) !important;
         }
 
-        /* --- Navbar - theme-adaptive (light in light, dark navy in dark) --- */
-        .sb-navbar {
-            background-color: var(--sb-navbar) !important;
-            border-bottom: 1px solid var(--sb-border);
-            transition: background-color 0.2s ease;
-            z-index: 1050;
-        }
-        [data-bs-theme="dark"] .sb-navbar {
-            background-color: var(--sb-navy) !important;
-            border-bottom-color: #1C2B3D;
-        }
-        /* Light mode: dark text navbar links */
-        [data-bs-theme="light"] .sb-navbar .navbar-nav .nav-link {
-            color: #475569 !important;
-        }
-        [data-bs-theme="light"] .sb-navbar .navbar-nav .nav-link:hover,
-        [data-bs-theme="light"] .sb-navbar .navbar-nav .nav-link:focus {
-            color: #0E1A2B !important;
-        }
-        [data-bs-theme="light"] .sb-navbar .navbar-brand {
-            color: #0E1A2B !important;
-            font-weight: 600;
-        }
-        /* Dark mode: light text navbar links */
-        [data-bs-theme="dark"] .sb-navbar .navbar-nav .nav-link {
-            color: rgba(255, 255, 255, 0.85) !important;
-        }
-        [data-bs-theme="dark"] .sb-navbar .navbar-nav .nav-link:hover,
-        [data-bs-theme="dark"] .sb-navbar .navbar-nav .nav-link:focus {
-            color: #ffffff !important;
-        }
-        [data-bs-theme="dark"] .sb-navbar .navbar-brand {
-            color: #ffffff !important;
-            font-weight: 600;
-        }
-        /* Navbar toggler icon adapts to theme */
-        [data-bs-theme="light"] .sb-navbar .navbar-toggler-icon {
-            filter: invert(0);
-        }
-        [data-bs-theme="dark"] .sb-navbar .navbar-toggler-icon {
-            filter: invert(1);
-        }
-        /* Active nav item - accent gradient underline */
-        .sb-navbar .navbar-nav .nav-item.active > .nav-link {
-            background-image: linear-gradient(90deg, #27C3B3, #2A86D1);
-            background-size: calc(100% - 16px) 2.5px;
-            background-position: center bottom;
-            background-repeat: no-repeat;
-        }
-        [data-bs-theme="light"] .sb-navbar .navbar-nav .nav-item.active > .nav-link {
-            color: #0E1A2B !important;
-        }
-        [data-bs-theme="dark"] .sb-navbar .navbar-nav .nav-item.active > .nav-link {
-            color: #ffffff !important;
-        }
-        /* Navbar hover dropdown */
-        @media (min-width: 768px) {
-            .nav-hover-dropdown:hover > .dropdown-menu {
-                display: block;
-                margin-top: 0;
-            }
-            .nav-hover-dropdown > .dropdown-menu {
-                max-height: 70vh;
-                overflow-y: auto;
-            }
-        }
-
         /* Team toggle button: single button, hover swaps icon */
         .team-toggle .icon-leave { display: none; }
         .team-toggle.on-team:hover .icon-default { display: none; }
         .team-toggle.on-team:hover .icon-leave { display: inline; }
 
-        /* --- User menu button --- */
-        .navbar .btn-light {
-            border: 1px solid rgba(0, 0, 0, 0.15) !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
-        }
-
-        /* --- Navbar customer search --- */
-        #navCustomerSearch,
-        #navSearchIcon {
-            border-color: rgba(255, 255, 255, 0.2) !important;
-            color: rgba(255, 255, 255, 0.4) !important;
-            transition: border-color 0.2s, color 0.2s;
-        }
-        #navCustomerSearch::placeholder {
-            color: rgba(255, 255, 255, 0.3);
-            transition: color 0.2s;
-        }
-        #navCustomerSearch:focus {
-            background-color: rgba(255, 255, 255, 0.08) !important;
-            border-color: rgba(255, 255, 255, 0.5) !important;
-            color: #fff !important;
-            box-shadow: none;
-        }
-        #navCustomerSearch:focus::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-        #navCustomerSearch:focus ~ #navSearchIcon,
-        #navQuickLookup:focus-within #navSearchIcon {
-            border-color: rgba(255, 255, 255, 0.5) !important;
-            color: rgba(255, 255, 255, 0.7) !important;
-        }
-        [data-bs-theme="light"] #navCustomerSearch,
-        [data-bs-theme="light"] #navSearchIcon {
-            border-color: rgba(0, 0, 0, 0.15) !important;
-            color: rgba(0, 0, 0, 0.3) !important;
-        }
-        [data-bs-theme="light"] #navCustomerSearch::placeholder {
-            color: rgba(0, 0, 0, 0.3);
-        }
-        [data-bs-theme="light"] #navCustomerSearch:focus {
-            border-color: rgba(0, 0, 0, 0.4) !important;
-            color: #0E1A2B !important;
-            background-color: rgba(0, 0, 0, 0.05) !important;
-        }
-        [data-bs-theme="light"] #navQuickLookup:focus-within #navSearchIcon {
-            border-color: rgba(0, 0, 0, 0.4) !important;
-            color: rgba(0, 0, 0, 0.5) !important;
-        }
-
-        /* --- Navbar search results panel --- */
-        #navCustomerResults .list-group-item {
-            padding: 0.6rem 1rem;
-            border-left: 3px solid transparent;
-            border-right: none;
-            border-top: none;
-            font-size: 0.92rem;
-        }
-        #navCustomerResults .list-group-item:last-child {
-            border-bottom: none;
-        }
-        #navCustomerResults .list-group-item-action:hover {
-            background-color: #e9ecef;
-        }
-        [data-bs-theme="dark"] #navCustomerResults {
-            background-color: #1a2636;
-            border-color: rgba(255,255,255,0.1) !important;
-        }
-        [data-bs-theme="dark"] #navCustomerResults .list-group-item {
-            background-color: transparent;
-            border-bottom-color: rgba(255,255,255,0.06);
-        }
-        [data-bs-theme="dark"] #navCustomerResults .list-group-item-action:hover {
-            background-color: #243040;
-        }
-        #navCustomerResults .list-group-item.enter-target {
-            background-color: #e9ecef;
-            border-left-color: #2A86D1;
-        }
-        [data-bs-theme="dark"] #navCustomerResults .list-group-item.enter-target {
-            background-color: #243040;
-            border-left-color: #4A9DE0;
-        }
-
-        .navbar .btn-light:hover,
-        .navbar .btn-light:focus {
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12) !important;
-        }
         [data-bs-theme="dark"] .btn-light {
             background-color: rgba(255, 255, 255, 0.08) !important;
             border: 1px solid rgba(255, 255, 255, 0.15) !important;
@@ -719,6 +565,7 @@
         }
     </style>
     
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-navigation.css') }}">
     {% block extra_css %}{% endblock %}
     {% block extra_head %}{% endblock %}
 </head>
@@ -728,39 +575,39 @@
     
     <!-- Navigation -->
     {% if not request.args.get('embed') %}
-    <nav class="navbar navbar-expand-lg sb-navbar sticky-top">
-        <div class="container-fluid px-4 position-relative">
-            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('main.index') }}">
-                <img src="{{ url_for('static', filename='Sales Buddy.png') }}" alt="Sales Buddy" height="28" style="margin-right:2px;position:relative;top:-1px;">
+    <nav class="sb-app-bar" aria-label="Main navigation">
+        <div class="sb-bar-grid">
+            <div class="sb-bar-leading">
+            <a class="sb-home" href="{{ url_for('main.index') }}" aria-label="Sales Buddy home">
+                <img src="{{ url_for('static', filename='Sales Buddy.png') }}" alt="" height="28">
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+            <div class="sb-bar-navigation" id="navbarNav">
+                <ul class="sb-nav-list">
                     {% if user_role == 'dss' %}
-                    <li class="nav-item" id="navCustomers">
-                        <a class="nav-link" href="{{ url_for('customers.customers_list') }}">
-                            <i class="bi bi-building"></i> Customers
+                    <li class="sb-nav-group" id="navCustomers">
+                        <a class="sb-nav-trigger" href="{{ url_for('customers.customers_list') }}" aria-label="Customers" title="Customers">
+                            <i class="bi bi-building" aria-hidden="true"></i>
                         </a>
                     </li>
                     {% endif %}
                     {% if not seller_mode and user_role != 'dss' %}
-                    <li class="nav-item dropdown nav-hover-dropdown" id="navSellers">
-                        <a class="nav-link dropdown-toggle" href="{{ url_for('sellers.sellers_list') }}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-people"></i> Sellers
-                        </a>
-                        <ul class="dropdown-menu">
+                    <li class="sb-nav-group" id="navSellers">
+                        <button class="sb-nav-trigger" id="sellersMenuDropdown" type="button" data-sb-menu="sellersMenu" aria-controls="sellersMenu" aria-haspopup="menu" aria-expanded="false" aria-label="Sellers" title="Sellers">
+                            <i class="bi bi-people" aria-hidden="true"></i>
+                        </button>
+                        <ul class="sb-nav-menu" id="sellersMenu" popover="manual" role="menu" aria-labelledby="sellersMenuDropdown">
+                            <li class="sb-menu-heading" role="presentation">Directory</li>
                             <li>
-                                <a class="dropdown-item" href="{{ url_for('sellers.sellers_list') }}">
+                                <a class="sb-nav-link" href="{{ url_for('sellers.sellers_list') }}">
                                     <i class="bi bi-list-ul"></i> All Sellers
                                 </a>
                             </li>
                             {% if nav_sellers %}
-                            <li><hr class="dropdown-divider"></li>
+                            <li><hr class="sb-menu-divider"></li>
+                            <li class="sb-menu-heading" role="presentation">Your sellers</li>
                             {% for seller in nav_sellers %}
                             <li>
-                                <a class="dropdown-item" href="{{ url_for('sellers.seller_view', id=seller.id) }}">
+                                <a class="sb-nav-link" href="{{ url_for('sellers.seller_view', id=seller.id) }}">
                                     <i class="bi bi-person"></i> {{ seller.name }}
                                 </a>
                             </li>
@@ -769,123 +616,133 @@
                         </ul>
                     </li>
                     {% endif %}
-                    <li class="nav-item dropdown nav-hover-dropdown" id="navReports">
-                        <a class="nav-link dropdown-toggle" href="{{ url_for('reports.reports_hub') }}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-clipboard-data"></i> Reports
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('reports.reports_hub') }}"><i class="bi bi-grid"></i> All Reports</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                    <li class="sb-nav-group" id="navReports">
+                        <button class="sb-nav-trigger" id="reportsMenuDropdown" type="button" data-sb-menu="reportsMenu" aria-controls="reportsMenu" aria-haspopup="menu" aria-expanded="false" aria-label="Reports" title="Reports">
+                            <i class="bi bi-clipboard-data" aria-hidden="true"></i>
+                        </button>
+                        <ul class="sb-nav-menu" id="reportsMenu" popover="manual" role="menu" aria-labelledby="reportsMenuDropdown">
+                            <li class="sb-menu-heading" role="presentation">Overview</li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.reports_hub') }}"><i class="bi bi-grid"></i> All Reports</a></li>
+                            <li><hr class="sb-menu-divider"></li>
                             <!-- Planning & Reviews -->
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_connect_goals') }}"><i class="bi bi-speedometer2"></i> Connect Goals</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_manager_one_on_one') }}"><i class="bi bi-layout-text-window"></i> Initiative Tracker</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_one_on_one') }}"><i class="bi bi-chat-left-text"></i> 1:1 Report</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_connect_impact') }}"><i class="bi bi-trophy"></i> Connect Impact</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li class="sb-menu-heading" role="presentation">Planning and reviews</li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_connect_goals') }}"><i class="bi bi-speedometer2"></i> Connect Goals</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_manager_one_on_one') }}"><i class="bi bi-layout-text-window"></i> Initiative Tracker</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_one_on_one') }}"><i class="bi bi-chat-left-text"></i> 1:1 Report</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_connect_impact') }}"><i class="bi bi-trophy"></i> Connect Impact</a></li>
+                            <li><hr class="sb-menu-divider"></li>
                             <!-- Execution & Coverage: Connect Goals backing reports -->
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_u2c') }}"><i class="bi bi-bullseye"></i> U2C Attainment</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('milestones.milestone_tracker') }}"><i class="bi bi-flag-fill"></i> Milestone Tracker</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_activity_coverage') }}"><i class="bi bi-calendar2-check"></i> Activity Coverage</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_whitespace') }}"><i class="bi bi-grid-3x3-gap"></i> Whitespace Analysis</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li class="sb-menu-heading" role="presentation">Execution and coverage</li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_u2c') }}"><i class="bi bi-bullseye"></i> U2C Attainment</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('milestones.milestone_tracker') }}"><i class="bi bi-flag-fill"></i> Milestone Tracker</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_activity_coverage') }}"><i class="bi bi-calendar2-check"></i> Activity Coverage</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_whitespace') }}"><i class="bi bi-grid-3x3-gap"></i> Whitespace Analysis</a></li>
+                            <li><hr class="sb-menu-divider"></li>
                             <!-- Pipeline Health -->
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_hygiene') }}"><i class="bi bi-link-45deg"></i> Hygiene Report</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_msx_workspace') }}"><i class="bi bi-grid-3x3"></i> MSX Workspace</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_whats_new') }}"><i class="bi bi-megaphone"></i> What's New</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li class="sb-menu-heading" role="presentation">Pipeline health</li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_hygiene') }}"><i class="bi bi-link-45deg"></i> Hygiene Report</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_msx_workspace') }}"><i class="bi bi-grid-3x3"></i> MSX Workspace</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_whats_new') }}"><i class="bi bi-megaphone"></i> What's New</a></li>
+                            <li><hr class="sb-menu-divider"></li>
                             <!-- Account Insights -->
-                            <li><a class="dropdown-item" href="{{ url_for('revenue.revenue_dashboard') }}"><i class="bi bi-graph-up"></i> Revenue Analyzer</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_workload') }}"><i class="bi bi-tag"></i> Workload Report</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_marketing_insights') }}"><i class="bi bi-megaphone"></i> Marketing Insights</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('revenue.report_synapse_customers') }}"><i class="bi bi-database-gear"></i> Synapse Customers</a></li>
+                            <li class="sb-menu-heading" role="presentation">Account insights</li>
+                            <li><a class="sb-nav-link" href="{{ url_for('revenue.revenue_dashboard') }}"><i class="bi bi-graph-up"></i> Revenue Analyzer</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_workload') }}"><i class="bi bi-tag"></i> Workload Report</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_marketing_insights') }}"><i class="bi bi-megaphone"></i> Marketing Insights</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('revenue.report_synapse_customers') }}"><i class="bi bi-database-gear"></i> Synapse Customers</a></li>
                         </ul>
                     </li>
-                    <li class="nav-item dropdown nav-hover-dropdown" id="navBrowse">
-                        <a class="nav-link dropdown-toggle" href="javascript:void(0)" id="browseMenuDropdown" role="button" aria-expanded="false">
-                            <i class="bi bi-collection"></i> Browse
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="browseMenuDropdown">
+                    <li class="sb-nav-group" id="navBrowse">
+                        <button class="sb-nav-trigger" id="browseMenuDropdown" type="button" data-sb-menu="browseMenu" aria-controls="browseMenu" aria-haspopup="menu" aria-expanded="false" aria-label="Browse" title="Browse">
+                            <i class="bi bi-collection" aria-hidden="true"></i>
+                        </button>
+                        <ul class="sb-nav-menu" id="browseMenu" popover="manual" role="menu" aria-labelledby="browseMenuDropdown">
+                            <li class="sb-menu-heading" role="presentation">People and accounts</li>
                             <!-- People & Accounts -->
                             {% if user_role != 'dss' %}
-                            <li><a class="dropdown-item" href="{{ url_for('customers.customers_list') }}"><i class="bi bi-building"></i> Customers</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('customers.customers_list') }}"><i class="bi bi-building"></i> Customers</a></li>
                             {% else %}
-                            <li><a class="dropdown-item" href="{{ url_for('sellers.sellers_list') }}"><i class="bi bi-people"></i> Sellers</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('sellers.sellers_list') }}"><i class="bi bi-people"></i> Sellers</a></li>
                             {% endif %}
-                            <li><a class="dropdown-item" href="{{ url_for('partners.partners_list') }}"><i class="bi bi-briefcase"></i> Partners</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('solution_engineers.solution_engineers_list') }}"><i class="bi bi-tools"></i> Solution Engineers</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('internal_contacts.internal_contacts_list') }}"><i class="bi bi-person-badge"></i> Internal Contacts</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('partners.partners_list') }}"><i class="bi bi-briefcase"></i> Partners</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('solution_engineers.solution_engineers_list') }}"><i class="bi bi-tools"></i> Solution Engineers</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('internal_contacts.internal_contacts_list') }}"><i class="bi bi-person-badge"></i> Internal Contacts</a></li>
+                            <li><hr class="sb-menu-divider"></li>
                             <!-- Work -->
-                            <li><a class="dropdown-item" href="{{ url_for('notes.notes_list') }}"><i class="bi bi-journal-text"></i> Notes</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('engagements.engagements_hub') }}"><i class="bi bi-kanban"></i> Engagements & Projects</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('main.action_items_hub') }}"><i class="bi bi-check2-square"></i> Action Items</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.report_msx_workspace', tab='opps') }}"><i class="bi bi-briefcase"></i> Opportunities</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('milestones.milestone_tracker') }}"><i class="bi bi-flag"></i> Milestones</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li class="sb-menu-heading" role="presentation">Work</li>
+                            <li><a class="sb-nav-link" href="{{ url_for('notes.notes_list') }}"><i class="bi bi-journal-text"></i> Notes</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('engagements.engagements_hub') }}"><i class="bi bi-kanban"></i> Engagements & Projects</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('main.action_items_hub') }}"><i class="bi bi-check2-square"></i> Action Items</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_msx_workspace', tab='opps') }}"><i class="bi bi-briefcase"></i> Opportunities</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('milestones.milestone_tracker') }}"><i class="bi bi-flag"></i> Milestones</a></li>
+                            <li><hr class="sb-menu-divider"></li>
                             <!-- Organization -->
-                            <li><a class="dropdown-item" href="{{ url_for('territories.territories_list') }}"><i class="bi bi-geo-alt"></i> Territories</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('pods.pods_list') }}"><i class="bi bi-diagram-2"></i> PODs</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('topics.topics_list') }}"><i class="bi bi-tags"></i> Topics</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('revenue.revenue_products_list') }}"><i class="bi bi-boxes"></i> Products</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li class="sb-menu-heading" role="presentation">Organization</li>
+                            <li><a class="sb-nav-link" href="{{ url_for('territories.territories_list') }}"><i class="bi bi-geo-alt"></i> Territories</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('pods.pods_list') }}"><i class="bi bi-diagram-2"></i> PODs</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('topics.topics_list') }}"><i class="bi bi-tags"></i> Topics</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('revenue.revenue_products_list') }}"><i class="bi bi-boxes"></i> Products</a></li>
+                            <li><hr class="sb-menu-divider"></li>
                             <!-- Tools -->
-                            <li><a class="dropdown-item" href="{{ url_for('revenue.revenue_import') }}"><i class="bi bi-cloud-download"></i> Revenue Import</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('connect_export.connect_export_page') }}"><i class="bi bi-file-earmark-text"></i> Connect Export</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li class="sb-menu-heading" role="presentation">Tools</li>
+                            <li><a class="sb-nav-link" href="{{ url_for('revenue.revenue_import') }}"><i class="bi bi-cloud-download"></i> Revenue Import</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('connect_export.connect_export_page') }}"><i class="bi bi-file-earmark-text"></i> Connect Export</a></li>
+                            <li><hr class="sb-menu-divider"></li>
                             <!-- Explore -->
-                            <li><a class="dropdown-item" href="{{ url_for('main.search') }}"><i class="bi bi-search"></i> Search</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('main.analytics') }}"><i class="bi bi-graph-up"></i> Analytics</a></li>
+                            <li class="sb-menu-heading" role="presentation">Explore</li>
+                            <li><a class="sb-nav-link" href="{{ url_for('main.search') }}"><i class="bi bi-search"></i> Search</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('main.analytics') }}"><i class="bi bi-graph-up"></i> Analytics</a></li>
                         </ul>
                     </li>
                     {% if is_debug %}
-                    <li class="nav-item d-flex align-items-center ms-1">
-                        <span class="badge {{ 'bg-warning text-dark' if user_role == 'dss' else 'bg-info text-dark' }}"
-                              style="font-size: 0.6rem; cursor: pointer;"
+                    <li class="sb-role-control">
+                        <button class="sb-role-toggle" type="button"
                               onclick="event.preventDefault(); fetch('/api/admin/dev-toggle-role', {method:'POST'}).then(r=>r.json()).then(()=>location.reload());"
-                              title="Click to swap role">{{ 'DSS' if user_role == 'dss' else 'SE' }} MODE</span>
+                              title="Click to swap role">{{ 'DSS' if user_role == 'dss' else 'SE' }} MODE</button>
                     </li>
                     {% endif %}
                 </ul>
-                <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-success" id="navNewNote" data-bs-toggle="modal" data-bs-target="#quickNoteModal" title="Create new note (Ctrl+K)" aria-label="Create new note">
-                        <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline">New Note</span>
+            </div>
+            </div>
+                <div class="sb-bar-actions">
+                    <button class="sb-bar-button sb-new-note" type="button" id="navNewNote" data-bs-toggle="modal" data-bs-target="#quickNoteModal" title="Create new note (Ctrl+K)" aria-label="Create new note">
+                        <i class="bi bi-plus-circle" aria-hidden="true"></i> <span>New note</span>
                     </button>
-                    <button class="btn btn-light" type="button" data-bs-toggle="modal" data-bs-target="#keyboardShortcutsModal" title="Help & Keyboard Shortcuts (?)" aria-label="Help and keyboard shortcuts">
+                    <button class="sb-bar-button" type="button" data-bs-toggle="modal" data-bs-target="#keyboardShortcutsModal" title="Help & Keyboard Shortcuts (?)" aria-label="Help and keyboard shortcuts">
                         <i class="bi bi-question-circle"></i>
                     </button>
                     {% if config.DEBUG %}
-                    <button class="btn btn-light" type="button" id="navCopilotChat"
-                            title="SalesIQ Chat (Ctrl+Shift+C)" aria-label="Toggle SalesIQ Chat"
-                            style="padding: 0.3rem 0.5rem;">
+                    <button class="sb-bar-button" type="button" id="navCopilotChat"
+                            title="SalesIQ Chat (Ctrl+Shift+C)" aria-label="Toggle SalesIQ Chat">
                         <i class="bi bi-chat-dots"></i>
                     </button>
                     {% endif %}
-                    <div class="dropdown">
-                        <button class="btn btn-light position-relative" type="button" id="gearMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Settings & Admin" aria-label="Settings and Admin menu">
+                    <div class="sb-nav-group">
+                        <button class="sb-bar-button" type="button" id="gearMenuDropdown" data-sb-menu="settingsMenu" aria-controls="settingsMenu" aria-haspopup="menu" aria-expanded="false" title="Settings & Admin" aria-label="Settings and Admin menu">
                             <i class="bi bi-gear"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle{{ '' if update_available else ' d-none' }}" id="updateBadge" title="Update available">
-                                <span class="visually-hidden">Update available</span>
+                            <span class="sb-update-dot" id="updateBadge" title="Update available" {% if not update_available %}hidden{% endif %}>
+                                <span class="sb-visually-hidden">Update available</span>
                             </span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="gearMenuDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('main.preferences') }}"><i class="bi bi-sliders"></i> Settings</a></li>
+                        <ul class="sb-nav-menu" id="settingsMenu" popover="manual" role="menu" aria-labelledby="gearMenuDropdown">
+                            <li><a class="sb-nav-link" href="{{ url_for('main.preferences') }}"><i class="bi bi-sliders"></i> Settings</a></li>
                             <li>
-                                <a class="dropdown-item" href="{{ url_for('admin.admin_panel') }}">
+                                <a class="sb-nav-link" href="{{ url_for('admin.admin_panel') }}">
                                     <i class="bi bi-shield-lock"></i> Admin Panel
-                                    <span class="badge bg-danger ms-1{{ '' if update_available else ' d-none' }}" id="updateMenuBadge">Update</span>
+                                    <span class="sb-update-label" id="updateMenuBadge" {% if not update_available %}hidden{% endif %}>Update</span>
                                 </a>
                             </li>
                         </ul>
                     </div>
                 </div>
-            </div>
             <!-- Centered customer search -->
-            <div class="position-absolute d-none d-lg-block" id="navQuickLookup" style="left: 50%; transform: translateX(-50%); z-index: 1;">
-                <div class="input-group input-group-sm" style="width: 360px;">
-                    <span class="input-group-text bg-transparent" id="navSearchIcon"><i class="bi bi-search"></i></span>
-                    <input type="text" class="form-control form-control-sm bg-transparent" id="navCustomerSearch" placeholder="Type / to search customers" autocomplete="off" aria-label="Customer search">
+            <div class="sb-nav-search" id="navQuickLookup">
+                <div class="sb-search-field">
+                    <span id="navSearchIcon" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="text" id="navCustomerSearch" placeholder="Search customers" autocomplete="off" aria-label="Customer search">
+                    <kbd aria-hidden="true">/</kbd>
                 </div>
-                <div id="navCustomerResults" class="list-group shadow-lg" style="width: 525px; max-height: 70vh; overflow-y: auto; display: none; position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 1050; border: 1px solid rgba(255,255,255,0.15); border-radius: var(--sb-radius);"></div>
+                <div id="navCustomerResults" class="sb-search-results" aria-label="Customer results" style="display: none;"></div>
             </div>
         </div>
     </nav>
@@ -1585,21 +1442,7 @@
         </div>
     </div>
     
-    <!-- Navbar hover dropdown: click on the main link navigates, hover opens menu -->
-    <script>
-    (function() {
-        document.querySelectorAll('.nav-hover-dropdown > .dropdown-toggle').forEach(function(ddLink) {
-            ddLink.addEventListener('click', function(e) {
-                var href = ddLink.getAttribute('href');
-                if (window.innerWidth >= 768 && href && href !== '#') {
-                    window.location.href = href;
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-            });
-        });
-    })();
-    </script>
+    <script src="{{ url_for('static', filename='js/ui-navigation.js') }}" defer></script>
 
     <!-- Navbar active state highlighting -->
     <script>
@@ -1613,8 +1456,14 @@
         for (var id in navMap) {
             var prefixes = navMap[id];
             for (var i = 0; i < prefixes.length; i++) {
-                if (path === prefixes[i] || path.startsWith(prefixes[i])) {
+                var prefix = prefixes[i].replace(/\/$/, '');
+                if (path === prefix || path.startsWith(prefix + '/')) {
                     var el = document.getElementById(id);
+                    if (!el && id === 'navCustomers') {
+                        el = document.querySelector(
+                            '#navBrowse .sb-nav-link[href="{{ url_for("customers.customers_list") }}"]');
+                        if (el) document.getElementById('navBrowse').classList.add('active');
+                    }
                     if (el) el.classList.add('active');
                     break;
                 }
@@ -1626,7 +1475,7 @@
         var reportHrefs = new Set();
         var reportsEl = document.getElementById('navReports');
         if (reportsEl) {
-            reportsEl.querySelectorAll('.dropdown-item').forEach(function(item) {
+            reportsEl.querySelectorAll('.sb-nav-link').forEach(function(item) {
                 var h = item.getAttribute('href');
                 if (h) reportHrefs.add(h.split('?')[0]);
             });
@@ -1634,7 +1483,7 @@
         ['navSellers', 'navReports', 'navBrowse'].forEach(function(dropId) {
             var dropEl = document.getElementById(dropId);
             if (!dropEl) return;
-            var items = dropEl.querySelectorAll('.dropdown-item');
+            var items = dropEl.querySelectorAll('.sb-nav-link');
             var bestMatch = null;
             var bestLen = 0;
             for (var j = 0; j < items.length; j++) {
@@ -1642,10 +1491,11 @@
                 if (!href || href === '#') continue;
                 // In Browse, skip links whose base path belongs to Reports
                 if (dropId === 'navBrowse' && reportHrefs.has(href.split('?')[0])) continue;
-                if (path === href || path.startsWith(href + '/') || (href.length > 1 && path.startsWith(href))) {
-                    if (href.length > bestLen) {
+                var itemPath = href.split('?')[0];
+                if (path === itemPath || path.startsWith(itemPath + '/')) {
+                    if (itemPath.length > bestLen) {
                         bestMatch = items[j];
-                        bestLen = href.length;
+                        bestLen = itemPath.length;
                     }
                 }
             }
@@ -3038,15 +2888,23 @@
                 if (allCustomers) return;
                 try {
                     const resp = await fetch('{{ url_for("customers.api_customers_list") }}');
+                    if (!resp.ok) throw new Error(`Customer search failed (HTTP ${resp.status})`);
                     allCustomers = await resp.json();
+                    if (!Array.isArray(allCustomers)) {
+                        allCustomers = null;
+                        throw new Error('Customer search returned an invalid response');
+                    }
                 } catch (err) {
-                    navResults.innerHTML = '<div class="list-group-item text-danger">Error loading customers</div>';
+                    console.error('Failed to load navigation customers:', err);
+                    navResults.innerHTML = '<div class="sb-search-state is-error">Error loading customers. Focus search again to retry.</div>';
+                    navResults.style.display = 'block';
+                    showBackdrop();
                 }
             }
 
             function renderResults(customers) {
                 if (!customers || customers.length === 0) {
-                    navResults.innerHTML = '<div class="list-group-item text-muted" style="border-left:3px solid transparent;">No customers found</div>';
+                    navResults.innerHTML = '<div class="sb-search-state">No customers found</div>';
                     navResults.style.display = 'block';
                     showBackdrop();
                     selectedIndex = -1;
@@ -3055,12 +2913,28 @@
                 // Only clamp if something is selected
                 if (selectedIndex >= customers.length) selectedIndex = customers.length - 1;
 
-                navResults.innerHTML = customers.map((c, i) => {
+                const resultLinks = customers.map((c, i) => {
                     const displayName = c.nickname ? `${c.name} (${c.nickname})` : c.name;
-                    const tpidBadge = c.tpid ? `<span class="badge bg-secondary ms-2">TPID: ${c.tpid}</span>` : '';
                     const cls = (selectedIndex >= 0 && i === selectedIndex) ? ' enter-target' : '';
-                    return `<a href="${customerUrl}${c.id}" class="list-group-item list-group-item-action${cls}" data-index="${i}"><i class="bi bi-building"></i> ${displayName}${tpidBadge}</a>`;
-                }).join('');
+                    const link = document.createElement('a');
+                    link.href = customerUrl + c.id;
+                    link.className = 'sb-search-result' + cls;
+                    link.dataset.index = String(i);
+                    const icon = document.createElement('i');
+                    icon.className = 'bi bi-building';
+                    icon.setAttribute('aria-hidden', 'true');
+                    const label = document.createElement('span');
+                    label.textContent = displayName;
+                    link.append(icon, label);
+                    if (c.tpid) {
+                        const metadata = document.createElement('span');
+                        metadata.className = 'sb-search-meta';
+                        metadata.textContent = `TPID: ${c.tpid}`;
+                        link.append(metadata);
+                    }
+                    return link;
+                });
+                navResults.replaceChildren(...resultLinks);
                 navResults.style.display = 'block';
                 showBackdrop();
 
@@ -3103,11 +2977,13 @@
 
             navSearch.addEventListener('focus', async function() {
                 await loadCustomers();
+                if (!allCustomers) return;
                 selectedIndex = this.value.trim() ? 0 : -1;
                 renderResults(this.value.trim() ? getFiltered() : allCustomers.slice(0, 10));
             });
 
             navSearch.addEventListener('input', function() {
+                if (!allCustomers) return;
                 const q = this.value.trim();
                 if (!q) {
                     selectedIndex = -1;
@@ -3146,6 +3022,8 @@
                         window.location.href = customerUrl + visible[selectedIndex].id;
                     }
                 } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
                     navSearch.value = '';
                     closeResults();
                     navSearch.blur();
@@ -3154,10 +3032,10 @@
 
             // Mouse hover updates selection
             navResults.addEventListener('mouseover', function(e) {
-                const item = e.target.closest('.list-group-item-action[data-index]');
+                const item = e.target.closest('.sb-search-result[data-index]');
                 if (item) {
                     selectedIndex = parseInt(item.dataset.index);
-                    navResults.querySelectorAll('.list-group-item-action').forEach(el => el.classList.remove('enter-target'));
+                    navResults.querySelectorAll('.sb-search-result').forEach(el => el.classList.remove('enter-target'));
                     item.classList.add('enter-target');
                 }
             });
@@ -4122,6 +4000,3 @@
     {% endif %}
 </body>
 </html>
-
-
-

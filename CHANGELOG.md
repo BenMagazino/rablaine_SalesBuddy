@@ -8,6 +8,11 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/2/2026
+
+- Add compact icon navigation with centered customer search and keyboard-operated menus.
+- Show clear customer-search errors with a retry path instead of failing silently.
+
 ## 10/2/2026 - a25a8a4
 
 - Coordinate web and worker database upgrades so simultaneous startup does not race task-schema repair.

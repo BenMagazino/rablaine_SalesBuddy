@@ -38,17 +38,19 @@ class TestReportsHub:
     def test_reports_dropdown_groups_planning_and_backing_reports(self, client):
         """Keep hub sections and Browse-style menu groups aligned, without duplicate links."""
         soup = BeautifulSoup(client.get('/reports').data, 'html.parser')
-        menu = soup.select_one('#navReports .dropdown-menu')
+        menu = soup.select_one('#navReports .sb-nav-menu')
         groups = [[]]
         grouped_links = [[]]
         links = []
         for item in menu.find_all('li', recursive=False):
-            if item.select_one('.dropdown-divider'):
+            if 'sb-menu-heading' in item.get('class', []):
+                continue
+            if item.select_one('.sb-menu-divider'):
                 assert groups[-1]
                 groups.append([])
                 grouped_links.append([])
             else:
-                link = item.select_one('a.dropdown-item')
+                link = item.select_one('a.sb-nav-link')
                 assert link is not None
                 groups[-1].append(link.get_text(strip=True))
                 grouped_links[-1].append(link['href'])
@@ -63,7 +65,10 @@ class TestReportsHub:
         assert len(links) == len(set(links)) == 16
         hub_links = {link['href'] for link in soup.select('main a[href]')}
         assert set(links[1:]).issubset(hub_links)
-        assert menu.select('.dropdown-header') == []
+        assert [heading.get_text(strip=True) for heading in menu.select('.sb-menu-heading')] == [
+            'Overview', 'Planning and reviews', 'Execution and coverage',
+            'Pipeline health', 'Account insights',
+        ]
         headings = soup.select('main .container-fluid > h5')
         assert [heading.get_text(strip=True) for heading in headings] == [
             'Planning & Reviews', 'Execution & Coverage', 'Pipeline Health', 'Account Insights',

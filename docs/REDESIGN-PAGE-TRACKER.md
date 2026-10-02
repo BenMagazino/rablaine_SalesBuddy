@@ -6,9 +6,12 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: GLOBAL-SHELL, checkpoint 1 (theme token foundation)
-- Next action: inventory global navigation and conditional controls, then replace
-  the shared shell/menus using the new tokens; prove note/milestone partial flows next
+- Current page/surface: GLOBAL-SHELL, checkpoint 2 (header/navigation), verified
+  and user-approved on October 2, 2026; the full shell remains BUILDING
+- Theme foundation checkpoint: `e84b675`; carry the header commit SHA into the
+  next checkpoint after this approved checkpoint is committed
+- Next action: continue remaining global surfaces and note/milestone partial flows;
+  homepage bodies and calendar parity remain separate work.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
