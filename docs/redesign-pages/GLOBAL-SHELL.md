@@ -5,7 +5,8 @@
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Checkpoint 1 implementation revision: `e84b675e9fadbc3ab3b7a31eaac1e3e64b6680d3`
-- Checkpoint 2 implementation revision tested: working tree based on `e84b675`
+- Checkpoint 2 implementation revision: `1fbdd64`
+- Checkpoint 3 dialog foundation: [Help/dialog evidence](GLOBAL-HELP.md), user-approved
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
@@ -109,7 +110,10 @@ This covers theme infrastructure and the header only, not a complete global audi
 
 ## Remaining work and sign-off
 
-Remaining scope includes global status/sync/auth/FY banners, shared overlays and
+The first app-owned dialog slice is implemented with the read-only help surfaces
+in checkpoint 3. Its verification is separate from editable record workflows.
+
+Remaining scope includes global status/sync/auth/FY banners, editable shared overlays and
 their injected-partial lifecycle, theme-family persistence, full Bootstrap removal
 and page approval. Bootstrap Icons remains a separate dependency decision.
 

@@ -12,6 +12,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 - Add compact icon navigation with centered customer search and keyboard-operated menus.
 - Show clear customer-search errors with a retry path instead of failing silently.
+- Use keyboard-friendly workbench dialogs for page help and shortcut reference, with scrolling content and focus restoration.
 
 ## 10/2/2026 - a25a8a4
 

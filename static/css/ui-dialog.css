@@ -1,0 +1,123 @@
+html:has(.sb-dialog[open]) { overflow: hidden; }
+
+.sb-dialog {
+    inset: 0;
+    margin: auto;
+    width: min(800px, calc(100vw - 96px));
+    max-width: none;
+    max-height: calc(100dvh - 96px);
+    padding: 0;
+    border: 1px solid var(--sb-ui-control-line);
+    border-radius: var(--sb-ui-radius);
+    background: var(--sb-ui-surface);
+    color: var(--sb-ui-ink);
+    box-shadow: 0 18px 60px oklch(10% .015 250 / .35);
+    overflow: hidden;
+    font-family: var(--sb-ui-font);
+    font-size: 14px;
+    line-height: 1.6;
+}
+.sb-dialog-compact { width: min(560px, calc(100vw - 96px)); }
+.sb-dialog::backdrop { background: oklch(12% .015 250 / .58); }
+[data-sb-mode="light"] .sb-dialog::backdrop { background: oklch(20% .02 250 / .30); }
+.sb-dialog-shell {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 98px);
+}
+.sb-dialog-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-shrink: 0;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--sb-ui-line);
+    background: var(--sb-ui-header);
+}
+.sb-dialog-heading { flex: 1; min-width: 0; }
+.sb-dialog-eyebrow {
+    color: var(--sb-ui-muted);
+    font-size: 10px;
+    letter-spacing: .075em;
+    text-transform: uppercase;
+}
+.sb-dialog h2 {
+    color: var(--sb-ui-ink);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 4px 0 0;
+    overflow-wrap: anywhere;
+}
+.sb-dialog-close, .sb-dialog-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--sb-ui-muted);
+    border: 0;
+    border-radius: 0;
+    font: inherit;
+    cursor: pointer;
+}
+.sb-dialog-close { width: 30px; height: 30px; flex-shrink: 0; font-size: 18px; }
+.sb-dialog-close:hover, .sb-dialog-button:hover {
+    background: var(--sb-ui-raised);
+    color: var(--sb-ui-ink);
+}
+.sb-dialog :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: -3px; }
+.sb-dialog-body { padding: 24px; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.sb-dialog-body p { margin: 0 0 14px; }
+.sb-dialog-body h6 { font-size: 14px; font-weight: 600; margin: 24px 0 10px; }
+.sb-dialog-body ul { padding-left: 20px; margin: 0 0 16px; }
+.sb-dialog-body li + li { margin-top: 7px; }
+.sb-dialog-footer {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+    padding: 14px 22px;
+    border-top: 1px solid var(--sb-ui-line);
+    background: var(--sb-ui-context);
+}
+.sb-dialog-footer small { flex: 1; color: var(--sb-ui-muted); font-size: 11px; }
+.sb-dialog-button {
+    border: 1px solid var(--sb-ui-control-line);
+    color: var(--sb-ui-ink);
+    padding: 6px 12px;
+    font-size: 13px;
+}
+.sb-dialog .kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    border: 1px solid var(--sb-ui-control-line);
+    border-radius: 0;
+    background: var(--sb-ui-context);
+    color: var(--sb-ui-ink);
+    font-family: var(--sb-ui-font);
+    font-size: 12px;
+    line-height: 1.6;
+    box-shadow: none;
+}
+.sb-help-table { width: 100%; border-collapse: collapse; margin: 0 0 14px; color: inherit; }
+.sb-help-table td { padding: 9px 8px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-help-table tr:last-child td { border-bottom: 0; }
+.sb-shortcuts td:first-child { width: 45%; white-space: nowrap; }
+.sb-help-legend td:first-child { width: 40px; text-align: center; }
+.sb-help-muted { color: var(--sb-ui-muted); }
+.sb-help-warning { color: var(--sb-ui-warning); }
+.sb-help-hva { color: var(--sb-ui-hva-rail); }
+.sb-help-task { color: var(--sb-ui-task-rail); }
+.sb-help-milestone { color: var(--sb-ui-milestone-rail); }
+.sb-help-engagement { color: var(--sb-ui-accent); }
+.sb-help-indicator {
+    display: inline-block;
+    padding: 1px 6px;
+    color: var(--sb-ui-warning);
+    background: var(--sb-ui-warning-bg);
+    font-size: 12px;
+}
+.sb-help-indicator[data-tone="danger"] { color: var(--sb-ui-danger); background: var(--sb-ui-danger-bg); }
+.sb-help-indicator[data-tone="success"] { color: var(--sb-ui-milestone-rail); background: var(--sb-ui-context); }
+.sb-help-indicator[data-tone="info"] { color: var(--sb-ui-accent); background: var(--sb-ui-selection); }
+.sb-help-indicator[data-tone="neutral"] { color: var(--sb-ui-muted); background: var(--sb-ui-context); }

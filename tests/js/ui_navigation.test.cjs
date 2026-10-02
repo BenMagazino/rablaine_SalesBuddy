@@ -112,13 +112,27 @@ test('Tab closes without preventing the normal focus transition', () => {
     assert.equal(nav.menus[0].open, false);
 });
 
-test('outside pointer/focus and opening legacy overlays dismiss menus', () => {
-    for (const name of ['pointerdown', 'focusin', 'show.bs.modal', 'show.bs.offcanvas']) {
+test('outside pointer/focus and opening native or legacy overlays dismiss menus', () => {
+    for (const name of ['pointerdown', 'focusin', 'show.bs.modal', 'show.bs.offcanvas',
+        'sb:dialog-opening']) {
         const nav = navigation();
         nav.triggers[0].emit('click');
         nav.emit(name, {});
         assert.equal(nav.menus[0].open, false, name);
     }
+});
+
+test('dialog opening restores a focused menu trigger without stealing outside focus', () => {
+    const nav = navigation();
+    nav.emit('keydown', nav.triggers[0], 'ArrowDown');
+    nav.emit('sb:dialog-opening', {});
+    assert.equal(nav.document.activeElement, nav.triggers[0]);
+    const external = {kind: 'input'};
+    nav.document.activeElement = external;
+    nav.triggers[0].emit('pointerenter');
+    nav.flushTimers();
+    nav.emit('sb:dialog-opening', {});
+    assert.equal(nav.document.activeElement, external);
 });
 
 test('hover crosses from trigger to menu without premature dismissal', () => {

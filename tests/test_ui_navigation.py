@@ -1,5 +1,7 @@
 """Parity checks for the redesigned shared desktop navigation."""
 
+import re
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -74,7 +76,7 @@ def test_navigation_update_badges_and_modal_entry_points(app, update_available):
     for badge_id in ("updateBadge", "updateMenuBadge"):
         assert soup.find(id=badge_id).has_attr("hidden") is not update_available
     assert soup.select_one("#navNewNote")["data-bs-target"] == "#quickNoteModal"
-    assert soup.select_one('button[data-bs-target="#keyboardShortcutsModal"]')
+    assert soup.select_one('button[data-sb-dialog="keyboardShortcutsModal"]')
     assert soup.select_one("#navCustomerSearch")["aria-label"] == "Customer search"
     assert soup.select_one("#navQuickLookup kbd").get_text(strip=True) == "/"
 
@@ -105,3 +107,46 @@ def test_navigation_owns_menus_and_embed_mode_has_no_header(app):
         app.preprocess_request()
         html = render_template("base.html", first_run_modal_dismissed=True)
     assert not BeautifulSoup(html, "html.parser").select_one(".sb-app-bar")
+
+
+@pytest.mark.parametrize("debug", [False, True])
+def test_help_dialogs_preserve_shortcuts_and_use_owned_components(app, debug, monkeypatch):
+    """Help content and conditional shortcuts survive native-dialog migration."""
+    monkeypatch.setitem(app.config, "DEBUG", debug)
+    soup = render_navigation(app)
+    for dialog_id in ("pageHelpModal", "keyboardShortcutsModal"):
+        dialog = soup.find(id=dialog_id)
+        assert dialog.name == "dialog"
+        assert "sb-dialog" in dialog["class"]
+        assert dialog["data-sb-backdrop-close"] == "true"
+        assert soup.find(id=dialog["aria-labelledby"])
+        assert dialog.select_one("[data-sb-dialog-close][autofocus]")
+        assert dialog.select_one('.sb-dialog-body[tabindex="0"][role="region"]')
+        assert not dialog.select("[data-bs-dismiss], .modal-content, .table")
+    rows = soup.select("#keyboardShortcutsModal tr")
+    assert [row.select_one("td:last-child").get_text(strip=True) for row in rows] == [
+        "Page help", "Customer search", "Create new note", "Submit form",
+        "Close modal / go back", "Show this help",
+    ] + (["Toggle SalesIQ Chat"] if debug else [])
+    scripts = [script.get("src", "") for script in soup.select("script[src]")]
+    assert scripts.index("/static/js/ui-dialog.js") < scripts.index("/static/js/page-help.js")
+
+
+def test_help_dialog_source_has_balanced_shells() -> None:
+    """Do not rely on browser repair to close dialog shell wrappers."""
+    source = Path(__file__).resolve().parents[1].joinpath("templates", "base.html").read_text(
+        encoding="utf-8"
+    )
+    for dialog_id in ("pageHelpModal", "keyboardShortcutsModal"):
+        match = re.search(
+            rf'<dialog\b[^>]*\bid="{dialog_id}"[^>]*>.*?</dialog>', source, re.DOTALL
+        )
+        assert match
+        stack: list[str] = []
+        for closing, tag in re.findall(r"<(/?)([a-z][a-z0-9]*)\b[^>]*>", match.group()):
+            if closing:
+                assert stack and stack.pop() == tag
+            elif tag not in {"area", "base", "br", "col", "embed", "hr", "img", "input",
+                             "link", "meta", "param", "source", "track", "wbr"}:
+                stack.append(tag)
+        assert not stack

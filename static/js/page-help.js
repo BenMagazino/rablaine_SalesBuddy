@@ -19,22 +19,22 @@ const PageHelp = (function () {
       <ul>
         <li><strong>Solid colored entries</strong> are real notes you've written. Click to view, hover to highlight all notes for that customer.</li>
         <li><strong>Dashed-border entries</strong> are <em>ghost meetings</em> — meetings pulled from your Outlook calendar that don't have a note yet. Click one to start a note pre-filled with the meeting subject and external attendees.</li>
-        <li><strong>Today's badge</strong> turns <span class="badge bg-warning text-dark">orange</span> if today's meetings haven't been refreshed today. Click it to pull a fresh copy from WorkIQ.</li>
+        <li><strong>Today's badge</strong> turns <span class="sb-help-indicator">orange</span> if today's meetings haven't been refreshed today. Click it to pull a fresh copy from WorkIQ.</li>
         <li><strong>+</strong> on any day creates a new note dated to that day.</li>
         <li><strong>X</strong> on a ghost dismisses it. For recurring meetings, hover the <i class="bi bi-arrow-repeat"></i> icon and click the red X to dismiss the whole series.</li>
       </ul>
 
       <h6>Calendar icon legend</h6>
-      <table class="table table-sm align-middle">
+      <table class="sb-help-table sb-help-legend">
         <tbody>
-          <tr><td class="text-center"><i class="bi bi-star-fill text-warning"></i></td><td>High-Value Activity (HVA) attached</td></tr>
-          <tr><td class="text-center"><i class="bi bi-check2-square text-info"></i></td><td>Other MSX task attached</td></tr>
-          <tr><td class="text-center"><i class="bi bi-flag-fill text-success"></i></td><td>Milestone linked, with no task attached yet</td></tr>
-          <tr><td class="text-center"><i class="bi bi-diagram-3 text-primary"></i></td><td>Engagement linked</td></tr>
-          <tr><td class="text-center"><i class="bi bi-sticky text-secondary"></i></td><td>General note without a customer</td></tr>
-          <tr><td class="text-center"><i class="bi bi-calendar-event text-secondary"></i></td><td>Outlook meeting matched to a customer</td></tr>
-          <tr><td class="text-center"><i class="bi bi-question-circle text-warning"></i></td><td>Outlook meeting needs a customer match</td></tr>
-          <tr><td class="text-center"><i class="bi bi-arrow-repeat text-muted"></i></td><td>Recurring meeting</td></tr>
+          <tr><td><i class="bi bi-star-fill sb-help-hva"></i></td><td>High-Value Activity (HVA) attached</td></tr>
+          <tr><td><i class="bi bi-check2-square sb-help-task"></i></td><td>Other MSX task attached</td></tr>
+          <tr><td><i class="bi bi-flag-fill sb-help-milestone"></i></td><td>Milestone linked, with no task attached yet</td></tr>
+          <tr><td><i class="bi bi-diagram-3 sb-help-engagement"></i></td><td>Engagement linked</td></tr>
+          <tr><td><i class="bi bi-sticky sb-help-muted"></i></td><td>General note without a customer</td></tr>
+          <tr><td><i class="bi bi-calendar-event sb-help-muted"></i></td><td>Outlook meeting matched to a customer</td></tr>
+          <tr><td><i class="bi bi-question-circle sb-help-warning"></i></td><td>Outlook meeting needs a customer match</td></tr>
+          <tr><td><i class="bi bi-arrow-repeat sb-help-muted"></i></td><td>Recurring meeting</td></tr>
         </tbody>
       </table>
 
@@ -284,7 +284,7 @@ const PageHelp = (function () {
       <p><strong>Weekly</strong> keeps review batches small and provides week-by-week navigation. <strong>Full FY</strong> shows every fiscal-year meeting in one continuous list. Matching and calendar import operate across the fiscal year in either view; the toggle only changes what is displayed.</p>
 
       <h6>Toolbar actions</h6>
-      <table class="table table-sm mb-3">
+      <table class="sb-help-table">
         <tbody>
           <tr><td><strong>Match Milestones</strong></td><td>Prepares unlogged meetings with WorkIQ and suggests milestones. Does not create MSX tasks.</td></tr>
           <tr><td><strong>Re-run Matching</strong></td><td>Replaces prior AI summaries, drafts, activity types, and milestone suggestions for all unlogged meetings. Customer matches, dismissals, notes, and linked MSX activities stay unchanged.</td></tr>
@@ -295,7 +295,7 @@ const PageHelp = (function () {
       <h6>Reviewing a meeting</h6>
       <ul>
         <li><strong>Customer</strong> searches name, nickname, and TPID.</li>
-        <li><strong>Milestone</strong> searches milestone name/number, opportunity, and workload. <span class="badge bg-primary">On Team</span> identifies milestones where you are on the team.</li>
+        <li><strong>Milestone</strong> searches milestone name/number, opportunity, and workload. <span class="sb-help-indicator" data-tone="info">On Team</span> identifies milestones where you are on the team.</li>
         <li>A <strong>★</strong> beside an activity type means it qualifies for HVA credit. Preparation prefers a matching HVA type, then falls back to a more accurate non-HVA type when needed.</li>
         <li><strong>Save</strong> stores your edits without creating anything in MSX.</li>
         <li><strong>Enrich</strong> refreshes draft text for one meeting. Use <strong>Re-run Matching</strong> when you need to replace preparation across the fiscal year.</li>
@@ -374,38 +374,38 @@ const PageHelp = (function () {
     { pattern: /^\/reports\/revenue\/?$/, title: 'Revenue Dashboard', content: `
       <p>Overview of Azure Consumed Revenue across your customers — flagging who needs attention and why.</p>
       <h6>Categories</h6>
-      <table class="table table-sm mb-3">
+      <table class="sb-help-table">
         <tbody>
           <tr>
-            <td><span class="badge bg-danger">Declining</span></td>
+            <td><span class="sb-help-indicator" data-tone="danger">Declining</span></td>
             <td>Revenue is declining month-over-month <em>and</em> dropped sharply recently. These customers may be migrating away or shutting down workloads.</td>
           </tr>
           <tr>
-            <td><span class="badge bg-warning text-dark">Recent Dip</span></td>
+            <td><span class="sb-help-indicator">Recent Dip</span></td>
             <td>Overall trend was stable or positive, but there was a sudden drop in the last 1-2 months. Could be a billing anomaly, a paused project, or the start of something worse.</td>
           </tr>
           <tr>
-            <td><span class="badge bg-success">EXPANSION</span></td>
+            <td><span class="sb-help-indicator" data-tone="success">EXPANSION</span></td>
             <td>Revenue is growing with positive momentum — customer is near or at their historical max. Good time to engage and help them scale further.</td>
           </tr>
           <tr>
-            <td><span class="badge bg-secondary">Volatile</span></td>
+            <td><span class="sb-help-indicator" data-tone="neutral">Volatile</span></td>
             <td>Revenue swings significantly month to month (high coefficient of variation). Hard to predict — worth a conversation to understand usage patterns.</td>
           </tr>
           <tr>
-            <td><span class="badge bg-info text-dark">Stagnant</span></td>
+            <td><span class="sb-help-indicator" data-tone="info">Stagnant</span></td>
             <td>Revenue is flat with low variance. Customer is using Azure but not growing. May be an opportunity to introduce new services.</td>
           </tr>
           <tr>
-            <td><span class="badge bg-light text-dark">Healthy</span></td>
+            <td><span class="sb-help-indicator" data-tone="neutral">Healthy</span></td>
             <td>No concerning signals — revenue is stable with normal patterns. No action needed.</td>
           </tr>
           <tr>
-            <td><span class="badge bg-primary">New Customer</span></td>
+            <td><span class="sb-help-indicator" data-tone="info">New Customer</span></td>
             <td>Recently started generating revenue (first few months of usage). Worth an early check-in to ensure onboarding is going well.</td>
           </tr>
           <tr>
-            <td><span class="badge bg-dark">Inactive</span></td>
+            <td><span class="sb-help-indicator" data-tone="neutral">Inactive</span></td>
             <td>Revenue dropped to $0 in this bucket after previously generating usage. The customer stopped using this specific product/service.</td>
           </tr>
         </tbody>
@@ -421,12 +421,12 @@ const PageHelp = (function () {
     { pattern: /^\/revenue\/seller\//, title: 'Seller Revenue Alerts', content: `
       <p>Revenue alerts for this seller's customers, sorted by priority. Review each alert and mark it as actioned, reviewed, or dismissed.</p>
       <h6>Alert Categories</h6>
-      <table class="table table-sm mb-3">
+      <table class="sb-help-table">
         <tbody>
-          <tr><td><span class="badge bg-danger">Declining</span></td><td>Revenue is trending down with a recent sharp drop. Customer may be migrating away or reducing workloads.</td></tr>
-          <tr><td><span class="badge bg-warning text-dark">Recent Dip</span></td><td>Overall trend was stable but there was a sudden recent drop. Could be temporary or the start of something bigger.</td></tr>
-          <tr><td><span class="badge bg-success">Expansion</span></td><td>Growing usage with positive momentum. Good time to engage about scaling.</td></tr>
-          <tr><td><span class="badge bg-secondary">Volatile</span></td><td>Large month-to-month swings. Worth understanding what drives the variation.</td></tr>
+          <tr><td><span class="sb-help-indicator" data-tone="danger">Declining</span></td><td>Revenue is trending down with a recent sharp drop. Customer may be migrating away or reducing workloads.</td></tr>
+          <tr><td><span class="sb-help-indicator">Recent Dip</span></td><td>Overall trend was stable but there was a sudden recent drop. Could be temporary or the start of something bigger.</td></tr>
+          <tr><td><span class="sb-help-indicator" data-tone="success">Expansion</span></td><td>Growing usage with positive momentum. Good time to engage about scaling.</td></tr>
+          <tr><td><span class="sb-help-indicator" data-tone="neutral">Volatile</span></td><td>Large month-to-month swings. Worth understanding what drives the variation.</td></tr>
         </tbody>
       </table>
     `},
@@ -486,7 +486,7 @@ const PageHelp = (function () {
     content: `
       <p>Sales Buddy helps Azure technical sellers capture and retrieve customer call notes.</p>
       <h6>Keyboard Shortcuts</h6>
-      <table class="table table-sm mb-3">
+      <table class="sb-help-table">
         <tbody>
           <tr><td><span class="kbd">F1</span></td><td>Page help (you're here!)</td></tr>
           <tr><td><span class="kbd">/</span></td><td>Quick customer lookup</td></tr>
@@ -495,7 +495,7 @@ const PageHelp = (function () {
           <tr><td><span class="kbd">/</span> or <span class="kbd">?</span></td><td>Customer search / Keyboard shortcuts</td></tr>
         </tbody>
       </table>
-      <p class="text-muted mb-0">Press <span class="kbd">F1</span> on any page for help specific to that page.</p>
+      <p class="sb-help-muted">Press <span class="kbd">F1</span> on any page for help specific to that page.</p>
     `,
   };
 
@@ -516,18 +516,16 @@ const PageHelp = (function () {
     const title = help ? help.title : fallbackHelp.title;
     const content = help ? help.content : fallbackHelp.content;
 
-    // Populate and show the modal
+    // Populate and toggle the shared native help dialog.
     const titleEl = document.getElementById('pageHelpModalLabel');
     const bodyEl = document.getElementById('pageHelpBody');
-    if (!titleEl || !bodyEl) return;
+    if (!titleEl || !bodyEl) throw new Error('Page help dialog content is missing');
 
-    titleEl.innerHTML = `<i class="bi bi-question-circle"></i> ${title}`;
+    titleEl.textContent = title;
     bodyEl.innerHTML = content;
+    bodyEl.scrollTop = 0;
 
-    const modal = bootstrap.Modal.getOrCreateInstance(
-      document.getElementById('pageHelpModal')
-    );
-    modal.toggle();
+    SBDialog.toggle('pageHelpModal');
   }
 
   return { show };
