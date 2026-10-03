@@ -7,7 +7,8 @@
 - Checkpoint 1 implementation revision: `e84b675e9fadbc3ab3b7a31eaac1e3e64b6680d3`
 - Checkpoint 2 implementation revision: `1fbdd64`
 - Checkpoint 3 dialog foundation: `160e2d9`, [Help/dialog evidence](GLOBAL-HELP.md), user-approved
-- Checkpoint 4 customer pickers: [Picker evidence](GLOBAL-PICKERS.md), user-approved
+- Checkpoint 4 customer pickers: `8dd3363`, [Picker evidence](GLOBAL-PICKERS.md), user-approved
+- Checkpoint 5 image viewer: [Image evidence](GLOBAL-ZOOM.md), user-approved
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,

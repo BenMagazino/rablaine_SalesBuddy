@@ -138,7 +138,7 @@ def test_help_dialog_source_has_balanced_shells() -> None:
         encoding="utf-8"
     )
     for dialog_id in ("pageHelpModal", "keyboardShortcutsModal",
-                      "quickNoteModal", "quickEngagementModal"):
+                      "quickNoteModal", "quickEngagementModal", "imageZoomModal"):
         match = re.search(
             rf'<dialog\b[^>]*\bid="{dialog_id}"[^>]*>.*?</dialog>', source, re.DOTALL
         )
@@ -197,3 +197,21 @@ def test_calendar_customer_picker_retains_legacy_host_and_date_hook(client) -> N
     assert calendar_picker.select_one("#quickCreateSearch")
     assert calendar_picker.select_one("#quickCreateCustomerList")
     assert any("_quickCreateUpdateDate" in (script.string or "") for script in soup.find_all("script"))
+
+
+def test_image_viewer_owned_markup(app) -> None:
+    """The shared image host preserves its IDs and uses native, accessible controls."""
+    soup = render_navigation(app)
+    dialog = soup.find(id="imageZoomModal")
+    assert dialog.name == "dialog"
+    assert dialog["data-sb-backdrop-close"] == "true"
+    assert soup.find(id=dialog["aria-labelledby"]).get_text(strip=True) == "Image preview"
+    assert dialog.select_one("#imageZoomImg").has_attr("alt")
+    assert dialog.select_one("#imageZoomPreview")["aria-describedby"] == "imageZoomImg"
+    assert dialog.select_one("#imageZoomStatus")["role"] == "status"
+    assert dialog.select_one("#imageZoomError")["role"] == "alert"
+    assert dialog.select_one("#imageZoomRetry")["type"] == "button"
+    assert len(dialog.select("[data-sb-dialog-close]")) == 3
+    assert not dialog.select(".modal, .modal-dialog, .modal-content, [data-bs-dismiss], [onclick]")
+    scripts = [script.get("src", "") for script in soup.select("script[src]")]
+    assert scripts.index("/static/js/ui-dialog.js") < scripts.index("/static/js/ui-image-viewer.js")

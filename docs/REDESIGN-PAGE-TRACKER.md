@@ -6,18 +6,18 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 4, GLOBAL-NOTE / GLOBAL-ENG customer pickers,
+- Current page/surface: checkpoint 5, GLOBAL-ZOOM image viewer,
   technically verified and user-approved; full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
-  `160e2d9` (native help/dialog foundation)
-- Next action: commit this approved checkpoint, then continue
-  note/milestone partial flows; homepage bodies and calendar parity remain separate work.
+  `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers)
+- Next action: commit this approved checkpoint, then continue shared shell notifications;
+  note/milestone partial flows, homepage bodies and calendar parity remain separate work.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
 - Page progress: 0 / 90 DONE
 - Shared fragment/helper progress: 0 / 24 DONE
-- Global/shell/error progress: 4 / 17 DONE
+- Global/shell/error progress: 5 / 17 DONE
 - Additional pages discovered after baseline: none recorded
 - Commit cadence: each coherent, verified checkpoint; no automatic push or merge
 - Pre-release reviewer: the user; external tester/users provide post-release QA
@@ -182,7 +182,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | GLOBAL-CHAT | Copilot chat | `base.html`, chat flyout | TODO | - |
 | GLOBAL-SHARE | Sharing | `base.html`, share modal | TODO | - |
 | GLOBAL-IMPORT | Shared-data import review | `base.html`, import-review modal | TODO | - |
-| GLOBAL-ZOOM | Image zoom | `base.html`, image-zoom modal | TODO | - |
+| GLOBAL-ZOOM | Image zoom | `base.html`, native image dialog | DONE | [Card](redesign-pages/GLOBAL-ZOOM.md) |
 | GLOBAL-TOUR | Guided product tour | `base.html`, tour script | TODO | - |
 | SHELL-START | Starting Sales Buddy | `electron/main.js` | TODO | - |
 | SHELL-SLOW | Startup taking longer than usual | `electron/main.js` | TODO | - |

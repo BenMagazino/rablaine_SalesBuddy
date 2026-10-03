@@ -931,7 +931,8 @@
             cursor: pointer;
         }
         .row-link a:not(.stretched-link),
-        .row-link button {
+        .row-link button,
+        .row-link .call-content img[role="button"] {
             position: relative;
             z-index: 2;
         }
@@ -3702,24 +3703,39 @@
     })();
     </script>
 
-    <!-- Image zoom modal (click any image in .call-content to view full size) -->
-    <div class="modal fade" id="imageZoomModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: fit-content;">
-            <div class="modal-content bg-transparent border-0 shadow-none">
-                <div class="modal-body p-0 text-center">
-                    <img id="imageZoomImg" src="" style="max-height: 90vh; max-width: 80vw; cursor: zoom-out;" onclick="bootstrap.Modal.getInstance(document.getElementById('imageZoomModal')).hide()">
+    <!-- Shared image viewer for rendered note content -->
+    <dialog class="sb-dialog sb-dialog-image" id="imageZoomModal"
+            aria-labelledby="imageZoomTitle" data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell">
+            <div class="sb-dialog-header">
+                <div class="sb-dialog-heading">
+                    <div class="sb-dialog-eyebrow">Note attachment</div>
+                    <h2 id="imageZoomTitle">Image preview</h2>
+                </div>
+                <button class="sb-dialog-close" type="button" data-sb-dialog-close
+                        aria-label="Close image preview"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="sb-dialog-body sb-image-body" id="imageZoomStage" aria-busy="false">
+                <div class="sb-image-state" id="imageZoomStatus" role="status" hidden>
+                    Loading image...
+                </div>
+                <button class="sb-image-preview" id="imageZoomPreview" type="button"
+                        data-sb-dialog-close aria-label="Close image preview"
+                        aria-describedby="imageZoomImg" hidden>
+                    <img id="imageZoomImg" alt="">
+                </button>
+                <div class="sb-image-state sb-image-error" id="imageZoomError" role="alert" hidden>
+                    <span>This image could not be loaded. Try again.</span>
+                    <button class="sb-dialog-button" id="imageZoomRetry" type="button">Retry</button>
                 </div>
             </div>
+            <div class="sb-dialog-footer">
+                <small>Click the image or press Esc to close.</small>
+                <button class="sb-dialog-button" type="button" data-sb-dialog-close>Close</button>
+            </div>
         </div>
-    </div>
-    <script>
-    document.addEventListener('click', function(e) {
-        if (e.target.tagName === 'IMG' && e.target.closest('.call-content')) {
-            document.getElementById('imageZoomImg').src = e.target.src;
-            new bootstrap.Modal(document.getElementById('imageZoomModal')).show();
-        }
-    });
-    </script>
+    </dialog>
+    <script src="{{ url_for('static', filename='js/ui-image-viewer.js') }}" defer></script>
 
     <!-- Guided Product Tour (triggered once after first wizard dismissal) -->
     <script defer>

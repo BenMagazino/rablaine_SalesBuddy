@@ -189,3 +189,42 @@ html:has(.sb-dialog[open]) { overflow: hidden; }
     color: var(--sb-ui-muted);
 }
 .sb-picker-state.is-error { color: var(--sb-ui-danger); }
+
+.sb-dialog-image {
+    width: fit-content;
+    min-width: 320px;
+    max-width: calc(100vw - 96px);
+}
+.sb-dialog-image [hidden] { display: none; }
+.sb-image-body { text-align: center; }
+.sb-image-preview {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    margin: 0 auto;
+    border: 0;
+    background: transparent;
+    cursor: zoom-out;
+}
+.sb-image-preview img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: min(80vw, calc(100vw - 144px));
+    max-height: calc(100dvh - 300px);
+    object-fit: contain;
+}
+.sb-image-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 180px;
+    color: var(--sb-ui-muted);
+}
+.sb-image-error { color: var(--sb-ui-danger); }
+.call-content img[role="button"]:focus-visible {
+    outline: 2px solid var(--sb-ui-accent);
+    outline-offset: 3px;
+}
