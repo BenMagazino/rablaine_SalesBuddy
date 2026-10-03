@@ -183,6 +183,7 @@
     font: inherit;
     outline: none;
 }
+.sb-app-bar .sb-search-field input:focus-visible { outline: none; }
 .sb-search-field input::placeholder { color: var(--sb-ui-muted); opacity: 1; }
 .sb-search-field kbd {
     padding: 0 4px;

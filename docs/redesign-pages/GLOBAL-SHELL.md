@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-6 committed, checkpoint 7 technically verified and user-approved
+- Status: BUILDING; checkpoints 1-7 committed, checkpoint 8 technically verified and user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -10,14 +10,15 @@
 - Checkpoint 4 customer pickers: `8dd3363`, [Picker evidence](GLOBAL-PICKERS.md), user-approved
 - Checkpoint 5 image viewer: `f1916e8`, [Image evidence](GLOBAL-ZOOM.md), user-approved
 - Checkpoint 6 shared flash notifications: `1e7b16c`, [Feedback evidence](GLOBAL-FEEDBACK.md), user-approved
-- Checkpoint 7 persistent status strips: [Status evidence](GLOBAL-STATUS.md), user-approved
+- Checkpoint 7 persistent status strips: `f6e9163`, [Status evidence](GLOBAL-STATUS.md), user-approved
+- Checkpoint 8 floating meeting-sync status: [Sync evidence](GLOBAL-SYNC.md), user-approved
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
 - Next action: continue the remaining global surfaces after this checkpoint;
   homepage and shared note/milestone dialogs are not approved by this checkpoint.
-  Commit checkpoint 7, then the next bounded slice is floating meeting-sync status.
+  Commit checkpoint 8 and pause, then move into shared note/milestone overlay lifecycle and bodies.
 
 ## Checkpoint 1 scope
 
@@ -127,7 +128,17 @@ and visibility utilities. Existing actions, conditions and business flows remain
 Its focused evidence records Node behavior, isolated dormant branches and live
 access-strip checks. The user approved the live strip preview on October 2, 2026.
 
-Remaining scope includes floating sync status, editable shared overlays and
+Checkpoint 8 replaces shared floating meeting-sync presentation and its
+controller. Its API, polling, drag storage and hide-without-cancel behavior remain,
+with explicit failed-read feedback and Retry. Its evidence remains separate from
+the note form's own meeting-status card and the homepage's refresh ownership.
+The user approved the live card preview and corrected header focus on October 2, 2026.
+
+The checkpoint 8 review also identified duplicate customer-search focus outlines.
+The scoped input override preserves the outer field's accent border and leaves
+all other header/menu keyboard focus indicators unchanged.
+
+Remaining scope includes editable shared overlays, onboarding and
 their injected-partial lifecycle, theme-family persistence, full Bootstrap removal
 and page approval. Bootstrap Icons remains a separate dependency decision.
 

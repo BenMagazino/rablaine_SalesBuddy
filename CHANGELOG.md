@@ -17,6 +17,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Preview note images in keyboard-accessible workbench dialogs, including customer cards, with clear image-loading errors and Retry.
 - Show shared notifications in workbench styling, with clear error categories and keyboard focus preserved after dismissal.
 - Use workbench status strips for VPN, Azure sign-in, fiscal-year transition and viewing-as context, preserving their existing actions.
+- Show meeting-sync progress in a draggable workbench panel, with retryable status-read errors and keyboard-friendly hiding.
+- Keep a single focus indicator around header customer search instead of also outlining its inner text input.
 
 ## 10/2/2026 - a25a8a4
 

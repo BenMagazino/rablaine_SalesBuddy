@@ -6,13 +6,14 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 7, GLOBAL-SHELL persistent status strips,
+- Current page/surface: checkpoint 8, GLOBAL-SHELL floating meeting-sync status,
   technically verified and user-approved; full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
-  `f1916e8` (image viewer), `1e7b16c` (shared notifications)
-- Next action: commit the approved [checkpoint 7](redesign-pages/GLOBAL-STATUS.md),
-  then audit floating meeting-sync status;
+  `f1916e8` (image viewer), `1e7b16c` (shared notifications),
+  `f6e9163` (persistent status strips)
+- Next action: commit the approved [checkpoint 8](redesign-pages/GLOBAL-SYNC.md),
+  then pause at a clean stopping point. Next work is shared record-overlay lifecycle;
   note/milestone partial flows, homepage bodies and calendar parity remain separate work.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`

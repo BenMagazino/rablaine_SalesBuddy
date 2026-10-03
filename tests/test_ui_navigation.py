@@ -380,3 +380,27 @@ def test_viewing_as_strip_handles_absent_optional_metadata(app) -> None:
     assert "Example Seller" in banner.get_text()
     assert not banner.select(".sb-status-tag, .sb-status-detail")
     assert banner.select_one("button").get_text(strip=True).endswith("Exit Seller Mode")
+
+
+def test_meeting_sync_status_preserves_ids_with_native_nonmodal_controls(app) -> None:
+    """The floating sync host stays hidden and retains its public content/action surfaces."""
+    soup = render_navigation(app)
+    card = soup.find(id="syncStatusCard")
+    assert card.name == "section"
+    assert card.has_attr("hidden")
+    assert card["aria-labelledby"] == "syncStatusTitle"
+    assert "sb-sync-status" in card["class"]
+    assert "style" not in card.attrs
+    assert card.find(id="syncStatusCardHeader")
+    assert card.find(id="syncStatusDate").get_text() == "today"
+    assert card.find(id="syncStatusProgress")["role"] == "status"
+    assert card.find(id="syncStatusError").has_attr("hidden")
+    for button in card.select("button"):
+        assert button["type"] == "button"
+        assert "onclick" not in button.attrs
+        assert not any(attribute.startswith("data-bs-") for attribute in button.attrs)
+    assert "sync continues in background" in card.find(id="syncStatusDismiss")["title"]
+    assert not card.select(".card, .card-header, .card-body, .btn-close, .spinner-border")
+    controller = soup.select_one('script[src="/static/js/ui-sync-status.js"]')
+    assert controller
+    assert str(soup).index('id="syncStatusCard"') < str(soup).index(controller["src"])

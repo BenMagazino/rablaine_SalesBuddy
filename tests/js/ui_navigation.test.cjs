@@ -7,6 +7,13 @@ const vm = require('node:vm');
 const script = fs.readFileSync(
     path.join(__dirname, '../../static/js/ui-navigation.js'), 'utf8');
 
+test('header customer search keeps one field focus indicator without an inner input outline', () => {
+    const css = fs.readFileSync(path.join(__dirname, '../../static/css/ui-navigation.css'), 'utf8');
+    assert.match(css, /\.sb-search-field:focus-within\s*\{[^}]*border-color:\s*var\(--sb-ui-accent\)/);
+    assert.match(css, /\.sb-app-bar \.sb-search-field input:focus-visible\s*\{\s*outline:\s*none/);
+    assert.match(css, /\.sb-app-bar :is\(button, a, input\):focus-visible\s*\{[^}]*outline:\s*2px/);
+});
+
 function navigation({embedded = false, missingMenu = false} = {}) {
     const listeners = new Map();
     const timers = new Map();

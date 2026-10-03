@@ -6,9 +6,8 @@
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - UI baseline: `1e7b16c`, approved shared-notification checkpoint
-- Implementation tested: working tree based on `1e7b16c`
-- Next action: commit this approved slice, then audit floating meeting-sync status.
-  Carry this checkpoint's commit SHA into the next handoff.
+- Implementation revision: `f6e9163`
+- Next action: continue with [floating meeting-sync evidence](GLOBAL-SYNC.md).
 
 ## Scope and original inventory
 
