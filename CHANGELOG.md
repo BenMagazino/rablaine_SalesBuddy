@@ -16,6 +16,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Use workbench customer pickers for new notes and engagements, with clear loading errors and a Retry action.
 - Preview note images in keyboard-accessible workbench dialogs, including customer cards, with clear image-loading errors and Retry.
 - Show shared notifications in workbench styling, with clear error categories and keyboard focus preserved after dismissal.
+- Use workbench status strips for VPN, Azure sign-in, fiscal-year transition and viewing-as context, preserving their existing actions.
 
 ## 10/2/2026 - a25a8a4
 

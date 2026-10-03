@@ -751,54 +751,65 @@
     {% endif %}
 
     <!-- VPN Blocked Banner (shown dynamically when MSX detects IP block) -->
-    <div id="vpnBlockedBanner" class="alert alert-danger mb-0 text-center d-none" role="alert" style="border-radius: 0;">
-        <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
-            <span>
-                <i class="bi bi-shield-exclamation"></i>
+    <div id="vpnBlockedBanner" class="sb-status-strip" data-sb-tone="danger" role="alert" hidden>
+        <div class="sb-status-inner">
+            <i class="bi bi-shield-exclamation sb-status-icon" aria-hidden="true"></i>
+            <span class="sb-status-copy">
                 <strong>VPN Required:</strong> MSX blocked your request because you're not on corpnet.
                 Connect to VPN and click
             </span>
-            <button id="vpnRetryBtn" class="btn btn-sm btn-outline-light" onclick="checkVpnRecovery()">
-                <i class="bi bi-arrow-repeat"></i> I'm back on VPN
-            </button>
-            <span id="vpnRetryStatus" class="small"></span>
+            <div class="sb-status-actions">
+                <button id="vpnRetryBtn" class="sb-status-button" type="button" onclick="checkVpnRecovery()">
+                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> I'm back on VPN
+                </button>
+                <span id="vpnRetryStatus" class="sb-status-detail" role="status"></span>
+            </div>
         </div>
     </div>
 
     <!-- Auth Required Banner (shown reactively when an MSX/AI call returns
          unauthenticated - mirrors the VPN banner but for sign-in, not corpnet) -->
-    <div id="authRequiredBanner" class="alert alert-warning mb-0 text-center d-none" role="alert" style="border-radius: 0;">
-        <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
-            <span>
-                <i class="bi bi-shield-lock"></i>
+    <div id="authRequiredBanner" class="sb-status-strip" data-sb-tone="warning" role="alert" hidden>
+        <div class="sb-status-inner">
+            <i class="bi bi-shield-lock sb-status-icon" aria-hidden="true"></i>
+            <span class="sb-status-copy">
                 <strong>Signed out of Azure:</strong> AI and MSX features are disabled until you sign in again.
             </span>
-            <button id="authSignInBtn" class="btn btn-sm btn-primary" onclick="startAuthSignIn()">
-                <i class="bi bi-box-arrow-in-right"></i> Sign In to Azure
-            </button>
-            <span id="authBannerStatus" class="small"></span>
+            <div class="sb-status-actions">
+                <button id="authSignInBtn" class="sb-status-button" type="button" onclick="startAuthSignIn()">
+                    <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Sign In to Azure
+                </button>
+                <span id="authBannerStatus" class="sb-status-detail" role="status"></span>
+            </div>
         </div>
     </div>
 
     {% if fy_changeover_reminder %}
     <!-- FY Changeover Reminder Banner (Jul 1 – Aug 31, not yet completed) -->
-    <div class="alert alert-info mb-0 text-center" role="alert" style="border-radius: 0;">
-        <i class="bi bi-calendar-event"></i>
-        <strong>New fiscal year!</strong> It's time to transition to {{ fy_changeover_reminder }}.
-        <a href="{{ url_for('admin.admin_panel') }}#fyManagement" class="alert-link">Get started in the Admin Panel</a>
+    <div id="fyReminderBanner" class="sb-status-strip" data-sb-tone="info" role="alert">
+        <div class="sb-status-inner">
+            <i class="bi bi-calendar-event sb-status-icon" aria-hidden="true"></i>
+            <span class="sb-status-copy">
+                <strong>New fiscal year!</strong> It's time to transition to {{ fy_changeover_reminder }}.
+            </span>
+            <a href="{{ url_for('admin.admin_panel') }}#fyManagement" class="sb-status-link">Get started in the Admin Panel</a>
+        </div>
     </div>
     {% endif %}
 
     {% if fy_transition_active %}
     <!-- FY Transition Banner -->
-    <div class="alert alert-warning mb-0 text-center" role="alert" style="border-radius: 0;">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        <strong>{{ fy_transition_label }} Transition in Progress</strong> &mdash;
-        {% if not fy_sync_complete %}
-        Account sync incomplete. <a href="{{ url_for('admin.admin_panel') }}#fyManagement" class="alert-link">Resume in Admin Panel</a>
-        {% else %}
-        <a href="{{ url_for('admin.admin_panel') }}#fyManagement" class="alert-link">Finalize in Admin Panel</a>
-        {% endif %}
+    <div id="fyTransitionBanner" class="sb-status-strip" data-sb-tone="warning" role="alert">
+        <div class="sb-status-inner">
+            <i class="bi bi-exclamation-triangle-fill sb-status-icon" aria-hidden="true"></i>
+            <span class="sb-status-copy">
+                <strong>{{ fy_transition_label }} Transition in Progress:</strong>
+                {% if not fy_sync_complete %}Account sync incomplete.{% endif %}
+            </span>
+            <a href="{{ url_for('admin.admin_panel') }}#fyManagement" class="sb-status-link">
+                {% if not fy_sync_complete %}Resume in Admin Panel{% else %}Finalize in Admin Panel{% endif %}
+            </a>
+        </div>
     </div>
     {% endif %}
 
@@ -1190,20 +1201,20 @@
 
     <!-- Seller Mode Banner (SE only - shows when viewing as a specific seller) -->
     {% if seller_mode and user_role == 'se' and seller_mode_seller %}
-    <div class="alert alert-info mb-0 py-2 rounded-0 border-start-0 border-end-0" style="border-top: 0;">
-        <div class="container d-flex align-items-center justify-content-between">
-            <span>
-                <i class="bi bi-eye-fill me-1"></i>
+    <div id="sellerModeBanner" class="sb-status-strip" data-sb-tone="info" role="status">
+        <div class="sb-status-inner">
+            <i class="bi bi-eye-fill sb-status-icon" aria-hidden="true"></i>
+            <span class="sb-status-copy">
                 <strong>Viewing as:</strong> {{ seller_mode_seller.name }}
                 {% if seller_mode_seller.seller_type %}
-                <span class="badge bg-success ms-1">{{ seller_mode_seller.seller_type }}</span>
+                <span class="sb-status-tag">{{ seller_mode_seller.seller_type }}</span>
                 {% endif %}
                 {% if seller_mode_seller.territories %}
-                <span class="text-muted ms-1">- {{ seller_mode_seller.territories|map(attribute='name')|join(', ') }}</span>
+                <span class="sb-status-detail">- {{ seller_mode_seller.territories|map(attribute='name')|join(', ') }}</span>
                 {% endif %}
             </span>
-            <button class="btn btn-sm btn-outline-danger" onclick="exitSellerMode()">
-                <i class="bi bi-x-lg"></i> Exit Seller Mode
+            <button class="sb-status-button" type="button" onclick="exitSellerMode()">
+                <i class="bi bi-x-lg" aria-hidden="true"></i> Exit Seller Mode
             </button>
         </div>
     </div>
@@ -3336,15 +3347,15 @@
         let _pollTimer = null, _elapsedTimer = null, _pollStart = null, _handled = false;
 
         // Restore banner across navigation if it was showing before.
-        if (_authState) banner.classList.remove('d-none');
+        if (_authState) banner.hidden = false;
 
         window.showAuthBanner = function() {
-            banner.classList.remove('d-none');
+            banner.hidden = false;
             _authState = true;
             sessionStorage.setItem(AUTH_KEY, '1');
         };
         window.hideAuthBanner = function() {
-            banner.classList.add('d-none');
+            banner.hidden = true;
             if (statusEl) statusEl.textContent = '';
             _authState = false;
             sessionStorage.removeItem(AUTH_KEY);
@@ -3372,7 +3383,10 @@
         window.startAuthSignIn = async function() {
             signInBtn.disabled = true;
             _handled = false;
-            if (statusEl) { statusEl.className = 'small'; statusEl.textContent = 'Opening sign-in...'; }
+            if (statusEl) {
+                statusEl.dataset.sbState = 'neutral';
+                statusEl.textContent = 'Opening sign-in...';
+            }
             try {
                 const resp = await fetch('/api/msx/az-login/start', { method: 'POST' });
                 const data = await resp.json();
@@ -3448,18 +3462,18 @@
         let _vpnBlockedState = sessionStorage.getItem(VPN_KEY) === '1';
 
         // Restore banner on page load if it was shown before navigation
-        if (_vpnBlockedState) banner.classList.remove('d-none');
+        if (_vpnBlockedState) banner.hidden = false;
 
         // Show the VPN banner
         window.showVpnBanner = function() {
-            banner.classList.remove('d-none');
+            banner.hidden = false;
             _vpnBlockedState = true;
             sessionStorage.setItem(VPN_KEY, '1');
         };
 
         // Hide the VPN banner
         window.hideVpnBanner = function() {
-            banner.classList.add('d-none');
+            banner.hidden = true;
             retryStatus.textContent = '';
             _vpnBlockedState = false;
             sessionStorage.removeItem(VPN_KEY);
@@ -3478,25 +3492,25 @@
         window.checkVpnRecovery = async function() {
             retryBtn.disabled = true;
             retryStatus.textContent = 'Checking...';
-            retryStatus.className = 'small text-light';
+            retryStatus.dataset.sbState = 'neutral';
             try {
                 const resp = await fetch('/api/msx/vpn-check', { method: 'POST' });
                 const data = await resp.json();
                 if (data.success) {
                     retryStatus.textContent = data.message;
-                    retryStatus.className = 'small text-light';
+                    retryStatus.dataset.sbState = 'neutral';
                     setTimeout(() => {
                         window.hideVpnBanner();
                         window.location.reload();
                     }, 1500);
                 } else {
                     retryStatus.textContent = data.message || 'Still blocked.';
-                    retryStatus.className = 'small text-warning';
+                    retryStatus.dataset.sbState = 'warning';
                     retryBtn.disabled = false;
                 }
             } catch (err) {
-                retryStatus.textContent = 'Network error — check your connection.';
-                retryStatus.className = 'small text-warning';
+                retryStatus.textContent = 'Network error - check your connection.';
+                retryStatus.dataset.sbState = 'warning';
                 retryBtn.disabled = false;
             }
         };

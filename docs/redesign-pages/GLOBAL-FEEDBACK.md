@@ -6,9 +6,8 @@
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - UI baseline: `f1916e8`, approved image-viewer checkpoint
-- Implementation tested: working tree based on `f1916e8`
-- Next action: commit this approved slice, then audit persistent shell status strips.
-  Carry this checkpoint's commit SHA into the next handoff.
+- Implementation revision: `1e7b16c`
+- Next action: continue with [persistent status strip evidence](GLOBAL-STATUS.md).
 
 ## Scope and original inventory
 

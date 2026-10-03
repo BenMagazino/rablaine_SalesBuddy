@@ -280,3 +280,103 @@ def test_empty_flash_stack_retains_layout_without_an_empty_alert(app) -> None:
     soup = render_navigation(app)
     assert soup.select_one(".sb-flash-stack")
     assert not soup.select(".sb-flash-stack .sb-notice")
+
+
+@pytest.mark.parametrize(
+    ("banner_id", "button_id", "status_id", "tone", "handler"),
+    [("vpnBlockedBanner", "vpnRetryBtn", "vpnRetryStatus", "danger", "checkVpnRecovery()"),
+     ("authRequiredBanner", "authSignInBtn", "authBannerStatus", "warning", "startAuthSignIn()")],
+)
+def test_access_status_strips_preserve_controls_and_start_hidden(
+    app, banner_id, button_id, status_id, tone, handler
+) -> None:
+    """Access strips keep reactive IDs/actions without Bootstrap visibility or styling."""
+    soup = render_navigation(app)
+    banner = soup.find(id=banner_id)
+    assert banner.has_attr("hidden")
+    assert banner["role"] == "alert"
+    assert banner["data-sb-tone"] == tone
+    assert "sb-status-strip" in banner["class"]
+    button = banner.find(id=button_id)
+    assert button["type"] == "button"
+    assert button["onclick"] == handler
+    assert banner.find(id=status_id)["role"] == "status"
+    assert not banner.select(".alert, .btn, .small, .d-none, .text-light, .text-warning")
+
+
+@pytest.mark.parametrize("reminder", [None, "FY27"])
+def test_fy_reminder_strip_preserves_condition_label_and_destination(app, reminder) -> None:
+    """The fiscal reminder remains server-controlled with its original Admin destination."""
+    soup = render_navigation(app, fy_changeover_reminder=reminder, fy_transition_active=False)
+    banner = soup.find(id="fyReminderBanner")
+    assert bool(banner) is bool(reminder)
+    if banner:
+        assert reminder in banner.get_text()
+        assert banner.select_one("a")["href"] == "/admin#fyManagement"
+        assert banner.select_one("a").get_text(strip=True) == "Get started in the Admin Panel"
+        assert not banner.select(".alert-link, .btn")
+
+
+@pytest.mark.parametrize("sync_complete", [False, True])
+def test_fy_transition_strip_preserves_resume_and_finalize_branches(app, sync_complete) -> None:
+    """The transition's label and action still track account sync completion."""
+    soup = render_navigation(
+        app, fy_changeover_reminder=None, fy_transition_active=True,
+        fy_transition_label="FY27", fy_sync_complete=sync_complete,
+    )
+    banner = soup.find(id="fyTransitionBanner")
+    assert "FY27 Transition in Progress" in banner.get_text()
+    assert ("Account sync incomplete." in banner.get_text()) is not sync_complete
+    assert banner.select_one("a")["href"] == "/admin#fyManagement"
+    assert banner.select_one("a").get_text(strip=True) == (
+        "Finalize in Admin Panel" if sync_complete else "Resume in Admin Panel"
+    )
+
+
+def test_inactive_fy_transition_strip_is_not_rendered(app) -> None:
+    """An inactive transition does not leave an empty persistent status strip."""
+    assert not render_navigation(app, fy_transition_active=False).find(id="fyTransitionBanner")
+
+
+@pytest.mark.parametrize(
+    ("role", "mode", "has_seller", "expected"),
+    [("se", True, True, True), ("se", False, True, False),
+     ("dss", True, True, False), ("se", True, False, False)],
+)
+def test_viewing_as_strip_preserves_role_mode_metadata_and_exit(
+    app, role, mode, has_seller, expected
+) -> None:
+    """The viewing-mode context stays SE-only and retains seller/type/territory information."""
+    from types import SimpleNamespace
+
+    seller = SimpleNamespace(
+        name="Example Seller", seller_type="DSS",
+        territories=[SimpleNamespace(name="Example Territory"), SimpleNamespace(name="Second")],
+    )
+    soup = render_navigation(
+        app, user_role=role, seller_mode=mode, seller_mode_seller=seller if has_seller else None,
+    )
+    banner = soup.find(id="sellerModeBanner")
+    assert bool(banner) is expected
+    if banner:
+        assert "Viewing as:" in banner.get_text()
+        assert "Example Seller" in banner.get_text()
+        assert "Example Territory, Second" in banner.get_text()
+        assert banner.select_one(".sb-status-tag").get_text() == "DSS"
+        assert banner.select_one("button")["onclick"] == "exitSellerMode()"
+        assert banner.select_one("button")["type"] == "button"
+        assert not banner.select(".alert, .container, .badge, .btn, .text-muted")
+
+
+def test_viewing_as_strip_handles_absent_optional_metadata(app) -> None:
+    """A seller without a type or territories still has a clear exit action."""
+    from types import SimpleNamespace
+
+    soup = render_navigation(
+        app, user_role="se", seller_mode=True,
+        seller_mode_seller=SimpleNamespace(name="Example Seller", seller_type=None, territories=[]),
+    )
+    banner = soup.find(id="sellerModeBanner")
+    assert "Example Seller" in banner.get_text()
+    assert not banner.select(".sb-status-tag, .sb-status-detail")
+    assert banner.select_one("button").get_text(strip=True).endswith("Exit Seller Mode")

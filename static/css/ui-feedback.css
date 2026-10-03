@@ -51,3 +51,59 @@
     outline: 2px solid var(--sb-ui-accent);
     outline-offset: 3px;
 }
+
+.sb-status-strip {
+    border-bottom: 1px solid var(--sb-ui-line);
+    background: var(--sb-ui-context);
+    color: var(--sb-ui-ink);
+    font-family: var(--sb-ui-font);
+    font-size: 13px;
+    line-height: 1.6;
+}
+.sb-status-strip[hidden] { display: none; }
+.sb-status-inner { display: flex; align-items: center; gap: 12px; padding: 10px 24px; }
+.sb-status-icon { flex: 0 0 18px; color: var(--sb-ui-accent); font-size: 16px; }
+.sb-status-strip[data-sb-tone="danger"] .sb-status-icon { color: var(--sb-ui-danger); }
+.sb-status-strip[data-sb-tone="warning"] .sb-status-icon { color: var(--sb-ui-warning); }
+.sb-status-copy { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sb-status-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    min-width: 0;
+    max-width: 50%;
+}
+.sb-status-detail { color: var(--sb-ui-muted); font-size: 12px; overflow-wrap: anywhere; }
+.sb-status-detail[data-sb-state="warning"] { color: var(--sb-ui-warning); }
+.sb-status-link { flex-shrink: 0; color: var(--sb-ui-accent); text-decoration: underline; }
+.sb-status-link:hover { color: var(--sb-ui-ink); }
+.sb-status-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border: 1px solid var(--sb-ui-control-line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--sb-ui-ink);
+    font: inherit;
+    cursor: pointer;
+}
+.sb-status-button:hover:not(:disabled) { background: var(--sb-ui-raised); }
+.sb-status-button:disabled { color: var(--sb-ui-muted); cursor: wait; }
+.sb-status-button:focus-visible, .sb-status-link:focus-visible {
+    outline: 2px solid var(--sb-ui-accent);
+    outline-offset: 3px;
+}
+.sb-status-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 0 6px;
+    border: 1px solid var(--sb-ui-line);
+    background: var(--sb-ui-surface);
+    color: var(--sb-ui-ink);
+    font-size: 11px;
+}

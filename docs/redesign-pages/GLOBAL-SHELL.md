@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoint 2 is technically verified and user-approved
+- Status: BUILDING; checkpoints 1-6 committed, checkpoint 7 technically verified and user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -9,14 +9,15 @@
 - Checkpoint 3 dialog foundation: `160e2d9`, [Help/dialog evidence](GLOBAL-HELP.md), user-approved
 - Checkpoint 4 customer pickers: `8dd3363`, [Picker evidence](GLOBAL-PICKERS.md), user-approved
 - Checkpoint 5 image viewer: `f1916e8`, [Image evidence](GLOBAL-ZOOM.md), user-approved
-- Checkpoint 6 shared flash notifications: [Feedback evidence](GLOBAL-FEEDBACK.md), user-approved
+- Checkpoint 6 shared flash notifications: `1e7b16c`, [Feedback evidence](GLOBAL-FEEDBACK.md), user-approved
+- Checkpoint 7 persistent status strips: [Status evidence](GLOBAL-STATUS.md), user-approved
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
 - Next action: continue the remaining global surfaces after this checkpoint;
   homepage and shared note/milestone dialogs are not approved by this checkpoint.
-  Next bounded slice: persistent VPN/sign-in, FY and viewing-as status strips.
+  Commit checkpoint 7, then the next bounded slice is floating meeting-sync status.
 
 ## Checkpoint 1 scope
 
@@ -121,7 +122,12 @@ from persistent status banners, inline page alerts and the full page frame.
 The first app-owned dialog slice is implemented with the read-only help surfaces
 in checkpoint 3. Its verification is separate from editable record workflows.
 
-Remaining scope includes global status/sync/auth/FY banners, editable shared overlays and
+Checkpoint 7 replaces persistent VPN/sign-in, FY and viewing-as strip styling
+and visibility utilities. Existing actions, conditions and business flows remain.
+Its focused evidence records Node behavior, isolated dormant branches and live
+access-strip checks. The user approved the live strip preview on October 2, 2026.
+
+Remaining scope includes floating sync status, editable shared overlays and
 their injected-partial lifecycle, theme-family persistence, full Bootstrap removal
 and page approval. Bootstrap Icons remains a separate dependency decision.
 

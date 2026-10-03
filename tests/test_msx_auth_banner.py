@@ -94,7 +94,8 @@ class TestMsxAuthBannerStructure:
         """Test that the banner starts hidden."""
         soup = BeautifulSoup(self._get_fill_my_day(app, client).data, 'html.parser')
         banner = soup.find(id='authRequiredBanner')
-        assert 'd-none' in banner.get('class', [])
+        assert banner.has_attr('hidden')
+        assert 'd-none' not in banner.get('class', [])
 
     def test_banner_has_js_endpoints(self, app, client):
         """Test that banner JavaScript references current auth endpoints."""
