@@ -6,9 +6,9 @@
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - UI baseline: `ce61a1d`, approved milestone-preview checkpoint
-- Implementation tested: working tree based on `ce61a1d`
+- Implementation revision: `3f8ddd5`, committed after user approval
 - User sign-off: October 3, 2026, after reviewing the final divider-only grouping
-- Next action: commit this approved slice, then begin the shared milestone body.
+- Next action: review the shared milestone body in [checkpoint 12](MILESTONE-BODY.md).
   No push, merge or deployment is authorized.
 
 ## Scope and original inventory
@@ -106,4 +106,4 @@ This is an independent reviewable stopping point. Shared milestone-body styling
 is the next comparable slice; full homepage/calendar parity, sharing/global
 surfaces, other pages, theme-family persistence and final product reconciliation
 remain later work. DONE counts stay pages 0/90, helpers 0/24, globals 5/17.
-Carry the eventual implementation SHA into the next handoff.
+The approved implementation is committed as `3f8ddd5`.

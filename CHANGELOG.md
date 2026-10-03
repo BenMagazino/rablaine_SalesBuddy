@@ -25,6 +25,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Create engagements and MSX tasks in nested workbench dialogs with protected drafts and saving guards, preserving duplicate-task warnings.
 - Read notes in a shared workbench details rail and reading pane, with quieter linked tags and preserved rich text and images.
 - Confirm full-page note deletion in a keyboard-friendly workbench dialog that focuses Cancel by default.
+- Read milestone details, associated notes, tasks and forecast comments in a shared workbench layout with divider-separated context.
+- Use keyboard-friendly milestone deletion confirmation, preserve comment drafts through refresh and restore Save after failed comment edits.
 
 ## 10/2/2026 - a25a8a4
 

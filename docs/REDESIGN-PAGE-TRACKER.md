@@ -6,17 +6,18 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 11, shared note body and full-page commands,
+- Current page/surface: checkpoint 12, shared milestone body and forecast comments,
   technically verified and user-approved; full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
   `f1916e8` (image viewer), `1e7b16c` (shared notifications),
   `f6e9163` (persistent status strips), `dd44c58` (floating sync status and search focus),
   `9545d18` (note-preview lifecycle and quick actions),
-  `ce61a1d` (milestone-preview lifecycle and nested editors)
-- Next action: commit approved [checkpoint 11](redesign-pages/NOTE-BODY.md), then
-  begin the shared milestone body. The full homepage and calendar
-  parity remain separate work. This is a bounded stopping point with no live writes pending.
+  `ce61a1d` (milestone-preview lifecycle and nested editors),
+  `3f8ddd5` (shared note body and divider-only metadata)
+- Next action: commit approved [checkpoint 12](redesign-pages/MILESTONE-BODY.md).
+  Home dashboard/calendar styling follows. This is a bounded stopping point with no live
+  writes or drafts pending, and no push, merge or deployment authorized.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
@@ -99,7 +100,7 @@ have separate rows even when they use one template.
 | ENG-EDIT | Edit engagement | `/engagement/<int:id>/edit` | `engagement_form.html` | TODO | - |
 | MS-LIST | Milestones | `/milestones` | `milestones_list.html` | TODO | - |
 | MS-NEW | Create milestone | `/milestone/new` | `milestone_form.html` | TODO | - |
-| MS-VIEW | Milestone detail | `/milestone/<int:id>` | `milestone_view.html` | TODO | - |
+| MS-VIEW | Milestone detail | `/milestone/<int:id>` | `milestone_view.html` | BUILDING | [Shared body/commands](redesign-pages/MILESTONE-BODY.md) |
 | MS-EDIT | Edit milestone | `/milestone/<int:id>/edit` | `milestone_form.html` | TODO | - |
 | MS-TRACK | Milestone tracker | `/reports/milestone-tracker`; `/milestone-tracker` redirects | `milestone_tracker.html` | TODO | - |
 | OPP-VIEW | Opportunity detail | `/opportunity/<int:id>` | `opportunity_view.html` | TODO | - |
@@ -152,7 +153,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | FR-ACTIONS | `partials/_action_items_hub.html` | `/api/action-items-hub` | TODO | - |
 | FR-CUST-OPPS | `partials/_customer_opportunities.html` | `/api/customer/<int:customer_id>/opportunities-html` | TODO | - |
 | FR-ENG | `partials/_engagement_view_content.html` | `/api/engagement/<int:id>/detail` | TODO | - |
-| FR-MS | `partials/milestone_view_content.html` | `/api/milestone/<int:id>/detail` | BUILDING | [Lifecycle/editor slice](redesign-pages/MILESTONE-PREVIEW.md) |
+| FR-MS | `partials/milestone_view_content.html` | `/api/milestone/<int:id>/detail` | BUILDING | [Lifecycle/editors](redesign-pages/MILESTONE-PREVIEW.md), [shared body](redesign-pages/MILESTONE-BODY.md) |
 | FR-NOTE | `partials/note_view_content.html` | `/api/note/<int:id>/detail` | BUILDING | [Lifecycle/editor](redesign-pages/HOME-NOTE-PREVIEW.md), [shared body](redesign-pages/NOTE-BODY.md) |
 | FR-OOO | `partials/one_on_one_workspace_content.html` | `/api/seller/<int:seller_id>/one-on-one/detail` | TODO | - |
 | FR-OPP | `partials/opportunity_view_content.html` | `/api/opportunity/<int:id>/detail` | TODO | - |
@@ -171,8 +172,8 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | INC-PART-ICON | `partials/partner_favicon.html` | Partner/specialty surfaces | TODO | - |
 | INC-REV-ALERTS | `partials/revenue_alerts_content.html` | Revenue/seller surfaces | TODO | - |
 | INC-REVIEW | `partials/review_action.html` | Home and revenue/seller surfaces | TODO | - |
-| INC-FORECAST | `_forecast_comments.html` | Milestone/opportunity details | TODO | - |
-| INC-FORECAST-JS | `_forecast_comments_js.html` | Milestone/opportunity details | TODO | - |
+| INC-FORECAST | `_forecast_comments.html` | Milestone/opportunity details | BUILDING | [Native opt-in and legacy parity](redesign-pages/MILESTONE-BODY.md) |
+| INC-FORECAST-JS | `_forecast_comments_js.html` | Milestone/opportunity details | BUILDING | [Native opt-in and draft/write parity](redesign-pages/MILESTONE-BODY.md) |
 
 ## Global, native-shell and error surfaces
 

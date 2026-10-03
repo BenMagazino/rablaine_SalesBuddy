@@ -60,8 +60,8 @@
 .sb-note-delete-form { margin: 0; }
 
 /* These classes also identify entity types outside the redesigned note surface. */
-.sb-note-view .sb-record-badge { --sb-record-tag-ink: var(--sb-ui-accent); }
-.sb-note-view[data-sb-note-detail] .badge.sb-record-badge {
+:is(.sb-note-view, .sb-milestone-view) .sb-record-badge { --sb-record-tag-ink: var(--sb-ui-accent); }
+:is(.sb-note-view[data-sb-note-detail], .sb-milestone-view[data-sb-milestone-detail]) .badge.sb-record-badge {
     display: inline-flex;
     align-items: baseline;
     gap: 4px;
@@ -83,12 +83,12 @@
     vertical-align: middle;
     overflow-wrap: anywhere;
 }
-.sb-note-view .sb-record-badge .bi { flex-shrink: 0; }
-.sb-note-view .sb-record-badge.bg-success { --sb-record-tag-ink: var(--sb-ui-milestone-rail); }
-.sb-note-view .sb-record-badge.bg-warning { --sb-record-tag-ink: var(--sb-ui-warning); }
-.sb-note-view .sb-record-badge.bg-purple { --sb-record-tag-ink: var(--sb-ui-task-rail); }
-.sb-note-view .sb-record-badge.bg-secondary { --sb-record-tag-ink: var(--sb-ui-muted); }
-.sb-note-view[data-sb-note-detail] a.badge.sb-record-badge:hover {
+:is(.sb-note-view, .sb-milestone-view) .sb-record-badge .bi { flex-shrink: 0; }
+:is(.sb-note-view, .sb-milestone-view) .sb-record-badge.bg-success { --sb-record-tag-ink: var(--sb-ui-milestone-rail); }
+:is(.sb-note-view, .sb-milestone-view) .sb-record-badge.bg-warning { --sb-record-tag-ink: var(--sb-ui-warning); }
+:is(.sb-note-view, .sb-milestone-view) .sb-record-badge.bg-purple { --sb-record-tag-ink: var(--sb-ui-task-rail); }
+:is(.sb-note-view, .sb-milestone-view) .sb-record-badge.bg-secondary { --sb-record-tag-ink: var(--sb-ui-muted); }
+:is(.sb-note-view[data-sb-note-detail], .sb-milestone-view[data-sb-milestone-detail]) a.badge.sb-record-badge:hover {
     border-color: var(--sb-record-tag-ink);
     text-decoration: underline;
 }

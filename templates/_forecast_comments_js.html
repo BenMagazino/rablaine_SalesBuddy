@@ -5,17 +5,39 @@
         COMMENT_ENTITY_ID   - the entity's DB ID (e.g. MS_ID or OPP_ID)
         COMMENT_API_PREFIX  - API URL prefix (e.g. "/api/milestone" or "/api/opportunity")
         COMMENT_ENTITY_LABEL - display name for confirms (e.g. "milestone" or "opportunity")
+        COMMENT_WORKBENCH - optional bool: native milestone presentation only
 #}
 
+const commentWorkbench = typeof COMMENT_WORKBENCH !== 'undefined' && COMMENT_WORKBENCH;
+const commentUi = commentWorkbench ? {
+    form: 'sb-comment-form', compose: 'sb-comment-compose', field: 'sb-record-field',
+    button: 'sb-dialog-button', muted: 'sb-ms-muted', list: 'sb-comment-list',
+    item: 'sb-comment-item', header: 'sb-comment-header', actions: 'sb-comment-actions',
+    edit: 'sb-dialog-button', delete: 'sb-dialog-button sb-ms-danger',
+    text: 'sb-comment-text', editor: 'sb-record-field sb-comment-edit',
+    editorActions: 'sb-ms-actions', cancel: 'sb-dialog-button',
+    warning: 'sb-ms-error', vpn: 'sb-ms-error',
+    saving: '<i class="bi bi-hourglass-split" aria-hidden="true"></i>',
+    ref: 'sb-ms-ref'
+} : {
+    form: 'mb-4', compose: 'input-group', field: 'form-control',
+    button: 'btn btn-primary', muted: 'text-muted', list: 'list-group',
+    item: 'list-group-item', header: 'd-flex w-100 justify-content-between mb-1', actions: '',
+    edit: 'btn btn-sm btn-outline-secondary py-0 px-1 me-1',
+    delete: 'btn btn-sm btn-outline-danger py-0 px-1', text: 'mb-0',
+    editor: 'form-control mb-2', editorActions: '', cancel: 'btn btn-sm btn-secondary',
+    warning: 'alert alert-warning mb-0', vpn: 'alert alert-secondary mb-0',
+    saving: '<span class="spinner-border spinner-border-sm"></span>', ref: 'link-info'
+};
 let _skipCommentRestore = false;
 
 function linkifyRefTags(html) {
     // Convert · note-123 · to clickable link
     html = html.replace(/\u00b7 note-(\d+) \u00b7/g,
-        '<a href="/note/$1" class="link-info">&middot; note-$1 &middot;</a>');
+        '<a href="/note/$1" class="' + commentUi.ref + '">&middot; note-$1 &middot;</a>');
     // Convert · eng-123 · to clickable link
     html = html.replace(/\u00b7 eng-(\d+) \u00b7/g,
-        '<a href="/engagement/$1" class="link-info">&middot; eng-$1 &middot;</a>');
+        '<a href="/engagement/$1" class="' + commentUi.ref + '">&middot; eng-$1 &middot;</a>');
     return html;
 }
 
@@ -56,6 +78,7 @@ function renderComments(entity) {
     // Preserve any in-progress comment text before re-rendering
     let pendingText = '';
     let hadFocus = false;
+    const cachedTextarea = document.querySelector('#commentFormCached textarea');
     if (!_skipCommentRestore) {
         const existingTextarea = document.getElementById('commentText');
         if (existingTextarea) {
@@ -63,7 +86,6 @@ function renderComments(entity) {
             hadFocus = (document.activeElement === existingTextarea);
         }
         if (!pendingText) {
-            const cachedTextarea = document.querySelector('#commentFormCached textarea');
             if (cachedTextarea) {
                 pendingText = cachedTextarea.value;
                 hadFocus = hadFocus || (document.activeElement === cachedTextarea);
@@ -87,33 +109,33 @@ function renderComments(entity) {
 
     // AJAX comment form
     let html = `
-        <form id="commentFormMsx" class="mb-4">
-            <div class="input-group">
-                <textarea class="form-control" id="commentText" rows="2" placeholder="Add a forecast comment..." required></textarea>
-                <button type="submit" class="btn btn-primary" id="postCommentBtn">
+        <form id="commentFormMsx" class="${commentUi.form}">
+            <div class="${commentUi.compose}">
+                <textarea class="${commentUi.field}" id="commentText" rows="2" placeholder="Add a forecast comment..." ${commentWorkbench ? 'aria-label="Forecast comment"' : ''} required></textarea>
+                <button type="submit" class="${commentUi.button}" id="postCommentBtn">
                     <i class="bi bi-send"></i> Post
                 </button>
             </div>
-            <small class="text-muted">This comment will be posted to the MSX ${COMMENT_ENTITY_LABEL} record.</small>
+            <small class="${commentUi.muted}">This comment will be posted to the MSX ${COMMENT_ENTITY_LABEL} record.</small>
         </form>
     `;
 
     if (comments.length > 0) {
         const sorted = [...comments].sort((a, b) => new Date(b.modifiedOn || 0) - new Date(a.modifiedOn || 0));
-        html += '<div class="list-group">';
+        html += '<div class="' + commentUi.list + '">';
         for (let i = 0; i < sorted.length; i++) {
             const c = sorted[i];
             html += `
-                <div class="list-group-item" id="comment-${i}">
-                    <div class="d-flex w-100 justify-content-between mb-1">
+                <div class="${commentUi.item}" id="comment-${i}">
+                    <div class="${commentUi.header}">
                         <strong>${escapeHtml(c.displayName || c.userId || 'Unknown')}</strong>
-                        <div>
-                            <small class="text-muted me-2"><i class="bi bi-clock"></i> ${formatCommentTimestamp(c.modifiedOn)}</small>
-                            <button class="btn btn-sm btn-outline-secondary py-0 px-1 me-1" title="Edit"
+                        <div class="${commentUi.actions}">
+                            <small class="${commentWorkbench ? commentUi.muted : 'text-muted me-2'}"><i class="bi bi-clock"></i> ${formatCommentTimestamp(c.modifiedOn)}</small>
+                            <button class="${commentUi.edit}" title="Edit" ${commentWorkbench ? 'aria-label="Edit forecast comment"' : ''}
                                 data-action="edit" data-idx="${i}">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete"
+                            <button class="${commentUi.delete}" title="Delete" ${commentWorkbench ? 'aria-label="Delete forecast comment"' : ''}
                                 data-action="delete" data-idx="${i}">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -121,15 +143,15 @@ function renderComments(entity) {
                     </div>
                     <div id="comment-body-${i}">
                         ${c.comment && c.comment.includes('<table') ?
-                            `<div class="mb-0">${linkifyRefTags(c.comment)}</div>` :
-                            `<p class="mb-0" style="white-space:pre-wrap;">${linkifyRefTags(escapeHtml(c.comment || ''))}</p>`
+                            `<div class="${commentUi.text}">${linkifyRefTags(c.comment)}</div>` :
+                            `<p class="${commentUi.text}" style="white-space:pre-wrap;">${linkifyRefTags(escapeHtml(c.comment || ''))}</p>`
                         }
                     </div>
                 </div>`;
         }
         html += '</div>';
     } else {
-        html += '<p class="text-muted">No forecast comments yet. Be the first to add one!</p>';
+        html += '<p class="' + commentUi.muted + '">No forecast comments yet. Be the first to add one!</p>';
     }
 
     el.innerHTML = html;
@@ -143,6 +165,10 @@ function renderComments(entity) {
                 newTextarea.focus();
                 newTextarea.selectionStart = newTextarea.selectionEnd = newTextarea.value.length;
             }
+        }
+        // The fresh form now owns the draft; a hidden cached copy must not stay dirty.
+        if (document.getElementById('commentText') && cachedTextarea) {
+            cachedTextarea.value = cachedTextarea.defaultValue;
         }
     }
 
@@ -180,12 +206,12 @@ function renderCommentsError(errorMsg, vpnBlocked) {
         const commErr = document.getElementById('commentsError');
         commErr.style.display = '';
         if (vpnBlocked) {
-            commErr.innerHTML = `<div class="alert alert-secondary mb-0">
+            commErr.innerHTML = `<div class="${commentUi.vpn}" ${commentWorkbench ? 'role="alert"' : ''}>
                 <i class="bi bi-shield-lock"></i> <strong>VPN Required</strong><br>
                 <small>Connect to VPN to load forecast comments.</small>
             </div>`;
         } else {
-            commErr.innerHTML = `<div class="alert alert-warning mb-0">
+            commErr.innerHTML = `<div class="${commentUi.warning}" ${commentWorkbench ? 'role="alert"' : ''}>
                 <i class="bi bi-exclamation-triangle"></i> Could not load comments: ${escapeHtml(errorMsg)}
             </div>`;
         }
@@ -202,7 +228,7 @@ function postComment(e) {
 
     const originalBtn = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    btn.innerHTML = commentUi.saving;
 
     fetch(`${COMMENT_API_PREFIX}/${COMMENT_ENTITY_ID}/comment`, {
         method: 'POST',
@@ -236,12 +262,12 @@ function startEditComment(idx, modifiedOn, userId) {
     const currentHtml = bodyEl.innerHTML;
     const currentText = isHtml ? bodyEl.querySelector('div').innerHTML : bodyEl.querySelector('p').textContent;
     bodyEl.innerHTML = `
-        <textarea class="form-control mb-2" id="editText-${idx}" rows="6">${escapeHtml(isHtml ? currentText : currentText)}</textarea>
-        <div>
-            <button class="btn btn-sm btn-primary me-1" id="saveEdit-${idx}">
+        <textarea class="${commentUi.editor}" id="editText-${idx}" rows="6" ${commentWorkbench ? 'aria-label="Edit forecast comment"' : ''}>${escapeHtml(isHtml ? currentText : currentText)}</textarea>
+        <div class="${commentUi.editorActions}">
+            <button class="${commentWorkbench ? commentUi.button : 'btn btn-sm btn-primary me-1'}" id="saveEdit-${idx}">
                 <i class="bi bi-check"></i> Save
             </button>
-            <button class="btn btn-sm btn-secondary" id="cancelEdit-${idx}">Cancel</button>
+            <button class="${commentUi.cancel}" id="cancelEdit-${idx}">Cancel</button>
         </div>
     `;
     document.getElementById('saveEdit-' + idx).addEventListener('click', () => {
@@ -266,7 +292,8 @@ function saveEditComment(idx, modifiedOn, userId) {
     const bodyEl = document.getElementById('comment-body-' + idx);
     bodyEl.querySelectorAll('button').forEach(b => b.disabled = true);
     const saveBtn = document.getElementById('saveEdit-' + idx);
-    if (saveBtn) saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+    const originalBtn = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) saveBtn.innerHTML = commentUi.saving + ' Saving...';
 
     fetch(`${COMMENT_API_PREFIX}/${COMMENT_ENTITY_ID}/comment`, {
         method: 'PUT',
@@ -280,11 +307,13 @@ function saveEditComment(idx, modifiedOn, userId) {
         } else {
             alert('Failed to edit comment: ' + (data.error || 'Unknown error'));
             bodyEl.querySelectorAll('button').forEach(b => b.disabled = false);
+            if (saveBtn) saveBtn.innerHTML = originalBtn;
         }
     })
     .catch(err => {
         alert('Failed to edit comment: ' + err.message);
         bodyEl.querySelectorAll('button').forEach(b => b.disabled = false);
+        if (saveBtn) saveBtn.innerHTML = originalBtn;
     });
 }
 
@@ -292,7 +321,7 @@ function deleteComment(modifiedOn, userId, btn) {
     if (!confirm(`Delete this comment from the MSX ${COMMENT_ENTITY_LABEL}?`)) return;
 
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    btn.innerHTML = commentUi.saving;
 
     fetch(`${COMMENT_API_PREFIX}/${COMMENT_ENTITY_ID}/comment`, {
         method: 'DELETE',
