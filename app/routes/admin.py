@@ -1326,12 +1326,15 @@ def api_milestone_sync_status():
 
 
 @admin_bp.route('/api/admin/sync-status/<sync_type>', methods=['GET'])
-def api_sync_status(sync_type):
-    """Return the last sync status for a given sync type (accounts, marketing, etc.)."""
-    allowed = {'accounts', 'marketing', 'milestones', 'favicons'}
+def api_sync_status(sync_type: str) -> Response | tuple[Response, int]:
+    """Read the latest account, milestone, ACR, U2C or supporting sync status."""
+    allowed = {'accounts', 'marketing', 'milestones', 'favicons', 'revenue_sync', 'u2c_import'}
     if sync_type not in allowed:
         return jsonify({'error': 'Unknown sync type'}), 400
     status = SyncStatus.get_status(sync_type)
+    if sync_type == 'revenue_sync' and status['state'] == 'never_run':
+        # Older installations loaded ACR from files before API refresh was available.
+        status = SyncStatus.get_status('revenue_import')
     result = {
         'state': status['state'],
         'completed_at': status['completed_at'].isoformat() if status['completed_at'] else None,
@@ -2112,4 +2115,3 @@ def api_customers_search():
         {"id": c.id, "name": c.get_display_name(), "tpid": c.tpid}
         for c in customers
     ])
-

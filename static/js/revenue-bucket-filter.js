@@ -211,7 +211,7 @@ var RevenueBucketFilter = (function() {
         _btn.setAttribute('data-bs-toggle', 'popover');
         _btn.setAttribute('data-bs-placement', 'bottom');
         _btn.setAttribute('data-bs-trigger', 'click');
-        _btn.innerHTML = '<i class="bi bi-funnel"></i> Buckets <span id="bucketFilterCount" class="badge bg-info ms-1 d-none"></span>';
+        _btn.innerHTML = 'Buckets <span id="bucketFilterCount" class="d-none"></span>';
         container.appendChild(_btn);
 
         function initPopover() {

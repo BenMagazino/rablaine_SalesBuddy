@@ -6,18 +6,27 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 12, shared milestone body and forecast comments,
-  technically verified and user-approved; full GLOBAL-SHELL remains BUILDING
+- Current page/surface: checkpoint 13, Home workbench composition and attention panels,
+  corrected to the approved full-height breadcrumb/legend frame with useful sync freshness
+  and compact draft access, technically verified and user-approved October 3;
+  full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
   `f1916e8` (image viewer), `1e7b16c` (shared notifications),
   `f6e9163` (persistent status strips), `dd44c58` (floating sync status and search focus),
   `9545d18` (note-preview lifecycle and quick actions),
   `ce61a1d` (milestone-preview lifecycle and nested editors),
-  `3f8ddd5` (shared note body and divider-only metadata)
-- Next action: commit approved [checkpoint 12](redesign-pages/MILESTONE-BODY.md).
-  Home dashboard/calendar styling follows. This is a bounded stopping point with no live
-  writes or drafts pending, and no push, merge or deployment authorized.
+  `3f8ddd5` (shared note body and divider-only metadata),
+  `c652057` (shared milestone body and forecast comments)
+- Next action: commit the signed-off balanced bar/readability refinements in
+  [checkpoint 13](redesign-pages/HOME-WORKBENCH.md), then implement checkpoint 14.
+  Calendar slice: saved-note customer fills, striped ghost/status rails,
+  Today treatment, customer highlighting and the approved rail-swatch legend.
+  These remain unmigrated. No live customer records were changed;
+  existing user drafts are preserved. No push, merge or deployment is authorized.
+- Deferred follow-up: [detached data jobs](PLAN_DETACHED_DATA_JOBS.md) captures
+  navigation-independent imports/syncs and an in-place freshness-bar launcher.
+  This is a separate future feature, not implemented in checkpoint 13.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
@@ -52,7 +61,7 @@ have separate rows even when they use one template.
 
 | ID | Page | URL(s) | Template | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| HOME | Dashboard/calendar | `/` | `index.html` | BUILDING | [Note-preview slice](redesign-pages/HOME-NOTE-PREVIEW.md) |
+| HOME | Dashboard/calendar | `/` | `index.html` | BUILDING | [Workbench frame](redesign-pages/HOME-WORKBENCH.md), [note-preview slice](redesign-pages/HOME-NOTE-PREVIEW.md) |
 | ACTIONS | Action items | `/action-items` | `action_items_hub.html` | TODO | - |
 | SEARCH | Search | `/search` | `search.html` | TODO | - |
 | PREFS | Preferences | `/preferences` | `settings.html` | TODO | - |

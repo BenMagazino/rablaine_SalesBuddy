@@ -200,7 +200,7 @@
             if (parts.length) contextHtml = '<div class="text-muted text-truncate mb-1" style="font-size:0.75rem;">' + parts.join(' <span class="mx-1">|</span> ') + '</div>';
         }
 
-        return `<div style="width:300px; flex-shrink:0;"><div class="card h-100 border" style="cursor:pointer;" onclick="if(!event.target.closest('a, button')){window.location='/engagement/${eng.id}'}">
+        return `<div style="width:300px; flex-shrink:0;"><div class="card h-100 border" data-engagement-id="${eng.id}" style="cursor:pointer;" onclick="if(!event.target.closest('a, button')){window.location='/engagement/${eng.id}'}">
             <div class="card-body p-2">
                 ${contextHtml}
                 <div class="d-flex justify-content-between align-items-start mb-1">

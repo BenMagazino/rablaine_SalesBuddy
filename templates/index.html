@@ -2,18 +2,23 @@
 
 {% block title %}Home - Sales Buddy{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home.css') }}">
+{% endblock %}
+
+{% block footer %}{% endblock %}
+
 {% block content %}
 
-<!-- Dashboard Cards Row -->
-<div class="row mb-4">
+{% set dashboard_rail %}
+<aside class="sb-home-rail" aria-label="Needs attention">
     <!-- Action Items -->
-    <div class="col-lg-4 mb-3">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0" title="Action items from across the app and suggested items from Copilot"><i class="bi bi-check2-square"></i> Action Items</h5>
-                <a href="#" class="text-muted" data-bs-toggle="modal" data-bs-target="#dashboardSettingsModal" title="Configure action items"><i class="bi bi-gear"></i></a>
-            </div>
-            <div class="card-body p-0" style="max-height: 360px; overflow-y: auto;">
+        <section class="sb-home-panel" aria-labelledby="homeActionsHeading">
+            <header class="sb-home-panel-header">
+                <h2 id="homeActionsHeading" title="Action items from across the app and suggested items from Copilot"><i class="bi bi-check2-square"></i> Action Items</h2>
+                <button type="button" class="sb-home-button sb-home-icon-button" data-bs-toggle="modal" data-bs-target="#dashboardSettingsModal" aria-label="Configure action items" title="Configure action items"><i class="bi bi-gear" aria-hidden="true"></i></button>
+            </header>
+            <div class="sb-home-panel-body" tabindex="0" aria-label="Action items list">
                 {% set engagement_tasks = open_tasks|selectattr('source', 'equalto', 'engagement')|list %}
                 {% set copilot_tasks = open_tasks|selectattr('source', 'equalto', 'copilot')|list %}
                 {# Split project tasks: copilot_saved vs regular #}
@@ -29,7 +34,7 @@
                 {% if engagement_tasks %}
                 <div class="list-group list-group-flush">
                     {% for task in engagement_tasks %}
-                    <div class="list-group-item list-group-item-action py-2 px-3" onclick="viewActionItem({{ task.id }}, {showEngagementLink: true})" style="cursor: pointer;">
+                    <div class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: true})">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="me-2" style="min-width: 0;">
                                 <div class="fw-semibold text-truncate{% if task.priority == 'high' %} text-danger{% endif %}">
@@ -60,7 +65,7 @@
                         <small class="fw-semibold text-muted"><i class="bi bi-stars"></i> Copilot Suggestions</small>
                     </div>
                     {% for task in _saved %}
-                    <div class="list-group-item list-group-item-action py-2 px-3" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})" style="cursor: pointer;">
+                    <div class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="me-2" style="min-width: 0;">
                                 <div class="fw-semibold text-truncate">
@@ -76,7 +81,7 @@
                     </div>
                     {% endfor %}
                     {% for task in copilot_tasks %}
-                    <div class="list-group-item list-group-item-action py-2 px-3" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})" style="cursor: pointer;">
+                    <div class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="me-2" style="min-width: 0;">
                                 <div class="fw-semibold text-truncate">
@@ -100,7 +105,7 @@
                         <small class="fw-semibold text-muted"><i class="bi bi-folder"></i> Project Tasks</small>
                     </div>
                     {% for task in _project_tasks %}
-                    <div class="list-group-item list-group-item-action py-2 px-3" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})" style="cursor: pointer;">
+                    <div class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="me-2" style="min-width: 0;">
                                 <div class="fw-semibold text-truncate{% if task.priority == 'high' %} text-danger{% endif %}">
@@ -128,7 +133,7 @@
                     </div>
                     {% for ms in stale_milestones %}
                     <div onclick="openHomeMilestoneDetail(event, {{ ms.id }}, '{{ (ms.title or ms.opportunity_name or '')|replace("'", "\\'") }}', '{{ ms.msx_status }}', '{{ ms.url or '' }}')"
-                         class="list-group-item list-group-item-action py-2 px-3" style="cursor: pointer;">
+                         class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="me-2" style="min-width: 0;">
                                 <div class="fw-semibold text-truncate">
@@ -142,7 +147,7 @@
                             <div class="text-end flex-shrink-0">
                                 {% if ms.customer and ms.customer.seller %}
                                 <div>
-                                    <a href="{{ url_for('sellers.seller_view', id=ms.customer.seller.id) }}" class="badge {{ get_seller_color(ms.customer.seller.id) }} text-decoration-none" onclick="event.stopPropagation();" style="font-size: 0.65rem;"><i class="bi bi-person"></i> {{ ms.customer.seller.name }}</a>
+                                    <a href="{{ url_for('sellers.seller_view', id=ms.customer.seller.id) }}" class="badge bg-primary text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-person"></i> {{ ms.customer.seller.name }}</a>
                                 </div>
                                 {% endif %}
                                 {% if ms.monthly_usage %}
@@ -188,24 +193,22 @@
                 </div>
                 {% endif %}
             </div>
-            <div class="card-footer text-center">
+            <footer class="sb-home-panel-footer">
                 <a href="{{ url_for('main.action_items_hub') }}" class="text-decoration-none small">View all action items <i class="bi bi-arrow-right"></i></a>
-            </div>
-        </div>
-    </div>
+            </footer>
+        </section>
 
     <!-- Milestones Coming Due -->
-    <div class="col-lg-4 mb-3">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0" title="Milestones coming due in the next 30 days where you're on the milestone team"><i class="bi bi-flag-fill text-warning"></i> Milestones Due</h5>
-            </div>
-            <div class="card-body p-0" style="max-height: 360px; overflow-y: auto;">
+        <section class="sb-home-panel" aria-labelledby="homeMilestonesHeading">
+            <header class="sb-home-panel-header">
+                <h2 id="homeMilestonesHeading" title="Milestones coming due in the next 30 days where you're on the milestone team"><i class="bi bi-flag-fill"></i> Milestones Due</h2>
+            </header>
+            <div class="sb-home-panel-body" tabindex="0" aria-label="Milestones due list">
                 {% if upcoming_milestones %}
                 <div class="list-group list-group-flush">
                     {% for ms in upcoming_milestones %}
                     <div onclick="openHomeMilestoneDetail(event, {{ ms.id }}, '{{ (ms.title or ms.opportunity_name or '')|replace("'", "\\'") }}', '{{ ms.msx_status }}', '{{ ms.url or '' }}')"
-                         class="list-group-item list-group-item-action py-2 px-3" style="cursor: pointer;">
+                         class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="me-2" style="min-width: 0;">
                                 <div class="fw-semibold text-truncate">
@@ -242,28 +245,26 @@
                 {% endif %}
             </div>
             {% if upcoming_milestones %}
-            <div class="card-footer text-center">
+            <footer class="sb-home-panel-footer">
                 <a href="{{ url_for('milestones.milestone_tracker') }}" class="text-decoration-none small">View all milestones <i class="bi bi-arrow-right"></i></a>
-            </div>
+            </footer>
             {% endif %}
-        </div>
-    </div>
+        </section>
 
     <!-- Revenue Alerts -->
-    <div class="col-lg-4 mb-3">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0" title="Top 10 unactioned revenue alerts across your accounts"><i class="bi bi-exclamation-diamond text-danger"></i> Revenue Alerts</h5>
+        <section class="sb-home-panel" aria-labelledby="homeRevenueHeading">
+            <header class="sb-home-panel-header">
+                <h2 id="homeRevenueHeading" title="Top 10 unactioned revenue alerts across your accounts"><i class="bi bi-exclamation-diamond"></i> Revenue Alerts</h2>
                 <div class="d-flex align-items-center gap-2">
                     <span id="homeBucketFilterContainer"></span>
                 </div>
-            </div>
-            <div class="card-body p-0" style="max-height: 360px; overflow-y: auto;">
+            </header>
+            <div class="sb-home-panel-body" tabindex="0" aria-label="Revenue alerts list">
                 {% if not has_revenue %}
                 <div class="text-center text-muted py-4">
                     <i class="bi bi-cloud-arrow-up" style="font-size: 2rem;"></i>
                     <p class="mb-0 mt-2">Revenue not imported yet.</p>
-                    <a href="{{ url_for('revenue.revenue_import') }}" class="btn btn-sm btn-outline-primary mt-2">
+                    <a href="{{ url_for('revenue.revenue_import') }}" class="sb-home-button">
                         <i class="bi bi-upload"></i> Import Revenue
                     </a>
                 </div>
@@ -271,7 +272,7 @@
                 <div class="list-group list-group-flush">
                     {% for alert in revenue_alerts %}
                     <div data-bucket="{{ alert.bucket }}" onclick="openHomeAlertDetail(event, {{ alert.id }}, '{{ alert.customer_name|replace("'", "\\'") }}', '{{ alert.bucket|replace("'", "\\'") }}')"
-                         class="list-group-item list-group-item-action py-2 px-3" style="cursor: pointer;">
+                         class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="me-2" style="min-width: 0;">
                                 <div class="fw-semibold text-truncate">{{ alert.customer_name }}</div>
@@ -301,13 +302,13 @@
                 {% endif %}
             </div>
             {% if revenue_alerts %}
-            <div class="card-footer text-center">
+            <footer class="sb-home-panel-footer">
                 <a href="{{ url_for('revenue.revenue_dashboard') }}" class="text-decoration-none small">View all alerts <i class="bi bi-arrow-right"></i></a>
-            </div>
+            </footer>
             {% endif %}
-        </div>
-    </div>
-</div>
+        </section>
+</aside>
+{% endset %}
 
 
 
@@ -612,69 +613,96 @@
 <!-- Meeting-sync feedback lives in base.html as a draggable, non-blocking
      floating card. The today-cell click handler routes through window.SyncStatus. -->
 
-<div class="row mt-4" id="draftsSection" style="display: none;">
-    <div class="col-md-12">
-        <div class="alert alert-warning d-flex justify-content-between align-items-center">
-            <div>
-                <i class="bi bi-pencil-square"></i> <strong>Unsaved Drafts</strong>
-                <span id="draftCount" class="badge bg-warning text-dark ms-2">0</span>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-warning" onclick="clearAllDrafts()">
-                <i class="bi bi-trash"></i> Clear All Drafts
-            </button>
-        </div>
-        <div id="draftsList" class="list-group mb-3"></div>
+<div class="sb-home-page" data-sb-home>
+<nav class="sb-home-context" aria-label="Breadcrumb">
+    <div class="sb-home-breadcrumb">
+        <i class="bi bi-house-door" aria-hidden="true"></i>
+        <span>Overview</span><span aria-hidden="true">/</span>
+        <span aria-current="page">Activity</span>
     </div>
-</div>
+    <button type="button" class="sb-home-drafts-button" id="homeDraftsButton"
+            data-sb-dialog="homeDraftsDialog" hidden>
+        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+        Drafts <span id="draftCount">0</span>
+    </button>
+</nav>
+<dialog class="sb-dialog sb-dialog-compact sb-home-drafts" id="homeDraftsDialog"
+        aria-labelledby="homeDraftsHeading" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <header class="sb-dialog-header">
+            <h2 id="homeDraftsHeading">Unsaved drafts</h2>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                    aria-label="Close drafts" autofocus>
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </header>
+        <div class="sb-dialog-body">
+            <div id="draftsSection" style="display: none;">
+                <div id="draftsList"></div>
+            </div>
+            <p id="homeDraftsEmpty">No saved drafts.</p>
+        </div>
+        <footer class="sb-dialog-footer">
+            <button type="button" class="sb-dialog-button" id="homeClearDraftsButton"
+                    onclick="clearAllDrafts()" hidden>
+                <i class="bi bi-trash" aria-hidden="true"></i> Clear all drafts
+            </button>
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Close</button>
+        </footer>
+    </div>
+</dialog>
 
-<div class="row mt-2">
-    <div class="col-md-12">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="mb-0">Activity</h3>
-            <ul class="nav nav-pills" id="noteViewTabs" role="tablist">
+<div class="sb-home-workspace">
+    <section class="sb-home-activity" aria-labelledby="homeActivityHeading">
+        <header class="sb-home-activity-header">
+            <h1 id="homeActivityHeading">Activity</h1>
+            <div class="sb-home-month-toolbar">
+                <h2 id="calendarTitle" aria-live="polite">Loading...</h2>
+                <div class="sb-home-month-controls">
+                    <button class="sb-home-button" id="todayBtn">Today</button>
+                    <button class="sb-home-button sb-home-icon-button" id="prevMonthBtn" aria-label="Previous month">
+                        <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                    </button>
+                    <button class="sb-home-button sb-home-icon-button" id="nextMonthBtn" aria-label="Next month">
+                        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+            <ul class="sb-home-tabs" id="noteViewTabs" role="tablist" aria-label="Activity views">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="calendar-tab" data-bs-toggle="pill" data-bs-target="#calendar-view" type="button" role="tab" aria-controls="calendar-view" aria-selected="true">
+                    <button class="sb-home-tab active" id="calendar-tab" type="button" role="tab" aria-controls="calendar-view" aria-selected="true" tabindex="0">
                         <i class="bi bi-calendar3"></i> Calendar
                     </button>
                 </li>
                 {% if has_engagements %}
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="engagements-tab" data-bs-toggle="pill" data-bs-target="#engagements-view" type="button" role="tab" aria-controls="engagements-view" aria-selected="false">
+                    <button class="sb-home-tab" id="engagements-tab" type="button" role="tab" aria-controls="engagements-view" aria-selected="false" tabindex="-1">
                         <i class="bi bi-diagram-3"></i> Engagements <span class="fw-normal" id="engagements-count" style="font-size:0.8em; opacity:0.85;">({{ engagement_count }})</span>
                     </button>
                 </li>
                 {% endif %}
                 {% if has_projects %}
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="projects-tab" data-bs-toggle="pill" data-bs-target="#projects-view" type="button" role="tab" aria-controls="projects-view" aria-selected="false">
+                    <button class="sb-home-tab" id="projects-tab" type="button" role="tab" aria-controls="projects-view" aria-selected="false" tabindex="-1">
                         <i class="bi bi-folder"></i> Projects <span class="fw-normal" style="font-size:0.8em; opacity:0.85;">({{ project_count }})</span>
                     </button>
                 </li>
                 {% endif %}
                 {% if task_due_count > 0 %}
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="tasks-tab" data-bs-toggle="pill" data-bs-target="#tasks-view" type="button" role="tab" aria-controls="tasks-view" aria-selected="false">
+                    <button class="sb-home-tab" id="tasks-tab" type="button" role="tab" aria-controls="tasks-view" aria-selected="false" tabindex="-1">
                         <i class="bi bi-check2-square"></i> Action Items <span class="fw-normal" style="font-size:0.8em; opacity:0.85;">({{ task_due_count }})</span>
                     </button>
                 </li>
                 {% endif %}
             </ul>
-        </div>
+        </header>
         
-        <div class="tab-content" id="noteViewTabContent">
+        <div class="sb-home-tab-content" id="noteViewTabContent">
             <!-- Calendar View Tab -->
-            <div class="tab-pane fade show active" id="calendar-view" role="tabpanel" aria-labelledby="calendar-tab">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <button class="btn btn-outline-secondary btn-sm" id="prevMonthBtn">
-                            <i class="bi bi-chevron-left"></i>
-                        </button>
-                        <h5 class="mb-0" id="calendarTitle">Loading...</h5>
-                        <button class="btn btn-outline-secondary btn-sm" id="nextMonthBtn">
-                            <i class="bi bi-chevron-right"></i>
-                        </button>
-                    </div>
-                    <div class="card-body p-0">
+            <div class="sb-home-tabpanel active" id="calendar-view" role="tabpanel" aria-labelledby="calendar-tab">
+                <div class="sb-home-calendar">
+                    <div class="sb-home-calendar-body">
                         <table class="table table-bordered mb-0" id="calendarTable">
                             <thead>
                                 <tr class="text-center">
@@ -692,17 +720,21 @@
                                 </tbody>
                             </table>
                     </div>
-                    <div class="card-footer text-center">
-                        <button class="btn btn-outline-secondary btn-sm" id="todayBtn">
-                            <i class="bi bi-calendar-day"></i> Today
-                        </button>
-                    </div>
                 </div>
+                <footer class="sb-home-legend" aria-label="Calendar icon legend">
+                    <span title="Cached Outlook meeting; create a note from it"><i class="bi bi-calendar-event" aria-hidden="true"></i> Ghost meeting</span>
+                    <span title="Outlook meeting needs a customer match"><i class="bi bi-question-circle" aria-hidden="true"></i> Unmatched customer</span>
+                    <span title="Note linked to a milestone"><i class="bi bi-flag-fill" aria-hidden="true"></i> Milestone</span>
+                    <span title="Other MSX task attached"><i class="bi bi-check2-square" aria-hidden="true"></i> MSX task</span>
+                    <span title="High-Value Activity attached"><i class="bi bi-star-fill" aria-hidden="true"></i> HVA</span>
+                    <span title="Note linked to an engagement"><i class="bi bi-diagram-3" aria-hidden="true"></i> Engagement</span>
+                    <span class="sb-home-legend-caption">Markers can combine</span>
+                </footer>
             </div>
             
             <!-- Engagements Tab -->
             {% if has_engagements %}
-            <div class="tab-pane fade" id="engagements-view" role="tabpanel" aria-labelledby="engagements-tab">
+            <div class="sb-home-tabpanel" id="engagements-view" role="tabpanel" aria-labelledby="engagements-tab" hidden>
                 {% set eng_api_url = '/api/engagements/active' %}
                 {% set eng_auto_load = false %}
                 {% set eng_show_seller = not seller_mode %}
@@ -716,7 +748,7 @@
 
             <!-- Projects Tab -->
             {% if has_projects %}
-            <div class="tab-pane fade" id="projects-view" role="tabpanel" aria-labelledby="projects-tab">
+            <div class="sb-home-tabpanel" id="projects-view" role="tabpanel" aria-labelledby="projects-tab" hidden>
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-folder"></i> Active Projects</h5>
@@ -730,20 +762,20 @@
 
             <!-- Tasks Tab -->
             {% if task_due_count > 0 %}
-            <div class="tab-pane fade" id="tasks-view" role="tabpanel" aria-labelledby="tasks-tab">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <button class="btn btn-outline-secondary btn-sm" id="tasksPrevMonthBtn">
-                            <i class="bi bi-chevron-left"></i>
+            <div class="sb-home-tabpanel" id="tasks-view" role="tabpanel" aria-labelledby="tasks-tab" hidden>
+                <div class="sb-home-calendar">
+                    <div class="sb-home-calendar-header">
+                        <button class="sb-home-button sb-home-icon-button" id="tasksPrevMonthBtn" aria-label="Previous action items month">
+                            <i class="bi bi-chevron-left" aria-hidden="true"></i>
                         </button>
-                        <h5 class="mb-0" id="tasksCalendarTitle">Loading...</h5>
-                        <button class="btn btn-outline-secondary btn-sm" id="tasksNextMonthBtn">
-                            <i class="bi bi-chevron-right"></i>
+                        <h2 id="tasksCalendarTitle" aria-live="polite">Loading...</h2>
+                        <button class="sb-home-button sb-home-icon-button" id="tasksNextMonthBtn" aria-label="Next action items month">
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div id="tasksOverdueBar" class="px-3 py-2" style="display: none;">
                     </div>
-                    <div class="card-body p-0">
+                    <div class="sb-home-calendar-body">
                         <table class="table table-bordered mb-0" id="tasksCalendarTable">
                             <thead>
                                 <tr class="text-center">
@@ -760,8 +792,8 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="card-footer text-center">
-                        <button class="btn btn-outline-secondary btn-sm" id="tasksTodayBtn">
+                    <div class="sb-home-calendar-footer">
+                        <button class="sb-home-button" id="tasksTodayBtn">
                             <i class="bi bi-calendar-day"></i> Today
                         </button>
                     </div>
@@ -769,8 +801,47 @@
             </div>
             {% endif %}
         </div>
-    </div>
+    </section>
+    {{ dashboard_rail }}
 </div>
+<footer class="sb-home-status" aria-label="Workspace status">
+    <span id="homeViewSummary" class="sb-home-status-summary" aria-live="polite"></span>
+    <time id="homeCurrentDate" class="sb-home-status-date" title="Today's local date"></time>
+    <button type="button" id="homeFreshnessToggle" popovertarget="homeFreshnessPopover"
+            aria-expanded="false" title="Show data refresh timestamps">
+        <i class="bi bi-clock-history" aria-hidden="true"></i> Refresh status
+        <i class="bi bi-chevron-up" aria-hidden="true"></i>
+    </button>
+    <div id="homeFreshnessPopover" class="sb-home-freshness-popover" popover="auto"
+         role="region" aria-labelledby="homeFreshnessToggle">
+        <div class="sb-home-freshness">
+            <a href="{{ url_for('admin.admin_panel') }}#milestoneSyncStatus"
+               title="Last milestone refresh; open sync details">
+                <span id="homeMilestonesFreshness" aria-live="polite">Milestones: checking...</span>
+            </a>
+            <a href="{{ url_for('revenue.revenue_dashboard') }}"
+               title="Last ACR refresh; open revenue sync details">
+                <span id="homeACRFreshness" aria-live="polite">ACR: checking...</span>
+            </a>
+            <a href="{{ url_for('admin.admin_panel') }}#accountsSyncStatus"
+               title="Last account refresh; open sync details">
+                <span id="homeAccountsFreshness" aria-live="polite">Accounts: checking...</span>
+            </a>
+            <a href="{{ url_for('reports.report_u2c') }}"
+               title="Last U2C baseline refresh check; MSXi publishes weekly. Open U2C details">
+                <span id="homeU2CFreshness" aria-live="polite">U2C: checking...</span>
+            </a>
+        </div>
+        <button type="button" id="homeFreshnessRefresh"
+                title="Check timestamps without starting a sync">
+            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Check now
+        </button>
+    </div>
+</footer>
+</div>
+<script src="{{ url_for('static', filename='js/ui-home.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-home-summary.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/ui-home-freshness.js') }}"></script>
 
 <!-- Quick Create Customer Picker Modal -->
 <div class="modal fade" id="quickCreateModal" tabindex="-1" aria-labelledby="quickCreateModalLabel" aria-hidden="true">
@@ -893,41 +964,46 @@
         
         // Sort by timestamp (newest first)
         drafts.sort((a, b) => b.timestamp - a.timestamp);
+
+        document.getElementById('homeDraftsButton').hidden = drafts.length === 0;
+        document.getElementById('homeClearDraftsButton').hidden = drafts.length === 0;
+        document.getElementById('homeDraftsEmpty').hidden = drafts.length > 0;
+        document.getElementById('draftCount').textContent = drafts.length;
         
         // Show/hide drafts section
         if (drafts.length > 0) {
             document.getElementById('draftsSection').style.display = 'block';
-            document.getElementById('draftCount').textContent = drafts.length;
             
             // Render draft list
             const draftsList = document.getElementById('draftsList');
-            draftsList.innerHTML = drafts.map(draft => {
+            draftsList.replaceChildren(...drafts.map(draft => {
                 const date = new Date(draft.timestamp);
                 const timeAgo = formatTimeAgo(date);
                 const topicCount = draft.data.topics ? draft.data.topics.length : 0;
-                
-                return `
-                    <a href="{{ url_for('notes.note_create') }}?customer_id=${draft.customerId}" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">
-                                    ${draft.data.customer_favicon ? '<img src="data:image/png;base64,' + draft.data.customer_favicon + '" width="16" height="16" alt="" style="vertical-align: middle;">' : '<i class="bi bi-building"></i>'} ${draft.customerName}
-                                    <span class="badge bg-warning text-dark ms-2"><i class="bi bi-pencil"></i> Draft</span>
-                                </h6>
-                                <small class="text-muted">
-                                    <i class="bi bi-clock"></i> ${timeAgo}
-                                    ${topicCount > 0 ? `<span class="ms-2"><i class="bi bi-tag"></i> ${topicCount} topic${topicCount > 1 ? 's' : ''}</span>` : ''}
-                                </small>
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDraft(event, '${draft.key}', ${draft.customerId})" title="Delete draft">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    </a>
-                `;
-            }).join('');
+                const row = document.createElement('div');
+                row.className = 'sb-home-draft-row';
+                const link = document.createElement('a');
+                link.className = 'sb-home-draft-link';
+                link.href = '{{ url_for("notes.note_create") }}?customer_id=' +
+                    encodeURIComponent(draft.customerId);
+                const title = document.createElement('strong');
+                title.textContent = draft.customerName;
+                const metadata = document.createElement('small');
+                metadata.textContent = timeAgo + (topicCount > 0 ?
+                    ` · ${topicCount} topic${topicCount > 1 ? 's' : ''}` : '');
+                link.append(title, metadata);
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'sb-dialog-button';
+                remove.setAttribute('aria-label', 'Delete draft for ' + draft.customerName);
+                remove.innerHTML = '<i class="bi bi-trash" aria-hidden="true"></i>';
+                remove.addEventListener('click', event => deleteDraft(event, draft.key));
+                row.append(link, remove);
+                return row;
+            }));
         } else {
             document.getElementById('draftsSection').style.display = 'none';
+            document.getElementById('draftsList').replaceChildren();
         }
     }
     
@@ -1284,21 +1360,15 @@
     // Tab persistence with localStorage
     const TAB_STORAGE_KEY = 'salesbuddy_home_tab';
     
-    // Apply saved tab after Bootstrap is loaded
+    // Restore the saved activity view after its lazy-load listeners are attached.
     window.addEventListener('DOMContentLoaded', function() {
         const savedTab = localStorage.getItem(TAB_STORAGE_KEY);
         {% if has_engagements %}if (savedTab === 'engagements') {
-            const engTabEl = document.getElementById('engagements-tab');
-            const engTab = new bootstrap.Tab(engTabEl);
-            engTab.show();
+            SBHomeTabs.select('engagements-tab');
         } else {% endif %}{% if has_projects %}if (savedTab === 'projects') {
-            const projTabEl = document.getElementById('projects-tab');
-            const projTab = new bootstrap.Tab(projTabEl);
-            projTab.show();
+            SBHomeTabs.select('projects-tab');
         } else {% endif %}{% if task_due_count > 0 %}if (savedTab === 'tasks') {
-            const tasksTabEl = document.getElementById('tasks-tab');
-            const tasksTab = new bootstrap.Tab(tasksTabEl);
-            tasksTab.show();
+            SBHomeTabs.select('tasks-tab');
         } else {% endif %}{
             // Calendar is default - load it immediately
             if (!calendarLoaded) {
@@ -1309,7 +1379,6 @@
     });
     
     // Load calendar when tab is shown
-    {% if has_milestones %}
     document.getElementById('calendar-tab').addEventListener('shown.bs.tab', function() {
         localStorage.setItem(TAB_STORAGE_KEY, 'calendar');
         if (!calendarLoaded) {
@@ -1317,7 +1386,6 @@
             calendarLoaded = true;
         }
     });
-    {% endif %}
     
     // Month navigation
     document.getElementById('prevMonthBtn').addEventListener('click', function() {
@@ -1997,6 +2065,7 @@
                         taskEntries.forEach(function(t) {
                             var entry = document.createElement('div');
                             entry.className = 'd-block text-truncate mb-1 px-1 rounded';
+                            entry.setAttribute('data-action-item-id', t.id);
                             entry.style.cursor = 'pointer';
 
                             // Color by status
@@ -2169,10 +2238,3 @@ RevenueBucketFilter.init({
 </script>
 
 {% endblock %}
-
-
-
-
-
-
-

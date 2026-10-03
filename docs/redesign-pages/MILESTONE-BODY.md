@@ -6,9 +6,9 @@
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - UI baseline: `3f8ddd5`, approved divider-only note body
-- Implementation tested: working tree based on `3f8ddd5`
+- Implementation revision: `c652057`
 - User sign-off: October 3, 2026, after semantic tag refinement and functional testing
-- Next action: commit this approved slice, then begin Home dashboard styling.
+- Next action: review the following Home workbench checkpoint.
   No push, merge or deployment.
 
 ## Scope and original inventory

@@ -10,6 +10,10 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/2/2026
 
+- Put the Home calendar beside distinct Action Items, Milestones Due and Revenue Alerts panels, with keyboard-operated activity tabs and preview rows.
+- Fill Home from navigation to a continuous bottom bar and keep saved drafts accessible from a compact counted control.
+- Keep Home's bottom bar quiet with on-demand Milestones, ACR, Accounts and U2C refresh details, links and a read-only status check.
+- Show current-view item counts and today's local date in Home's balanced bottom bar.
 - Add compact icon navigation with centered customer search and keyboard-operated menus.
 - Show clear customer-search errors with a retry path instead of failing silently.
 - Use keyboard-friendly workbench dialogs for page help and shortcut reference, with scrolling content and focus restoration.

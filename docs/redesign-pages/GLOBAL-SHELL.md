@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-11 committed, checkpoint 12 verified and user-approved
+- Status: BUILDING; checkpoints 1-12 committed, checkpoint 13 verified and user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -18,15 +18,17 @@
   technically verified, user-approved
 - Checkpoint 11 shared note body/full-page commands: `3f8ddd5`, [Note-body evidence](NOTE-BODY.md),
   technically verified, user-approved
-- Checkpoint 12 shared milestone body/forecast comments: [Milestone-body evidence](MILESTONE-BODY.md),
+- Checkpoint 12 shared milestone body/forecast comments: `c652057`, [Milestone-body evidence](MILESTONE-BODY.md),
   technically verified, user-approved
+- Checkpoint 13 Home frame/attention panels/native tabs: [Home evidence](HOME-WORKBENCH.md),
+  technically verified, user-approved October 3 after balanced-bar/readability refinement
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
 - Next action: continue the remaining global surfaces after this checkpoint;
   homepage and shared note/milestone dialogs are not approved by this checkpoint.
-  Commit approved checkpoint 12. Home dashboard/calendar styling follows;
+  Commit checkpoint 13. Calendar-entry styling and remaining Home surfaces follow;
   no push, merge or deployment is authorized.
 
 ## Checkpoint 1 scope
