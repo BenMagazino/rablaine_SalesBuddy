@@ -110,44 +110,13 @@
 </div>
 
 <!-- Milestone detail modal -->
-<div class="modal fade" id="milestoneDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-flag"></i> Milestone Detail</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="milestoneDetailBody">
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-2 text-muted">Loading milestone...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-var _msModal = null;
-
 function openMilestoneModal(msId) {
-    if (!_msModal) _msModal = new bootstrap.Modal(document.getElementById('milestoneDetailModal'));
-    var bodyEl = document.getElementById('milestoneDetailBody');
-    bodyEl.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Loading milestone...</p></div>';
-    _msModal.show();
-    fetch('/api/milestone/' + msId + '/detail')
-        .then(function(r) { if (!r.ok) throw new Error(); return r.text(); })
-        .then(function(html) {
-            bodyEl.innerHTML = html;
-            bodyEl.querySelectorAll('script').forEach(function(old) {
-                var s = document.createElement('script');
-                if (old.src) { s.src = old.src; } else { s.textContent = '(function(){' + old.textContent + '})();'; }
-                old.replaceWith(s);
-            });
-        })
-        .catch(function() { bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load milestone details.</div>'; });
+    return SBMilestonePreview.open(msId);
 }
 
 function toggleImpactRow(clickedRow, targetId) {

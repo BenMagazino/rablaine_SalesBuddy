@@ -480,7 +480,7 @@ class TestMilestoneViewOverhaul:
 
         assert resp.status_code == 200
         assert 'No engagement linked to this milestone.' in html
-        assert 'onclick="openMilestoneEngagementModal()"' in html
+        assert 'data-sb-ms-action="engagement"' in html
         assert 'id="milestoneEngagementModal"' in html
         assert 'Technical/Business Problem' in html
         assert f'milestone_ids: [{ms_id}]' in html

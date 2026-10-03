@@ -26,6 +26,45 @@ html:has(.sb-dialog[open]) { overflow: hidden; }
     width: min(1100px, calc(100vw - 96px));
     margin: 48px auto auto;
 }
+.sb-dialog [hidden] { display: none; }
+.sb-dialog-record-editor { width: min(800px, calc(100vw - 96px)); margin: 48px auto auto; }
+.sb-record-editor-form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: calc(100dvh - 98px);
+}
+.sb-record-editor-title { margin: 0; color: var(--sb-ui-ink); font-size: 18px; flex: 1; min-width: 0; }
+.sb-record-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.sb-record-form-wide { grid-column: 1 / -1; }
+.sb-record-field-label { display: block; margin-bottom: 6px; color: var(--sb-ui-muted); }
+.sb-record-field {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid var(--sb-ui-control-line);
+    border-radius: 0;
+    background: var(--sb-ui-context);
+    color: var(--sb-ui-ink);
+    padding: 7px 9px;
+    font: inherit;
+    color-scheme: light;
+}
+[data-sb-mode="dark"] .sb-record-field { color-scheme: dark; }
+.sb-record-field-row { display: flex; align-items: center; gap: 8px; }
+.sb-record-field-suffix { color: var(--sb-ui-muted); white-space: nowrap; }
+.sb-record-editor-error { margin: 12px 0; color: var(--sb-ui-danger); overflow-wrap: anywhere; }
+.sb-record-tag {
+    padding: 2px 7px;
+    border: 1px solid var(--sb-ui-control-line);
+    color: var(--sb-ui-muted);
+    white-space: nowrap;
+    font-size: 12px;
+}
+.sb-record-tag[data-status="At Risk"] { color: var(--sb-ui-warning); }
+.sb-record-tag[data-status="Blocked"] { color: var(--sb-ui-danger); }
+.sb-record-tag[data-status="On Track"] { color: var(--sb-ui-milestone-rail); }
+.sb-dialog-header > .sb-dialog-button { gap: 6px; flex-shrink: 0; }
 .sb-dialog-record [hidden], .sb-note-action [hidden] { display: none; }
 .sb-dialog-record .sb-dialog-header > a { flex-shrink: 0; text-decoration: none; }
 .sb-record-state { padding: 32px 0; color: var(--sb-ui-muted); text-align: center; }
@@ -75,7 +114,7 @@ html:has(.sb-dialog[open]) { overflow: hidden; }
     border-bottom: 1px solid var(--sb-ui-line);
     background: var(--sb-ui-header);
 }
-.sb-dialog-heading { flex: 1; min-width: 0; }
+.sb-dialog-heading { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .sb-dialog-eyebrow {
     color: var(--sb-ui-muted);
     font-size: 10px;

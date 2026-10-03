@@ -6,16 +6,16 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 9, Home note-preview lifecycle and shared quick action editor,
+- Current page/surface: checkpoint 10, shared milestone-preview lifecycle and nested editors,
   technically verified and user-approved; full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
   `f1916e8` (image viewer), `1e7b16c` (shared notifications),
-  `f6e9163` (persistent status strips), `dd44c58` (floating sync status and search focus)
-- Next action: commit approved [checkpoint 9](redesign-pages/HOME-NOTE-PREVIEW.md),
-  then pause at a clean stopping point. Next work is shared milestone-preview
-  lifecycle/nested editors across their hosts. Note/milestone bodies, the full homepage
-  and calendar parity remain separate work.
+  `f6e9163` (persistent status strips), `dd44c58` (floating sync status and search focus),
+  `9545d18` (note-preview lifecycle and quick actions)
+- Next action: commit approved [checkpoint 10](redesign-pages/MILESTONE-PREVIEW.md), then
+  start the shared note-body checkpoint. Milestone content, the full homepage and calendar
+  parity remain separate work. This is a bounded stopping point with no live writes pending.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
@@ -151,7 +151,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | FR-ACTIONS | `partials/_action_items_hub.html` | `/api/action-items-hub` | TODO | - |
 | FR-CUST-OPPS | `partials/_customer_opportunities.html` | `/api/customer/<int:customer_id>/opportunities-html` | TODO | - |
 | FR-ENG | `partials/_engagement_view_content.html` | `/api/engagement/<int:id>/detail` | TODO | - |
-| FR-MS | `partials/milestone_view_content.html` | `/api/milestone/<int:id>/detail` | TODO | - |
+| FR-MS | `partials/milestone_view_content.html` | `/api/milestone/<int:id>/detail` | BUILDING | [Lifecycle/editor slice](redesign-pages/MILESTONE-PREVIEW.md) |
 | FR-NOTE | `partials/note_view_content.html` | `/api/note/<int:id>/detail` | BUILDING | [Lifecycle/editor slice](redesign-pages/HOME-NOTE-PREVIEW.md) |
 | FR-OOO | `partials/one_on_one_workspace_content.html` | `/api/seller/<int:seller_id>/one-on-one/detail` | TODO | - |
 | FR-OPP | `partials/opportunity_view_content.html` | `/api/opportunity/<int:id>/detail` | TODO | - |

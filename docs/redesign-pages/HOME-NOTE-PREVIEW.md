@@ -7,7 +7,8 @@
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - UI baseline: `dd44c58`, approved floating-sync/search-focus checkpoint
 - Implementation tested: working tree based on `dd44c58`
-- Next action: commit this approved slice, then pause at a clean stopping point.
+- Implementation revision: `9545d18`, committed after user sign-off
+- Next action: continue the independently reviewed milestone-preview checkpoint.
   No push or merge is authorized by this checkpoint.
 
 ## Scope and original inventory

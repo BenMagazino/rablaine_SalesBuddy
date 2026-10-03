@@ -346,75 +346,14 @@
 {% endif %}
 
 {% if milestones %}
-<!-- Standalone Milestone Detail Modal (for compact card rows, outside any other modal) -->
-<div class="modal fade" id="standaloneMilestoneDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1100px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <div class="d-flex align-items-center gap-2">
-                    <h5 class="modal-title mb-0"><i class="bi bi-flag"></i> <span id="standaloneMsTitle">Loading...</span></h5>
-                    <span id="standaloneMsBadge"></span>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <a id="standaloneMsMsxLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary" style="display:none"><i class="bi bi-box-arrow-up-right"></i> MSX</a>
-                    <a id="standaloneMsFullLink" href="#" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrows-fullscreen"></i> Full Page</a>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-            </div>
-            <div class="modal-body p-3" id="standaloneMsBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 <script>
-(function() {
-    let msModal = null;
-    const titleEl = document.getElementById('standaloneMsTitle');
-    const bodyEl = document.getElementById('standaloneMsBody');
-    const badgeEl = document.getElementById('standaloneMsBadge');
-    const msxLink = document.getElementById('standaloneMsMsxLink');
-    const fullLink = document.getElementById('standaloneMsFullLink');
-
-    function showMsDetail(msId, msTitle, msStatus, msUrl) {
-        if (!msModal) {
-            msModal = new bootstrap.Modal(document.getElementById('standaloneMilestoneDetailModal'));
-        }
-        titleEl.textContent = msTitle;
-        if (msStatus) {
-            const cls = {'On Track':'bg-success','At Risk':'bg-warning text-dark','Blocked':'bg-danger','Completed':'bg-info'}[msStatus] || 'bg-secondary';
-            badgeEl.innerHTML = '<span class="badge ' + cls + '">' + msStatus + '</span>';
-        } else {
-            badgeEl.innerHTML = '';
-        }
-        if (msUrl) { msxLink.href = msUrl; msxLink.style.display = ''; } else { msxLink.style.display = 'none'; }
-        fullLink.href = '/milestone/' + msId;
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        msModal.show();
-        fetch('/api/milestone/' + msId + '/detail')
-            .then(function(r) { if (!r.ok) throw new Error(); return r.text(); })
-            .then(function(html) {
-                bodyEl.innerHTML = html;
-                bodyEl.querySelectorAll('script').forEach(function(old) {
-                    var s = document.createElement('script');
-                    if (old.src) { s.src = old.src; } else { s.textContent = '(function(){' + old.textContent + '})();'; }
-                    old.replaceWith(s);
-                });
-            })
-            .catch(function() { bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load milestone details.</div>'; });
-    }
-    window._showMsDetail = showMsDetail;
-
-    // For compact card rows (no parent modal)
-    window.openStandaloneMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl) {
-        if (event.target.closest('a, button')) return;
-        showMsDetail(msId, msTitle, msStatus, msUrl);
-    };
-})();
+window._showMsDetail = function(msId, msTitle, msStatus, msUrl) {
+    return SBMilestonePreview.open(msId, msTitle, msStatus, msUrl);
+};
+window.openStandaloneMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl) {
+    if (event.target.closest('a, button')) return;
+    return window._showMsDetail(msId, msTitle, msStatus, msUrl);
+};
 </script>
 
 <!-- Milestones Modal -->
@@ -447,12 +386,13 @@
             var onceHidden = function() {
                 parentModalEl.removeEventListener('hidden.bs.modal', onceHidden);
                 window._showMsDetail(msId, msTitle, msStatus, msUrl);
-                var detailEl = document.getElementById('standaloneMilestoneDetailModal');
-                var onceDetailHidden = function() {
-                    detailEl.removeEventListener('hidden.bs.modal', onceDetailHidden);
+                var detailEl = document.getElementById('milestonePreviewDialog');
+                var onceDetailHidden = function(event) {
+                    if (event.target !== detailEl) return;
+                    detailEl.removeEventListener('sb:dialog-closed', onceDetailHidden);
                     parentModal.show();
                 };
-                detailEl.addEventListener('hidden.bs.modal', onceDetailHidden);
+                detailEl.addEventListener('sb:dialog-closed', onceDetailHidden);
             };
             parentModalEl.addEventListener('hidden.bs.modal', onceHidden);
             parentModal.hide();

@@ -17,6 +17,9 @@
         const title = find('title'), fullLink = find('full-link'), content = find('content');
         const loading = find('loading'), errorPanel = find('error'), retry = find('retry');
         const status = find('status');
+        const defaultStatus = options.statusText || DEFAULT_STATUS;
+        const busyText = options.busyText ||
+            'Saving action item. Please wait before leaving this note.';
         const discard = document.getElementById('recordDiscardDialog');
         const confirm = document.getElementById('recordDiscardConfirm');
         if (!discard || !confirm) throw new Error('Record discard controls are missing.');
@@ -34,12 +37,15 @@
 
         function guard(proceed) {
             if (mounted?.isBusy()) {
-                status.textContent = 'Saving action item. Please wait before leaving this note.';
+                status.textContent = busyText;
                 return false;
             }
             if (mounted?.isDirty()) {
                 if (!discard.open) {
                     transition = proceed;
+                    document.getElementById('recordDiscardDescription').textContent =
+                        options.discardText || 'Your action item has not been saved. ' +
+                        'Keep editing, or discard the draft to continue.';
                     SBDialog.open(discard);
                 }
                 return false;
@@ -57,7 +63,7 @@
             errorPanel.hidden = true;
             content.hidden = true;
             content.setAttribute('aria-busy', 'true');
-            status.textContent = DEFAULT_STATUS;
+            status.textContent = defaultStatus;
             try {
                 const response = await fetch(options.loadUrl(snapshot.id), {signal: controller.signal});
                 if (!response.ok) throw new Error(`Record detail HTTP ${response.status}.`);
@@ -85,7 +91,8 @@
                 content.replaceChildren();
                 loading.hidden = true;
                 errorPanel.hidden = false;
-                status.textContent = 'The note could not be loaded. Retry or use Full Page.';
+                status.textContent = options.errorText ||
+                    'The note could not be loaded. Retry or use Full Page.';
             } finally {
                 if (version === generation) {
                     request = null;
@@ -99,6 +106,7 @@
             selection = snapshot;
             title.textContent = snapshot.title;
             fullLink.href = options.fullUrl(snapshot.id);
+            options.onSelection?.(snapshot);
             SBDialog.open(dialog);
             return load();
         }
@@ -112,8 +120,8 @@
             dispose();
             selection = null;
         });
-        dialog.addEventListener('sb:note-action-state', () => {
-            status.textContent = mounted?.isBusy() ? 'Saving action item...' : DEFAULT_STATUS;
+        dialog.addEventListener(options.stateEvent || 'sb:note-action-state', () => {
+            status.textContent = mounted?.isBusy() ? busyText : defaultStatus;
         });
         discard.addEventListener('sb:dialog-closed', () => { transition = null; });
         confirm.addEventListener('click', () => {

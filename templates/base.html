@@ -1418,6 +1418,8 @@
     <script src="{{ url_for('static', filename='js/ui-note-actions.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-local-datetime.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-record-dialog.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui-milestone-workflow.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui-milestone-preview.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/page-help.js') }}" defer></script>
     <script>document.addEventListener('DOMContentLoaded', () => Share.init());</script>
 
@@ -3579,7 +3581,7 @@
                         aria-label="Keep editing"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
             </div>
             <div class="sb-dialog-body">
-                <p>Your action item has not been saved. Keep editing, or discard the draft to continue.</p>
+                <p id="recordDiscardDescription">Your action item has not been saved. Keep editing, or discard the draft to continue.</p>
             </div>
             <div class="sb-dialog-footer">
                 <button class="sb-dialog-button" type="button" data-sb-dialog-close autofocus>
@@ -3588,6 +3590,39 @@
                 <button class="sb-dialog-button" id="recordDiscardConfirm" type="button">
                     Discard draft
                 </button>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog class="sb-dialog sb-dialog-record" id="milestonePreviewDialog"
+            aria-labelledby="milestonePreviewTitle" data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell">
+            <div class="sb-dialog-header">
+                <div class="sb-dialog-heading">
+                    <div class="sb-dialog-eyebrow">Milestone preview</div>
+                    <h2 id="milestonePreviewTitle" data-sb-record-title>Milestone</h2>
+                </div>
+                <span class="sb-record-tag" id="milestonePreviewStatus" hidden></span>
+                <a class="sb-dialog-button" id="milestonePreviewMsxLink" target="_blank"
+                   rel="noopener" hidden><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> MSX</a>
+                <a class="sb-dialog-button" href="#" data-sb-record-full-link>
+                    <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i> Full Page
+                </a>
+                <button class="sb-dialog-close" type="button" data-sb-dialog-close
+                        aria-label="Close milestone preview" autofocus>
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="sb-dialog-body">
+                <div class="sb-record-state" data-sb-record-loading role="status">Loading milestone...</div>
+                <div class="sb-record-state" data-sb-record-error hidden>
+                    <p role="status">Unable to load this milestone. Retry, or open the full page.</p>
+                    <button class="sb-dialog-button" type="button" data-sb-record-retry>Retry</button>
+                </div>
+                <div data-sb-record-content></div>
+            </div>
+            <div class="sb-dialog-footer">
+                <small data-sb-record-status role="status">Changes save when you submit them.</small>
             </div>
         </div>
     </dialog>

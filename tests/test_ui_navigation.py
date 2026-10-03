@@ -143,7 +143,7 @@ def test_help_dialog_source_has_balanced_shells() -> None:
     )
     for dialog_id in ("pageHelpModal", "keyboardShortcutsModal",
                       "quickNoteModal", "quickEngagementModal", "imageZoomModal",
-                      "recordDiscardDialog"):
+                      "recordDiscardDialog", "milestonePreviewDialog"):
         match = re.search(
             rf'<dialog\b[^>]*\bid="{dialog_id}"[^>]*>.*?</dialog>', source, re.DOTALL
         )

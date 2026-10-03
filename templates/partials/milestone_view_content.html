@@ -3,6 +3,7 @@
 {# Guard: show_edit_delete (default True) - set False in modal to hide Edit/Delete/header #}
 {% if show_edit_delete is not defined %}{% set show_edit_delete = True %}{% endif %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
+<div data-sb-milestone-detail data-sb-milestone-id="{{ milestone.id }}">
 
 {% if show_edit_delete %}
 <div class="d-flex justify-content-between align-items-center mb-4 gap-3">
@@ -62,7 +63,7 @@
                 {% elif milestone.customer %}
                 <div id="milestoneEngagementEmpty" class="border-top pt-3 mt-1">
                     <div class="small text-muted mb-2">No engagement linked to this milestone.</div>
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="openMilestoneEngagementModal()">
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-sb-ms-action="engagement">
                         <i class="bi bi-plus-lg me-1"></i>Create engagement
                     </button>
                 </div>
@@ -153,12 +154,12 @@
                             {% if milestone.on_my_team %}
                             <span>
                                 <span class="badge bg-success me-1"><i class="bi bi-people-fill"></i> On Team</span>
-                                <button class="btn btn-outline-danger btn-sm" id="leaveMilestoneTeamBtn" onclick="leaveMilestoneTeam({{ milestone.id }})">
+                                <button class="btn btn-outline-danger btn-sm" id="leaveMilestoneTeamBtn" data-sb-ms-action="leave">
                                     <i class="bi bi-person-dash"></i> Leave
                                 </button>
                             </span>
                             {% else %}
-                            <button class="btn btn-outline-primary btn-sm" id="joinMilestoneTeamBtn" onclick="joinMilestoneTeam({{ milestone.id }})">
+                            <button class="btn btn-outline-primary btn-sm" id="joinMilestoneTeamBtn" data-sb-ms-action="join">
                                 <i class="bi bi-person-plus"></i> Join Team
                             </button>
                             {% endif %}
@@ -183,6 +184,10 @@
                 {% endif %}
                 <div id="detailsMsx" style="display:none;"></div>
                 <div id="detailsError" style="display:none;"></div>
+                {% if milestone.msx_milestone_id %}
+                <button type="button" class="btn btn-sm btn-outline-secondary m-2"
+                        data-sb-ms-action="refresh">Refresh details and comments</button>
+                {% endif %}
             </div>
         </div>
 
@@ -237,7 +242,7 @@
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge bg-secondary">{{ tasks|length }}</span>
                     {% if milestone.msx_milestone_id %}
-                    <button type="button" class="btn btn-primary btn-sm" onclick="openNewTaskModal()">
+                    <button type="button" class="btn btn-primary btn-sm" data-sb-ms-action="task">
                         <i class="bi bi-plus-circle"></i>
                     </button>
                     {% endif %}
@@ -299,133 +304,135 @@
 
 {% if milestone.customer and not milestone.engagements %}
 <!-- Create Engagement Modal -->
-<div class="modal fade" id="milestoneEngagementModal" tabindex="-1"
-     aria-labelledby="milestoneEngagementModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <form id="milestoneEngagementForm">
-                <div class="modal-header">
-                    <div>
-                        <h5 class="modal-title" id="milestoneEngagementModalLabel">
+<dialog class="sb-dialog sb-dialog-record-editor" id="milestoneEngagementModal" aria-labelledby="milestoneEngagementModalLabel" data-sb-milestone-child data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell">
+            <form id="milestoneEngagementForm" class="sb-record-editor-form">
+                <div class="sb-dialog-header">
+                    <div class="sb-dialog-heading">
+                        <h5 class="sb-record-editor-title" id="milestoneEngagementModalLabel">
                             <i class="bi bi-diagram-3 me-2"></i>Create engagement
                         </h5>
                         <div class="small text-muted">Linked to {{ milestone.display_text }}</div>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">&times;</button>
                 </div>
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <label for="milestoneEngagementTitle" class="form-label">Title *</label>
-                            <input type="text" class="form-control" id="milestoneEngagementTitle"
-                                   value="{{ milestone.display_text }}" maxlength="300" required>
+                <div class="sb-dialog-body">
+                    <div class="sb-record-form-grid">
+                        <div class="sb-record-field-group">
+                            <label for="milestoneEngagementTitle" class="sb-record-field-label">Title *</label>
+                            <input type="text" class="sb-record-field" id="milestoneEngagementTitle"
+                                   value="{{ milestone.display_text }}" maxlength="300" required autofocus>
                         </div>
-                        <div class="col-md-4">
-                            <label for="milestoneEngagementStatus" class="form-label">Status</label>
-                            <select class="form-select" id="milestoneEngagementStatus">
+                        <div class="sb-record-field-group">
+                            <label for="milestoneEngagementStatus" class="sb-record-field-label">Status</label>
+                            <select class="sb-record-field" id="milestoneEngagementStatus">
                                 <option value="Active">Active</option>
                                 <option value="On Hold">On Hold</option>
                                 <option value="Won">Won</option>
                                 <option value="Lost">Lost</option>
                             </select>
                         </div>
-                        <div class="col-12">
+                        <div class="sb-record-form-wide">
                             <div class="small text-uppercase text-muted fw-semibold">Engagement story</div>
                         </div>
-                        <div class="col-12">
-                            <label for="milestoneEngagementProblem" class="form-label">Technical/Business Problem</label>
-                            <textarea class="form-control" id="milestoneEngagementProblem" rows="3"
+                        <div class="sb-record-form-wide">
+                            <label for="milestoneEngagementProblem" class="sb-record-field-label">Technical/Business Problem</label>
+                            <textarea class="sb-record-field" id="milestoneEngagementProblem" rows="3"
                                       placeholder="What problem or challenge are they facing?"></textarea>
                         </div>
-                        <div class="col-12">
-                            <label for="milestoneEngagementImpact" class="form-label">Business Process/Strategy Impact</label>
-                            <textarea class="form-control" id="milestoneEngagementImpact" rows="3"
+                        <div class="sb-record-form-wide">
+                            <label for="milestoneEngagementImpact" class="sb-record-field-label">Business Process/Strategy Impact</label>
+                            <textarea class="sb-record-field" id="milestoneEngagementImpact" rows="3"
                                       placeholder="How is this problem impacting their business?"></textarea>
                         </div>
-                        <div class="col-12">
-                            <label for="milestoneEngagementResources" class="form-label">Solution Resources</label>
-                            <textarea class="form-control" id="milestoneEngagementResources" rows="3"
+                        <div class="sb-record-form-wide">
+                            <label for="milestoneEngagementResources" class="sb-record-field-label">Solution Resources</label>
+                            <textarea class="sb-record-field" id="milestoneEngagementResources" rows="3"
                                       placeholder="What services, people, or solutions are addressing it?"></textarea>
                         </div>
-                        <div class="col-md-6">
-                            <label for="milestoneEngagementAcr" class="form-label">Estimated monthly ACR</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" id="milestoneEngagementAcr" min="0" step="1">
-                                <span class="input-group-text">/mo</span>
+                        <div class="sb-record-field-group">
+                            <label for="milestoneEngagementAcr" class="sb-record-field-label">Estimated monthly ACR</label>
+                            <div class="sb-record-field-row">
+                                <span class="sb-record-field-suffix">$</span>
+                                <input type="number" class="sb-record-field" id="milestoneEngagementAcr" min="0" step="1">
+                                <span class="sb-record-field-suffix">/mo</span>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="milestoneEngagementTarget" class="form-label">Target date</label>
-                            <input type="date" class="form-control" id="milestoneEngagementTarget">
+                        <div class="sb-record-field-group">
+                            <label for="milestoneEngagementTarget" class="sb-record-field-label">Target date</label>
+                            <input type="date" class="sb-record-field" id="milestoneEngagementTarget">
                         </div>
                     </div>
-                    <div class="alert alert-danger d-none mt-3 mb-0" id="milestoneEngagementError"></div>
+                    <div class="sb-record-editor-error" id="milestoneEngagementError" role="alert" hidden></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="milestoneEngagementSubmit">
+                <div class="sb-dialog-footer"><small data-sb-child-status role="status"></small>
+                    <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+                    <button type="submit" class="sb-dialog-button" id="milestoneEngagementSubmit">
                         <i class="bi bi-check2 me-1"></i>Create engagement
                     </button>
                 </div>
             </form>
         </div>
-    </div>
-</div>
+</dialog>
 {% endif %}
 
 {% if milestone.msx_milestone_id %}
 <!-- New Task Modal -->
-<div class="modal fade" id="newTaskModal" tabindex="-1" aria-labelledby="newTaskModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="newTaskModalLabel">
+<dialog class="sb-dialog sb-dialog-record-editor" id="newTaskModal" aria-labelledby="newTaskModalLabel" data-sb-milestone-child data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell"><form id="milestoneTaskForm" class="sb-record-editor-form">
+            <div class="sb-dialog-header">
+                <h5 class="sb-record-editor-title" id="newTaskModalLabel">
                     <i class="bi bi-plus-circle me-1"></i> Create Task on Milestone
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">&times;</button>
             </div>
-            <div class="modal-body">
-                <div id="task_error" class="alert alert-danger" style="display: none;"></div>
-                <div id="task_form_fields">
-                    <div class="mb-3">
-                        <label for="modal_task_subject" class="form-label">Task Title <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="modal_task_subject"
+            <div class="sb-dialog-body">
+                <div id="task_error" class="sb-record-editor-error" role="alert" hidden></div>
+                <button class="sb-dialog-button" type="button" data-sb-ms-action="categories">
+                    Retry categories
+                </button>
+                <div id="task_form_fields" class="sb-record-form-grid">
+                    <div class="sb-record-form-wide">
+                        <label for="modal_task_subject" class="sb-record-field-label">Task Title <span class="text-danger">*</span></label>
+                        <input type="text" class="sb-record-field" id="modal_task_subject" required autofocus
                                placeholder="Brief task description...">
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-md-8">
-                            <label for="modal_task_category" class="form-label">Category <span class="text-danger">*</span></label>
-                            <select class="form-select" id="modal_task_category">
+                    <div class="sb-record-form-grid sb-record-form-wide">
+                        <div class="sb-record-field-group">
+                            <label for="modal_task_category" class="sb-record-field-label">Category <span class="text-danger">*</span></label>
+                            <select class="sb-record-field" id="modal_task_category" required>
                                 <option value="">-- Select task category --</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label for="modal_task_due_date" class="form-label">
+                        <div class="sb-record-field-group">
+                            <label for="modal_task_due_date" class="sb-record-field-label">
                                 <i class="bi bi-calendar-event me-1"></i>Due Date
                             </label>
-                            <input type="date" class="form-control" id="modal_task_due_date">
+                            <input type="date" class="sb-record-field" id="modal_task_due_date">
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="modal_task_description" class="form-label">Description (optional)</label>
-                        <textarea class="form-control" id="modal_task_description"
+                    <div class="sb-record-form-wide">
+                        <label for="modal_task_description" class="sb-record-field-label">Description (optional)</label>
+                        <textarea class="sb-record-field" id="modal_task_description"
                                   rows="2" placeholder="Additional details..."></textarea>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="create_task_btn" onclick="createTask()">
+            <div class="sb-dialog-footer"><small data-sb-child-status role="status"></small>
+                <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+                <button type="submit" class="sb-dialog-button" id="create_task_btn">
                     <i class="bi bi-cloud-upload me-1"></i> Create Task in MSX
                 </button>
             </div>
-        </div>
-    </div>
-</div>
+        </form></div>
+</dialog>
 {% endif %}
 
-<script>
+<script data-sb-milestone-controller>
+(() => {
+const root = document.currentScript.closest('[data-sb-milestone-detail]');
+function initialize() {
+    SBMilestoneWorkflow.attach(root, ({document, fetch, setTimeout, workflow}) => {
 const MS_ID = {{ milestone.id }};
 const HAS_MSX_ID = {{ 'true' if milestone.msx_milestone_id else 'false' }};
 const COMMENT_ENTITY_ID = MS_ID;
@@ -443,41 +450,9 @@ function escapeHtml(str) {
 
 {% if milestone.customer and not milestone.engagements %}
 // ── Engagement creation ────────────────────────────────────────────
-var _milestoneEngagementModal = null;
-var _milestoneEngagementParentModal = null;
-
-window.openMilestoneEngagementModal = function() {
-    var modalElement = document.getElementById('milestoneEngagementModal');
-    _milestoneEngagementParentModal = modalElement.closest('.modal.show');
-    if (_milestoneEngagementParentModal) {
-        var parentModal = bootstrap.Modal.getInstance(_milestoneEngagementParentModal);
-        if (parentModal) {
-            _milestoneEngagementParentModal.addEventListener('hidden.bs.modal', function showCreator() {
-                showMilestoneEngagementModal(modalElement);
-            }, {once: true});
-            parentModal.hide();
-            return;
-        }
-    }
-    showMilestoneEngagementModal(modalElement);
-};
-
-function showMilestoneEngagementModal(modalElement) {
-    if (modalElement.parentElement !== document.body) document.body.appendChild(modalElement);
-    _milestoneEngagementModal = bootstrap.Modal.getOrCreateInstance(modalElement);
-    _milestoneEngagementModal.show();
-    modalElement.addEventListener('shown.bs.modal', function focusTitle() {
-        document.getElementById('milestoneEngagementTitle').focus();
-    }, {once: true});
+function openMilestoneEngagementModal() {
+    workflow.openChild('milestoneEngagementModal');
 }
-
-document.getElementById('milestoneEngagementModal').addEventListener('hidden.bs.modal', function() {
-    if (_milestoneEngagementParentModal) {
-        var parentModal = bootstrap.Modal.getInstance(_milestoneEngagementParentModal);
-        if (parentModal) parentModal.show();
-        _milestoneEngagementParentModal = null;
-    }
-});
 
 document.getElementById('milestoneEngagementForm').addEventListener('submit', function(event) {
     event.preventDefault();
@@ -485,7 +460,7 @@ document.getElementById('milestoneEngagementForm').addEventListener('submit', fu
     var button = document.getElementById('milestoneEngagementSubmit');
     var error = document.getElementById('milestoneEngagementError');
     var title = document.getElementById('milestoneEngagementTitle').value.trim();
-    error.classList.add('d-none');
+    error.hidden = true;
     button.disabled = true;
     button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
     fetch('{{ url_for("engagements.engagement_create_inline", customer_id=milestone.customer.id) }}', {
@@ -517,11 +492,12 @@ document.getElementById('milestoneEngagementForm').addEventListener('submit', fu
             '<a href="/engagement/' + data.id + '"></a>';
         row.querySelector('a').textContent = data.title;
         emptyState.replaceWith(row);
-        _milestoneEngagementModal.hide();
+        SBDialog.close(document.getElementById('milestoneEngagementModal'), 'saved');
     })
     .catch(function(errorValue) {
+        console.error('Unable to create milestone engagement.', errorValue);
         error.textContent = errorValue.message;
-        error.classList.remove('d-none');
+        error.hidden = false;
     })
     .finally(function() {
         button.disabled = false;
@@ -564,6 +540,8 @@ fetchMsxDetails(1);
 function renderDetails(ms) {
     const spinner = document.getElementById('detailsSpinner');
     if (spinner) spinner.style.display = 'none';
+    document.getElementById('detailsError').style.display = 'none';
+    document.getElementById('commentsError').style.display = 'none';
 
     // Update the status row in details card
     const statusRow = document.getElementById('statusRow');
@@ -607,9 +585,7 @@ function renderError(errorMsg, vpnBlocked) {
     const spinner = document.getElementById('detailsSpinner');
     if (spinner) spinner.style.display = 'none';
 
-    const cached = document.getElementById('detailsCached');
-    const hasCachedData = cached && cached.innerHTML.trim().length > 0;
-    if (!hasCachedData) {
+    {
         const errEl = document.getElementById('detailsError');
         errEl.style.display = '';
         if (vpnBlocked) {
@@ -716,26 +692,32 @@ let taskCategories = [];
 function getTomorrowDate() {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+        '-' + String(d.getDate()).padStart(2, '0');
 }
 
 // Immediate invocation (not DOMContentLoaded) so it works when injected into a modal too
-(function() {
-    const dueDateEl = document.getElementById('modal_task_due_date');
-    if (dueDateEl) dueDateEl.value = getTomorrowDate();
+const dueDateEl = document.getElementById('modal_task_due_date');
+dueDateEl.value = dueDateEl.defaultValue = getTomorrowDate();
+function loadTaskCategories() {
     fetch('/api/msx/task-categories')
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.categories) {
-                taskCategories = data.categories;
-                populateTaskCategories();
+            if (!data.success || !Array.isArray(data.categories)) {
+                throw new Error(data.error || 'Invalid task categories response.');
             }
+            taskCategories = data.categories;
+            populateTaskCategories();
         })
-        .catch(error => console.error('Failed to load task categories:', error));
-})();
-
+        .catch(error => {
+            console.error('Failed to load task categories:', error);
+            showTaskError('Unable to load task categories. Use Retry categories before saving.');
+        });
+}
+loadTaskCategories();
 function populateTaskCategories() {
     const select = document.getElementById('modal_task_category');
+    const selected = select.value;
     select.innerHTML = '<option value="">-- Select task category --</option>';
     taskCategories.forEach(cat => {
         const option = document.createElement('option');
@@ -747,19 +729,21 @@ function populateTaskCategories() {
         }
         select.appendChild(option);
     });
+    if (taskCategories.some(cat => String(cat.value) === selected)) select.value = selected;
 }
 
-window.showTaskError = function(msg) {
+function showTaskError(msg) {
     const el = document.getElementById('task_error');
     el.textContent = msg;
-    el.style.display = 'block';
+    el.hidden = false;
 }
 
-window.hideTaskError = function() {
-    document.getElementById('task_error').style.display = 'none';
+function hideTaskError() {
+    document.getElementById('task_error').hidden = true;
 }
 
-window.createTask = function() {
+function createTask() {
+    if (document.getElementById('create_task_btn').disabled) return;
     const subject = document.getElementById('modal_task_subject').value.trim();
     const category = document.getElementById('modal_task_category').value;
     const description = document.getElementById('modal_task_description').value.trim();
@@ -806,7 +790,8 @@ window.createTask = function() {
         btn.disabled = result.created_in_msx === true;
         btn.innerHTML = originalText;
         if (result.success) {
-            window.location.reload();
+            btn.disabled = true;
+            workflow.reload();
         } else {
             showTaskError(result.error || 'Failed to create task');
         }
@@ -818,54 +803,30 @@ window.createTask = function() {
     });
 }
 
-// Modal chaining: if the task modal is inside a parent modal (e.g. milestone
-// detail opened from milestone tracker), hide the parent first, show the task
-// modal, and re-show the parent when the task modal closes.
-var _taskModal = null;
-var _parentModalEl = null;
-
-window.openNewTaskModal = function() {
-    var taskModalEl = document.getElementById('newTaskModal');
-    // Find the closest visible parent modal that contains us
-    _parentModalEl = taskModalEl.closest('.modal.show');
-    if (_parentModalEl) {
-        var parentModal = bootstrap.Modal.getInstance(_parentModalEl);
-        if (parentModal) {
-            var onceHidden = function() {
-                _parentModalEl.removeEventListener('hidden.bs.modal', onceHidden);
-                _showTaskModal(taskModalEl);
-            };
-            _parentModalEl.addEventListener('hidden.bs.modal', onceHidden);
-            parentModal.hide();
-            return;
-        }
-    }
-    _showTaskModal(taskModalEl);
+function openNewTaskModal() {
+    workflow.openChild('newTaskModal');
 }
-
-window._showTaskModal = function(taskModalEl) {
-    // If the task modal is nested inside a (now-hidden) parent modal,
-    // move it to <body> so it can render independently.
-    if (taskModalEl.parentElement !== document.body) {
-        document.body.appendChild(taskModalEl);
-    }
-    if (!_taskModal) _taskModal = new bootstrap.Modal(taskModalEl);
-    _taskModal.show();
-}
-
-document.getElementById('newTaskModal').addEventListener('hidden.bs.modal', function() {
-    document.getElementById('modal_task_subject').value = '';
-    document.getElementById('modal_task_category').value = '';
-    document.getElementById('modal_task_description').value = '';
-    document.getElementById('modal_task_due_date').value = getTomorrowDate();
-    hideTaskError();
-    document.getElementById('create_task_btn').disabled = false;
-    // Re-show the parent modal if we came from one
-    if (_parentModalEl) {
-        var parentModal = bootstrap.Modal.getInstance(_parentModalEl);
-        if (parentModal) parentModal.show();
-        _parentModalEl = null;
-    }
+document.getElementById('milestoneTaskForm').addEventListener('submit', event => {
+    event.preventDefault();
+    createTask();
 });
 {% endif %}
+return {
+    join: () => joinMilestoneTeam(MS_ID),
+    leave: () => leaveMilestoneTeam(MS_ID),
+    {% if milestone.customer and not milestone.engagements %}
+    engagement: openMilestoneEngagementModal,
+    {% endif %}
+    {% if milestone.msx_milestone_id %}
+    task: openNewTaskModal,
+    refresh: () => fetchMsxDetails(0),
+    categories: loadTaskCategories,
+    {% endif %}
+};
+    });
+}
+if (window.SBMilestoneWorkflow) initialize();
+else window.addEventListener('DOMContentLoaded', initialize, {once: true});
+})();
 </script>
+</div>
