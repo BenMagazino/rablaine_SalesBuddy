@@ -5,11 +5,10 @@
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - UI baseline: `1fbdd64`, approved header/navigation checkpoint
-- Implementation tested: working tree based on `1fbdd64`
+- Implementation revision: `160e2d9`
 - Entry points: header help button, `?`, F1 from pages and existing dialogs
-- Next action: commit this approved checkpoint, then continue editable customer
-  pickers and record dialogs in separate checkpoints. Carry this checkpoint's
-  commit SHA into the next handoff.
+- Next action: continue customer pickers and record dialogs in separate checkpoints.
+  This approved checkpoint is committed.
 
 ## Scope and original inventory
 

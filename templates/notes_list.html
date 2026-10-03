@@ -88,7 +88,7 @@
     </div>
 {% else %}
     <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> No notes yet. <button type="button" class="btn btn-link p-0" data-bs-toggle="modal" data-bs-target="#quickNoteModal">Create your first note</button>!
+        <i class="bi bi-info-circle"></i> No notes yet. <button type="button" class="btn btn-link p-0" data-sb-dialog="quickNoteModal" aria-haspopup="dialog" aria-controls="quickNoteModal">Create your first note</button>!
     </div>
 {% endif %}
 
@@ -153,7 +153,6 @@
 })();
 </script>
 {% endblock %}
-
 
 
 

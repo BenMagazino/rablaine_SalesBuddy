@@ -706,7 +706,7 @@
             </div>
             </div>
                 <div class="sb-bar-actions">
-                    <button class="sb-bar-button sb-new-note" type="button" id="navNewNote" data-bs-toggle="modal" data-bs-target="#quickNoteModal" title="Create new note (Ctrl+K)" aria-label="Create new note">
+                    <button class="sb-bar-button sb-new-note" type="button" id="navNewNote" data-sb-dialog="quickNoteModal" aria-haspopup="dialog" aria-controls="quickNoteModal" title="Create new note (Ctrl+K)" aria-label="Create new note">
                         <i class="bi bi-plus-circle" aria-hidden="true"></i> <span>New note</span>
                     </button>
                     <button class="sb-bar-button" type="button" data-sb-dialog="keyboardShortcutsModal" aria-haspopup="dialog" aria-controls="keyboardShortcutsModal" title="Help & Keyboard Shortcuts (?)" aria-label="Help and keyboard shortcuts">
@@ -1201,43 +1201,65 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Quick Note Modal -->
-    <div class="modal fade" id="quickNoteModal" tabindex="-1" aria-labelledby="quickNoteModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="quickNoteModalLabel">Create Note</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <!-- Quick note customer picker -->
+    <dialog class="sb-dialog sb-dialog-picker" id="quickNoteModal"
+            aria-labelledby="quickNoteModalLabel" data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell">
+            <div class="sb-dialog-header">
+                <div class="sb-dialog-heading">
+                    <div class="sb-dialog-eyebrow">Customer selection</div>
+                    <h2 id="quickNoteModalLabel">Create Note</h2>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="customerSearch" class="form-label">Search for Customer</label>
-                        <input type="text" class="form-control" id="customerSearch" placeholder="Search customers..." autocomplete="off">
-                    </div>
-                    <div id="customerResults" class="list-group" style="max-height: 400px; overflow-y: auto;"></div>
+                <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                        aria-label="Close note customer picker"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </div>
+            <div class="sb-dialog-body">
+                <label class="sb-picker-label" for="customerSearch">Search for Customer</label>
+                <div class="sb-picker-field">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" class="sb-picker-input" id="customerSearch"
+                           aria-controls="customerResults" placeholder="Search customers..."
+                           autocomplete="off" autofocus>
                 </div>
+                <div id="customerResults" class="sb-picker-results" role="region"
+                     aria-label="Note customer choices"></div>
+            </div>
+            <div class="sb-dialog-footer">
+                <small>Arrow keys to move; Enter or Space to choose a focused result.</small>
+                <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
             </div>
         </div>
-    </div>
+    </dialog>
 
-    <!-- Quick New Engagement Modal -->
-    <div class="modal fade" id="quickEngagementModal" tabindex="-1" aria-labelledby="quickEngagementModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="quickEngagementModalLabel">New Engagement</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <!-- Quick engagement customer picker -->
+    <dialog class="sb-dialog sb-dialog-picker" id="quickEngagementModal"
+            aria-labelledby="quickEngagementModalLabel" data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell">
+            <div class="sb-dialog-header">
+                <div class="sb-dialog-heading">
+                    <div class="sb-dialog-eyebrow">Customer selection</div>
+                    <h2 id="quickEngagementModalLabel">New Engagement</h2>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="engagementCustomerSearch" class="form-label">Choose a Customer</label>
-                        <input type="text" class="form-control" id="engagementCustomerSearch" placeholder="Search customers..." autocomplete="off">
-                    </div>
-                    <div id="engagementCustomerResults" class="list-group" style="max-height: 400px; overflow-y: auto;"></div>
+                <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                        aria-label="Close engagement customer picker"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </div>
+            <div class="sb-dialog-body">
+                <label class="sb-picker-label" for="engagementCustomerSearch">Choose a Customer</label>
+                <div class="sb-picker-field">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" class="sb-picker-input" id="engagementCustomerSearch"
+                           aria-controls="engagementCustomerResults" placeholder="Search customers..."
+                           autocomplete="off" autofocus>
                 </div>
+                <div id="engagementCustomerResults" class="sb-picker-results" role="region"
+                     aria-label="Engagement customer choices"></div>
+            </div>
+            <div class="sb-dialog-footer">
+                <small>Arrow keys to move; Enter or Space to choose a focused result.</small>
+                <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
             </div>
         </div>
-    </div>
+    </dialog>
     
     <!-- Contextual page help (F1) -->
     <dialog class="sb-dialog" id="pageHelpModal" aria-labelledby="pageHelpModalLabel"
@@ -2729,9 +2751,9 @@
         }
     </script>
     
-    <!-- Quick Note Modal JavaScript -->
+    <!-- Shared customer picker initialization -->
     <script defer>
-        window.addEventListener('load', () => {
+        (() => {
             // Setup for note modal - goes to note form
             setupCustomerSearchModal('quickNoteModal', 'customerSearch', 'customerResults', '{{ url_for("notes.note_create") }}?customer_id=', '{{ url_for("notes.note_create") }}');
             // Setup for new engagement modal - goes to engagement form
@@ -2744,37 +2766,96 @@
                 'quickCreateModal', 'quickCreateSearch', 'quickCreateCustomerList',
                 '{{ url_for("notes.note_create") }}?customer_id=',
                 '{{ url_for("notes.note_create") }}',
-                function() { return calendarDateSuffix; }
+                function() { return calendarDateSuffix; }, true
             );
-        });
+        })();
         
-        function setupCustomerSearchModal(modalId, searchInputId, resultsId, baseUrl, noCustomerUrl, urlSuffixFn) {
+        function setupCustomerSearchModal(modalId, searchInputId, resultsId, baseUrl, noCustomerUrl, urlSuffixFn, optional = false) {
             const customerSearch = document.getElementById(searchInputId);
             const customerResults = document.getElementById(resultsId);
             const modal = document.getElementById(modalId);
             let allCustomers = null;
+            let pendingLoad = null;
+            let generation = 0;
 
-            if (!customerSearch || !customerResults || !modal) return;
+            if (optional && !customerSearch && !customerResults && !modal) return;
+            if (!customerSearch || !customerResults || !modal) {
+                throw new Error(`Customer picker markup is incomplete: ${modalId}`);
+            }
+            const native = modal.tagName === 'DIALOG';
+
+            function createLink(href, name, metadata, general = false) {
+                const link = document.createElement('a');
+                link.href = href;
+                link.dataset.sbPickerLink = 'true';
+                link.className = native ? 'sb-picker-result' : 'list-group-item list-group-item-action';
+                if (general) {
+                    link.className += native ? ' sb-picker-general' : ' list-group-item-light border-bottom-2';
+                }
+                const icon = document.createElement('i');
+                icon.className = general ? 'bi bi-journal-text' : 'bi bi-building';
+                if (general && !native) icon.className += ' text-secondary';
+                icon.setAttribute('aria-hidden', 'true');
+                const label = document.createElement(general ? 'em' : 'span');
+                label.className = native ? 'sb-picker-name' : '';
+                label.textContent = name;
+                link.append(icon);
+                if (!native) link.append(document.createTextNode(' '));
+                link.append(label);
+                if (metadata) {
+                    const meta = document.createElement('span');
+                    meta.className = native ? 'sb-picker-meta' : 'badge bg-secondary ms-2';
+                    meta.textContent = metadata;
+                    link.append(meta);
+                }
+                return link;
+            }
+
+            function showState(message, error = false) {
+                const state = document.createElement('div');
+                state.className = native ? 'sb-picker-state' : 'list-group-item';
+                state.className += error ? (native ? ' is-error' : ' text-danger') : '';
+                state.setAttribute('role', error ? 'alert' : 'status');
+                const text = document.createElement('span');
+                text.textContent = message;
+                state.append(text);
+                if (error) {
+                    const retry = document.createElement('button');
+                    retry.type = 'button';
+                    retry.className = 'sb-dialog-button';
+                    retry.textContent = 'Retry';
+                    retry.addEventListener('click', () => {
+                        customerSearch.focus();
+                        return loadCustomers();
+                    });
+                    state.append(retry);
+                }
+                customerResults.replaceChildren(state);
+            }
 
             function renderResults(customers){
-                let html = '';
+                const links = [];
                 const suffix = urlSuffixFn ? urlSuffixFn() : '';
                 // Show "Not Customer Associated" option at top for note modal
                 if (noCustomerUrl) {
                     const noCustomerSuffix = suffix ? (noCustomerUrl.includes('?') ? suffix : '?' + suffix.substring(1)) : '';
-                    html += `<a href="${noCustomerUrl}${noCustomerSuffix}" class="list-group-item list-group-item-action list-group-item-light border-bottom-2"><i class="bi bi-journal-text text-secondary"></i> <em>Not Customer Associated</em> <span class="badge bg-secondary ms-2">General Note</span></a>`;
+                    links.push(createLink(noCustomerUrl + noCustomerSuffix,
+                        'Not Customer Associated', 'General Note', true));
                 }
                 if (customers.length === 0 && !noCustomerUrl) {
-                    customerResults.innerHTML = '<div class="list-group-item text-muted">No customers found</div>';
+                    showState('No customers found');
                     return;
                 }
-                html += customers.map((c, i) => {
+                customers.forEach((c, i) => {
                     const displayName = c.nickname ? `${c.name} (${c.nickname})` : c.name;
-                    const tpidBadge = c.tpid ? `<span class="badge bg-secondary ms-2">TPID: ${c.tpid}</span>` : '';
-                    const highlight = (i === 0 && customerSearch.value.trim()) ? ' enter-target' : '';
-                    return `<a href="${baseUrl}${c.id}${suffix}" class="list-group-item list-group-item-action${highlight}"><i class="bi bi-building"></i> ${displayName}${tpidBadge}</a>`;
-                }).join('');
-                customerResults.innerHTML = html;
+                    const link = createLink(baseUrl + c.id + suffix, displayName,
+                        c.tpid ? `TPID: ${c.tpid}` : '');
+                    link.dataset.sbCustomerId = String(c.id);
+                    if (i === 0 && customerSearch.value.trim()) link.className += ' enter-target';
+                    links.push(link);
+                });
+                customerResults.replaceChildren(...links);
+                customerResults.scrollTop = 0;
             }
 
             function filterAndRender(query) {
@@ -2792,36 +2873,75 @@
                 renderResults(filtered);
             }
 
+            async function getCustomers() {
+                if (allCustomers) return allCustomers;
+                if (!pendingLoad) {
+                    pendingLoad = (async () => {
+                        try {
+                            const resp = await fetch('{{ url_for("customers.api_customers_list") }}');
+                            if (!resp.ok) throw new Error(`Customer picker failed (HTTP ${resp.status})`);
+                            const data = await resp.json();
+                            if (!Array.isArray(data) || data.some(c => !c ||
+                                !Number.isInteger(c.id) || typeof c.name !== 'string' ||
+                                (c.nickname != null && typeof c.nickname !== 'string') ||
+                                (c.tpid != null && !['string', 'number'].includes(typeof c.tpid)))) {
+                                throw new Error('Customer picker returned invalid customer data');
+                            }
+                            allCustomers = data;
+                            return data;
+                        } catch (err) {
+                            console.error('Failed to load customer picker:', modalId, err);
+                            throw err;
+                        }
+                    })().finally(() => { pendingLoad = null; });
+                }
+                return pendingLoad;
+            }
+
             async function loadCustomers() {
+                const currentGeneration = generation;
                 if (allCustomers) {
                     filterAndRender(customerSearch.value.trim());
                     return;
                 }
-                customerResults.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Loading...</div>';
+                showState('Loading customers...');
+                customerResults.setAttribute('aria-busy', 'true');
                 try {
-                    const resp = await fetch('{{ url_for("customers.api_customers_list") }}');
-                    allCustomers = await resp.json();
-                    filterAndRender(customerSearch.value.trim());
+                    await getCustomers();
+                    if (currentGeneration === generation) {
+                        filterAndRender(customerSearch.value.trim());
+                    }
                 } catch (err) {
-                    customerResults.innerHTML = '<div class="list-group-item text-danger">Error loading customers</div>';
+                    if (currentGeneration === generation) {
+                        showState('Error loading customers. Try again.', true);
+                    }
+                } finally {
+                    if (currentGeneration === generation) {
+                        customerResults.setAttribute('aria-busy', 'false');
+                    }
                 }
             }
 
             // Load + show all customers when modal opens, then focus search
-            modal.addEventListener('shown.bs.modal', function () {
-                loadCustomers();
+            modal.addEventListener(native ? 'sb:dialog-opened' : 'shown.bs.modal', async function (event) {
+                if (event.target !== modal) return;
+                generation++;
                 customerSearch.focus();
+                await loadCustomers();
             });
 
             // Clear search when modal closes
-            modal.addEventListener('hidden.bs.modal', function () {
+            modal.addEventListener(native ? 'sb:dialog-closed' : 'hidden.bs.modal', function (event) {
+                if (event.target !== modal) return;
+                generation++;
                 customerSearch.value = '';
-                customerResults.innerHTML = '';
+                customerResults.replaceChildren();
+                customerResults.setAttribute('aria-busy', 'false');
             });
             
             // Keyboard navigation for search input
             customerSearch.addEventListener('keydown', function(e) {
-                const items = customerResults.querySelectorAll('a.list-group-item-action');
+                const items = customerResults.querySelectorAll('a[data-sb-picker-link]');
                 
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
@@ -2837,7 +2957,7 @@
                     e.preventDefault();
                     if (this.value.trim()) {
                         // Select first actual customer (skip "Not Customer Associated")
-                        const firstCustomer = customerResults.querySelector('a.list-group-item-action:not(.list-group-item-light)');
+                        const firstCustomer = customerResults.querySelector('a[data-sb-customer-id]');
                         if (firstCustomer) firstCustomer.click();
                     }
                 }
@@ -2845,7 +2965,7 @@
             
             // Keyboard navigation for results list
             customerResults.addEventListener('keydown', function(e) {
-                const items = Array.from(customerResults.querySelectorAll('a.list-group-item-action'));
+                const items = Array.from(customerResults.querySelectorAll('a[data-sb-picker-link]'));
                 const currentIndex = items.indexOf(document.activeElement);
                 
                 if (currentIndex === -1) return;
@@ -3078,11 +3198,7 @@
                 // Ctrl+K: Open Quick New Note
                 if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                     e.preventDefault();
-                    const noteModal = document.getElementById('quickNoteModal');
-                    if (noteModal && typeof bootstrap !== 'undefined') {
-                        const modal = bootstrap.Modal.getOrCreateInstance(noteModal);
-                        modal.show();
-                    }
+                    SBDialog.open('quickNoteModal');
                 }
                 // / : Focus customer search (only when not typing)
                 if (!isTyping && e.key === '/') {

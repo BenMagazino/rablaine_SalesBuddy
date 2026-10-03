@@ -75,7 +75,7 @@ def test_navigation_update_badges_and_modal_entry_points(app, update_available):
     soup = render_navigation(app, update_available=update_available)
     for badge_id in ("updateBadge", "updateMenuBadge"):
         assert soup.find(id=badge_id).has_attr("hidden") is not update_available
-    assert soup.select_one("#navNewNote")["data-bs-target"] == "#quickNoteModal"
+    assert soup.select_one("#navNewNote")["data-sb-dialog"] == "quickNoteModal"
     assert soup.select_one('button[data-sb-dialog="keyboardShortcutsModal"]')
     assert soup.select_one("#navCustomerSearch")["aria-label"] == "Customer search"
     assert soup.select_one("#navQuickLookup kbd").get_text(strip=True) == "/"
@@ -137,7 +137,8 @@ def test_help_dialog_source_has_balanced_shells() -> None:
     source = Path(__file__).resolve().parents[1].joinpath("templates", "base.html").read_text(
         encoding="utf-8"
     )
-    for dialog_id in ("pageHelpModal", "keyboardShortcutsModal"):
+    for dialog_id in ("pageHelpModal", "keyboardShortcutsModal",
+                      "quickNoteModal", "quickEngagementModal"):
         match = re.search(
             rf'<dialog\b[^>]*\bid="{dialog_id}"[^>]*>.*?</dialog>', source, re.DOTALL
         )
@@ -150,3 +151,49 @@ def test_help_dialog_source_has_balanced_shells() -> None:
                              "link", "meta", "param", "source", "track", "wbr"}:
                 stack.append(tag)
         assert not stack
+
+
+@pytest.mark.parametrize(
+    ("dialog_id", "input_id", "results_id"),
+    [("quickNoteModal", "customerSearch", "customerResults"),
+     ("quickEngagementModal", "engagementCustomerSearch", "engagementCustomerResults")],
+)
+def test_customer_picker_owned_markup(app, dialog_id, input_id, results_id) -> None:
+    """Customer selection retains its original IDs and uses the native dialog controls."""
+    soup = render_navigation(app)
+    dialog = soup.find(id=dialog_id)
+    assert dialog.name == "dialog"
+    assert dialog["data-sb-backdrop-close"] == "true"
+    assert soup.find(id=dialog["aria-labelledby"])
+    field = dialog.find(id=input_id)
+    assert field["autocomplete"] == "off"
+    assert field.has_attr("autofocus")
+    assert field["aria-controls"] == results_id
+    assert dialog.find(id=results_id)["role"] == "region"
+    assert dialog.select_one("label")["for"] == input_id
+    assert len(dialog.select("[data-sb-dialog-close]")) == 2
+    assert not dialog.select(".modal, .form-control, .list-group, [data-bs-dismiss]")
+
+
+@pytest.mark.parametrize(
+    ("url", "dialog_id"), [("/notes", "quickNoteModal"), ("/engagements", "quickEngagementModal")]
+)
+def test_customer_picker_page_launchers(client, url, dialog_id) -> None:
+    """Empty notes and the engagements hub no longer launch removed Bootstrap modals."""
+    soup = BeautifulSoup(client.get(url).data, "html.parser")
+    trigger = soup.select_one(f'main button[data-sb-dialog="{dialog_id}"]')
+    assert trigger
+    assert trigger["type"] == "button"
+    assert trigger["aria-controls"] == dialog_id
+    assert not trigger.has_attr("data-bs-toggle")
+
+
+def test_calendar_customer_picker_retains_legacy_host_and_date_hook(client) -> None:
+    """The third shared picker stays available until the separate homepage checkpoint."""
+    soup = BeautifulSoup(client.get("/").data, "html.parser")
+    calendar_picker = soup.find(id="quickCreateModal")
+    assert calendar_picker.name == "div"
+    assert "modal" in calendar_picker["class"]
+    assert calendar_picker.select_one("#quickCreateSearch")
+    assert calendar_picker.select_one("#quickCreateCustomerList")
+    assert any("_quickCreateUpdateDate" in (script.string or "") for script in soup.find_all("script"))

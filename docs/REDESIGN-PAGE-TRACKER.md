@@ -6,18 +6,18 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 3, native dialog foundation and GLOBAL-HELP /
-  GLOBAL-KEYS, verified and user-approved; the full GLOBAL-SHELL remains BUILDING
-- Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation)
-- Next action: continue editable pickers and note/milestone partial flows after
-  committing this approved checkpoint;
-  homepage bodies and calendar parity remain separate work.
+- Current page/surface: checkpoint 4, GLOBAL-NOTE / GLOBAL-ENG customer pickers,
+  technically verified and user-approved; full GLOBAL-SHELL remains BUILDING
+- Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
+  `160e2d9` (native help/dialog foundation)
+- Next action: commit this approved checkpoint, then continue
+  note/milestone partial flows; homepage bodies and calendar parity remain separate work.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
 - Page progress: 0 / 90 DONE
 - Shared fragment/helper progress: 0 / 24 DONE
-- Global/shell/error progress: 2 / 17 DONE
+- Global/shell/error progress: 4 / 17 DONE
 - Additional pages discovered after baseline: none recorded
 - Commit cadence: each coherent, verified checkpoint; no automatic push or merge
 - Pre-release reviewer: the user; external tester/users provide post-release QA
@@ -175,8 +175,8 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | --- | --- | --- | --- | --- |
 | GLOBAL-SHELL | Navigation, page frame, theme, flash/status messages, global controls | `templates/base.html` | BUILDING | [Card](redesign-pages/GLOBAL-SHELL.md) |
 | GLOBAL-SETUP | Welcome/sign-in/onboarding | `base.html`, welcome modal | TODO | - |
-| GLOBAL-NOTE | Quick-note customer picker | `base.html`, quick-note modal | TODO | - |
-| GLOBAL-ENG | Quick-engagement customer picker | `base.html`, quick-engagement modal | TODO | - |
+| GLOBAL-NOTE | Quick-note customer picker | `base.html`, native quick-note dialog | DONE | [Card](redesign-pages/GLOBAL-PICKERS.md) |
+| GLOBAL-ENG | Quick-engagement customer picker | `base.html`, native quick-engagement dialog | DONE | [Card](redesign-pages/GLOBAL-PICKERS.md) |
 | GLOBAL-HELP | Contextual page help | `base.html`, native help dialog | DONE | [Card](redesign-pages/GLOBAL-HELP.md) |
 | GLOBAL-KEYS | Keyboard shortcuts | `base.html`, native shortcuts dialog | DONE | [Card](redesign-pages/GLOBAL-HELP.md) |
 | GLOBAL-CHAT | Copilot chat | `base.html`, chat flyout | TODO | - |
