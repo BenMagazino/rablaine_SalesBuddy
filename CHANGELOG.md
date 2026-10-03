@@ -19,6 +19,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Use workbench status strips for VPN, Azure sign-in, fiscal-year transition and viewing-as context, preserving their existing actions.
 - Show meeting-sync progress in a draggable workbench panel, with retryable status-read errors and keyboard-friendly hiding.
 - Keep a single focus indicator around header customer search instead of also outlining its inner text input.
+- Open calendar notes in workbench previews with retryable loading, protected action-item drafts and safe navigation while saving.
+- Keep note quick actions keyboard-friendly on both previews and full pages, and display preview creation/update timestamps.
 
 ## 10/2/2026 - a25a8a4
 

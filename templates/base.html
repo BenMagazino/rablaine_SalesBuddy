@@ -1415,6 +1415,9 @@
     <!-- Contextual page help (F1) -->
     <script src="{{ url_for('static', filename='js/ui-dialog.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-feedback.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui-note-actions.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui-local-datetime.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui-record-dialog.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/page-help.js') }}" defer></script>
     <script>document.addEventListener('DOMContentLoaded', () => Share.init());</script>
 
@@ -3297,39 +3300,6 @@
         });
     </script>
     
-    <!-- Convert UTC timestamps to local time (any page with class="local-datetime") -->
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var shortTZ = new Date().toLocaleTimeString('en-US', { timeZoneName: 'short' }).split(' ').pop();
-        document.querySelectorAll('.local-datetime').forEach(function(el) {
-            var utc = el.getAttribute('data-utc');
-            if (!utc) return;
-            // Naive datetimes from SQLite have no timezone suffix - treat as UTC
-            if (!/[Zz]|\+\d/.test(utc)) utc += 'Z';
-            var d = new Date(utc);
-            if (isNaN(d)) return;
-            var fmt = el.getAttribute('data-fmt') || 'datetime';
-            if (fmt === 'short') {
-                el.textContent = d.toLocaleString('en-US', {
-                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
-                });
-            } else if (fmt === 'time') {
-                el.textContent = d.toLocaleTimeString('en-US', {
-                    hour: 'numeric', minute: '2-digit', hour12: true
-                });
-            } else {
-                el.textContent = d.toLocaleString('en-US', {
-                    year: 'numeric', month: 'short', day: 'numeric',
-                    hour: 'numeric', minute: '2-digit', hour12: true
-                });
-            }
-        });
-        document.querySelectorAll('.timezone-label').forEach(function(el) {
-            el.textContent = '(' + shortTZ + ')';
-        });
-    });
-    </script>
-
     <!-- Global Auth-Required Detection. Reactive only (mirrors the VPN banner):
          the fetch interceptor below flips this on when an MSX/AI call comes back
          unauthenticated. The "Sign In to Azure" button runs the same browser
@@ -3596,6 +3566,31 @@
         </div>
     </section>
     <script src="{{ url_for('static', filename='js/ui-sync-status.js') }}"></script>
+
+    <dialog class="sb-dialog sb-dialog-compact" id="recordDiscardDialog"
+            aria-labelledby="recordDiscardTitle" data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell">
+            <div class="sb-dialog-header">
+                <div class="sb-dialog-heading">
+                    <div class="sb-dialog-eyebrow">Unsaved changes</div>
+                    <h2 id="recordDiscardTitle">Discard this draft?</h2>
+                </div>
+                <button class="sb-dialog-close" type="button" data-sb-dialog-close
+                        aria-label="Keep editing"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </div>
+            <div class="sb-dialog-body">
+                <p>Your action item has not been saved. Keep editing, or discard the draft to continue.</p>
+            </div>
+            <div class="sb-dialog-footer">
+                <button class="sb-dialog-button" type="button" data-sb-dialog-close autofocus>
+                    Keep editing
+                </button>
+                <button class="sb-dialog-button" id="recordDiscardConfirm" type="button">
+                    Discard draft
+                </button>
+            </div>
+        </div>
+    </dialog>
 
     <!-- Shared image viewer for rendered note content -->
     <dialog class="sb-dialog sb-dialog-image" id="imageZoomModal"

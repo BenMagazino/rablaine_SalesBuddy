@@ -31,9 +31,11 @@ function dialogs() {
             return null;
         }
         dispatchEvent(event) {
+            event.target ||= this;
             events.push(event);
             this.handlers.get(event.type)?.(event);
             if (event.bubbles && !event.stopped) listeners.get(event.type)?.(event);
+            return !event.defaultPrevented;
         }
     }
     class Dialog extends Element {
@@ -57,6 +59,7 @@ function dialogs() {
     const window = {};
     class CustomEvent {
         constructor(type, options) { this.type = type; Object.assign(this, options); }
+        preventDefault() { if (this.cancelable) this.defaultPrevented = true; }
     }
     vm.runInNewContext(source, {document, window, Element, HTMLDialogElement: Dialog, CustomEvent});
     function emit(type, target = document.activeElement, key) {
@@ -116,6 +119,25 @@ test('Escape policy blocks both keyboard and native cancellation', () => {
     assert.equal(h.emit('keydown', dialog.button, 'Escape').stopped, true);
     dialog.dispatchEvent({type: 'cancel', preventDefault() {}});
     assert.equal(dialog.open, true);
+});
+
+test('cancelable before-close guards protect button, Escape and backdrop dismissal', () => {
+    const h = dialogs();
+    const dialog = h.records.get('first');
+    dialog.dataset.sbBackdropClose = 'true';
+    dialog.addEventListener('sb:dialog-before-close', event => event.preventDefault());
+    h.api.open(dialog);
+    h.api.close(dialog, 'button');
+    h.emit('keydown', dialog.button, 'Escape');
+    dialog.dispatchEvent({type: 'pointerdown', target: dialog, clientX: 10, clientY: 10});
+    dialog.dispatchEvent({type: 'click', target: dialog, clientX: 10, clientY: 10});
+    assert.equal(dialog.open, true);
+    assert.deepEqual(h.events.filter(e => e.type === 'sb:dialog-before-close')
+        .map(e => e.detail.reason), ['button', 'escape', 'backdrop']);
+    dialog.handlers.delete('sb:dialog-before-close');
+    h.api.close(dialog);
+    assert.equal(dialog.open, false);
+    assert.equal(h.document.activeElement, h.opener);
 });
 
 test('closing an underlying dialog keeps child focus and hands off the original opener', () => {

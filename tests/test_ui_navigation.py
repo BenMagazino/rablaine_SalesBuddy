@@ -142,7 +142,8 @@ def test_help_dialog_source_has_balanced_shells() -> None:
         encoding="utf-8"
     )
     for dialog_id in ("pageHelpModal", "keyboardShortcutsModal",
-                      "quickNoteModal", "quickEngagementModal", "imageZoomModal"):
+                      "quickNoteModal", "quickEngagementModal", "imageZoomModal",
+                      "recordDiscardDialog"):
         match = re.search(
             rf'<dialog\b[^>]*\bid="{dialog_id}"[^>]*>.*?</dialog>', source, re.DOTALL
         )
@@ -219,6 +220,23 @@ def test_image_viewer_owned_markup(app) -> None:
     assert not dialog.select(".modal, .modal-dialog, .modal-content, [data-bs-dismiss], [onclick]")
     scripts = [script.get("src", "") for script in soup.select("script[src]")]
     assert scripts.index("/static/js/ui-dialog.js") < scripts.index("/static/js/ui-image-viewer.js")
+
+
+def test_record_discard_dialog_and_deferred_modules(app) -> None:
+    """Guarded previews have a native confirmation and dependencies initialize in order."""
+    soup = render_navigation(app)
+    dialog = soup.find(id="recordDiscardDialog")
+    assert dialog.name == "dialog"
+    assert dialog["data-sb-backdrop-close"] == "true"
+    assert dialog["aria-labelledby"] == "recordDiscardTitle"
+    assert dialog.select_one("[autofocus][data-sb-dialog-close]").get_text(strip=True) == "Keep editing"
+    assert dialog.find(id="recordDiscardConfirm")["type"] == "button"
+    assert not dialog.select(".modal, .modal-content, [data-bs-dismiss], [onclick]")
+    scripts = [script.get("src", "") for script in soup.select("script[src]")]
+    for filename in ("ui-note-actions.js", "ui-local-datetime.js", "ui-record-dialog.js"):
+        script = soup.select_one(f'script[src="/static/js/{filename}"]')
+        assert script.has_attr("defer")
+        assert scripts.index("/static/js/ui-dialog.js") < scripts.index(script["src"])
 
 
 @pytest.mark.parametrize(

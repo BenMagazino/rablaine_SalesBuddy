@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-7 committed, checkpoint 8 technically verified and user-approved
+- Status: BUILDING; checkpoints 1-8 committed, checkpoint 9 verified and user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -11,14 +11,17 @@
 - Checkpoint 5 image viewer: `f1916e8`, [Image evidence](GLOBAL-ZOOM.md), user-approved
 - Checkpoint 6 shared flash notifications: `1e7b16c`, [Feedback evidence](GLOBAL-FEEDBACK.md), user-approved
 - Checkpoint 7 persistent status strips: `f6e9163`, [Status evidence](GLOBAL-STATUS.md), user-approved
-- Checkpoint 8 floating meeting-sync status: [Sync evidence](GLOBAL-SYNC.md), user-approved
+- Checkpoint 8 floating meeting-sync status: `dd44c58`, [Sync evidence](GLOBAL-SYNC.md), user-approved
+- Checkpoint 9 note-preview lifecycle/editor: [Note-preview evidence](HOME-NOTE-PREVIEW.md),
+  technically verified, user-approved
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
 - Next action: continue the remaining global surfaces after this checkpoint;
   homepage and shared note/milestone dialogs are not approved by this checkpoint.
-  Commit checkpoint 8 and pause, then move into shared note/milestone overlay lifecycle and bodies.
+  Commit approved checkpoint 9, then pause. Next work is shared milestone lifecycle/nested
+  editors; full note/milestone bodies remain independent future checkpoints.
 
 ## Checkpoint 1 scope
 

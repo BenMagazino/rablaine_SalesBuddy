@@ -1,4 +1,5 @@
 {% from 'partials/customer_favicon.html' import customer_favicon %}
+<div data-sb-note-detail data-sb-note-id="{{ note.id }}">
 
 {% if show_edit_delete|default(true) %}
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -144,30 +145,29 @@
                 {% endif %}
 
                 {% if note.engagements|length > 0 %}
-                <p>
-                    <button class="btn btn-sm btn-outline-success" type="button" data-bs-toggle="collapse" data-bs-target="#noteTaskCreate">
+                <details class="sb-note-action" id="noteTaskCreate" data-sb-note-actions
+                         data-sb-note-id="{{ note.id }}">
+                    <summary>
                         <i class="bi bi-check2-square"></i> Create Action Item
-                    </button>
-                    <div class="collapse mt-2" id="noteTaskCreate">
-                        <div class="card card-body p-2">
-                            <input type="text" class="form-control form-control-sm mb-1" id="noteTaskTitle" placeholder="Action item title..." maxlength="300">
-                            <div class="row g-1 mb-1">
-                                <div class="col">
-                                    <select class="form-select form-select-sm" id="noteTaskEngagement">
-                                        {% for eng in note.engagements %}
-                                        <option value="{{ eng.id }}">{{ eng.title[:40] }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-auto">
-                                    <input type="date" class="form-control form-control-sm" id="noteTaskDue">
-                                </div>
-                            </div>
-                            <button class="btn btn-sm btn-success" onclick="createTaskFromNote()"><i class="bi bi-plus"></i> Add Action Item</button>
-                            <div id="noteTaskResult" class="small mt-1" style="display:none;"></div>
-                        </div>
-                    </div>
-                </p>
+                    </summary>
+                    <form class="sb-note-action-form">
+                        <label for="noteTaskTitle">Title</label>
+                        <input type="text" id="noteTaskTitle" placeholder="Action item title..."
+                               maxlength="300" required>
+                        <label for="noteTaskEngagement">Engagement</label>
+                        <select id="noteTaskEngagement">
+                            {% for eng in note.engagements %}
+                            <option value="{{ eng.id }}">{{ eng.title[:40] }}</option>
+                            {% endfor %}
+                        </select>
+                        <label for="noteTaskDue">Due date (optional)</label>
+                        <input type="date" id="noteTaskDue">
+                        <button class="sb-dialog-button" type="submit">
+                            <i class="bi bi-plus" aria-hidden="true"></i> Add Action Item
+                        </button>
+                        <div id="noteTaskResult" class="sb-note-action-result" role="status" hidden></div>
+                    </form>
+                </details>
                 {% endif %}
                 
                 {% if note.milestones|length > 0 %}
@@ -289,44 +289,4 @@
 </div>
 {% endif %}
 
-{% if note.engagements|length > 0 %}
-<script>
-function createTaskFromNote() {
-    const titleEl = document.getElementById('noteTaskTitle');
-    const title = titleEl.value.trim();
-    if (!title) { titleEl.focus(); return; }
-
-    const engId = document.getElementById('noteTaskEngagement').value;
-    const due = document.getElementById('noteTaskDue').value;
-    const resultEl = document.getElementById('noteTaskResult');
-
-    fetch(`/engagement/${engId}/action-items`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({title, due_date: due || null, note_id: {{ note.id }}})
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            resultEl.className = 'small mt-1 text-success';
-            resultEl.innerHTML = '<i class=\"bi bi-check-circle\"></i> Action item created!';
-            resultEl.style.display = 'block';
-            titleEl.value = '';
-        } else {
-            resultEl.className = 'small mt-1 text-danger';
-            resultEl.textContent = data.error || 'Failed to create action item.';
-            resultEl.style.display = 'block';
-        }
-    })
-    .catch(err => {
-        resultEl.className = 'small mt-1 text-danger';
-        resultEl.textContent = 'Error: ' + err.message;
-        resultEl.style.display = 'block';
-    });
-}
-
-document.getElementById('noteTaskTitle').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') { e.preventDefault(); createTaskFromNote(); }
-});
-</script>
-{% endif %}
+</div>

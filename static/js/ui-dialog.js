@@ -20,6 +20,9 @@
     function close(target, reason = 'dismiss') {
         const dialog = resolve(target);
         if (dialog.open) {
+            if (!dialog.dispatchEvent(new CustomEvent('sb:dialog-before-close', {
+                bubbles: true, cancelable: true, detail: {reason},
+            }))) return;
             dialog.close(reason);
             // Native close events are queued; finish before a dialog can reopen.
             finishClose(dialog);

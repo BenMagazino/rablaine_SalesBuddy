@@ -7,8 +7,8 @@
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - UI baseline: `f6e9163`, approved persistent-status checkpoint
 - Implementation tested: working tree based on `f6e9163`
-- Next action: commit this approved slice, then pause at the checkpoint.
-  Carry its commit SHA into the next handoff before shared record-overlay work.
+- Implementation revision: `dd44c58`, committed after user sign-off
+- Next action: continue with the independently audited shared record-overlay work.
 
 ## Scope and original inventory
 

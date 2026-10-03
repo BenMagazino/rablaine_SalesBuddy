@@ -2166,53 +2166,52 @@
 </script>
 {% endif %}
 
-<!-- Note Detail Modal -->
-<div class="modal fade" id="homeNoteDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1100px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <h5 class="modal-title"><i class="bi bi-journal-text"></i> <span id="homeNoteTitle">Loading...</span></h5>
-                <div class="d-flex align-items-center gap-2">
-                    <a id="homeNoteFullLink" href="#" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrows-fullscreen"></i> Full Page</a>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
+<!-- Native note preview; its shared body is redesigned in a later checkpoint. -->
+<dialog class="sb-dialog sb-dialog-record" id="homeNoteDetailModal"
+        aria-labelledby="homeNoteTitle" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <div class="sb-dialog-eyebrow">Note preview</div>
+                <h2 id="homeNoteTitle" data-sb-record-title>Note</h2>
             </div>
-            <div class="modal-body p-3" id="homeNoteBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
+            <a id="homeNoteFullLink" href="#" class="sb-dialog-button" data-sb-record-full-link>
+                <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i> Full Page
+            </a>
+            <button class="sb-dialog-close" type="button" data-sb-dialog-close
+                    aria-label="Close note preview" autofocus>
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="sb-dialog-body">
+            <div class="sb-record-state" data-sb-record-loading role="status">Loading note...</div>
+            <div class="sb-record-state" data-sb-record-error hidden>
+                <p role="status">Unable to load this note. Try again, or open the full page.</p>
+                <button class="sb-dialog-button" type="button" data-sb-record-retry>
+                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Retry
+                </button>
             </div>
+            <div id="homeNoteBody" data-sb-record-content></div>
+        </div>
+        <div class="sb-dialog-footer">
+            <small data-sb-record-status role="status">Action items save immediately when submitted.</small>
         </div>
     </div>
-</div>
+</dialog>
 <script>
 (function() {
-    let noteModal = null;
-    const titleEl = document.getElementById('homeNoteTitle');
-    const bodyEl = document.getElementById('homeNoteBody');
-    const fullLink = document.getElementById('homeNoteFullLink');
-
+    let preview = null;
     window.openHomeNoteDetail = function(noteId, customerName) {
-        if (!noteModal) {
-            noteModal = new bootstrap.Modal(document.getElementById('homeNoteDetailModal'));
+        if (!preview) {
+            preview = SBRecordDialog.create('homeNoteDetailModal', {
+                loadUrl: id => '/api/note/' + id + '/detail',
+                fullUrl: id => '/note/' + id,
+                fragmentSelector: '[data-sb-note-detail]',
+                identityAttribute: 'data-sb-note-id',
+                mount: root => SBNoteActions.mount(root),
+            });
         }
-        titleEl.textContent = customerName || 'Note';
-        fullLink.href = '/note/' + noteId;
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        noteModal.show();
-        fetch('/api/note/' + noteId + '/detail')
-            .then(function(r) { if (!r.ok) throw new Error(); return r.text(); })
-            .then(function(html) {
-                bodyEl.innerHTML = html;
-                bodyEl.querySelectorAll('script').forEach(function(old) {
-                    var s = document.createElement('script');
-                    if (old.src) { s.src = old.src; } else { s.textContent = '(function(){' + old.textContent + '})();'; }
-                    old.replaceWith(s);
-                });
-            })
-            .catch(function() { bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load note details.</div>'; });
+        return preview.open({id: noteId, title: customerName || 'Note'});
     };
 })();
 </script>
@@ -2228,7 +2227,6 @@ RevenueBucketFilter.init({
 </script>
 
 {% endblock %}
-
 
 
 

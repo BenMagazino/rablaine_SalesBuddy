@@ -6,15 +6,16 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 8, GLOBAL-SHELL floating meeting-sync status,
+- Current page/surface: checkpoint 9, Home note-preview lifecycle and shared quick action editor,
   technically verified and user-approved; full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
   `f1916e8` (image viewer), `1e7b16c` (shared notifications),
-  `f6e9163` (persistent status strips)
-- Next action: commit the approved [checkpoint 8](redesign-pages/GLOBAL-SYNC.md),
-  then pause at a clean stopping point. Next work is shared record-overlay lifecycle;
-  note/milestone partial flows, homepage bodies and calendar parity remain separate work.
+  `f6e9163` (persistent status strips), `dd44c58` (floating sync status and search focus)
+- Next action: commit approved [checkpoint 9](redesign-pages/HOME-NOTE-PREVIEW.md),
+  then pause at a clean stopping point. Next work is shared milestone-preview
+  lifecycle/nested editors across their hosts. Note/milestone bodies, the full homepage
+  and calendar parity remain separate work.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
@@ -49,7 +50,7 @@ have separate rows even when they use one template.
 
 | ID | Page | URL(s) | Template | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| HOME | Dashboard/calendar | `/` | `index.html` | TODO | - |
+| HOME | Dashboard/calendar | `/` | `index.html` | BUILDING | [Note-preview slice](redesign-pages/HOME-NOTE-PREVIEW.md) |
 | ACTIONS | Action items | `/action-items` | `action_items_hub.html` | TODO | - |
 | SEARCH | Search | `/search` | `search.html` | TODO | - |
 | PREFS | Preferences | `/preferences` | `settings.html` | TODO | - |
@@ -151,7 +152,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | FR-CUST-OPPS | `partials/_customer_opportunities.html` | `/api/customer/<int:customer_id>/opportunities-html` | TODO | - |
 | FR-ENG | `partials/_engagement_view_content.html` | `/api/engagement/<int:id>/detail` | TODO | - |
 | FR-MS | `partials/milestone_view_content.html` | `/api/milestone/<int:id>/detail` | TODO | - |
-| FR-NOTE | `partials/note_view_content.html` | `/api/note/<int:id>/detail` | TODO | - |
+| FR-NOTE | `partials/note_view_content.html` | `/api/note/<int:id>/detail` | BUILDING | [Lifecycle/editor slice](redesign-pages/HOME-NOTE-PREVIEW.md) |
 | FR-OOO | `partials/one_on_one_workspace_content.html` | `/api/seller/<int:seller_id>/one-on-one/detail` | TODO | - |
 | FR-OPP | `partials/opportunity_view_content.html` | `/api/opportunity/<int:id>/detail` | TODO | - |
 | FR-PROJ | `partials/project_view_content.html` | `/api/project/<int:id>/detail` | TODO | - |
