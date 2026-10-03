@@ -23,6 +23,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Keep note quick actions keyboard-friendly on both previews and full pages, and display preview creation/update timestamps.
 - Use shared workbench milestone previews across Home, Action Items, sellers and reports, with Retry and safe request cleanup.
 - Create engagements and MSX tasks in nested workbench dialogs with protected drafts and saving guards, preserving duplicate-task warnings.
+- Read notes in a shared workbench details rail and reading pane, with quieter linked tags and preserved rich text and images.
+- Confirm full-page note deletion in a keyboard-friendly workbench dialog that focuses Cancel by default.
 
 ## 10/2/2026 - a25a8a4
 

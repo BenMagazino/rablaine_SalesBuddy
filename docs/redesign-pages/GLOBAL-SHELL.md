@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-9 committed, checkpoint 10 verified and user-approved
+- Status: BUILDING; checkpoints 1-10 committed, checkpoint 11 verified and user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -14,7 +14,9 @@
 - Checkpoint 8 floating meeting-sync status: `dd44c58`, [Sync evidence](GLOBAL-SYNC.md), user-approved
 - Checkpoint 9 note-preview lifecycle/editor: `9545d18`, [Note-preview evidence](HOME-NOTE-PREVIEW.md),
   technically verified, user-approved
-- Checkpoint 10 milestone-preview lifecycle/editors: [Milestone evidence](MILESTONE-PREVIEW.md),
+- Checkpoint 10 milestone-preview lifecycle/editors: `ce61a1d`, [Milestone evidence](MILESTONE-PREVIEW.md),
+  technically verified, user-approved
+- Checkpoint 11 shared note body/full-page commands: [Note-body evidence](NOTE-BODY.md),
   technically verified, user-approved
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
@@ -22,8 +24,7 @@
   onboarding theme choice, menu toggle and preferences page
 - Next action: continue the remaining global surfaces after this checkpoint;
   homepage and shared note/milestone dialogs are not approved by this checkpoint.
-  Commit approved checkpoint 10, then begin the shared note body. Full milestone bodies remain
-  independent future checkpoints.
+  Commit approved checkpoint 11, then begin the shared milestone body.
 
 ## Checkpoint 1 scope
 

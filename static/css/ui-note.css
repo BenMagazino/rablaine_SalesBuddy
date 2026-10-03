@@ -1,0 +1,141 @@
+/* Shared note body; rich-text markup and legacy entity hooks are retained. */
+.sb-note-view {
+    color: var(--sb-ui-ink);
+    font-family: var(--sb-ui-font);
+    font-size: 14px;
+    line-height: 1.6;
+}
+.sb-note-view-page {
+    padding: 24px;
+    border: 1px solid var(--sb-ui-line);
+    background: var(--sb-ui-surface);
+}
+.sb-note-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 24px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--sb-ui-line);
+}
+.sb-note-page-header h1 { margin: 0; color: var(--sb-ui-ink); font-size: 22px; font-weight: 600; }
+.sb-note-commands { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.sb-note-view .sb-dialog-button { gap: 6px; text-decoration: none; }
+.sb-note-danger { color: var(--sb-ui-danger); }
+.sb-note-danger:hover { color: var(--sb-ui-danger); background: var(--sb-ui-danger-bg); }
+.sb-note-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 24px; }
+.sb-note-context { min-width: 0; padding-right: 24px; border-right: 1px solid var(--sb-ui-line); }
+.sb-note-main { min-width: 0; padding-inline: 6px; }
+.sb-note-view .sb-note-section-heading {
+    margin: 0 0 18px;
+    color: var(--sb-ui-ink);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.6;
+}
+.sb-note-metadata { margin: 0; }
+.sb-note-metadata > div { margin-bottom: var(--sb-ui-space-3); }
+.sb-note-metadata > div:last-child { margin-bottom: 0; }
+.sb-note-detail-group {
+    margin-bottom: var(--sb-ui-space-4);
+}
+.sb-note-detail-group + .sb-note-detail-group {
+    padding-top: var(--sb-ui-space-4);
+    border-top: 1px solid var(--sb-ui-line);
+}
+.sb-note-detail-group .sb-note-action {
+    margin: var(--sb-ui-space-3) 0;
+}
+.sb-note-metadata dt { margin-bottom: 4px; color: var(--sb-ui-muted); font-size: 12px; font-weight: 500; }
+.sb-note-metadata dd { margin: 0; overflow-wrap: anywhere; }
+.sb-note-view a:not(.sb-dialog-button, .sb-record-badge) { color: var(--sb-ui-accent); }
+.sb-note-view a:hover { text-decoration: underline; }
+.sb-note-muted, .sb-note-timestamps { color: var(--sb-ui-muted); font-size: 12px; }
+.sb-note-timestamps { padding-top: 14px; border-top: 1px solid var(--sb-ui-line); }
+.sb-note-related + .sb-note-related { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--sb-ui-line); }
+.sb-note-related-heading { display: flex; align-items: start; gap: 8px; }
+.sb-note-related-heading > a:first-child { flex: 1; min-width: 0; }
+.sb-note-related-heading .sb-dialog-button { flex-shrink: 0; padding: 2px 6px; }
+.sb-note-delete-form { margin: 0; }
+
+/* These classes also identify entity types outside the redesigned note surface. */
+.sb-note-view .sb-record-badge { --sb-record-tag-ink: var(--sb-ui-accent); }
+.sb-note-view[data-sb-note-detail] .badge.sb-record-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    box-sizing: border-box;
+    max-width: 100%;
+    margin: 2px 2px 2px 0;
+    padding: 3px 6px;
+    border: 1px solid color-mix(in oklch, var(--sb-record-tag-ink) 40%, var(--sb-ui-line));
+    border-radius: var(--sb-ui-radius);
+    background: color-mix(in oklch, var(--sb-record-tag-ink) 10%, var(--sb-ui-context)) !important;
+    color: var(--sb-record-tag-ink) !important;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: normal;
+    text-align: left;
+    text-decoration: none;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+.sb-note-view .sb-record-badge .bi { flex-shrink: 0; }
+.sb-note-view .sb-record-badge.bg-success { --sb-record-tag-ink: var(--sb-ui-milestone-rail); }
+.sb-note-view .sb-record-badge.bg-warning { --sb-record-tag-ink: var(--sb-ui-warning); }
+.sb-note-view .sb-record-badge.bg-purple { --sb-record-tag-ink: var(--sb-ui-task-rail); }
+.sb-note-view .sb-record-badge.bg-secondary { --sb-record-tag-ink: var(--sb-ui-muted); }
+.sb-note-view[data-sb-note-detail] a.badge.sb-record-badge:hover {
+    border-color: var(--sb-record-tag-ink);
+    text-decoration: underline;
+}
+.sb-note-view :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.sb-note-view .sb-note-action :focus-visible { outline-offset: -3px; }
+
+.sb-note-view .call-content {
+    /* Leave room for image focus outlines inside the scroll viewport. */
+    margin: -6px;
+    padding: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    color: var(--sb-ui-ink);
+    font-size: 14px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+.sb-note-view .call-content p { margin: 0 0 12px; }
+.sb-note-view .call-content :is(h1, h2, h3, h4, h5, h6) {
+    margin: 20px 0 8px;
+    color: inherit;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.sb-note-view .call-content h1 { font-size: 24px; }
+.sb-note-view .call-content h2 { font-size: 20px; }
+.sb-note-view .call-content h3 { font-size: 18px; }
+.sb-note-view .call-content :is(h4, h5, h6) { font-size: 15px; }
+.sb-note-view .call-content > :first-child { margin-top: 0; }
+.sb-note-view .call-content :is(ul, ol) { padding-left: 24px; margin: 0 0 12px; }
+.sb-note-view .call-content li + li { margin-top: 4px; }
+.sb-note-view .call-content blockquote {
+    margin: 12px 0;
+    padding: 10px 14px;
+    border-left: 2px solid var(--sb-ui-divider);
+    background: var(--sb-ui-context);
+}
+.sb-note-view .call-content pre {
+    margin: 12px 0;
+    padding: 12px;
+    background: var(--sb-ui-context);
+    color: var(--sb-ui-ink);
+    overflow-x: auto;
+}
+.sb-note-view .call-content code { color: inherit; }
+.sb-note-view .call-content table { font-size: 13px; }
+.sb-note-view .call-content :is(th, td) { border-color: var(--sb-ui-line); }
+.sb-note-view .call-content th { background: var(--sb-ui-context); }
+.sb-note-view .call-content tr:nth-child(even) { background: var(--sb-ui-canvas); }
+.sb-note-view .call-content img { max-width: 100%; height: auto; }

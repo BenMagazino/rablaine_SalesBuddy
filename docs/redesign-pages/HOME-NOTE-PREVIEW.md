@@ -8,7 +8,7 @@
 - UI baseline: `dd44c58`, approved floating-sync/search-focus checkpoint
 - Implementation tested: working tree based on `dd44c58`
 - Implementation revision: `9545d18`, committed after user sign-off
-- Next action: continue the independently reviewed milestone-preview checkpoint.
+- Next action: continue the independently reviewed [shared note body](NOTE-BODY.md).
   No push or merge is authorized by this checkpoint.
 
 ## Scope and original inventory
@@ -18,8 +18,9 @@ quick action editor shared with the full note page. The preview was never wholly
 read-only: notes with linked engagements already expose Create Action Item.
 Preserve that workflow instead of dropping it during the overlay migration.
 
-The note's information/body layout deliberately retains its current Bootstrap
-implementation. This does not approve the full note page, fragment or homepage.
+At checkpoint 9, the note's information/body layout deliberately retained its Bootstrap
+implementation. [Checkpoint 11](NOTE-BODY.md) migrates that body separately.
+This does not approve the full note page, fragment or homepage.
 Full-page Edit, Delete and Share controls remain; preview responses still omit
 them. The full-page delete confirmation is not migrated here.
 

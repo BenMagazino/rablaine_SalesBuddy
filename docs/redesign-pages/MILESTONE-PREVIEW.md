@@ -1,14 +1,15 @@
 # Shared milestone-preview lifecycle and nested editors
 
-- Status: VERIFY; technically verified and user-approved
+- Status: DONE for this bounded slice; technically verified and user-approved
 - Checkpoint: 10
 - Parent checkoffs: FR-MS and GLOBAL-SHELL remain BUILDING; host pages are not DONE
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - UI baseline: `9545d18`, approved note-preview checkpoint
 - Implementation tested: working tree based on `9545d18`
+- Implementation revision: `ce61a1d`, committed after user sign-off
 - User sign-off: October 2, 2026, after staged live milestone/editor review
-- Next action: commit this approved slice, then start the shared note-body checkpoint.
+- Next action: continue the independently reviewed [shared note body](NOTE-BODY.md).
   No push, merge or deployment is authorized.
 
 ## Scope and inventory

@@ -6,15 +6,16 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 10, shared milestone-preview lifecycle and nested editors,
+- Current page/surface: checkpoint 11, shared note body and full-page commands,
   technically verified and user-approved; full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
   `f1916e8` (image viewer), `1e7b16c` (shared notifications),
   `f6e9163` (persistent status strips), `dd44c58` (floating sync status and search focus),
-  `9545d18` (note-preview lifecycle and quick actions)
-- Next action: commit approved [checkpoint 10](redesign-pages/MILESTONE-PREVIEW.md), then
-  start the shared note-body checkpoint. Milestone content, the full homepage and calendar
+  `9545d18` (note-preview lifecycle and quick actions),
+  `ce61a1d` (milestone-preview lifecycle and nested editors)
+- Next action: commit approved [checkpoint 11](redesign-pages/NOTE-BODY.md), then
+  begin the shared milestone body. The full homepage and calendar
   parity remain separate work. This is a bounded stopping point with no live writes pending.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -89,7 +90,7 @@ have separate rows even when they use one template.
 | TOPIC-EDIT | Edit topic | `/topic/<int:id>/edit` | `topic_form.html` | TODO | - |
 | NOTE-LIST | Notes | `/notes` | `notes_list.html` | TODO | - |
 | NOTE-NEW | Create note | `/note/new` | `note_form.html` | TODO | - |
-| NOTE-VIEW | Note detail | `/note/<int:id>` | `note_view.html` | TODO | - |
+| NOTE-VIEW | Note detail | `/note/<int:id>` | `note_view.html` | BUILDING | [Shared body slice](redesign-pages/NOTE-BODY.md) |
 | NOTE-EDIT | Edit note | `/note/<int:id>/edit` | `note_form.html` | TODO | - |
 | FILL-DAY | Fill My Day | `/fill-my-day` | `fill_my_day.html` | TODO | - |
 | ENG-LIST | Engagements | `/engagements` | `engagements_hub.html` | TODO | - |
@@ -152,7 +153,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | FR-CUST-OPPS | `partials/_customer_opportunities.html` | `/api/customer/<int:customer_id>/opportunities-html` | TODO | - |
 | FR-ENG | `partials/_engagement_view_content.html` | `/api/engagement/<int:id>/detail` | TODO | - |
 | FR-MS | `partials/milestone_view_content.html` | `/api/milestone/<int:id>/detail` | BUILDING | [Lifecycle/editor slice](redesign-pages/MILESTONE-PREVIEW.md) |
-| FR-NOTE | `partials/note_view_content.html` | `/api/note/<int:id>/detail` | BUILDING | [Lifecycle/editor slice](redesign-pages/HOME-NOTE-PREVIEW.md) |
+| FR-NOTE | `partials/note_view_content.html` | `/api/note/<int:id>/detail` | BUILDING | [Lifecycle/editor](redesign-pages/HOME-NOTE-PREVIEW.md), [shared body](redesign-pages/NOTE-BODY.md) |
 | FR-OOO | `partials/one_on_one_workspace_content.html` | `/api/seller/<int:seller_id>/one-on-one/detail` | TODO | - |
 | FR-OPP | `partials/opportunity_view_content.html` | `/api/opportunity/<int:id>/detail` | TODO | - |
 | FR-PROJ | `partials/project_view_content.html` | `/api/project/<int:id>/detail` | TODO | - |
