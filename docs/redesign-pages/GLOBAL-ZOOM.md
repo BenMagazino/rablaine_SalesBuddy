@@ -5,9 +5,9 @@
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - UI baseline: `8dd3363`, approved customer-picker checkpoint
-- Implementation tested: working tree based on `8dd3363`
-- Next action: commit this approved checkpoint, then continue shared shell notifications.
-  Carry this checkpoint's commit SHA into the next handoff.
+- Implementation revision: `f1916e8`
+- Next action: continue shared shell notifications and record partial flows.
+  This approved checkpoint is committed.
 
 ## Scope and original inventory
 

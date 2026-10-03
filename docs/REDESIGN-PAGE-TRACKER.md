@@ -6,11 +6,13 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 5, GLOBAL-ZOOM image viewer,
+- Current page/surface: checkpoint 6, GLOBAL-SHELL shared flash notifications,
   technically verified and user-approved; full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
-  `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers)
-- Next action: commit this approved checkpoint, then continue shared shell notifications;
+  `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
+  `f1916e8` (image viewer)
+- Next action: commit this approved checkpoint, then audit checkpoint 7 persistent shell
+  status strips (VPN/sign-in, FY reminders/transition and viewing-as);
   note/milestone partial flows, homepage bodies and calendar parity remain separate work.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`

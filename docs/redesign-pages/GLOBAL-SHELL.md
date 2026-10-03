@@ -8,13 +8,15 @@
 - Checkpoint 2 implementation revision: `1fbdd64`
 - Checkpoint 3 dialog foundation: `160e2d9`, [Help/dialog evidence](GLOBAL-HELP.md), user-approved
 - Checkpoint 4 customer pickers: `8dd3363`, [Picker evidence](GLOBAL-PICKERS.md), user-approved
-- Checkpoint 5 image viewer: [Image evidence](GLOBAL-ZOOM.md), user-approved
+- Checkpoint 5 image viewer: `f1916e8`, [Image evidence](GLOBAL-ZOOM.md), user-approved
+- Checkpoint 6 shared flash notifications: [Feedback evidence](GLOBAL-FEEDBACK.md), user-approved
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
 - Next action: continue the remaining global surfaces after this checkpoint;
   homepage and shared note/milestone dialogs are not approved by this checkpoint.
+  Next bounded slice: persistent VPN/sign-in, FY and viewing-as status strips.
 
 ## Checkpoint 1 scope
 
@@ -111,6 +113,10 @@ This covers theme infrastructure and the header only, not a complete global audi
   SHA in the next checkpoint, avoiding a self-referential documentation commit.
 
 ## Remaining work and sign-off
+
+Checkpoint 6 replaces shared Flask flash styling/dismissal and adds a keyboard
+landing target on the main landmark. Its evidence and approval are separate
+from persistent status banners, inline page alerts and the full page frame.
 
 The first app-owned dialog slice is implemented with the read-only help surfaces
 in checkpoint 3. Its verification is separate from editable record workflows.

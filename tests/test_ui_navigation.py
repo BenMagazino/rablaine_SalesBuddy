@@ -6,13 +6,17 @@ from unittest.mock import patch
 
 import pytest
 from bs4 import BeautifulSoup
-from flask import render_template
+from flask import flash, render_template
 
 
-def render_navigation(app, **context: object) -> BeautifulSoup:
+def render_navigation(
+    app, *, flashes: list[tuple[str, str]] | None = None, **context: object
+) -> BeautifulSoup:
     """Render base navigation with explicit conditional states, without changing preferences."""
     with app.test_request_context("/"):
         app.preprocess_request()
+        for category, message in flashes or []:
+            flash(message, category)
         with patch("app.services.update_checker.get_update_state",
                    return_value={"last_checked": "cached", "available": False}):
             html = render_template("base.html", first_run_modal_dismissed=True, **context)
@@ -215,3 +219,64 @@ def test_image_viewer_owned_markup(app) -> None:
     assert not dialog.select(".modal, .modal-dialog, .modal-content, [data-bs-dismiss], [onclick]")
     scripts = [script.get("src", "") for script in soup.select("script[src]")]
     assert scripts.index("/static/js/ui-dialog.js") < scripts.index("/static/js/ui-image-viewer.js")
+
+
+@pytest.mark.parametrize(
+    ("category", "tone", "label", "icon"),
+    [("danger", "danger", "Error", "exclamation-circle"),
+     ("error", "danger", "Error", "exclamation-circle"),
+     ("warning", "warning", "Warning", "exclamation-triangle"),
+     ("success", "success", "Success", "check-circle"),
+     ("info", "info", "Information", "info-circle"),
+     ("message", "neutral", "Notice", "chat-square"),
+     ("custom", "neutral", "Notice", "chat-square")],
+)
+def test_flash_notices_preserve_categories_and_use_owned_controls(
+    app, category, tone, label, icon
+) -> None:
+    """Known categories retain meaning and custom categories remain neutral, not successful."""
+    soup = render_navigation(app, flashes=[(category, "An example notification.")])
+    notice = soup.select_one(".sb-notice")
+    assert notice["data-sb-category"] == category
+    assert notice["data-sb-tone"] == tone
+    assert notice["role"] == "alert"
+    assert notice["aria-label"] == f"{label} notification"
+    assert notice.select_one(f".bi-{icon}")["aria-hidden"] == "true"
+    assert notice.select_one(".sb-notice-body").get_text() == "An example notification."
+    dismiss = notice.select_one("[data-sb-notice-dismiss]")
+    assert dismiss["type"] == "button"
+    assert dismiss["aria-label"] == "Dismiss notification"
+    assert not notice.select(".alert, .btn-close, [data-bs-dismiss]")
+    assert soup.select_one("#main-content")["tabindex"] == "-1"
+    assert soup.select_one('script[src="/static/js/ui-feedback.js"]')
+    assert soup.select_one('link[href="/static/css/ui-feedback.css"]')
+
+
+def test_flash_notices_preserve_order_full_text_and_escaping(app) -> None:
+    """Notifications do not truncate, reorder or interpret ordinary message strings."""
+    messages = [("success", "First message"), ("warning", "LongToken" * 80),
+                ("error", '<script>alert("customer")</script> & <example>')]
+    soup = render_navigation(app, flashes=messages)
+    notices = soup.select(".sb-notice")
+    assert [notice.select_one(".sb-notice-body").get_text() for notice in notices] == [
+        message for _, message in messages
+    ]
+    assert not soup.select(".sb-notice script")
+    assert "&lt;script&gt;" in str(notices[-1])
+
+
+def test_flash_notices_are_consumed_once_by_the_existing_flask_flow(client) -> None:
+    """A redirect message remains request-scoped and does not become persistent UI state."""
+    with client.session_transaction() as session:
+        session["_flashes"] = [("warning", "One request only")]
+    first = BeautifulSoup(client.get("/notes").data, "html.parser")
+    second = BeautifulSoup(client.get("/notes").data, "html.parser")
+    assert first.select_one(".sb-notice-body").get_text() == "One request only"
+    assert not second.select(".sb-notice")
+
+
+def test_empty_flash_stack_retains_layout_without_an_empty_alert(app) -> None:
+    """The shared spacing wrapper survives without manufacturing a notification."""
+    soup = render_navigation(app)
+    assert soup.select_one(".sb-flash-stack")
+    assert not soup.select(".sb-flash-stack .sb-notice")
