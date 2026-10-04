@@ -246,8 +246,7 @@
             'activateGhostRow', 'deactivateGhostRow', 'openNewTaskModal', 'submitGhostTask',
             'toggleTask', 'viewTask', 'editTask', 'saveEditedTask', 'deleteTask',
             'toggleMilestoneEdit', 'saveMilestoneLinks', 'joinMilestoneTeam', 'leaveMilestoneTeam',
-            'viewActionItem', 'switchToEditMode', 'switchToViewMode', 'saveActionItemEdits',
-            'saveCopilotTask', 'dismissCopilotTask', 'notUsefulCopilotTask',
+            'viewActionItem',
             'addProjectTask',
         ];
         const exports = handlers.map(name =>
@@ -289,7 +288,8 @@
     async function openDetail(title, fullUrl, fragmentUrl) {
         detailRequest?.abort();
         for (const modal of document.querySelectorAll('[data-workspace-parent-modal]')) {
-            bootstrap.Modal.getInstance(modal)?.dispose();
+            if (modal instanceof HTMLDialogElement) SBDialog.close(modal, 'replace');
+            else bootstrap.Modal.getInstance(modal)?.dispose();
             modal.remove();
         }
         const controller = new AbortController();

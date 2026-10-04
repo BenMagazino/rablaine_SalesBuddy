@@ -121,26 +121,35 @@
 <script>
 {% if parent_modal_id is defined %}
 const parentModal = document.getElementById({{ parent_modal_id|tojson }});
-const taskModal = document.getElementById('actionItemDetailModal');
+const taskModal = parentModal.querySelector('#actionItemDetailModal');
+const taskDiscard = parentModal.querySelector('#aiDiscardDialog');
 taskModal.dataset.workspaceParentModal = parentModal.id;
+taskDiscard.dataset.workspaceParentModal = parentModal.id;
 document.body.appendChild(taskModal);
-taskModal.addEventListener('show.bs.modal', function(event) {
+document.body.appendChild(taskDiscard);
+let taskParentHiding = false;
+let taskParentRestore = false;
+taskModal.addEventListener('sb:dialog-opening', function() {
     if (!parentModal.classList.contains('show')) return;
-    event.preventDefault();
+    taskParentHiding = true;
+    taskParentRestore = false;
     const hideParent = function() {
         bootstrap.Modal.getOrCreateInstance(parentModal).hide();
     };
     parentModal.addEventListener('shown.bs.modal', hideParent, {once: true});
     parentModal.addEventListener('hidden.bs.modal', function() {
         parentModal.removeEventListener('shown.bs.modal', hideParent);
-        if (!taskModal.isConnected) return;
-        bootstrap.Modal.getInstance(taskModal)?.dispose();
-        bootstrap.Modal.getOrCreateInstance(taskModal).show();
+        taskParentHiding = false;
+        if (taskParentRestore && parentModal.isConnected && taskModal.isConnected) {
+            bootstrap.Modal.getOrCreateInstance(parentModal).show();
+        }
     }, {once: true});
     hideParent();
 });
-taskModal.addEventListener('hidden.bs.modal', function() {
-    bootstrap.Modal.getOrCreateInstance(parentModal).show();
+taskModal.addEventListener('sb:dialog-closed', function() {
+    if (!parentModal.isConnected) return;
+    if (taskParentHiding) taskParentRestore = true;
+    else bootstrap.Modal.getOrCreateInstance(parentModal).show();
 });
 {% endif %}
 function addProjectTask(e) {

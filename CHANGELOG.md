@@ -21,6 +21,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Keep note and milestone tag outlines in their intended color instead of shifting yellow topics toward green.
 - Keep calendar loading and errors inside the workbench, with Retry and protection against outdated month responses.
 - Configure Home action items in a workbench dialog, with confirmed preference saves and clear save or refresh failures.
+- Preview and edit action items in workbench dialogs, with Retry, visible save errors and protection for unsaved edits.
 - Add compact icon navigation with centered customer search and keyboard-operated menus.
 - Show clear customer-search errors with a retry path instead of failing silently.
 - Use keyboard-friendly workbench dialogs for page help and shortcut reference, with scrolling content and focus restoration.

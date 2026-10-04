@@ -1,19 +1,21 @@
 # Home workbench composition and attention panels
 
-- Status: DONE for checkpoint 16 Action Items settings; HOME remains BUILDING
-- Checkpoint: 16, following approved/committed checkpoint 15
+- Status: DONE for checkpoint 17 Action Item preview; HOME remains BUILDING
+- Checkpoint: 17, following approved/committed checkpoint 16
 - Parent checkoffs: HOME and GLOBAL-SHELL remain BUILDING
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
-- Approved UI baseline: `1f1472a`, checkpoint 15 calendar read states
-- Implementation tested: checkpoint 16 working tree based on `1f1472a`
+- Approved UI baseline: `6d15a91`, checkpoint 16 Action Items settings
+- Implementation tested: checkpoint 17 working tree based on `6d15a91`
 - Checkpoint 14 user sign-off: October 3, 2026, including tag-color correction, native calendar
   picker and floating refresh-failure feedback
 - Checkpoint 14 implementation revision: `3e4c5be`
 - Checkpoint 15 user sign-off: October 3, 2026
 - Checkpoint 15 implementation revision: `1f1472a`
 - Checkpoint 16 user sign-off: October 3, 2026
-- Next action: commit checkpoint 16, then continue remaining Home preview surfaces.
+- Checkpoint 16 implementation revision: `6d15a91`
+- Checkpoint 17 user sign-off: October 3, 2026
+- Next action: commit checkpoint 17, then continue remaining Home surfaces.
   The New note/edit form layout is not migrated.
   No push, merge or deployment is authorized.
 
@@ -365,9 +367,10 @@ Hanger draft and separate unsaved New Note tab are untouched. No real writes.
 
 This is not full HOME sign-off or full Bootstrap removal. Checkpoint 14 calendar
 presentation and its follow-up fixes are user-approved. Checkpoint 15 calendar
-read states are user-approved. The separate action-item calendar,
-embedded engagement/project bodies, dashboard settings,
-action-item/revenue detail bodies and the shared bucket popover remain separate
+read states and dashboard settings are user-approved. The Action Item preview
+is implemented in checkpoint 17 below. The separate action-item calendar,
+embedded engagement/project bodies, revenue detail/review bodies and the shared
+bucket popover remain separate
 migration surfaces. Their current functionality is preserved, not rewritten here.
 
 ## Checkpoint 15: calendar read states
@@ -443,5 +446,50 @@ migration surfaces. Their current functionality is preserved, not rewritten here
   failure and a rejected refresh only, verified rollback/error/retry availability,
   then removed interceptors and reloaded. No live preference writes, WorkIQ syncs,
   customer changes or draft changes occurred. Home is left open to clean settings.
-- User review: approved October 3, 2026. Ready to commit.
+- User review: approved October 3, 2026. Committed as `6d15a91`.
 - Estimated full-redesign completion at sign-off: about 16% by effort.
+
+## Checkpoint 17: shared Action Item preview and editor
+
+- Replaced the shared Bootstrap host/body/editor with native workbench dialogs,
+  divider-only metadata, theme-token form controls, associated labels and native
+  close/backdrop/Escape/focus behavior.
+- Preserved `viewActionItem(id, options)` across Home, Action Items, Projects and
+  Engagements. Existing rich descriptions, title/contact/priority, due/overdue
+  metadata, completed state, Source, Linked Note and conditional Engagement link
+  remain available. Source URLs retain new-tab behavior and only HTTP(S) links
+  become clickable; unsupported schemes report an unavailable link.
+- Kept GET, PUT, completion toggle, Copilot Save with optional due date, Dismiss
+  and Not Useful contracts. Successful writes still refresh the calling page on
+  close. Saved/completed Copilot items immediately show their persisted project
+  state instead of leaving stale Copilot-only actions available.
+- Plain-text editing still strips rich description markup, as before. Engagement
+  callers with `onEdit` still hand off to their existing Quill editor after closing
+  the preview. New/edit Note forms are untouched.
+- Read failures now show Retry. Reads are abortable and identity-checked; late
+  replies cannot overwrite another selection or reopen a dismissed preview.
+  Cached-history returns resume only an interrupted read.
+- Writes disable controls until confirmed. Errors remain visible, restore the
+  completed checkbox to the confirmed state and preserve failed edit drafts.
+  Dirty edits require Keep editing/Discard before cancel, close, selection change
+  or same-tab navigation; pending saves block those transitions.
+- Project previews in Initiative Tracker still hide and restore the legacy parent
+  dialog, including rapid close during the parent's opening/hiding transition.
+  Both native child dialogs are relocated/tagged for cleanup; manager cleanup no
+  longer passes native dialogs to Bootstrap.
+- Scoped validation: 65 JS tests and 97 isolated Python tests passed. Tests cover
+  real API contracts, all shared template consumers, old/new reply ordering,
+  retries, successful and failed writes, Copilot transitions, dirty/busy guards,
+  Quill handoff and native/legacy parent restoration. Diagnostics/whitespace clean.
+- Live dev: real task 9 opens from Home, Project 3 and Action Items. Verified
+  native editor, dirty Escape/Keep editing/Discard, opener restoration, failed
+  read/Retry recovery and failed PUT draft retention. Failure replay interceptors
+  were removed. Editor geometry/theme controls checked in all eight themes at the
+  unchanged desktop viewport. No live writes, completion toggles, dismissals or
+  Copilot pulls were sent. Existing New Note drafts remain untouched.
+- Live data limitations: no dated-task tab or Project rows in Initiative Tracker,
+  and the inspected Engagement has no task rows. Those unavailable branches use
+  scoped isolated regression tests, not invented live records or sample previews.
+  The task calendar migration was not started.
+- Review status: user-approved October 3, 2026, ready to commit.
+- Estimated full-redesign completion at sign-off: about 17% by effort.

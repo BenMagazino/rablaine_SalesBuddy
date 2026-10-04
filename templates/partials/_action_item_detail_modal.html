@@ -1,418 +1,115 @@
-<!-- Action Item Detail Modal (shared partial) -->
-<div class="modal fade" id="actionItemDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="aiDetailTitle"></h5>
-                <span class="ms-2" id="aiDetailDueBadge"></span>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+{# Shared Action Item preview. Existing callers keep viewActionItem(id, options). #}
+<dialog class="sb-dialog sb-action-item-dialog" id="actionItemDetailModal"
+        aria-labelledby="aiDetailTitle" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <div class="sb-dialog-eyebrow">Action item</div>
+                <h2 id="aiDetailTitle">Action item</h2>
             </div>
-            <div class="modal-body" id="aiDetailBody">
-                <!-- View mode (default) -->
-                <div id="aiDetailViewMode">
-                    <div class="d-flex flex-wrap gap-2 mb-2" id="aiDetailMeta"></div>
-                    <div class="d-flex align-items-start">
-                        <div class="flex-grow-1" id="aiDetailDesc"></div>
-                        <div class="form-check flex-shrink-0 ms-3" style="cursor:pointer;"
-                             onmouseover="this.querySelector('input').style.borderColor='var(--bs-primary)'; this.querySelector('input').style.boxShadow='0 0 0 0.15rem rgba(13,110,253,.25)'; this.querySelector('label').classList.add('text-primary');"
-                             onmouseout="this.querySelector('input').style.borderColor=''; this.querySelector('input').style.boxShadow=''; this.querySelector('label').classList.remove('text-primary');">
-                            <input class="form-check-input" type="checkbox" id="aiDetailCompleted" style="cursor:pointer;">
-                            <label class="form-check-label" for="aiDetailCompleted" style="cursor:pointer; user-select:none;">Completed</label>
-                        </div>
-                    </div>
-                </div>
-                <!-- Edit mode (hidden by default) -->
-                <div id="aiDetailEditMode" style="display: none;">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Title</label>
-                        <input type="text" class="form-control" id="aiEditTitle" maxlength="300">
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Due Date</label>
-                            <input type="date" class="form-control" id="aiEditDue">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Priority</label>
-                            <select class="form-select" id="aiEditPriority">
-                                <option value="normal">Normal</option>
-                                <option value="high">High</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Contact</label>
-                            <input type="text" class="form-control" id="aiEditContact" maxlength="200">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Description</label>
-                        <textarea class="form-control" id="aiEditDesc" rows="6"></textarea>
-                    </div>
+            <span id="aiDetailDueBadge" class="sb-action-item-tag" hidden></span>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                    aria-label="Close action item" autofocus>
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="sb-dialog-body" id="aiDetailBody">
+            <div class="sb-record-state" id="aiDetailLoading" role="status" hidden>
+                Loading action item...
+            </div>
+            <div class="sb-record-state" id="aiDetailReadError" hidden>
+                <p role="alert">Unable to load this action item.</p>
+                <button type="button" class="sb-dialog-button" id="aiDetailRetry">Retry</button>
+            </div>
+            <div id="aiDetailViewMode" hidden>
+                <div class="sb-action-item-meta" id="aiDetailMeta"></div>
+                <div class="sb-action-item-description-row">
+                    <div class="sb-action-item-description" id="aiDetailDesc"></div>
+                    <label class="sb-action-item-completed" for="aiDetailCompleted">
+                        <input type="checkbox" id="aiDetailCompleted"> Completed
+                    </label>
                 </div>
             </div>
-            <div class="modal-footer" id="aiDetailFooter">
-                <!-- View mode footer -->
-                <div id="aiDetailViewFooter" class="d-flex flex-wrap align-items-center gap-2 w-100">
-                    <button type="button" class="btn btn-outline-danger btn-sm" id="aiDetailNotUsefulBtn" style="display: none;" onclick="notUsefulCopilotTask()" title="Stop suggesting tasks like this one">
-                        <i class="bi bi-hand-thumbs-down"></i> Not Useful
-                    </button>
-                    <div class="flex-grow-1"></div>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-outline-warning" id="aiDetailDismissBtn" style="display: none;" onclick="dismissCopilotTask()" title="Hide this task without completing it">
-                        <i class="bi bi-x-lg"></i> Dismiss
-                    </button>
-                    <div id="aiDetailSaveGroup" class="d-inline-flex align-items-center gap-2" style="display: none !important;">
-                        <input type="date" class="form-control form-control-sm" id="aiDetailSaveDue"
-                               style="width: 150px;" title="Set a due date (optional)">
-                        <button type="button" class="btn btn-outline-info" id="aiDetailSaveBtn" onclick="saveCopilotTask()" title="Pin this task so it survives the daily refresh">
-                            <i class="bi bi-pin-angle"></i> Save
-                        </button>
+            <form id="aiDetailEditMode" class="sb-action-item-form" hidden>
+                <div>
+                    <label class="sb-record-field-label" for="aiEditTitle">Title</label>
+                    <input type="text" class="sb-record-field" id="aiEditTitle"
+                           maxlength="300" required>
+                </div>
+                <div class="sb-action-item-form-row">
+                    <div>
+                        <label class="sb-record-field-label" for="aiEditDue">Due date</label>
+                        <input type="date" class="sb-record-field" id="aiEditDue">
                     </div>
-                    <a href="#" class="btn btn-primary" id="aiDetailEngLink" style="display: none;">
-                        <i class="bi bi-diagram-3"></i> Go to Engagement
-                    </a>
-                    <button type="button" class="btn btn-primary" id="aiDetailEditBtn" onclick="switchToEditMode()">
-                        <i class="bi bi-pencil"></i> Edit
+                    <div>
+                        <label class="sb-record-field-label" for="aiEditPriority">Priority</label>
+                        <select class="sb-record-field" id="aiEditPriority">
+                            <option value="normal">Normal</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="sb-record-field-label" for="aiEditContact">Contact</label>
+                        <input type="text" class="sb-record-field" id="aiEditContact" maxlength="200">
+                    </div>
+                </div>
+                <div>
+                    <label class="sb-record-field-label" for="aiEditDesc">Description</label>
+                    <textarea class="sb-record-field" id="aiEditDesc" rows="6"></textarea>
+                </div>
+            </form>
+            <p id="aiDetailResult" class="sb-record-editor-error" role="status"
+               aria-live="polite"></p>
+        </div>
+        <div class="sb-dialog-footer sb-action-item-footer" id="aiDetailFooter">
+            <div id="aiDetailViewFooter" class="sb-action-item-commands" hidden>
+                <button type="button" class="sb-dialog-button sb-action-item-danger"
+                        id="aiDetailNotUsefulBtn" hidden title="Stop suggesting tasks like this one">
+                    <i class="bi bi-hand-thumbs-down" aria-hidden="true"></i> Not Useful
+                </button>
+                <button type="button" class="sb-dialog-button" data-sb-dialog-close>Close</button>
+                <button type="button" class="sb-dialog-button" id="aiDetailDismissBtn"
+                        hidden title="Hide this task without completing it">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i> Dismiss
+                </button>
+                <div id="aiDetailSaveGroup" class="sb-action-item-save" hidden>
+                    <label class="sb-dialog-eyebrow" for="aiDetailSaveDue">Due date (optional)</label>
+                    <input type="date" class="sb-record-field" id="aiDetailSaveDue">
+                    <button type="button" class="sb-dialog-button" id="aiDetailSaveBtn"
+                            title="Pin this task so it survives the daily refresh">
+                        <i class="bi bi-pin-angle" aria-hidden="true"></i> Save
                     </button>
                 </div>
-                <!-- Edit mode footer (hidden by default) -->
-                <div id="aiDetailEditFooter" style="display: none;">
-                    <div class="flex-grow-1"></div>
-                    <button type="button" class="btn btn-outline-secondary" onclick="switchToViewMode()">Cancel</button>
-                    <button type="button" class="btn btn-success" id="aiEditSaveBtn" onclick="saveActionItemEdits()">
-                        <i class="bi bi-check-lg"></i> Save
-                    </button>
-                </div>
+                <a href="#" class="sb-dialog-button" id="aiDetailEngLink" hidden>
+                    <i class="bi bi-diagram-3" aria-hidden="true"></i> Go to Engagement
+                </a>
+                <button type="button" class="sb-dialog-button" id="aiDetailEditBtn">
+                    <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+                </button>
+            </div>
+            <div id="aiDetailEditFooter" class="sb-action-item-commands" hidden>
+                <button type="button" class="sb-dialog-button" id="aiDetailCancelEdit">Cancel</button>
+                <button type="submit" class="sb-dialog-button" id="aiEditSaveBtn"
+                        form="aiDetailEditMode">
+                    <i class="bi bi-check-lg" aria-hidden="true"></i> Save
+                </button>
             </div>
         </div>
     </div>
-</div>
-<script>
-var _aiCurrentTaskId = null;
-var _aiCurrentOpts = {};
-
-function viewActionItem(taskId, opts) {
-    opts = opts || {};
-    _aiCurrentTaskId = taskId;
-    _aiCurrentOpts = opts;
-    fetch('/action-item/' + taskId, {method: 'GET'})
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (!data || !data.task) return;
-        _renderViewMode(data.task, taskId, opts);
-        var el = document.getElementById('actionItemDetailModal');
-        // Dispose previous instance so we can recreate with correct backdrop
-        var existing = bootstrap.Modal.getInstance(el);
-        if (existing) existing.dispose();
-        // If another modal is already open, suppress the extra backdrop
-        var hasOpenModal = document.querySelector('.modal.show');
-        var m = new bootstrap.Modal(el, {backdrop: hasOpenModal ? false : true});
-        m.show();
-    })
-    .catch(function(err) { console.error(err); });
-}
-
-function _renderViewMode(t, taskId, opts) {
-    // Ensure view mode is visible
-    document.getElementById('aiDetailViewMode').style.display = '';
-    document.getElementById('aiDetailEditMode').style.display = 'none';
-    document.getElementById('aiDetailViewFooter').style.display = '';
-    document.getElementById('aiDetailEditFooter').style.display = 'none';
-
-    // Title
-    var titleHtml = '<i class="bi bi-check2-square"></i> ';
-    if (t.priority === 'high') {
-        titleHtml += '<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>';
-    }
-    titleHtml += _escAiHtml(t.title);
-    document.getElementById('aiDetailTitle').innerHTML = titleHtml;
-
-    // Due date badge in header
-    var dueBadgeEl = document.getElementById('aiDetailDueBadge');
-    if (t.due_date) {
-        dueBadgeEl.innerHTML = '<span class="badge ' + (t.is_overdue ? 'bg-danger' : 'bg-secondary') + '"><i class="bi bi-calendar"></i> ' + t.due_date + (t.is_overdue ? ' (overdue)' : '') + '</span>';
-    } else {
-        dueBadgeEl.innerHTML = '';
-    }
-
-    // Metadata badges
-    var meta = [];
-    if (t.priority === 'high') {
-        meta.push('<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill"></i> High Priority</span>');
-    }
-    if (t.contact) {
-        meta.push('<span class="badge bg-light text-dark border"><i class="bi bi-person"></i> ' + _escAiHtml(t.contact) + '</span>');
-    }
-    if (t.source === 'copilot') {
-        meta.push('<span class="badge bg-info"><i class="bi bi-stars"></i> Copilot</span>');
-    }
-    if (t.source_url) {
-        meta.push('<a href="' + _escAiHtml(t.source_url) + '" target="_blank" class="badge bg-primary text-decoration-none"><i class="bi bi-box-arrow-up-right"></i> Source</a>');
-    }
-    if (t.note_id) {
-        meta.push('<a href="/note/' + t.note_id + '" class="badge bg-info text-dark text-decoration-none"><i class="bi bi-journal-text"></i> Linked Note</a>');
-    }
-    document.getElementById('aiDetailMeta').innerHTML = meta.join(' ');
-    document.getElementById('aiDetailMeta').style.display = meta.length ? '' : 'none';
-
-    // Completed checkbox
-    var checkbox = document.getElementById('aiDetailCompleted');
-    checkbox.checked = (t.status === 'completed');
-    checkbox.onchange = function() {
-        fetch('/action-item/' + taskId + '/toggle', {method: 'POST'})
-        .then(function(r) { return r.json(); })
-        .then(function(res) {
-            if (res.success) {
-                checkbox.checked = (res.task.status === 'completed');
-                window._aiDetailChanged = true;
-            }
-        })
-        .catch(function(err) {
-            checkbox.checked = !checkbox.checked;
-            console.error(err);
-        });
-    };
-
-    // Description
-    var descEl = document.getElementById('aiDetailDesc');
-    if (t.description && t.description.trim()) {
-        descEl.innerHTML = t.description;
-    } else {
-        descEl.innerHTML = '<p class="text-muted fst-italic">No description.</p>';
-    }
-
-    // Copilot-specific buttons
-    var saveGroup = document.getElementById('aiDetailSaveGroup');
-    var saveBtn = document.getElementById('aiDetailSaveBtn');
-    var dismissBtn = document.getElementById('aiDetailDismissBtn');
-    var notUsefulBtn = document.getElementById('aiDetailNotUsefulBtn');
-    var saveDueInput = document.getElementById('aiDetailSaveDue');
-    if (t.source === 'copilot') {
-        saveGroup.style.display = '';
-        saveGroup.classList.add('d-inline-flex');
-        saveBtn.dataset.taskId = taskId;
-        dismissBtn.style.display = '';
-        dismissBtn.dataset.taskId = taskId;
-        notUsefulBtn.style.display = '';
-        notUsefulBtn.dataset.taskId = taskId;
-        saveDueInput.value = '';
-    } else {
-        saveGroup.style.display = 'none';
-        saveGroup.classList.remove('d-inline-flex');
-        dismissBtn.style.display = 'none';
-        notUsefulBtn.style.display = 'none';
-    }
-
-    // Engagement link
-    var engLink = document.getElementById('aiDetailEngLink');
-    if (opts.showEngagementLink && t.engagement_id) {
-        engLink.href = '/engagement/' + t.engagement_id;
-        engLink.style.display = '';
-    } else {
-        engLink.style.display = 'none';
-    }
-
-    // Edit button - always visible for non-copilot tasks
-    var editBtn = document.getElementById('aiDetailEditBtn');
-    if (t.source === 'copilot') {
-        editBtn.style.display = 'none';
-    } else {
-        editBtn.style.display = '';
-        if (opts.onEdit) {
-            // External editor (engagement view has its own Quill-based modal)
-            editBtn.onclick = function() {
-                bootstrap.Modal.getInstance(document.getElementById('actionItemDetailModal')).hide();
-                setTimeout(function() { opts.onEdit(taskId); }, 300);
-            };
-        } else {
-            editBtn.onclick = function() { switchToEditMode(); };
-        }
-    }
-}
-
-function _escAiHtml(text) {
-    if (!text) return '';
-    var d = document.createElement('div');
-    d.textContent = text;
-    return d.innerHTML;
-}
-
-function switchToEditMode() {
-    // Fetch current data to populate fields
-    fetch('/action-item/' + _aiCurrentTaskId, {method: 'GET'})
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (!data || !data.task) return;
-        var t = data.task;
-
-        document.getElementById('aiEditTitle').value = t.title || '';
-        document.getElementById('aiEditDue').value = t.due_date || '';
-        document.getElementById('aiEditPriority').value = t.priority || 'normal';
-        document.getElementById('aiEditContact').value = t.contact || '';
-
-        // Strip HTML for plain text editing of description
-        var descText = '';
-        if (t.description && t.description.trim()) {
-            var tmp = document.createElement('div');
-            tmp.innerHTML = t.description;
-            descText = tmp.textContent || tmp.innerText || '';
-        }
-        document.getElementById('aiEditDesc').value = descText;
-
-        // Switch visibility
-        document.getElementById('aiDetailViewMode').style.display = 'none';
-        document.getElementById('aiDetailEditMode').style.display = '';
-        document.getElementById('aiDetailViewFooter').style.display = 'none';
-        document.getElementById('aiDetailEditFooter').style.display = '';
-        document.getElementById('aiDetailTitle').innerHTML = '<i class="bi bi-pencil"></i> Edit Action Item';
-    });
-}
-
-function switchToViewMode() {
-    // Re-fetch and re-render view mode
-    fetch('/action-item/' + _aiCurrentTaskId, {method: 'GET'})
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (!data || !data.task) return;
-        _renderViewMode(data.task, _aiCurrentTaskId, _aiCurrentOpts);
-    });
-}
-
-function saveActionItemEdits() {
-    var btn = document.getElementById('aiEditSaveBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
-
-    var title = document.getElementById('aiEditTitle').value.trim();
-    if (!title) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Save';
-        document.getElementById('aiEditTitle').classList.add('is-invalid');
-        return;
-    }
-
-    var payload = {
-        title: title,
-        due_date: document.getElementById('aiEditDue').value || null,
-        priority: document.getElementById('aiEditPriority').value,
-        contact: document.getElementById('aiEditContact').value.trim() || null,
-        description: document.getElementById('aiEditDesc').value.trim() || null,
-    };
-
-    fetch('/action-item/' + _aiCurrentTaskId, {
-        method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload),
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            window._aiDetailChanged = true;
-            // Switch back to view mode with fresh data
-            _renderViewMode(data.task, _aiCurrentTaskId, _aiCurrentOpts);
-        } else {
-            btn.innerHTML = '<i class="bi bi-x-circle"></i> ' + (data.error || 'Failed');
-        }
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Save';
-    })
-    .catch(function() {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Save';
-    });
-}
-
-function saveCopilotTask() {
-    var btn = document.getElementById('aiDetailSaveBtn');
-    var taskId = btn.dataset.taskId;
-    var dueVal = document.getElementById('aiDetailSaveDue').value;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
-    var opts = { method: 'POST', headers: {'Content-Type': 'application/json'} };
-    var payload = {};
-    if (dueVal) payload.due_date = dueVal;
-    opts.body = JSON.stringify(payload);
-    fetch('/action-item/' + taskId + '/save', opts)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            btn.innerHTML = '<i class="bi bi-check-circle"></i> Saved';
-            btn.classList.replace('btn-outline-info', 'btn-success');
-            window._aiDetailChanged = true;
-            setTimeout(function() { btn.style.display = 'none'; }, 1500);
-        } else {
-            btn.innerHTML = '<i class="bi bi-x-circle"></i> ' + (data.error || 'Failed');
-            btn.disabled = false;
-        }
-    })
-    .catch(function() {
-        btn.innerHTML = '<i class="bi bi-pin-angle"></i> Save Task';
-        btn.disabled = false;
-    });
-}
-
-function dismissCopilotTask() {
-    var btn = document.getElementById('aiDetailDismissBtn');
-    var taskId = btn.dataset.taskId;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Dismissing...';
-    fetch('/action-item/' + taskId + '/dismiss', { method: 'POST' })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            btn.innerHTML = '<i class="bi bi-check-circle"></i> Dismissed';
-            btn.classList.replace('btn-outline-warning', 'btn-secondary');
-            window._aiDetailChanged = true;
-            setTimeout(function() {
-                bootstrap.Modal.getInstance(document.getElementById('actionItemDetailModal')).hide();
-            }, 800);
-        } else {
-            btn.innerHTML = '<i class="bi bi-x-lg"></i> Dismiss';
-            btn.disabled = false;
-        }
-    })
-    .catch(function() {
-        btn.innerHTML = '<i class="bi bi-x-lg"></i> Dismiss';
-        btn.disabled = false;
-    });
-}
-
-function notUsefulCopilotTask() {
-    var btn = document.getElementById('aiDetailNotUsefulBtn');
-    var taskId = btn.dataset.taskId;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-    fetch('/action-item/' + taskId + '/not-useful', { method: 'POST' })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            btn.innerHTML = '<i class="bi bi-check-circle"></i> Noted';
-            btn.classList.replace('btn-outline-danger', 'btn-secondary');
-            window._aiDetailChanged = true;
-            setTimeout(function() {
-                bootstrap.Modal.getInstance(document.getElementById('actionItemDetailModal')).hide();
-            }, 800);
-        } else {
-            btn.innerHTML = '<i class="bi bi-hand-thumbs-down"></i> Not Useful';
-            btn.disabled = false;
-        }
-    })
-    .catch(function() {
-        btn.innerHTML = '<i class="bi bi-hand-thumbs-down"></i> Not Useful';
-        btn.disabled = false;
-    });
-}
-
-window._aiDetailChanged = false;
-document.getElementById('actionItemDetailModal').addEventListener('hidden.bs.modal', function() {
-    if (window._aiDetailChanged) {
-        window._aiDetailChanged = false;
-        window.location.reload();
-    }
-    // Reset to view mode when modal closes
-    document.getElementById('aiDetailViewMode').style.display = '';
-    document.getElementById('aiDetailEditMode').style.display = 'none';
-    document.getElementById('aiDetailViewFooter').style.display = '';
-    document.getElementById('aiDetailEditFooter').style.display = 'none';
-});
-</script>
+</dialog>
+<dialog class="sb-dialog sb-dialog-compact" id="aiDiscardDialog"
+        aria-labelledby="aiDiscardTitle">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header">
+            <h2 id="aiDiscardTitle">Discard action item edits?</h2>
+        </div>
+        <div class="sb-dialog-body">Your edits have not been saved.</div>
+        <div class="sb-dialog-footer">
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>
+                Keep editing
+            </button>
+            <button type="button" class="sb-dialog-button" id="aiDiscardConfirm">Discard edits</button>
+        </div>
+    </div>
+</dialog>
+<script src="{{ url_for('static', filename='js/ui-action-item-dialog.js') }}"></script>

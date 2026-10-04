@@ -18,6 +18,45 @@ html:has(.sb-dialog[open]) { overflow: hidden; }
     line-height: 1.6;
 }
 .sb-dialog-compact { width: min(560px, calc(100vw - 96px)); }
+.sb-action-item-dialog { width: min(800px, calc(100vw - 96px)); }
+.sb-action-item-meta, .sb-action-item-commands {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.sb-action-item-meta { margin-bottom: 16px; }
+.sb-action-item-tag {
+    display: inline-flex;
+    padding: 2px 7px;
+    border: 1px solid var(--sb-ui-control-line);
+    color: var(--sb-ui-muted);
+    font-size: 12px;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+.sb-action-item-tag[data-tone="danger"], .sb-action-item-danger { color: var(--sb-ui-danger); }
+.sb-action-item-tag[data-tone="accent"] { color: var(--sb-ui-accent); }
+.sb-action-item-description-row { display: flex; align-items: start; gap: 24px; }
+.sb-action-item-description { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sb-action-item-description img { max-width: 100%; height: auto; }
+.sb-action-item-description pre { max-width: 100%; overflow: auto; }
+.sb-action-item-description a { color: var(--sb-ui-accent); }
+.sb-action-item-completed { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sb-action-item-dialog input[type="checkbox"] { accent-color: var(--sb-ui-accent); }
+.sb-action-item-form { display: grid; gap: 16px; }
+.sb-action-item-form-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.sb-action-item-form textarea { resize: vertical; }
+.sb-action-item-commands { width: 100%; justify-content: flex-end; }
+.sb-action-item-commands a { text-decoration: none; }
+.sb-action-item-commands .sb-dialog-button { gap: 6px; white-space: nowrap; }
+.sb-action-item-save { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sb-action-item-save input { width: 150px; }
+.sb-action-item-dialog #aiDetailResult { color: var(--sb-ui-muted); margin: 16px 0 0; }
+.sb-action-item-dialog #aiDetailResult:empty { display: none; }
+.sb-action-item-dialog #aiDetailResult[data-state="error"] { color: var(--sb-ui-danger); }
+.sb-action-item-dialog [aria-invalid="true"] { border-color: var(--sb-ui-danger); }
+.sb-action-item-dialog :disabled { opacity: .6; cursor: wait; }
 .sb-dashboard-settings { color: var(--sb-ui-ink); font: 14px/1.6 var(--sb-ui-font); }
 .sb-dashboard-setting {
     display: grid;

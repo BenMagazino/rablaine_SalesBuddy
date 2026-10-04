@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-15 committed, checkpoint 16 settings approved
+- Status: BUILDING; checkpoints 1-16 committed, checkpoint 17 Action Item preview approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -28,14 +28,17 @@
 - Checkpoint 15 calendar loading/error feedback: [Calendar evidence](HOME-WORKBENCH.md),
   technically verified, user-approved October 3, committed as `1f1472a`
 - Checkpoint 16 Home Action Items settings: [Home evidence](HOME-WORKBENCH.md),
-  native host and shared Preferences controls technically verified, user-approved October 3
+  native host and shared Preferences controls technically verified, user-approved October 3,
+  committed as `6d15a91`
+- Checkpoint 17 shared Action Item preview/editor: [Home evidence](HOME-WORKBENCH.md),
+  technically verified, user-approved October 3, ready to commit
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
 - Next action: continue the remaining global surfaces after this checkpoint;
   homepage and shared note/milestone dialogs are not approved by this checkpoint.
-  Commit checkpoint 16, then continue Home preview surfaces;
+  Commit checkpoint 17, then continue remaining Home surfaces;
   no push, merge or deployment is authorized.
 
 ## Checkpoint 1 scope

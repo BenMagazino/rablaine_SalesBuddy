@@ -436,7 +436,7 @@ test('project rows open the shared work modal using the project fragment', async
     assert.equal(ui.elements.managerWorkBody.innerHTML, '<div>Complete seller workspace</div>');
 });
 
-test('project task dialogs wait for the parent transition and restore the project modal', () => {
+test('native project task dialogs restore the parent, including close during its transition', () => {
     function modal(initialClasses) {
         const listeners = new Map();
         return {
@@ -461,10 +461,12 @@ test('project task dialogs wait for the parent transition and restore the projec
     const parent = modal(['show']);
     parent.id = 'managerWorkModal';
     const task = modal([]);
+    const discard = modal([]);
+    const appended = [];
+    parent.querySelector = selector => selector === '#actionItemDetailModal' ? task : discard;
     let transitioning = true;
     let hideCount = 0;
-    let taskShowCount = 0;
-    let disposeCount = 0;
+    let parentShowCount = 0;
     const source = fs.readFileSync(path.join(
         __dirname, '..', '..', 'templates', 'partials', 'project_view_content.html',
     ), 'utf8').split('{% if parent_modal_id is defined %}')[1].split('{% endif %}')[0]
@@ -472,32 +474,37 @@ test('project task dialogs wait for the parent transition and restore the projec
     vm.runInNewContext(source, {
         document: {
             getElementById: id => id === parent.id ? parent : task,
-            body: {appendChild() {}},
+            body: {appendChild(element) { appended.push(element); }},
         },
         bootstrap: {Modal: {
-            getInstance: () => ({dispose() { disposeCount++; }}),
-            getOrCreateInstance: element => element === parent ? {
+            getOrCreateInstance: element => {
+                assert.equal(element, parent);
+                return {
                 hide() { hideCount++; if (!transitioning) parent.classList.remove('show'); },
-                show() { parent.classList.add('show'); },
-            } : {show() { taskShowCount++; task.classList.add('show'); }},
+                show() { parentShowCount++; parent.classList.add('show'); },
+                };
+            },
         }},
     });
-    let prevented = false;
-    task.emit('show.bs.modal', {preventDefault() { prevented = true; }});
-    assert.equal(prevented, true);
-    assert.equal(taskShowCount, 0);
+    assert.deepEqual(appended, [task, discard]);
+    assert.equal(discard.dataset.workspaceParentModal, parent.id);
+    task.emit('sb:dialog-opening');
+    task.emit('sb:dialog-closed');
+    assert.equal(parentShowCount, 0);
     transitioning = false;
     parent.emit('shown.bs.modal');
     assert.equal(hideCount, 2);
     assert.equal(parent.classList.contains('show'), false);
     parent.emit('hidden.bs.modal');
-    assert.equal(taskShowCount, 1);
-    assert.equal(disposeCount, 1);
-    task.classList.remove('show');
-    task.emit('hidden.bs.modal');
-    parent.emit('shown.bs.modal');
+    assert.equal(parentShowCount, 1);
     assert.equal(parent.classList.contains('show'), true);
+    parent.emit('shown.bs.modal');
     assert.equal(hideCount, 2);
+    task.emit('sb:dialog-opening');
+    parent.emit('hidden.bs.modal');
+    task.emit('sb:dialog-closed');
+    assert.equal(parentShowCount, 2);
+    assert.equal(parent.classList.contains('show'), true);
 });
 
 test('project selection resets U2C source and displays projects without customer or ACR', async () => {

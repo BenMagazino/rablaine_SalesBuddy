@@ -46,6 +46,29 @@ def test_dashboard_preferences_confirm_and_persist(
             assert field.has_attr("checked") is enabled
 
 
+def test_action_item_preview_retains_native_fields_and_commands(app: Flask) -> None:
+    """All shared task actions are available without the old modal/form framework."""
+    soup = render_home(app)
+    dialog = soup.find("dialog", id="actionItemDetailModal")
+    assert dialog["aria-labelledby"] == "aiDetailTitle"
+    assert dialog["data-sb-backdrop-close"] == "true"
+    assert not dialog.select(".modal, .btn, .form-control, [data-bs-dismiss], [onclick]")
+    for field_id in [
+        "aiEditTitle", "aiEditDue", "aiEditPriority", "aiEditContact",
+        "aiEditDesc", "aiDetailSaveDue", "aiDetailCompleted",
+    ]:
+        assert dialog.find(id=field_id)
+        assert dialog.find("label", attrs={"for": field_id})
+    for button_id in [
+        "aiDetailNotUsefulBtn", "aiDetailDismissBtn", "aiDetailSaveBtn",
+        "aiDetailEditBtn", "aiEditSaveBtn", "aiDetailRetry", "aiDetailCancelEdit",
+    ]:
+        assert dialog.find("button", id=button_id)
+    assert dialog.select_one('button[form="aiDetailEditMode"][type="submit"]')
+    assert soup.find("dialog", id="aiDiscardDialog")
+    assert soup.select_one('script[src="/static/js/ui-action-item-dialog.js"]')
+
+
 @pytest.mark.parametrize("engagements,projects,tasks", list(product([False, True], repeat=3)))
 def test_home_frame_and_tabs_exist_in_every_conditional_branch(
     app: Flask, engagements: bool, projects: bool, tasks: bool,
