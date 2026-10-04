@@ -96,8 +96,8 @@
         if (detailDirty) location.reload();
     });
 
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('#alertDetailModal .review-action-btn')) {
+    document.addEventListener('sb:revenue-review-saved', function(e) {
+        if (e.target instanceof Element && e.target.closest('#alertDetailModal .review-action-btn')) {
             detailDirty = true;
         }
     });

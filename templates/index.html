@@ -1934,8 +1934,8 @@ window.openHomeMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl)
         if (alertDirty) location.reload();
     });
 
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('#homeAlertDetailModal .review-action-btn')) {
+    document.addEventListener('sb:revenue-review-saved', function(e) {
+        if (e.target instanceof Element && e.target.closest('#homeAlertDetailModal .review-action-btn')) {
             alertDirty = true;
         }
     });

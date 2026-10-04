@@ -1,226 +1,96 @@
-{# Review Action Modal + JS for Revenue Analyzer actioning #}
-{# Include once per page that shows revenue alerts. #}
-{# Usage: {% include 'partials/review_action.html' %} #}
+{# Shared review controls and native editor. Include once per revenue host page. #}
+{% set review_labels = {
+    'new': 'New', 'to_be_reviewed': 'To be reviewed', 'reviewed': 'Reviewed',
+    'actioned': 'Actioned', 'dismissed': 'Dismissed'
+} %}
+{% set review_icons = {
+    'new': 'circle', 'to_be_reviewed': 'hourglass-split', 'reviewed': 'eye',
+    'actioned': 'check2-circle', 'dismissed': 'dash-circle'
+} %}
 
-{# ── Jinja macros ── #}
 {% macro review_badge(analysis) %}
-{% if analysis.review_status == 'to_be_reviewed' %}
-<span class="badge bg-danger review-badge" title="{{ analysis.review_notes or '' }}"><i class="bi bi-hourglass-split"></i> To be reviewed</span>
-{% elif analysis.review_status == 'reviewed' %}
-<span class="badge bg-info review-badge" title="{{ analysis.review_notes or '' }}"><i class="bi bi-eye"></i> Reviewed</span>
-{% elif analysis.review_status == 'actioned' %}
-<span class="badge bg-success review-badge" title="{{ analysis.review_notes or '' }}"><i class="bi bi-check2-circle"></i> Actioned</span>
-{% elif analysis.review_status == 'dismissed' %}
-<span class="badge bg-secondary review-badge" title="{{ analysis.review_notes or '' }}"><i class="bi bi-dash-circle"></i> Dismissed</span>
-{% else %}
-<span class="badge bg-light text-dark border review-badge"><i class="bi bi-circle"></i> New</span>
-{% endif %}
+<span class="sb-review-badge review-badge" data-status="{{ analysis.review_status }}"
+      title="{{ analysis.review_notes or '' }}">
+    <i class="bi bi-{{ review_icons.get(analysis.review_status, 'circle') }}" aria-hidden="true"></i>
+    {{ review_labels.get(analysis.review_status, 'New') }}
+</span>
 {% endmacro %}
 
 {% macro previous_review_hint(analysis) %}
 {% if analysis.previous_review_status %}
-<div class="small text-muted mt-1" title="{{ analysis.previous_review_notes or '' }}">
-    <i class="bi bi-arrow-return-right"></i> Previously: <em>{{ analysis.previous_review_status|replace('_', ' ')|title }}</em>{% if analysis.previous_review_notes %} - {{ analysis.previous_review_notes|truncate(60) }}{% endif %}
+<div class="sb-review-previous" data-review-previous-id="{{ analysis.id }}"
+     title="{{ analysis.previous_review_notes or '' }}">
+    <i class="bi bi-arrow-return-right" aria-hidden="true"></i>
+    Previously: <em>{{ analysis.previous_review_status|replace('_', ' ')|title }}</em>{% if analysis.previous_review_notes %} - {{ analysis.previous_review_notes|truncate(60) }}{% endif %}
 </div>
 {% endif %}
 {% endmacro %}
 
 {% macro action_buttons(analysis) %}
-<div class="btn-group btn-group-sm">
-    <button type="button" class="btn btn-sm btn-outline-primary review-action-btn" 
-            data-analysis-id="{{ analysis.id }}"
-            data-status="{{ analysis.review_status }}"
-            data-notes="{{ (analysis.review_notes or '')|e }}"
-            title="Set review status">
-        <i class="bi bi-pencil-square"></i>
-    </button>
-</div>
+<button type="button" class="sb-review-button review-action-btn"
+        data-analysis-id="{{ analysis.id }}" data-status="{{ analysis.review_status }}"
+        data-notes="{{ analysis.review_notes or '' }}"
+        title="Set review status" aria-label="Set review status">
+    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+</button>
 {% endmacro %}
 
-<!-- Review Action Modal -->
-<div class="modal fade" id="reviewActionModal" tabindex="-1" aria-labelledby="reviewActionModalLabel" aria-hidden="true" style="z-index: 1070;">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header py-2">
-                <h5 class="modal-title" id="reviewActionModalLabel"><i class="bi bi-pencil-square"></i> Review Alert</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="reviewAnalysisId">
-                
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Status</label>
-                    <div class="d-flex flex-wrap gap-2">
-                        <input type="radio" class="btn-check" name="reviewStatus" id="rs_new" value="new" autocomplete="off">
-                        <label class="btn btn-outline-secondary btn-sm" for="rs_new"><i class="bi bi-circle"></i> New</label>
-                        
-                        <input type="radio" class="btn-check" name="reviewStatus" id="rs_to_be_reviewed" value="to_be_reviewed" autocomplete="off">
-                        <label class="btn btn-outline-danger btn-sm" for="rs_to_be_reviewed"><i class="bi bi-hourglass-split"></i> To be reviewed</label>
-                        
-                        <input type="radio" class="btn-check" name="reviewStatus" id="rs_reviewed" value="reviewed" autocomplete="off">
-                        <label class="btn btn-outline-info btn-sm" for="rs_reviewed"><i class="bi bi-eye"></i> Reviewed</label>
-                        
-                        <input type="radio" class="btn-check" name="reviewStatus" id="rs_actioned" value="actioned" autocomplete="off">
-                        <label class="btn btn-outline-success btn-sm" for="rs_actioned"><i class="bi bi-check2-circle"></i> Actioned</label>
-                        
-                        <input type="radio" class="btn-check" name="reviewStatus" id="rs_dismissed" value="dismissed" autocomplete="off">
-                        <label class="btn btn-outline-secondary btn-sm" for="rs_dismissed"><i class="bi bi-dash-circle"></i> Dismissed</label>
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="reviewNotes" class="form-label fw-semibold">Notes</label>
-                    <textarea class="form-control" id="reviewNotes" rows="3" 
-                              placeholder="Why are you marking it this way? (e.g., seasonal dip, customer migrating, set up meeting with DSS)"></textarea>
-                </div>
-
-                <!-- Review History -->
-                <div id="reviewHistorySection" class="mt-3" style="display:none;">
-                    <h6 class="fw-semibold text-muted"><i class="bi bi-clock-history"></i> Review History</h6>
-                    <div id="reviewHistoryList" class="border rounded p-2" style="max-height: 250px; overflow-y: auto;"></div>
-                </div>
-            </div>
-            <div class="modal-footer py-2">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="saveReview()">
-                    <i class="bi bi-check-circle"></i> Save
+<dialog class="sb-dialog sb-review-dialog" id="reviewActionModal"
+        aria-labelledby="reviewActionModalLabel" data-sb-backdrop-close="true">
+    <form class="sb-dialog-shell" id="reviewActionForm">
+        <div class="sb-dialog-header">
+            <h2 id="reviewActionModalLabel">Review Alert</h2>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                    aria-label="Close review editor">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="sb-dialog-body">
+            <input type="hidden" id="reviewAnalysisId">
+            <fieldset class="sb-review-statuses">
+                <legend>Status</legend>
+                {% for value, label in review_labels.items() %}
+                <label class="sb-review-choice" for="rs_{{ value }}">
+                    <input type="radio" name="reviewStatus" id="rs_{{ value }}" value="{{ value }}">
+                    <span>{{ label }}</span>
+                </label>
+                {% endfor %}
+            </fieldset>
+            <label class="sb-record-field-label" for="reviewNotes">Notes</label>
+            <textarea class="sb-record-field" id="reviewNotes" rows="3"
+                      aria-describedby="reviewNotesHelp" autofocus></textarea>
+            <p class="sb-review-help" id="reviewNotesHelp">Why are you marking it this way?
+                For example: seasonal dip, customer migrating, or meeting set up with DSS.</p>
+            <section class="sb-review-history" id="reviewHistorySection"
+                     aria-labelledby="reviewHistoryTitle">
+                <h3 id="reviewHistoryTitle">Review history</h3>
+                <p id="reviewHistoryState" role="status" aria-live="polite"></p>
+                <button class="sb-dialog-button" id="reviewHistoryRetry" type="button" hidden>
+                    Retry history
                 </button>
-            </div>
+                <div id="reviewHistoryList"></div>
+            </section>
+        </div>
+        <div class="sb-dialog-footer">
+            <p class="sb-review-result" id="reviewResult" role="status" aria-live="polite"></p>
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+            <button type="submit" class="sb-dialog-button" id="reviewSave">Save</button>
+        </div>
+    </form>
+</dialog>
+<dialog class="sb-dialog sb-dialog-compact" id="reviewDiscardDialog"
+        aria-labelledby="reviewDiscardTitle">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header"><h2 id="reviewDiscardTitle">Discard review edits?</h2></div>
+        <div class="sb-dialog-body">Your status and notes have not been saved.</div>
+        <div class="sb-dialog-footer">
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>
+                Keep editing
+            </button>
+            <button type="button" class="sb-dialog-button" id="reviewDiscardConfirm">
+                Discard edits
+            </button>
         </div>
     </div>
-</div>
-
-<script>
-let _reviewModal = null;
-
-function openReviewModal(analysisId, currentStatus, currentNotes) {
-    if (!_reviewModal) {
-        _reviewModal = new bootstrap.Modal(document.getElementById('reviewActionModal'));
-        document.getElementById('reviewActionModal').addEventListener('shown.bs.modal', function() {
-            var backdrop = document.querySelector('.modal-backdrop:last-child');
-            if (backdrop) backdrop.style.zIndex = '1065';
-        });
-    }
-    document.getElementById('reviewAnalysisId').value = analysisId;
-    document.getElementById('reviewNotes').value = currentNotes || '';
-    
-    const radio = document.getElementById('rs_' + currentStatus);
-    if (radio) radio.checked = true;
-    
-    // Load review history
-    _loadReviewHistory(analysisId);
-    
-    _reviewModal.show();
-}
-
-document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.review-action-btn');
-    if (btn) {
-        openReviewModal(btn.dataset.analysisId, btn.dataset.status, btn.dataset.notes);
-    }
-});
-
-async function _loadReviewHistory(analysisId) {
-    const section = document.getElementById('reviewHistorySection');
-    const list = document.getElementById('reviewHistoryList');
-    list.innerHTML = '<div class="text-muted small">Loading...</div>';
-    section.style.display = '';
-    
-    try {
-        const resp = await fetch(`/api/revenue/analysis/${analysisId}/review-history`);
-        const data = await resp.json();
-        if (!data.history || data.history.length === 0) {
-            section.style.display = 'none';
-            return;
-        }
-        list.innerHTML = data.history.map(h => _reviewHistoryItem(h)).join('');
-    } catch (err) {
-        list.innerHTML = '<div class="text-danger small">Failed to load history</div>';
-    }
-}
-
-function _reviewHistoryItem(h) {
-    const badge = _reviewBadgeHtml(h.review_status, '');
-    const dt = h.created_at ? new Date(h.created_at + 'Z').toLocaleString() : '';
-    const notes = h.review_notes ? `<div class="text-muted small mt-1">${_escapeHtml(h.review_notes)}</div>` : '';
-    return `<div class="d-flex align-items-start gap-2 mb-2 pb-2 border-bottom">
-        <div>${badge}</div>
-        <div class="flex-grow-1">
-            <small class="text-muted">${dt}</small>${notes}
-        </div>
-    </div>`;
-}
-
-function _escapeHtml(str) {
-    const el = document.createElement('span');
-    el.textContent = str;
-    return el.innerHTML;
-}
-
-async function saveReview() {
-    const analysisId = document.getElementById('reviewAnalysisId').value;
-    const status = document.querySelector('input[name="reviewStatus"]:checked');
-    const notes = document.getElementById('reviewNotes').value;
-    
-    if (!status) return;
-    
-    try {
-        const resp = await fetch(`/api/revenue/analysis/${analysisId}/review`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                review_status: status.value,
-                review_notes: notes
-            })
-        });
-        const data = await resp.json();
-        if (!data.success) {
-            alert(data.error || 'Failed to save review');
-            return;
-        }
-        
-        // Update badge in table row
-        const badgeEl = document.querySelector(`[data-review-id="${analysisId}"]`);
-        if (badgeEl) {
-            badgeEl.innerHTML = _reviewBadgeHtml(data.review_status, data.review_notes);
-        }
-        
-        // Update row styling
-        const row = document.querySelector(`tr[data-analysis-id="${analysisId}"]`);
-        if (row) {
-            row.style.opacity = (data.review_status !== 'new' && data.review_status !== 'to_be_reviewed') ? '0.6' : '';
-        }
-        
-        // Refresh history in modal
-        if (data.history) {
-            const section = document.getElementById('reviewHistorySection');
-            const list = document.getElementById('reviewHistoryList');
-            if (data.history.length > 0) {
-                section.style.display = '';
-                list.innerHTML = data.history.map(h => _reviewHistoryItem(h)).join('');
-            }
-        }
-        
-        _reviewModal.hide();
-    } catch (err) {
-        console.error('Review save error:', err);
-        alert('Network error saving review');
-    }
-}
-
-function _reviewBadgeHtml(status, notes) {
-    const title = notes ? ` title="${notes.replace(/"/g, '&quot;')}"` : '';
-    switch (status) {
-        case 'to_be_reviewed':
-            return `<span class="badge bg-danger review-badge"${title}><i class="bi bi-hourglass-split"></i> To be reviewed</span>`;
-        case 'reviewed':
-            return `<span class="badge bg-info review-badge"${title}><i class="bi bi-eye"></i> Reviewed</span>`;
-        case 'actioned':
-            return `<span class="badge bg-success review-badge"${title}><i class="bi bi-check2-circle"></i> Actioned</span>`;
-        case 'dismissed':
-            return `<span class="badge bg-secondary review-badge"${title}><i class="bi bi-dash-circle"></i> Dismissed</span>`;
-        default:
-            return `<span class="badge bg-light text-dark border review-badge"><i class="bi bi-circle"></i> New</span>`;
-    }
-}
-</script>
+</dialog>
+<script defer src="{{ url_for('static', filename='js/ui-revenue-review.js') }}"></script>

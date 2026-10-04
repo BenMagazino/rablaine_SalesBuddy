@@ -1,12 +1,12 @@
 # Home workbench composition and attention panels
 
-- Status: DONE for checkpoint 18 Revenue Buckets filter; HOME remains BUILDING
-- Checkpoint: 18, following approved/committed checkpoint 17
+- Status: DONE for checkpoint 19 shared Review Alert editor; HOME remains BUILDING
+- Checkpoint: 19, following approved/committed checkpoint 18
 - Parent checkoffs: HOME and GLOBAL-SHELL remain BUILDING
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
-- Approved UI baseline: `c1242b3`, checkpoint 17 Action Item preview/editor
-- Implementation tested: checkpoint 18 working tree based on `c1242b3`
+- Approved UI baseline: `b53752c`, checkpoint 18 Revenue Buckets filter
+- Implementation tested: checkpoint 18 committed as `b53752c`; checkpoint 19 working tree
 - Checkpoint 14 user sign-off: October 3, 2026, including tag-color correction, native calendar
   picker and floating refresh-failure feedback
 - Checkpoint 14 implementation revision: `3e4c5be`
@@ -17,7 +17,10 @@
 - Checkpoint 17 user sign-off: October 3, 2026
 - Checkpoint 17 implementation revision: `c1242b3`
 - Checkpoint 18 user sign-off: October 3, 2026
-- Next action: commit checkpoint 18, then continue remaining Home surfaces.
+- Checkpoint 18 implementation revision: `b53752c`
+- Checkpoint 19 user sign-off: October 3, 2026
+- Next action: commit approved checkpoint 19.
+  Revenue Alert preview shells and detailed bodies are the next remaining slice.
   The New note/edit form layout is not migrated.
   No push, merge or deployment is authorized.
 
@@ -559,7 +562,118 @@ migration surfaces. Their current functionality is preserved, not rewritten here
 - Review status: user-approved October 3, 2026, including bottom anchoring and
   overlapping selections persisting across pages. Page-specific bucket discovery
   and Home's existing top-ten-before-filter behavior were explained and accepted.
-  Ready to commit. Whole HOME, remaining
+  Committed as `b53752c`. Whole HOME, remaining
   revenue previews and New Note/edit form layouts are not signed off here.
 - Approved full-redesign estimate remains about 17% by effort at checkpoint
   18 sign-off; this small slice does not change the rounded estimate.
+
+## Checkpoint 19: shared Review Alert editor
+
+- Status: DONE, technically checked October 4 UTC, user-approved October 3 local.
+  Baseline: `b53752c`. This checkpoint migrates the shared editor first, not the
+  preview shells or detailed alert bodies. The following audit informed scope.
+- Live Home preview inspected with an existing matched-customer alert. Preserve
+  customer/bucket title, category, average/latest revenue, monthly trend, priority,
+  recommended action/rationale, risk/opportunity, analyzed date/month count,
+  previous-review hint, current review badge, product/month totals and links to
+  customer revenue and product pages. Detailed body styling remains a later slice.
+- Preview GET: `/api/revenue/analysis/<id>/detail` currently returns shared HTML
+  with no identity wrapper. Unmatched-customer alerts return a successful
+  explanatory fragment, not a failure; preserve this distinction. Missing
+  analyses return 404. Current Home loader has no Retry, request cancellation or
+  stale-response protection.
+- Review editor is shared by Home, Revenue Analyzer, customer revenue, seller
+  revenue alerts and Seller detail. Preserve five statuses (New, To be reviewed,
+  Reviewed, Actioned, Dismissed), review notes, newest-first history and local-time
+  history timestamps. History GET: `/api/revenue/analysis/<id>/review-history`.
+  PATCH `/api/revenue/analysis/<id>/review` creates an immutable history entry,
+  strips notes, clears previous-review hints and returns confirmed status/notes/
+  timestamp/history. Keep read operations separate from writes.
+- Both legacy Home preview and nested Review Alert editor were opened live, then
+  closed without entering data or saving. Existing alert has no review history;
+  history-positive coverage must use isolated tests if no suitable live record
+  is available. Protected New Note tabs were not touched.
+- Important coupling: a Bootstrap Review Alert child cannot be displayed above a
+  native top-layer preview parent without migration or a deliberate handoff.
+  Migrate the shared editor first or in the same slice; do not ship the initially
+  considered native preview-only change with an inaccessible Review button.
+- Existing refresh behavior: preview hosts mark dirty when Review is clicked,
+  not only after a confirmed save. Seller also has Full View parent hide/restore
+  behavior and reload-on-close. Preserve established parent workflows while
+  determining a confirmed-save event contract across every consumer.
+- Implementation checks required: native close/Escape/focus/parent restoration,
+  independent history loading/retry, identity/stale-response checks, explicit
+  save failures retaining form state, confirmed badge/button/row updates,
+  dirty/busy guards, repeated opens, unmatched/missing records and live theme
+  geometry. Existing tests: `TestReviewAPI` in `tests/test_revenue.py`;
+  native record/dialog tests provide reusable lifecycle coverage.
+- User approved the editor, draft protection and Seller parent restoration on
+  October 3, 2026. The approved completion estimate is about 18% by effort.
+
+### Implementation and verification
+
+- Replaced the Bootstrap Review Alert modal with a native shared editor and
+  discard confirmation. Preserved five statuses, notes, status/action/hint
+  macros, API paths and public `openReviewModal`/`saveReview` entry points.
+  Workbench styling uses the existing theme tokens and shared dialog lifecycle.
+- History reads have loading, explicit empty/failure states, Retry, abort and
+  generation protection. Retry never resets status or notes. History notes
+  remain literal text; timestamps use the shared local-time converter without
+  doubling an existing timezone offset.
+- Dirty close/switch offers Keep editing or Discard edits; pending saves block
+  closing, replacement and duplicate writes. A page-leave warning protects
+  dirty/busy forms. Existing native Escape and opener-focus behavior is reused.
+- PATCH success requires HTTP success plus confirmed status and canonical notes.
+  Unconfirmed saves retain edits and report persistent failure. A post-confirmed
+  UI error is distinguished from a failed/unconfirmed write and does not tell
+  the user to submit the same review again.
+- Confirmed saves update matching badges, buttons, row opacity and previous
+  review hints across hosts, then emit `sb:revenue-review-saved`. Merely opening
+  or cancelling review no longer marks preview hosts dirty or reloads a page.
+  Document fallback events are guarded against non-Element targets.
+- Native editor/discard dialogs temporarily stay within an invoking legacy
+  modal's focus-trap boundary and return to their original DOM hosts on close.
+  Seller drilldowns restore Revenue Full View before refreshing; accumulated
+  confirmed changes survive repeated drilldowns and direct Full View reviews.
+- Automated validation: 53 scoped JS tests covering review, native dialog,
+  local timestamps and Revenue Buckets; 40 isolated pytest tests covering five
+  host renders, real detail-fragment macros, review APIs and Home contracts.
+  All pass. The VS Code runner omitted class-based coverage, so the authoritative
+  pytest counts are from the scoped plain terminal run. Existing SQLAlchemy
+  legacy-query warnings remain.
+- Live existing-data validation: Home alert 1069; Revenue Analyzer; customer
+  456 revenue; Austin Card seller alerts; Seller 14 Full View -> alert detail ->
+  native review -> discard -> detail close -> restored Full View. Typed drafts
+  were discarded without saving. Notes focus/retention and clean/nested closing
+  were checked; cancellation remained on the same page.
+- Live failure replay intercepted one history GET (503) and one PATCH (500).
+  History Retry recovered against the real API while retaining the draft;
+  save failure retained edits and showed persistent feedback. Every interceptor
+  was removed; no live review writes were sent. Eight inspected live alerts had
+  no history; non-empty timelines and confirmed-success writes are covered by
+  isolated fixtures, not invented live records.
+- Desktop checks at the unchanged 1806 x 1167 viewport: all eight theme pairs
+  remained bounded with no horizontal body overflow; notes contrast ranged
+  from 13.41:1 to 15.28:1. Graphite dark/light were visually inspected. Temporary
+  theme attributes were restored without changing preferences or storage.
+- Bootstrap stylesheet removal was used to check native control geometry,
+  revealing inherited heading/control resets; the review component now defines
+  those explicitly. Final editor geometry was identical with and without
+  Bootstrap CSS (800 x 507.70 pixels). Graphite/dark and the exact saved
+  Databases/Fabric bucket selection plus taxonomy version were restored.
+  Protected New Note tabs remain untouched.
+- Diagnostics and whitespace checks are clean. No push, merge, deployment or
+  checkpoint 19 commit has been performed.
+
+### User checkoff
+
+1. Home Revenue Alert -> Review: status choices, notes, history and close control
+   should use the workbench style; the existing alert-detail body is unchanged.
+2. Change a status or notes, then Escape/Cancel: Keep editing retains the draft;
+   Discard closes just the editor and returns focus to its Review button.
+3. Revenue Analyzer, customer revenue and seller revenue alerts use the same
+   editor. Closing without saving should not reload the page.
+4. Seller -> Revenue Full View -> alert -> Review: closing the editor returns to
+   the alert; closing the alert restores Full View.
+5. If deliberately saving a real review, verify the saved status/notes and its
+   new history entry on reopen. The badge updates only after confirmation.

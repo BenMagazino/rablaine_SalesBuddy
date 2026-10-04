@@ -412,6 +412,7 @@ window.openStandaloneMilestoneDetail = function(event, msId, msTitle, msStatus, 
 (function() {
     let detailModal = null;
     let detailDirty = false;
+    let revenueDirty = false;
     let returningToParent = false;
     const titleEl = document.getElementById('alertDetailTitle');
     const bodyEl = document.getElementById('alertDetailBody');
@@ -438,13 +439,14 @@ window.openStandaloneMilestoneDetail = function(event, msId, msTitle, msStatus, 
         var parentModalEl = document.getElementById('revenueModal');
         var parentModal = parentModalEl ? bootstrap.Modal.getInstance(parentModalEl) : null;
         if (parentModal && parentModalEl.classList.contains('show')) {
+            returningToParent = true;
             var onceHidden = function() {
                 parentModalEl.removeEventListener('hidden.bs.modal', onceHidden);
                 showAlertDetail(alertId, customerName, bucket);
                 var detailEl = document.getElementById('alertDetailModal');
                 var onceDetailHidden = function() {
                     detailEl.removeEventListener('hidden.bs.modal', onceDetailHidden);
-                    returningToParent = true;
+                    returningToParent = false;
                     parentModal.show();
                 };
                 detailEl.addEventListener('hidden.bs.modal', onceDetailHidden);
@@ -452,6 +454,7 @@ window.openStandaloneMilestoneDetail = function(event, msId, msTitle, msStatus, 
             parentModalEl.addEventListener('hidden.bs.modal', onceHidden);
             parentModal.hide();
         } else {
+            returningToParent = false;
             showAlertDetail(alertId, customerName, bucket);
         }
     };
@@ -459,17 +462,20 @@ window.openStandaloneMilestoneDetail = function(event, msId, msTitle, msStatus, 
     // Refresh page when alert detail closes with changes (only if not returning to parent)
     document.getElementById('alertDetailModal').addEventListener('hidden.bs.modal', function() {
         if (detailDirty && !returningToParent) location.reload();
-        returningToParent = false;
     });
 
     // Refresh page when revenue modal closes (to sync compact list with any status changes)
     document.getElementById('revenueModal').addEventListener('hidden.bs.modal', function() {
-        if (detailDirty) location.reload();
+        if (revenueDirty && !returningToParent) location.reload();
     });
 
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('#alertDetailModal .review-action-btn')) {
+    document.addEventListener('sb:revenue-review-saved', function(e) {
+        if (e.target instanceof Element && e.target.closest('#alertDetailModal .review-action-btn')) {
             detailDirty = true;
+            revenueDirty = true;
+        }
+        if (e.target instanceof Element && e.target.closest('#revenueModal .review-action-btn')) {
+            revenueDirty = true;
         }
     });
 })();
