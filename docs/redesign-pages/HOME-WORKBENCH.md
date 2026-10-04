@@ -1,12 +1,12 @@
 # Home workbench composition and attention panels
 
-- Status: DONE for checkpoint 17 Action Item preview; HOME remains BUILDING
-- Checkpoint: 17, following approved/committed checkpoint 16
+- Status: DONE for checkpoint 18 Revenue Buckets filter; HOME remains BUILDING
+- Checkpoint: 18, following approved/committed checkpoint 17
 - Parent checkoffs: HOME and GLOBAL-SHELL remain BUILDING
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
-- Approved UI baseline: `6d15a91`, checkpoint 16 Action Items settings
-- Implementation tested: checkpoint 17 working tree based on `6d15a91`
+- Approved UI baseline: `c1242b3`, checkpoint 17 Action Item preview/editor
+- Implementation tested: checkpoint 18 working tree based on `c1242b3`
 - Checkpoint 14 user sign-off: October 3, 2026, including tag-color correction, native calendar
   picker and floating refresh-failure feedback
 - Checkpoint 14 implementation revision: `3e4c5be`
@@ -15,7 +15,9 @@
 - Checkpoint 16 user sign-off: October 3, 2026
 - Checkpoint 16 implementation revision: `6d15a91`
 - Checkpoint 17 user sign-off: October 3, 2026
-- Next action: commit checkpoint 17, then continue remaining Home surfaces.
+- Checkpoint 17 implementation revision: `c1242b3`
+- Checkpoint 18 user sign-off: October 3, 2026
+- Next action: commit checkpoint 18, then continue remaining Home surfaces.
   The New note/edit form layout is not migrated.
   No push, merge or deployment is authorized.
 
@@ -367,10 +369,10 @@ Hanger draft and separate unsaved New Note tab are untouched. No real writes.
 
 This is not full HOME sign-off or full Bootstrap removal. Checkpoint 14 calendar
 presentation and its follow-up fixes are user-approved. Checkpoint 15 calendar
-read states and dashboard settings are user-approved. The Action Item preview
-is implemented in checkpoint 17 below. The separate action-item calendar,
-embedded engagement/project bodies, revenue detail/review bodies and the shared
-bucket popover remain separate
+read states and checkpoint 16 dashboard settings are user-approved. The Action
+Item preview is approved and committed in checkpoint 17 below; the shared bucket
+popover is user-approved in checkpoint 18. The separate action-item calendar,
+embedded engagement/project bodies and revenue detail/review bodies remain separate
 migration surfaces. Their current functionality is preserved, not rewritten here.
 
 ## Checkpoint 15: calendar read states
@@ -491,5 +493,73 @@ migration surfaces. Their current functionality is preserved, not rewritten here
   and the inspected Engagement has no task rows. Those unavailable branches use
   scoped isolated regression tests, not invented live records or sample previews.
   The task calendar migration was not started.
-- Review status: user-approved October 3, 2026, ready to commit.
+- Review status: user-approved October 3, 2026, committed as `c1242b3`.
 - Estimated full-redesign completion at sign-off: about 17% by effort.
+
+## Checkpoint 18: shared Revenue Buckets filter
+
+- Replaced the Bootstrap popover with an app-owned native popover, compact
+  theme-token controls, literal bucket labels, searchable rows, Select all,
+  mixed selection, an explicit no-results state and a no-selection hint.
+- Preserved the public filter API, selection/version storage keys, sorted bucket
+  discovery, all document-wide bucket rows, counts and existing callbacks.
+  Empty selection still means show every bucket, not hide every row.
+  Locally saved choices are pruned to page buckets; server compensated-bucket
+  fallback retains its existing unpruned behavior. A missing taxonomy marker
+  still means legacy version zero.
+- Version changes invalidate stale local choices. HTTP/network/JSON/schema and
+  storage failures now log context, retain visible feedback and offer Retry.
+  Failed persistence still permits filtering on the current page. Late taxonomy
+  or fallback replies cannot replace a newer choice; superseded fallback errors
+  are logged without leaving an irrelevant warning.
+- Multiple hosts share selections and callbacks without duplicate controls or
+  IDs. Seller's summary and Full View preview synchronize their filter controls
+  and correctly count only visible preview rows.
+- Search receives focus on opening. Escape closes only the filter, restores its
+  invoker and cannot dismiss a parent Seller preview or trigger page navigation.
+  This also works after a recovered Retry button becomes hidden. Outside click
+  closes without stealing the clicked target's focus. Panels retain their opening
+  side while searching; smaller results cannot flip placement. Above-button
+  panels keep their bottom edge six pixels above the button's top edge, while
+  below-button panels keep their top edge six pixels below the button.
+  Reopening or resizing recalculates placement; growing feedback clamps
+  coordinates only when required to remain inside the viewport.
+  Panels close on page exit.
+- Scoped validation: 98 JS tests and 15 isolated Python tests passed. Coverage
+  includes Home summary/native dialogs/freshness regressions, real preference/
+  taxonomy APIs, all/none semantics, persistence, literal labels, empty/search
+  states, concurrent hydration, stale responses, failure/retry and desktop-edge
+  positioning. Diagnostics and whitespace checks are clean.
+- Live dev: verified all five consumers using existing records: Home, Revenue
+  Analyzer, customer 456 revenue, Austin Card's revenue alerts and Seller 14's
+  summary/Full View preview. Reopening the preview leaves exactly one invoker.
+  Selecting Sentinel temporarily gives matching `3/7` labels on both Seller
+  hosts and a preview count of seven matching its seven visible rows.
+- Live failure replay: taxonomy HTTP 503 and local-storage quota failures show
+  persistent feedback and recover via Retry. Read interception and temporary
+  storage overrides were removed. Exact original selection/version values
+  (`["Databases","Fabric"]`, version `3`) and Graphite/dark were restored.
+  No server preference saves, reviews, syncs or customer writes were sent;
+  both protected New Note draft tabs remain untouched.
+- All eight theme pairs retain a bounded popover at the unchanged 1806 x 1167
+  desktop viewport; Graphite dark/light were visually inspected. Temporarily
+  disabling the Bootstrap framework stylesheet leaves the filter's width
+  (280px), height (333.5px), typography, background and color scheme unchanged.
+  This proves the filter's independence, not the surrounding legacy pages'.
+  Opening/closing the filter leaves Home's workspace at y=78, height=1065 and
+  the 24px status bar at y=1143, with zero bottom gap.
+- Search-placement follow-up: reproduced the user's above-to-below jump live.
+  The initial fixed-top correction was superseded by the user's explicit
+  bottom-anchor preference. Searching `d`, `data`, no results and clearing now
+  keeps the popover bottom at y=863.984375, exactly six pixels above the button
+  top at y=869.984375. The top moves as content shrinks while the popup stays
+  attached above its invoker, never flipping below it. Every tested state
+  remains inside the unchanged desktop viewport. No preferences or live
+  records were changed.
+- Review status: user-approved October 3, 2026, including bottom anchoring and
+  overlapping selections persisting across pages. Page-specific bucket discovery
+  and Home's existing top-ten-before-filter behavior were explained and accepted.
+  Ready to commit. Whole HOME, remaining
+  revenue previews and New Note/edit form layouts are not signed off here.
+- Approved full-redesign estimate remains about 17% by effort at checkpoint
+  18 sign-off; this small slice does not change the rounded estimate.

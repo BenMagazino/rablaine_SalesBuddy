@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-16 committed, checkpoint 17 Action Item preview approved
+- Status: BUILDING; checkpoints 1-17 committed, checkpoint 18 Revenue Buckets filter approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -31,14 +31,16 @@
   native host and shared Preferences controls technically verified, user-approved October 3,
   committed as `6d15a91`
 - Checkpoint 17 shared Action Item preview/editor: [Home evidence](HOME-WORKBENCH.md),
-  technically verified, user-approved October 3, ready to commit
+  technically verified, user-approved October 3, committed as `c1242b3`
+- Checkpoint 18 shared Revenue Buckets filter: [Home evidence](HOME-WORKBENCH.md),
+  technically verified across all live consumers, user-approved October 3
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
 - Next action: continue the remaining global surfaces after this checkpoint;
   homepage and shared note/milestone dialogs are not approved by this checkpoint.
-  Commit checkpoint 17, then continue remaining Home surfaces;
+  Commit checkpoint 18, then continue remaining Home surfaces;
   no push, merge or deployment is authorized.
 
 ## Checkpoint 1 scope

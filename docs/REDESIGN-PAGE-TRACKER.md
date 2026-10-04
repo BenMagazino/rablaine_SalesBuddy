@@ -6,7 +6,7 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 17, shared Action Item preview and editor,
+- Current page/surface: checkpoint 18, shared Revenue Buckets filter,
   user-approved October 3, 2026, ready to commit;
   full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
@@ -20,9 +20,11 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `a5ed892` (Home workbench and read-only refresh status),
   `3e4c5be` (Home calendar, native calendar picker and refresh feedback),
   `1f1472a` (native calendar read states, Retry and stale-response protection),
-  `6d15a91` (native Action Items settings and confirmed preference saves)
+  `6d15a91` (native Action Items settings and confirmed preference saves),
+  `c1242b3` (shared Action Item preview and editor, user-approved October 3)
 - Next action: commit
-  [checkpoint 17 Action Item preview](redesign-pages/HOME-WORKBENCH.md).
+  [checkpoint 18 Revenue Buckets filter](redesign-pages/HOME-WORKBENCH.md),
+  then continue remaining Home surfaces.
   New note/edit forms remain TODO.
   No live customer records were changed;
   existing user drafts are preserved. No push, merge or deployment is authorized.
@@ -36,9 +38,11 @@ Inventory date: October 2, 2026. Baseline product SHA:
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
 - Page progress: 0 / 90 DONE
-- Shared fragment/helper progress: 1 / 24 DONE
+- Shared fragment/helper progress: 2 / 25 DONE
 - Global/shell/error progress: 5 / 17 DONE
 - Additional pages discovered after baseline: none recorded
+- Additional shared helpers recorded: existing Revenue Buckets filter, omitted
+  from the initial helper inventory; checkpoint 18 is user-approved and DONE.
 - Commit cadence: each coherent, verified checkpoint; no automatic push or merge
 - Pre-release reviewer: the user; external tester/users provide post-release QA
 
@@ -48,7 +52,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 17 sign-off, the rough effort-based estimate is **about 17%**
+As of checkpoint 18 sign-off, the rough effort-based estimate is **about 17%**
 of the full redesign (a judgment call, approximately 10-20%, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -57,7 +61,9 @@ admin and final reconciliation still remain.
 Report an updated effort-based estimate whenever a checkpoint is completed and
 committed. Keep estimates approximate; small checkpoints may not move the rounded
 percentage. Checkpoint 15: about 15%. Checkpoint 16: about 16%.
-Checkpoint 17: about 17%, user-approved October 3, 2026.
+Checkpoint 17: about 17%, user-approved October 3, 2026, committed as `c1242b3`.
+Checkpoint 18: about 17%, user-approved October 3, 2026. This small shared-filter
+slice does not change the rounded approved-work estimate.
 
 The DONE counters are stricter: they count fully reconciled pages/helpers, not
 approved sub-page checkpoints or partial completion. Consequently, `0 / 90`
@@ -192,6 +198,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | FR-PROJ | `partials/project_view_content.html` | `/api/project/<int:id>/detail` | TODO | - |
 | FR-REV | `partials/revenue_alert_detail.html` | `/api/revenue/analysis/<int:analysis_id>/detail` | TODO | - |
 | INC-ACTION | `partials/_action_item_detail_modal.html` | Home, action hub, engagement/project details | DONE | [Evidence](redesign-pages/HOME-WORKBENCH.md) |
+| JS-REV-BUCKET | `static/js/revenue-bucket-filter.js` | Home, revenue dashboard/customer/seller views, seller summary and preview | DONE | [Checkpoint 18 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-DASH | `partials/_dashboard_settings.html` | Home and preferences | TODO | - |
 | INC-FY | `partials/_fy_management_card.html` | Admin | TODO | - |
 | INC-PROJ-FORM | `partials/_project_form_fields.html` | Project/note forms | TODO | - |

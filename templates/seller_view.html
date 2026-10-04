@@ -490,7 +490,7 @@ function updateRevenueSummaryCount() {
 RevenueBucketFilter.init({ containerId: 'sellerBucketFilterContainer', onFilterChange: updateRevenueSummaryCount });
 // Also init inside the modal header
 document.getElementById('revenueModal').addEventListener('shown.bs.modal', function() {
-    if (!document.querySelector('#modalBucketFilterContainer .btn')) {
+    if (!document.querySelector('#modalBucketFilterContainer .sb-bucket-button')) {
         RevenueBucketFilter.init({ containerId: 'modalBucketFilterContainer', onFilterChange: updateRevenueSummaryCount });
     }
 });

@@ -1,5 +1,65 @@
 html:has(.sb-dialog[open]) { overflow: hidden; }
 
+.sb-bucket-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px;
+    border: 1px solid var(--sb-ui-control-line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--sb-ui-muted);
+    font: 12px/1.5 var(--sb-ui-font);
+    cursor: pointer;
+}
+.sb-bucket-button:hover { color: var(--sb-ui-ink); background: var(--sb-ui-raised); }
+.sb-bucket-popover {
+    box-sizing: border-box;
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: 280px;
+    max-height: calc(100dvh - 16px);
+    padding: 12px;
+    border: 1px solid var(--sb-ui-control-line);
+    border-radius: var(--sb-ui-radius);
+    background: var(--sb-ui-surface);
+    color: var(--sb-ui-ink);
+    font: 13px/1.5 var(--sb-ui-font);
+    color-scheme: light;
+    overflow: auto;
+    scrollbar-width: thin;
+}
+[data-sb-mode="dark"] .sb-bucket-popover { color-scheme: dark; }
+.sb-bucket-popover::backdrop { background: transparent; }
+.sb-bucket-popover [hidden], .sb-bucket-button [hidden] { display: none; }
+.sb-bucket-heading { margin-bottom: 10px; font-weight: 600; }
+.sb-bucket-search {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--sb-ui-control-line);
+    border-radius: 0;
+    background: var(--sb-ui-context);
+    color: var(--sb-ui-ink);
+    font: inherit;
+}
+.sb-bucket-option { display: flex; align-items: baseline; gap: 8px; padding: 5px 2px; cursor: pointer; }
+.sb-bucket-option span { min-width: 0; overflow-wrap: anywhere; }
+.sb-bucket-option input { margin: 0; accent-color: var(--sb-ui-accent); flex-shrink: 0; }
+.sb-bucket-select-all { margin-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-bucket-list { max-height: 240px; overflow: auto; scrollbar-width: thin; }
+.sb-bucket-popover p { margin: 8px 0 0; font-size: 12px; }
+.sb-bucket-hint, .sb-bucket-empty { color: var(--sb-ui-muted); }
+.sb-bucket-status { color: var(--sb-ui-danger); overflow-wrap: anywhere; }
+.sb-bucket-status:empty { display: none; }
+.sb-bucket-button:focus-visible, .sb-bucket-popover :focus-visible {
+    outline: 2px solid var(--sb-ui-accent);
+    outline-offset: 1px;
+}
+.sb-bucket-popover button { margin-top: 8px; }
+.sb-bucket-popover button:disabled { opacity: .6; cursor: wait; }
+
 .sb-dialog {
     inset: 0;
     margin: auto;
