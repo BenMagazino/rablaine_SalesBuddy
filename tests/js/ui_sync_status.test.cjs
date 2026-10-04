@@ -15,7 +15,7 @@ const response = (state, status = 200) => ({
 function controller({position, missing, storageError = false} = {}) {
     const storage = new Map(position === undefined ? [] : [['syncStatusCardPos', position]]);
     const listeners = new Map(), windowListeners = new Map(), timers = new Map();
-    const requests = [], queue = [], errors = [], warnings = [];
+    const requests = [], queue = [], errors = [], warnings = [], events = [];
     let refreshes = 0, timerId = 0;
     const document = {
         activeElement: null, body: {},
@@ -79,13 +79,15 @@ function controller({position, missing, storageError = false} = {}) {
         clearInterval: id => timers.delete(id),
         addEventListener: (type, handler) => windowListeners.set(type, handler),
         checkTodayStatus: () => { refreshes++; },
+        CustomEvent,
+        dispatchEvent: event => events.push(event),
         loadCalendar: () => { throw new Error('Full calendar rebuild is forbidden'); },
     };
     context.window = context;
     vm.runInNewContext(source, context);
     return {
         api: context.SyncStatus, elements, document, listeners, windowListeners,
-        storage, requests, queue, errors, warnings, timers,
+        storage, requests, queue, errors, warnings, timers, events,
         refreshes: () => refreshes,
         async tick() { for (const timer of [...timers.values()]) await timer.fn(); },
         click(id) { return elements.get(id).handlers.get('click')(); },
@@ -115,6 +117,16 @@ test('sync stays dormant until explicitly requested, and show does not take page
     h.api.forceShow();
     assert.equal(h.elements.get('syncStatusDate').textContent, 'today');
     assert.equal(h.elements.get('syncStatusProgress').textContent, '');
+});
+
+test('completed background syncs request an immediate freshness check, unlike visual dismissal', () => {
+    const h = controller();
+    h.api.forceShow(active());
+    h.api.hide();
+    assert.equal(h.events.length, 0);
+    h.api.hide({reload: true});
+    assert.equal(h.events[0].type, 'sb:meetings-cache-updated');
+    assert.equal(h.refreshes(), 1);
 });
 
 test('check uses the same read-only endpoint and never shows an inactive sync', async () => {

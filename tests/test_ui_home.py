@@ -33,6 +33,7 @@ def test_home_frame_and_tabs_exist_in_every_conditional_branch(
         app, has_engagements=engagements, has_projects=projects, task_due_count=int(tasks),
     )
     root = soup.select_one("#main-content > .sb-home-page[data-sb-home]")
+    assert root.find(id="homeMeetingNotices").parent == root
     workspace = root.select_one(".sb-home-workspace")
     assert [child.name for child in workspace.find_all(recursive=False)] == ["section", "aside"]
     assert len(workspace.select(".sb-home-rail > .sb-home-panel")) == 3
@@ -54,6 +55,8 @@ def test_home_frame_and_tabs_exist_in_every_conditional_branch(
     assert len(scripts) == 1
     assert scripts[0].parent["id"] == "main-content"
     assert len(soup.select('script[src="/static/js/ui-home-summary.js"]')) == 1
+    assert len(soup.select('script[src="/static/js/ui-home-calendar.js"]')) == 1
+    assert soup.select_one('link[href="/static/css/ui-home-calendar.css"]')
     assert soup.select_one('link[href="/static/css/ui-home.css"]')
     assert not soup.find("script", src="/static/js/ui-home.js").find_parent(role="tabpanel")
     toolbar = root.select_one(".sb-home-activity-header")
@@ -79,9 +82,13 @@ def test_home_live_route_keeps_calendar_and_empty_destinations(client: FlaskClie
     assert soup.find(id="homeNoteDetailModal")
     assert b"new bootstrap.Tab" not in response.data
     assert b"function triggerDaySync(dateStr, wrapEl)" in response.data
-    assert b"function openQuickCreateModal(dateStr)" in response.data
+    assert b"function openQuickCreateModal(dateStr, meetingId = null)" in response.data
     assert not soup.select("body > footer")
     assert root.select_one('nav[aria-label="Breadcrumb"] [aria-current="page"]').text == "Activity"
+    notices = root.find(id="homeMeetingNotices")
+    assert notices.parent == root
+    assert "sb-home-meeting-notices" in notices["class"]
+    assert not notices.find_all()
     breadcrumb = root.select_one('nav[aria-label="Breadcrumb"]')
     assert [child.name for child in breadcrumb.find_all(recursive=False)] == ["div", "button"]
     status = root.select_one('footer[aria-label="Workspace status"]')
@@ -105,8 +112,10 @@ def test_home_live_route_keeps_calendar_and_empty_destinations(client: FlaskClie
     assert len(freshness.select("a")) == 4
     assert all(not link.has_attr("class") for link in freshness.select("a"))
     assert [span["id"] for span in freshness.select('[aria-live="polite"]')] == [
-        "homeMilestonesFreshness", "homeACRFreshness", "homeAccountsFreshness", "homeU2CFreshness",
+        "homeMilestonesFreshness", "homeACRFreshness", "homeMeetingsFreshness",
+        "homeU2CFreshness", "homeAccountsFreshness",
     ]
+    assert root.find(id="homeMeetingsFreshness").find_parent("a") is None
     assert root.find(id="homeMilestonesFreshness").find_parent("a")["href"] == (
         "/admin#milestoneSyncStatus"
     )
@@ -124,10 +133,14 @@ def test_home_live_route_keeps_calendar_and_empty_destinations(client: FlaskClie
     assert soup.select_one('script[src="/static/js/ui-home-freshness.js"][defer]')
     assert root.select_one(".sb-home-activity-header")
     assert root.select_one("#calendarTable thead tr")
-    legend = root.select_one('footer[aria-label="Calendar icon legend"]')
-    for icon in ("calendar-event", "question-circle", "flag-fill",
-                 "check2-square", "star-fill", "diagram-3"):
+    legend = root.select_one('footer[aria-label="Calendar indicator legend"]')
+    for icon in ("calendar-event", "question-circle", "diagram-3"):
         assert legend.select_one(f".bi-{icon}")
+    assert [rail["data-work-status"] for rail in legend.select(".sb-home-rail-swatch")] == [
+        "milestone", "task", "hva",
+    ]
+    assert not root.select_one("#calendarTable").has_attr("style")
+    assert "table" not in root.select_one("#calendarTable")["class"]
     draft_button = root.find(id="homeDraftsButton")
     assert draft_button["data-sb-dialog"] == "homeDraftsDialog"
     assert draft_button.has_attr("hidden")

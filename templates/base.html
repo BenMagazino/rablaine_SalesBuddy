@@ -2793,9 +2793,14 @@
             // Setup for new engagement modal - goes to engagement form
             setupCustomerSearchModal('quickEngagementModal', 'engagementCustomerSearch', 'engagementCustomerResults', '{{ url_for("customers.customer_view", id=0) }}'.replace('/0', '/'), null, function() { return '/engagement/new'; });
             // Setup for calendar quick-create modal (if present on page)
-            // Uses a dynamic URL suffix so the selected date is appended
+            // Preserve the selected date and optional ghost-meeting association.
             var calendarDateSuffix = '';
-            window._quickCreateUpdateDate = function(dateStr) { calendarDateSuffix = '&date=' + dateStr; };
+            window._quickCreateUpdateDate = function(dateStr, meetingId = null) {
+                calendarDateSuffix = '&date=' + encodeURIComponent(dateStr);
+                if (meetingId !== null) {
+                    calendarDateSuffix += '&from_meeting=' + encodeURIComponent(meetingId);
+                }
+            };
             setupCustomerSearchModal(
                 'quickCreateModal', 'quickCreateSearch', 'quickCreateCustomerList',
                 '{{ url_for("notes.note_create") }}?customer_id=',
@@ -2816,29 +2821,29 @@
             if (!customerSearch || !customerResults || !modal) {
                 throw new Error(`Customer picker markup is incomplete: ${modalId}`);
             }
-            const native = modal.tagName === 'DIALOG';
+            if (modal.tagName !== 'DIALOG') {
+                throw new Error(`Customer picker requires a native dialog: ${modalId}`);
+            }
 
             function createLink(href, name, metadata, general = false) {
                 const link = document.createElement('a');
                 link.href = href;
                 link.dataset.sbPickerLink = 'true';
-                link.className = native ? 'sb-picker-result' : 'list-group-item list-group-item-action';
+                link.className = 'sb-picker-result';
                 if (general) {
-                    link.className += native ? ' sb-picker-general' : ' list-group-item-light border-bottom-2';
+                    link.className += ' sb-picker-general';
                 }
                 const icon = document.createElement('i');
                 icon.className = general ? 'bi bi-journal-text' : 'bi bi-building';
-                if (general && !native) icon.className += ' text-secondary';
                 icon.setAttribute('aria-hidden', 'true');
                 const label = document.createElement(general ? 'em' : 'span');
-                label.className = native ? 'sb-picker-name' : '';
+                label.className = 'sb-picker-name';
                 label.textContent = name;
                 link.append(icon);
-                if (!native) link.append(document.createTextNode(' '));
                 link.append(label);
                 if (metadata) {
                     const meta = document.createElement('span');
-                    meta.className = native ? 'sb-picker-meta' : 'badge bg-secondary ms-2';
+                    meta.className = 'sb-picker-meta';
                     meta.textContent = metadata;
                     link.append(meta);
                 }
@@ -2847,8 +2852,8 @@
 
             function showState(message, error = false) {
                 const state = document.createElement('div');
-                state.className = native ? 'sb-picker-state' : 'list-group-item';
-                state.className += error ? (native ? ' is-error' : ' text-danger') : '';
+                state.className = 'sb-picker-state';
+                if (error) state.className += ' is-error';
                 state.setAttribute('role', error ? 'alert' : 'status');
                 const text = document.createElement('span');
                 text.textContent = message;
@@ -2957,7 +2962,7 @@
             }
 
             // Load + show all customers when modal opens, then focus search
-            modal.addEventListener(native ? 'sb:dialog-opened' : 'shown.bs.modal', async function (event) {
+            modal.addEventListener('sb:dialog-opened', async function (event) {
                 if (event.target !== modal) return;
                 generation++;
                 customerSearch.focus();
@@ -2965,7 +2970,7 @@
             });
 
             // Clear search when modal closes
-            modal.addEventListener(native ? 'sb:dialog-closed' : 'hidden.bs.modal', function (event) {
+            modal.addEventListener('sb:dialog-closed', function (event) {
                 if (event.target !== modal) return;
                 generation++;
                 customerSearch.value = '';

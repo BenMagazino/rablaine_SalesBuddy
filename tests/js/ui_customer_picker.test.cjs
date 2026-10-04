@@ -234,20 +234,31 @@ test('loading uses the current query, and names/nicknames/TPIDs remain plain tex
     assert.equal(h.links()[1].children[2].textContent, 'TPID: <TPID>');
 });
 
-test('legacy calendar picker retains styling and customer/general dates across cached reopen', async () => {
-    let date = '&date=2026-10-09';
-    const h = picker({native: false, suffix: () => date});
+test('native calendar picker preserves meeting/date links and resets context across cached reopen', async () => {
+    const window = {}, setups = [];
+    vm.runInNewContext(inline.slice(0, inline.indexOf('function setupCustomerSearchModal')),
+        {window, setupCustomerSearchModal: (...args) => setups.push(args), encodeURIComponent});
+    const suffix = setups.find(args => args[0] === 'quickCreateModal')[5];
+    const h = picker({suffix});
+    window._quickCreateUpdateDate('2026-10-09', 42);
     await h.open();
     assert.deepEqual(h.links().map(link => link.href),
-        ['/note/new?date=2026-10-09', '/note/new?customer_id=7&date=2026-10-09',
-            '/note/new?customer_id=8&date=2026-10-09']);
-    assert.match(h.links()[0].className, /list-group-item-light/);
+        ['/note/new?date=2026-10-09&from_meeting=42',
+            '/note/new?customer_id=7&date=2026-10-09&from_meeting=42',
+            '/note/new?customer_id=8&date=2026-10-09&from_meeting=42']);
+    assert.match(h.links()[0].className, /sb-picker-general/);
+    assert.doesNotMatch(h.links()[0].className, /list-group/);
+    h.query('first');
+    assert.equal(h.links()[1].href, '/note/new?customer_id=7&date=2026-10-09&from_meeting=42');
     h.close();
-    date = '&date=2026-10-12';
+    window._quickCreateUpdateDate('2026-10-12');
     await h.open();
     assert.equal(h.links()[0].href, '/note/new?date=2026-10-12');
     assert.equal(h.links()[1].href, '/note/new?customer_id=7&date=2026-10-12');
     assert.equal(h.requests(), 1);
+    const globalNotePicker = picker();
+    await globalNotePicker.open();
+    assert.equal(globalNotePicker.links()[1].href, '/note/new?customer_id=7');
 });
 
 test('missing required markup throws, while the absent calendar host is explicitly optional', () => {
@@ -256,4 +267,5 @@ test('missing required markup throws, while the absent calendar host is explicit
         /Customer picker markup is incomplete/);
     assert.doesNotThrow(() =>
         h.context.setupCustomerSearchModal('absent', 'absent', 'absent', '', null, null, true));
+    assert.throws(() => picker({native: false}), /Customer picker requires a native dialog/);
 });

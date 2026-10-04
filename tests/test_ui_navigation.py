@@ -193,14 +193,22 @@ def test_customer_picker_page_launchers(client, url, dialog_id) -> None:
     assert not trigger.has_attr("data-bs-toggle")
 
 
-def test_calendar_customer_picker_retains_legacy_host_and_date_hook(client) -> None:
-    """The third shared picker stays available until the separate homepage checkpoint."""
+def test_calendar_customer_picker_uses_native_host_and_date_hook(client) -> None:
+    """Calendar and unmatched-meeting entry points share the native customer picker."""
     soup = BeautifulSoup(client.get("/").data, "html.parser")
     calendar_picker = soup.find(id="quickCreateModal")
-    assert calendar_picker.name == "div"
-    assert "modal" in calendar_picker["class"]
+    assert calendar_picker.name == "dialog"
+    assert "sb-dialog-picker" in calendar_picker["class"]
+    assert calendar_picker["data-sb-backdrop-close"] == "true"
+    assert soup.find(id=calendar_picker["aria-labelledby"])
     assert calendar_picker.select_one("#quickCreateSearch")
-    assert calendar_picker.select_one("#quickCreateCustomerList")
+    assert calendar_picker.select_one("#quickCreateSearch")["aria-controls"] == (
+        "quickCreateCustomerList"
+    )
+    assert calendar_picker.select_one("#quickCreateSearch").has_attr("autofocus")
+    assert calendar_picker.select_one("#quickCreateCustomerList")["role"] == "region"
+    assert len(calendar_picker.select("[data-sb-dialog-close]")) == 2
+    assert not calendar_picker.select(".modal, .form-control, .list-group, [data-bs-dismiss]")
     assert any("_quickCreateUpdateDate" in (script.string or "") for script in soup.find_all("script"))
 
 

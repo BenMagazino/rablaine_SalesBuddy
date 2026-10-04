@@ -6,9 +6,8 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 13, Home workbench composition and attention panels,
-  corrected to the approved full-height breadcrumb/legend frame with useful sync freshness
-  and compact draft access, technically verified and user-approved October 3;
+- Current page/surface: checkpoint 14, Home calendar presentation, technically
+  verified and user-approved October 3, 2026, ready to commit;
   full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
@@ -17,16 +16,19 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `9545d18` (note-preview lifecycle and quick actions),
   `ce61a1d` (milestone-preview lifecycle and nested editors),
   `3f8ddd5` (shared note body and divider-only metadata),
-  `c652057` (shared milestone body and forecast comments)
-- Next action: commit the signed-off balanced bar/readability refinements in
-  [checkpoint 13](redesign-pages/HOME-WORKBENCH.md), then implement checkpoint 14.
-  Calendar slice: saved-note customer fills, striped ghost/status rails,
-  Today treatment, customer highlighting and the approved rail-swatch legend.
-  These remain unmigrated. No live customer records were changed;
+  `c652057` (shared milestone body and forecast comments),
+  `a5ed892` (Home workbench and read-only refresh status)
+- Next action: commit the approved
+  [checkpoint 14 calendar slice](redesign-pages/HOME-WORKBENCH.md), then migrate
+  calendar loading/error feedback as checkpoint 15. New note/edit forms remain TODO.
+  No live customer records were changed;
   existing user drafts are preserved. No push, merge or deployment is authorized.
 - Deferred follow-up: [detached data jobs](PLAN_DETACHED_DATA_JOBS.md) captures
   navigation-independent imports/syncs and an in-place freshness-bar launcher.
   This is a separate future feature, not implemented in checkpoint 13.
+- Separate defect: WorkIQ day lookups return `calendar_lookup_failed` for multiple
+  dates. Visible failure feedback is fixed, but lookup investigation is deferred;
+  a failed attempt does not make today's cache fresh.
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected

@@ -4,6 +4,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home-calendar.css') }}">
 {% endblock %}
 
 {% block footer %}{% endblock %}
@@ -354,19 +355,6 @@
         display: block;
         max-width: 100%;
     }
-    #calendarTable th.text-muted {
-        color: var(--bs-secondary-color) !important;
-        opacity: 0.65;
-    }
-    #calendarTable td {
-        transition: background-color 0.15s;
-    }
-    #calendarTable td:hover:not(.bg-light) {
-        background-color: rgba(13, 110, 253, 0.05);
-    }
-    html[data-bs-theme="dark"] #calendarTable td.bg-light {
-        background-color: rgba(255,255,255,0.03) !important;
-    }
     .calendar-entries::-webkit-scrollbar {
         width: 4px;
     }
@@ -377,44 +365,6 @@
     html[data-bs-theme="dark"] .calendar-entries::-webkit-scrollbar-thumb {
         background-color: rgba(255,255,255,0.2);
     }
-    /* Customer color palette for calendar - 15 distinct colors */
-    .cal-customer-1 { background-color: rgba(220, 53, 69, 0.3) !important; } /* Red */
-    .cal-customer-2 { background-color: rgba(25, 135, 84, 0.35) !important; } /* Green */
-    .cal-customer-3 { background-color: rgba(13, 110, 253, 0.3) !important; } /* Blue */
-    .cal-customer-4 { background-color: rgba(255, 193, 7, 0.4) !important; } /* Yellow */
-    .cal-customer-5 { background-color: rgba(111, 66, 193, 0.35) !important; } /* Purple */
-    .cal-customer-6 { background-color: rgba(253, 126, 20, 0.35) !important; } /* Orange */
-    .cal-customer-7 { background-color: rgba(214, 51, 132, 0.3) !important; } /* Pink */
-    .cal-customer-8 { background-color: rgba(13, 202, 240, 0.3) !important; } /* Cyan */
-    .cal-customer-9 { background-color: rgba(102, 16, 242, 0.3) !important; } /* Indigo */
-    .cal-customer-10 { background-color: rgba(32, 201, 151, 0.35) !important; } /* Teal */
-    .cal-customer-11 { background-color: rgba(165, 42, 42, 0.35) !important; } /* Brown */
-    .cal-customer-12 { background-color: rgba(0, 128, 128, 0.35) !important; } /* Dark Teal */
-    .cal-customer-13 { background-color: rgba(255, 99, 71, 0.35) !important; } /* Tomato */
-    .cal-customer-14 { background-color: rgba(75, 0, 130, 0.3) !important; } /* Dark Indigo */
-    .cal-customer-15 { background-color: rgba(184, 134, 11, 0.4) !important; } /* Dark Gold */
-    /* Highlight state for same-customer entries */
-    .cal-customer-1.cal-highlight { background-color: rgba(220, 53, 69, 0.7) !important; box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.8); }
-    .cal-customer-2.cal-highlight { background-color: rgba(25, 135, 84, 0.7) !important; box-shadow: 0 0 0 2px rgba(25, 135, 84, 0.8); }
-    .cal-customer-3.cal-highlight { background-color: rgba(13, 110, 253, 0.7) !important; box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.8); }
-    .cal-customer-4.cal-highlight { background-color: rgba(255, 193, 7, 0.75) !important; box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.9); }
-    .cal-customer-5.cal-highlight { background-color: rgba(111, 66, 193, 0.7) !important; box-shadow: 0 0 0 2px rgba(111, 66, 193, 0.8); }
-    .cal-customer-6.cal-highlight { background-color: rgba(253, 126, 20, 0.7) !important; box-shadow: 0 0 0 2px rgba(253, 126, 20, 0.8); }
-    .cal-customer-7.cal-highlight { background-color: rgba(214, 51, 132, 0.7) !important; box-shadow: 0 0 0 2px rgba(214, 51, 132, 0.8); }
-    .cal-customer-8.cal-highlight { background-color: rgba(13, 202, 240, 0.7) !important; box-shadow: 0 0 0 2px rgba(13, 202, 240, 0.8); }
-    .cal-customer-9.cal-highlight { background-color: rgba(102, 16, 242, 0.7) !important; box-shadow: 0 0 0 2px rgba(102, 16, 242, 0.8); }
-    .cal-customer-10.cal-highlight { background-color: rgba(32, 201, 151, 0.7) !important; box-shadow: 0 0 0 2px rgba(32, 201, 151, 0.8); }
-    .cal-customer-11.cal-highlight { background-color: rgba(165, 42, 42, 0.7) !important; box-shadow: 0 0 0 2px rgba(165, 42, 42, 0.8); }
-    .cal-customer-12.cal-highlight { background-color: rgba(0, 128, 128, 0.7) !important; box-shadow: 0 0 0 2px rgba(0, 128, 128, 0.8); }
-    .cal-customer-13.cal-highlight { background-color: rgba(255, 99, 71, 0.7) !important; box-shadow: 0 0 0 2px rgba(255, 99, 71, 0.8); }
-    .cal-customer-14.cal-highlight { background-color: rgba(75, 0, 130, 0.7) !important; box-shadow: 0 0 0 2px rgba(75, 0, 130, 0.8); }
-    .cal-customer-15.cal-highlight { background-color: rgba(184, 134, 11, 0.75) !important; box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.9); }
-    
-    /* General note (no customer) style */
-    .cal-general-note { background-color: rgba(108, 117, 125, 0.2) !important; border-left: 2px solid rgba(108, 117, 125, 0.6); }
-    .cal-general-note.cal-highlight { background-color: rgba(108, 117, 125, 0.45) !important; box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.6); }
-    [data-customer-id] { cursor: pointer; transition: all 0.15s ease; }
-    .cal-general-note { cursor: pointer; transition: all 0.15s ease; }
     .cal-add-btn { opacity: 0.3; transition: opacity 0.15s; font-size: 0.85rem; }
     .cal-add-btn:hover { opacity: 1; color: var(--bs-primary) !important; }
     /* Per-day sync control lives inside the day-number span and only
@@ -433,7 +383,7 @@
         display: none;
         align-items: center;
         justify-content: center;
-        color: var(--bs-info);
+        color: var(--sb-ui-accent);
         font-size: 0.9em;
         pointer-events: none;
     }
@@ -442,13 +392,13 @@
     /* If the aura sync is already syncing/queueing this day, don't
        advertise the manual refresh affordance -- the morning sync owns
        it. We block the click in JS too (see triggerDaySync). */
-    td:has(> .d-flex .cal-aura-dots) .cal-day-num-wrap {
+    td:has(.cal-aura-dots) .cal-day-num-wrap {
         cursor: default;
     }
-    td:has(> .d-flex .cal-aura-dots) .cal-day-num-wrap:hover .cal-day-sync-overlay {
+    td:has(.cal-aura-dots) .cal-day-num-wrap:hover .cal-day-sync-overlay {
         display: none;
     }
-    td:has(> .d-flex .cal-aura-dots) .cal-day-num-wrap:hover .cal-day-num {
+    td:has(.cal-aura-dots) .cal-day-num-wrap:hover .cal-day-num {
         visibility: visible;
     }
     .cal-day-num-wrap.cal-day-syncing .cal-day-num { visibility: hidden; }
@@ -461,112 +411,6 @@
     .cal-fill-btn:hover { opacity: 1; color: var(--bs-warning) !important; }
     #calendarTable td:hover .cal-add-btn { opacity: 0.7; }
     #calendarTable td:hover .cal-fill-btn { opacity: 0.7; }
-
-    /* Ghost meeting (PrefetchedMeeting) styling - clearly distinct from real notes.
-       Dashed border + lower opacity says "this is a placeholder, click to make it real". */
-    .cal-ghost {
-        background-color: transparent !important;
-        border: 1px dashed rgba(108, 117, 125, 0.6);
-        opacity: 0.75;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        position: relative;
-        padding-right: 1.1rem !important;
-    }
-    .cal-ghost:hover {
-        opacity: 1;
-        background-color: rgba(108, 117, 125, 0.08) !important;
-        border-style: solid;
-    }
-    html[data-bs-theme="dark"] .cal-ghost {
-        border-color: rgba(255, 255, 255, 0.35);
-    }
-    html[data-bs-theme="dark"] .cal-ghost:hover {
-        background-color: rgba(255, 255, 255, 0.06) !important;
-    }
-    .cal-ghost-dismiss {
-        position: absolute;
-        top: 0;
-        right: 2px;
-        opacity: 0;
-        font-size: 0.7rem;
-        line-height: 1;
-        color: var(--bs-secondary);
-        text-decoration: none;
-        background: transparent;
-        border: 0;
-        padding: 1px 3px;
-    }
-    .cal-ghost:hover .cal-ghost-dismiss { opacity: 0.8; }
-    .cal-ghost-dismiss:hover { opacity: 1 !important; color: var(--bs-danger); }
-    .cal-ghost-unmatched { border-color: rgba(255, 193, 7, 0.7); }
-    .cal-ghost-unmatched:hover { background-color: rgba(255, 193, 7, 0.1) !important; }
-    .cal-ghost-recur { display: inline-block; cursor: pointer; }
-    .cal-ghost-recur:hover { transform: scale(1.15); }
-
-    /* Ghost color tints - share the same hue as real customer notes for
-       visual continuity, but at much lower opacity so ghosts still read
-       as placeholders. Border stays dashed in the matching color too. */
-    .cal-ghost-customer-1  { background-color: rgba(220, 53, 69, 0.10) !important; border-color: rgba(220, 53, 69, 0.55); }
-    .cal-ghost-customer-2  { background-color: rgba(25, 135, 84, 0.12) !important; border-color: rgba(25, 135, 84, 0.55); }
-    .cal-ghost-customer-3  { background-color: rgba(13, 110, 253, 0.10) !important; border-color: rgba(13, 110, 253, 0.55); }
-    .cal-ghost-customer-4  { background-color: rgba(255, 193, 7, 0.14) !important; border-color: rgba(255, 193, 7, 0.65); }
-    .cal-ghost-customer-5  { background-color: rgba(111, 66, 193, 0.12) !important; border-color: rgba(111, 66, 193, 0.55); }
-    .cal-ghost-customer-6  { background-color: rgba(253, 126, 20, 0.12) !important; border-color: rgba(253, 126, 20, 0.55); }
-    .cal-ghost-customer-7  { background-color: rgba(214, 51, 132, 0.10) !important; border-color: rgba(214, 51, 132, 0.55); }
-    .cal-ghost-customer-8  { background-color: rgba(13, 202, 240, 0.10) !important; border-color: rgba(13, 202, 240, 0.55); }
-    .cal-ghost-customer-9  { background-color: rgba(102, 16, 242, 0.10) !important; border-color: rgba(102, 16, 242, 0.55); }
-    .cal-ghost-customer-10 { background-color: rgba(32, 201, 151, 0.12) !important; border-color: rgba(32, 201, 151, 0.55); }
-    .cal-ghost-customer-11 { background-color: rgba(165, 42, 42, 0.12) !important;  border-color: rgba(165, 42, 42, 0.55); }
-    .cal-ghost-customer-12 { background-color: rgba(0, 128, 128, 0.12) !important;  border-color: rgba(0, 128, 128, 0.55); }
-    .cal-ghost-customer-13 { background-color: rgba(255, 99, 71, 0.12) !important;  border-color: rgba(255, 99, 71, 0.55); }
-    .cal-ghost-customer-14 { background-color: rgba(75, 0, 130, 0.10) !important;   border-color: rgba(75, 0, 130, 0.55); }
-    .cal-ghost-customer-15 { background-color: rgba(184, 134, 11, 0.14) !important; border-color: rgba(184, 134, 11, 0.65); }
-    /* Slightly stronger tint on hover */
-    .cal-ghost.cal-ghost-customer-1:hover  { background-color: rgba(220, 53, 69, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-2:hover  { background-color: rgba(25, 135, 84, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-3:hover  { background-color: rgba(13, 110, 253, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-4:hover  { background-color: rgba(255, 193, 7, 0.25) !important; }
-    .cal-ghost.cal-ghost-customer-5:hover  { background-color: rgba(111, 66, 193, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-6:hover  { background-color: rgba(253, 126, 20, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-7:hover  { background-color: rgba(214, 51, 132, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-8:hover  { background-color: rgba(13, 202, 240, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-9:hover  { background-color: rgba(102, 16, 242, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-10:hover { background-color: rgba(32, 201, 151, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-11:hover { background-color: rgba(165, 42, 42, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-12:hover { background-color: rgba(0, 128, 128, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-13:hover { background-color: rgba(255, 99, 71, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-14:hover { background-color: rgba(75, 0, 130, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-15:hover { background-color: rgba(184, 134, 11, 0.25) !important; }
-    /* Cross-highlight: when user hovers a real note for the same customer,
-       this ghost lights up (border becomes solid + stronger fill).
-       The existing .cal-customer-N.cal-highlight rules handle the real
-       notes; these rules handle the ghost side. */
-    .cal-ghost.cal-highlight { opacity: 1; border-style: solid; }
-    .cal-ghost.cal-ghost-customer-1.cal-highlight  { background-color: rgba(220, 53, 69, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-2.cal-highlight  { background-color: rgba(25, 135, 84, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-3.cal-highlight  { background-color: rgba(13, 110, 253, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-4.cal-highlight  { background-color: rgba(255, 193, 7, 0.45) !important; }
-    .cal-ghost.cal-ghost-customer-5.cal-highlight  { background-color: rgba(111, 66, 193, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-6.cal-highlight  { background-color: rgba(253, 126, 20, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-7.cal-highlight  { background-color: rgba(214, 51, 132, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-8.cal-highlight  { background-color: rgba(13, 202, 240, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-9.cal-highlight  { background-color: rgba(102, 16, 242, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-10.cal-highlight { background-color: rgba(32, 201, 151, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-11.cal-highlight { background-color: rgba(165, 42, 42, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-12.cal-highlight { background-color: rgba(0, 128, 128, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-13.cal-highlight { background-color: rgba(255, 99, 71, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-14.cal-highlight { background-color: rgba(75, 0, 130, 0.38) !important; }
-    .cal-ghost.cal-ghost-customer-15.cal-highlight { background-color: rgba(184, 134, 11, 0.45) !important; }
-
-    /* Today-cell health indicator. The day-number badge goes blue (default)
-       when this morning's sync covered today, orange when it didn't. The
-       actual refresh affordance comes from the standard date-number hover
-       overlay (see .cal-day-num-wrap) -- this rule only colors the badge. */
-    .cal-today-incomplete .badge.bg-primary {
-        background-color: var(--bs-warning) !important;
-        color: #000 !important;
-    }
 
     /* Aura sync indicator: typing-dots overlay on each calendar day cell
        that the morning aura is currently working through. Three opacity
@@ -585,7 +429,7 @@
         width: 4px;
         height: 4px;
         border-radius: 50%;
-        background-color: var(--bs-primary);
+        background-color: var(--sb-ui-accent);
         opacity: 0.2;
         animation: cal-aura-pulse 1.2s infinite ease-in-out;
     }
@@ -594,7 +438,7 @@
     .cal-aura-dots span:nth-child(3) { animation-delay: 0.8s; }
     .cal-aura-dots.cal-aura-queued span {
         animation-duration: 2.1s;
-        background-color: var(--bs-secondary);
+        background-color: var(--sb-ui-muted);
     }
     .cal-aura-dots.cal-aura-queued span:nth-child(2) { animation-delay: 0.7s; }
     .cal-aura-dots.cal-aura-queued span:nth-child(3) { animation-delay: 1.4s; }
@@ -703,16 +547,16 @@
             <div class="sb-home-tabpanel active" id="calendar-view" role="tabpanel" aria-labelledby="calendar-tab">
                 <div class="sb-home-calendar">
                     <div class="sb-home-calendar-body">
-                        <table class="table table-bordered mb-0" id="calendarTable">
+                        <table class="sb-home-calendar-table" id="calendarTable">
                             <thead>
-                                <tr class="text-center">
-                                    <th class="text-muted">Sun</th>
+                                <tr>
+                                    <th>Sun</th>
                                     <th>Mon</th>
                                     <th>Tue</th>
                                     <th>Wed</th>
                                     <th>Thu</th>
                                     <th>Fri</th>
-                                    <th class="text-muted">Sat</th>
+                                    <th>Sat</th>
                                 </tr>
                             </thead>
                                 <tbody id="calendarBody">
@@ -721,12 +565,12 @@
                             </table>
                     </div>
                 </div>
-                <footer class="sb-home-legend" aria-label="Calendar icon legend">
+                <footer class="sb-home-legend" aria-label="Calendar indicator legend">
                     <span title="Cached Outlook meeting; create a note from it"><i class="bi bi-calendar-event" aria-hidden="true"></i> Ghost meeting</span>
                     <span title="Outlook meeting needs a customer match"><i class="bi bi-question-circle" aria-hidden="true"></i> Unmatched customer</span>
-                    <span title="Note linked to a milestone"><i class="bi bi-flag-fill" aria-hidden="true"></i> Milestone</span>
-                    <span title="Other MSX task attached"><i class="bi bi-check2-square" aria-hidden="true"></i> MSX task</span>
-                    <span title="High-Value Activity attached"><i class="bi bi-star-fill" aria-hidden="true"></i> HVA</span>
+                    <span title="Note linked to a milestone"><i class="sb-home-rail-swatch" data-work-status="milestone" aria-hidden="true"></i> Milestone</span>
+                    <span title="Other MSX task attached"><i class="sb-home-rail-swatch" data-work-status="task" aria-hidden="true"></i> MSX task</span>
+                    <span title="High-Value Activity attached"><i class="sb-home-rail-swatch" data-work-status="hva" aria-hidden="true"></i> HVA</span>
                     <span title="Note linked to an engagement"><i class="bi bi-diagram-3" aria-hidden="true"></i> Engagement</span>
                     <span class="sb-home-legend-caption">Markers can combine</span>
                 </footer>
@@ -804,11 +648,12 @@
     </section>
     {{ dashboard_rail }}
 </div>
+<div id="homeMeetingNotices" class="sb-home-meeting-notices"></div>
 <footer class="sb-home-status" aria-label="Workspace status">
     <span id="homeViewSummary" class="sb-home-status-summary" aria-live="polite"></span>
     <time id="homeCurrentDate" class="sb-home-status-date" title="Today's local date"></time>
     <button type="button" id="homeFreshnessToggle" popovertarget="homeFreshnessPopover"
-            aria-expanded="false" title="Show data refresh timestamps">
+            aria-expanded="false" title="Show data refresh status and timestamps">
         <i class="bi bi-clock-history" aria-hidden="true"></i> Refresh status
         <i class="bi bi-chevron-up" aria-hidden="true"></i>
     </button>
@@ -823,52 +668,65 @@
                title="Last ACR refresh; open revenue sync details">
                 <span id="homeACRFreshness" aria-live="polite">ACR: checking...</span>
             </a>
-            <a href="{{ url_for('admin.admin_panel') }}#accountsSyncStatus"
-               title="Last account refresh; open sync details">
-                <span id="homeAccountsFreshness" aria-live="polite">Accounts: checking...</span>
-            </a>
+            <div title="Whether today's meetings have been refreshed today; this is not a calendar-wide refresh timestamp">
+                <span id="homeMeetingsFreshness" aria-live="polite">Today's Meetings: checking...</span>
+            </div>
             <a href="{{ url_for('reports.report_u2c') }}"
                title="Last U2C baseline refresh check; MSXi publishes weekly. Open U2C details">
                 <span id="homeU2CFreshness" aria-live="polite">U2C: checking...</span>
             </a>
+            <a href="{{ url_for('admin.admin_panel') }}#accountsSyncStatus"
+               title="Last account refresh; open sync details">
+                <span id="homeAccountsFreshness" aria-live="polite">Accounts: checking...</span>
+            </a>
         </div>
         <button type="button" id="homeFreshnessRefresh"
-                title="Check timestamps without starting a sync">
+                title="Check refresh status without starting a sync">
             <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Check now
         </button>
     </div>
 </footer>
 </div>
 <script src="{{ url_for('static', filename='js/ui-home.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-home-calendar.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ui-home-summary.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/ui-home-freshness.js') }}"></script>
 
-<!-- Quick Create Customer Picker Modal -->
-<div class="modal fade" id="quickCreateModal" tabindex="-1" aria-labelledby="quickCreateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="quickCreateModalLabel">
-                    <i class="bi bi-plus-circle"></i> New Note for <span id="quickCreateDate"></span>
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Calendar customer picker -->
+<dialog class="sb-dialog sb-dialog-picker" id="quickCreateModal"
+        aria-labelledby="quickCreateModalLabel" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <div class="sb-dialog-eyebrow">Customer selection</div>
+                <h2 id="quickCreateModalLabel">New Note for <span id="quickCreateDate"></span></h2>
             </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="quickCreateSearch" class="form-label">Search for Customer</label>
-                    <input type="text" class="form-control" id="quickCreateSearch" placeholder="Search customers..." autocomplete="off">
-                </div>
-                <div id="quickCreateCustomerList" class="list-group" style="max-height: 400px; overflow-y: auto;"></div>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                    aria-label="Close calendar customer picker"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <div class="sb-dialog-body">
+            <label class="sb-picker-label" for="quickCreateSearch">Search for Customer</label>
+            <div class="sb-picker-field">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input type="search" class="sb-picker-input" id="quickCreateSearch"
+                       aria-controls="quickCreateCustomerList" placeholder="Search customers..."
+                       autocomplete="off" autofocus>
             </div>
+            <div id="quickCreateCustomerList" class="sb-picker-results" role="region"
+                 aria-label="Calendar note customer choices"></div>
+        </div>
+        <div class="sb-dialog-footer">
+            <small>Arrow keys to move; Enter or Space to choose a focused result.</small>
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
         </div>
     </div>
-</div>
+</dialog>
 
 <script>
     // ===== QUICK CREATE FROM CALENDAR =====
     let quickCreateDate = null;
     
-    function openQuickCreateModal(dateStr) {
+    function openQuickCreateModal(dateStr, meetingId = null) {
         quickCreateDate = dateStr;
         // Format date for display
         const dateObj = new Date(dateStr + 'T00:00:00');
@@ -876,12 +734,9 @@
         document.getElementById('quickCreateDate').textContent = dateObj.toLocaleDateString('en-US', options);
         
         // Update URLs on the shared picker to include the date parameter
-        if (window._quickCreateUpdateDate) {
-            window._quickCreateUpdateDate(dateStr);
-        }
-        
-        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('quickCreateModal'));
-        modal.show();
+        window._quickCreateUpdateDate(dateStr, meetingId);
+
+        window.SBDialog.open('quickCreateModal');
     }
 
     // ===== GHOST MEETING HANDLERS (Phase 3) =====
@@ -897,7 +752,7 @@
                 + `&from_meeting=${ghost.id}`;
             window.location.href = url;
         } else {
-            openQuickCreateModal(dateStr);
+            openQuickCreateModal(dateStr, ghost.id);
         }
     }
 
@@ -1100,6 +955,8 @@
     function _setSpinnerOnDate(dateStr, on) {
         const wrap = _findCurrentDayWrap(dateStr);
         if (!wrap) return;
+        wrap.disabled = on || !!wrap.closest('td').querySelector('.cal-aura-dots');
+        wrap.setAttribute('aria-busy', String(on));
         if (on) {
             wrap.classList.add('cal-day-syncing');
             wrap.style.pointerEvents = 'none';
@@ -1151,17 +1008,22 @@
         _inFlightDayRefreshes.add(dateStr);
         _setSpinnerOnDate(dateStr, true);
 
-        fetch('/api/meetings/refresh', {
+        return fetch('/api/meetings/refresh', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({date: dateStr}),
         })
-            .then(r => r.json().then(body => ({ok: r.ok, body})))
-            .then(({ok, body}) => {
+            .then(r => r.json().then(body => ({ok: r.ok, status: r.status, body})))
+            .then(({ok, status, body}) => {
                 if (!ok) {
-                    console.error('Day sync failed:', body && body.error);
-                    return;
+                    throw new Error(body?.error || `Meeting refresh HTTP ${status}.`);
                 }
+                if (typeof body?.synced_at !== 'string' ||
+                    !Number.isFinite(new Date(body.synced_at).getTime()) || body.date !== dateStr) {
+                    throw new Error('Meeting refresh did not confirm a valid cache timestamp.');
+                }
+                window.SBHomeCalendar.clearRefreshError(dateStr);
+                window.dispatchEvent(new CustomEvent('sb:meetings-cache-updated'));
                 // The cell may have been replaced (or may not currently
                 // be in view) if the user navigated months while we
                 // waited on WorkIQ. Repaint if the date is in the
@@ -1178,6 +1040,7 @@
             })
             .catch(err => {
                 console.error('Day sync error:', err);
+                window.SBHomeCalendar.showRefreshError(dateStr, err.message);
             })
             .finally(() => {
                 _inFlightDayRefreshes.delete(dateStr);
@@ -1197,18 +1060,16 @@
     }
     // Expose for the global sync card's reload callback.
     window.checkTodayStatus = checkTodayStatus;
+    window.addEventListener('sb:meetings-today-status', event => applyTodayStatus(event.detail));
 
     function applyTodayStatus(data) {
         // Tag the today <td> with cal-today-incomplete when this morning's
-        // sync didn't cover today, which colors the day-number badge orange.
+        // sync didn't cover today, which gives the date control a warning fill.
         // The actual re-sync is handled by the standard date-number hover
         // refresh icon (triggerDaySync) -- no special today click handler.
         const calendarBody = document.getElementById('calendarBody');
         if (!calendarBody) return;
-        const badges = calendarBody.querySelectorAll('.badge.bg-primary.rounded-circle');
-        badges.forEach(badge => {
-            const td = badge.closest('td');
-            if (!td) return;
+        calendarBody.querySelectorAll('.sb-home-today').forEach(td => {
             td.classList.toggle('cal-today-incomplete', !data.synced);
         });
     }
@@ -1273,6 +1134,10 @@
             wrap.title = auraOwns
                 ? 'Morning sync is already refreshing this day'
                 : 'Click to pull meetings for this day';
+            wrap.disabled = auraOwns || _inFlightDayRefreshes.has(dateStr);
+            wrap.setAttribute('aria-label', auraOwns
+                ? `Morning sync is already refreshing ${dateStr}`
+                : `Refresh meetings for ${dateStr}`);
         });
 
         // Add dots for any newly-pending dates not already in the DOM.
@@ -1280,12 +1145,14 @@
             const cell = document.querySelector(
                 `#calendarBody td[data-cal-date="${dateStr}"]`);
             if (!cell) return;
-            const header = cell.querySelector('.d-flex.justify-content-between');
+            const header = cell.querySelector('.sb-home-day-header');
             if (!header) return;
-            const numberSpan = header.firstElementChild;
-            if (!numberSpan) return;
+            const actions = header.querySelector('.sb-home-day-actions');
+            if (!actions) return;
 
-            const dots = document.createElement('span');
+            const dots = document.createElement('button');
+            dots.type = 'button';
+            dots.setAttribute('aria-label', `Open morning sync details for ${dateStr}`);
             dots.className = 'cal-aura-dots' + (isActive ? '' : ' cal-aura-queued');
             dots.title = (isActive
                 ? 'Syncing meetings for this day...'
@@ -1297,7 +1164,7 @@
                 e.stopPropagation();
                 if (window.SyncStatus) window.SyncStatus.check();
             });
-            numberSpan.appendChild(dots);
+            actions.insertBefore(dots, actions.firstChild);
         });
     }
 
@@ -1454,33 +1321,7 @@
         const daysInMonth = data.days_in_month;
         const todayDay = data.today_day;
         
-        // Helper to escape HTML
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // Build a map of customer_id -> color index for THIS month only.
-        // Include ghost meeting customers too so a ghost shares the color of
-        // any real notes for that customer (visual continuity).
-        const customerColorMap = {};
-        const allCustomerIds = new Set();
-        Object.values(days).forEach(logs => {
-            logs.forEach(log => {
-                if (log.customer_id) allCustomerIds.add(log.customer_id);
-            });
-        });
-        Object.values(data.ghosts || {}).forEach(ghosts => {
-            ghosts.forEach(g => {
-                if (g.customer_id) allCustomerIds.add(g.customer_id);
-            });
-        });
-        const customerList = Array.from(allCustomerIds);
-        customerList.forEach((id, index) => {
-            customerColorMap[id] = (index % 15) + 1;
-        });
+        const customerColorMap = window.SBHomeCalendar.customerColors(data);
         
         // Build array of day info for the month (all 7 days)
         // Column layout: 0=Sun, 1=Mon, ..., 6=Sat
@@ -1498,18 +1339,10 @@
             
             for (let col = 0; col < 7; col++) {
                 const cell = document.createElement('td');
-                cell.className = 'p-1';
-                cell.style.verticalAlign = 'top';
-                // Fixed height for every cell (weekday, weekend, and
-                // out-of-month filler) so all rows are visually consistent.
-                cell.style.height = '120px';
+                cell.className = 'sb-home-day';
                 const isWeekend = (col === 0 || col === 6);
                 if (isWeekend) {
-                    if (document.documentElement.getAttribute('data-bs-theme') === 'dark') {
-                        cell.style.backgroundColor = 'rgba(255,255,255,0.02)';
-                    } else {
-                        cell.style.backgroundColor = 'rgba(0,0,0,0.02)';
-                    }
+                    cell.classList.add('sb-home-weekend');
                 }
                 
                 // Check if we have a day for this column in this week
@@ -1524,27 +1357,28 @@
 
                     // Day number header
                     const dayHeader = document.createElement('div');
-                    dayHeader.className = 'd-flex justify-content-between align-items-center mb-1';
+                    dayHeader.className = 'sb-home-day-header';
                     
-                    const dayNumber = document.createElement('span');
-                    dayNumber.className = 'fw-bold cal-day-num-wrap';
+                    const dayNumber = document.createElement('button');
+                    dayNumber.type = 'button';
+                    dayNumber.className = 'cal-day-num-wrap';
+                    dayNumber.setAttribute('aria-label', `Refresh meetings for ${cellDateStr}`);
                     dayNumber.title = 'Click to pull meetings for this day';
                     dayNumber.setAttribute('data-date', cellDateStr);
-                    // Inner span holds the actual number/badge so we can
+                    // Inner span holds the number so we can
                     // hide just that on hover/sync and overlay the spinner.
                     const numInner = document.createElement('span');
                     numInner.className = 'cal-day-num';
                     if (dayNum === todayDay) {
-                        numInner.innerHTML = `<span class="badge bg-primary rounded-circle">${dayNum}</span>`;
-                    } else {
-                        numInner.textContent = dayNum;
+                        cell.classList.add('sb-home-today');
                     }
+                    numInner.textContent = dayNum;
                     dayNumber.appendChild(numInner);
-                    // Overlay is hidden by default; shown on hover (teal
-                    // static icon) or while syncing (teal spinning icon).
+                    // Overlay is static on hover and spins while syncing.
                     const syncOverlay = document.createElement('span');
                     syncOverlay.className = 'cal-day-sync-overlay';
-                    syncOverlay.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+                    syncOverlay.innerHTML = '<i class="bi bi-arrow-clockwise" aria-hidden="true"></i>';
+                    syncOverlay.setAttribute('aria-hidden', 'true');
                     dayNumber.appendChild(syncOverlay);
                     dayNumber.addEventListener('click', function(e) {
                         e.preventDefault();
@@ -1557,13 +1391,14 @@
                     
                     // Add icons container (right side)
                     const iconsContainer = document.createElement('span');
-                    iconsContainer.className = 'd-flex gap-1';
+                    iconsContainer.className = 'sb-home-day-actions';
 
                     // Add "+" button for quick create
-                    const addBtn = document.createElement('a');
-                    addBtn.href = '#';
-                    addBtn.className = 'text-muted text-decoration-none cal-add-btn';
-                    addBtn.innerHTML = '<i class="bi bi-plus-circle"></i>';
+                    const addBtn = document.createElement('button');
+                    addBtn.type = 'button';
+                    addBtn.className = 'cal-add-btn';
+                    addBtn.innerHTML = '<i class="bi bi-plus-circle" aria-hidden="true"></i>';
+                    addBtn.setAttribute('aria-label', `New note for ${dateStr}`);
                     addBtn.title = 'New note';
                     addBtn.setAttribute('data-date', dateStr);
                     addBtn.addEventListener('click', function(e) {
@@ -1575,73 +1410,35 @@
                     dayHeader.appendChild(iconsContainer);
                     
                     cell.appendChild(dayHeader);
+                    const dayEntries = document.createElement('div');
+                    dayEntries.className = 'sb-home-day-entries';
+                    cell.appendChild(dayEntries);
                     
                     // Note entries for this day
                     const noteEntries = days[dayNum] || [];
                     if (noteEntries.length > 0) {
                         const entriesContainer = document.createElement('div');
                         entriesContainer.className = 'calendar-entries';
-                        entriesContainer.style.fontSize = '0.75rem';
-                        entriesContainer.style.maxHeight = '70px';
-                        entriesContainer.style.overflowY = 'auto';
                         
                         noteEntries.forEach(log => {
-                            const entry = document.createElement('div');
-                            entry.style.cursor = 'pointer';
+                            const entry = document.createElement('button');
+                            entry.type = 'button';
                             entry.addEventListener('click', function(e) {
                                 openHomeNoteDetail(log.id, log.customer_name);
                             });
                             
                             if (log.is_general) {
-                                // General note: distinct muted style with sticky-note icon
-                                entry.className = 'd-block text-decoration-none text-truncate mb-1 px-1 rounded cal-general-note';
                                 entry.setAttribute('data-general-note', 'true');
                             } else {
-                                // Customer note: color-coded by customer
-                                const colorIndex = customerColorMap[log.customer_id];
-                                entry.className = `d-block text-decoration-none text-truncate mb-1 px-1 rounded cal-customer-${colorIndex}`;
                                 entry.setAttribute('data-customer-id', log.customer_id);
                             }
-                            entry.style.color = 'inherit';
-                            
-                            // Build entry content with indicators
-                            let indicators = '';
-                            if (log.is_general) {
-                                indicators += '<i class="bi bi-sticky text-secondary" title="General note"></i> ';
-                            }
-                            if (log.has_milestone && !log.has_task && !log.has_hva) {
-                                indicators += '<i class="bi bi-flag-fill text-success" title="Has milestone"></i> ';
-                            }
-                            if (log.has_engagement) {
-                                indicators += '<i class="bi bi-diagram-3 text-primary" title="Has engagement"></i> ';
-                            }
-                            if (log.has_hva) {
-                                indicators += '<i class="bi bi-star-fill text-warning" title="HVA task"></i> ';
-                            } else if (log.has_task) {
-                                indicators += '<i class="bi bi-check2-square text-info" title="Has task"></i> ';
-                            }
-                            let timePrefix = log.time ? `<small class="text-muted">${escapeHtml(log.time)}</small> ` : '';
-                            entry.innerHTML = indicators + timePrefix + escapeHtml(log.customer_name);
-                            entry.title = (log.time ? log.time + ' - ' : '') + log.customer_name + (log.has_milestone ? ' (Milestone)' : '') + (log.has_engagement ? ' (Engagement)' : '') + (log.has_task ? ' (Task)' : '') + (log.has_hva ? ' (HVA)' : '');
-                            
-                            // Hover: highlight all entries for this customer (skip for general notes)
-                            if (!log.is_general) {
-                                entry.addEventListener('mouseenter', function() {
-                                    document.querySelectorAll(`[data-customer-id="${log.customer_id}"]`).forEach(el => {
-                                        el.classList.add('cal-highlight');
-                                    });
-                                });
-                                entry.addEventListener('mouseleave', function() {
-                                    document.querySelectorAll(`[data-customer-id="${log.customer_id}"]`).forEach(el => {
-                                        el.classList.remove('cal-highlight');
-                                    });
-                                });
-                            }
+                            window.SBHomeCalendar.note(entry, log, customerColorMap[log.customer_id]);
+                            window.SBHomeCalendar.bindHighlight(entry);
                             
                             entriesContainer.appendChild(entry);
                         });
                         
-                        cell.appendChild(entriesContainer);
+                        dayEntries.appendChild(entriesContainer);
                     }
 
                     // Phase 3: ghost meetings (cached PrefetchedMeeting rows).
@@ -1650,16 +1447,13 @@
                     if (ghostEntries.length > 0) {
                         const ghostContainer = buildGhostsContainer(
                             ghostEntries, customerColorMap, dateStr);
-                        cell.appendChild(ghostContainer);
+                        dayEntries.appendChild(ghostContainer);
                     }
 
                     dayIndex++;
                 } else {
                     // Empty cell (day not in this week's column)
-                    cell.classList.add('bg-light');
-                    if (document.documentElement.getAttribute('data-bs-theme') === 'dark') {
-                        cell.style.backgroundColor = 'rgba(255,255,255,0.03)';
-                    }
+                    cell.classList.add('sb-home-empty-day');
                 }
                 
                 row.appendChild(cell);
@@ -1673,48 +1467,18 @@
     // both the full renderCalendar pass and the surgical per-day refresh
     // that runs after the aura finishes a date.
     function buildGhostsContainer(ghostEntries, customerColorMap, dateStr) {
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
         const ghostContainer = document.createElement('div');
         ghostContainer.className = 'calendar-entries cal-ghosts-container';
-        ghostContainer.style.fontSize = '0.75rem';
-        ghostContainer.style.maxHeight = '70px';
-        ghostContainer.style.overflowY = 'auto';
 
         ghostEntries.forEach(g => {
             const matched = !!g.customer_id;
-            const ghost = document.createElement(matched ? 'a' : 'div');
+            const ghost = document.createElement('div');
             const ghostColorIndex = matched ? customerColorMap[g.customer_id] : null;
-            ghost.className = 'd-block text-truncate mb-1 px-1 rounded cal-ghost'
-                + (matched ? ' text-decoration-none text-reset' : ' cal-ghost-unmatched')
-                + (ghostColorIndex ? ` cal-ghost-customer-${ghostColorIndex}` : '');
             ghost.setAttribute('data-ghost-id', g.id);
             if (matched) {
-                // Real anchor so Ctrl/middle/right-click "open in new window" works
-                // (same URL openGhostMeeting builds). Unmatched ghosts have no
-                // deterministic URL, so they stay a div that opens the picker.
-                ghost.href = `/note/new?customer_id=${g.customer_id}`
-                    + `&date=${encodeURIComponent(dateStr)}`
-                    + `&from_meeting=${g.id}`;
                 ghost.setAttribute('data-customer-id', g.customer_id);
             }
 
-            const labelText = matched
-                ? (g.customer_name || g.subject)
-                : g.subject;
-            const recurMarkup = g.is_recurring
-                ? '<span class="cal-ghost-recur" data-role="recur"'
-                  + ' title="Recurring meeting - hover to dismiss series">'
-                  + '<i class="bi bi-arrow-repeat text-muted"></i>'
-                  + '</span> '
-                : '';
-            const matchIcon = matched
-                ? '<i class="bi bi-calendar-event text-secondary" title="Cached meeting"></i> '
-                : '<i class="bi bi-question-circle text-warning" title="Unmatched - pick a customer"></i> ';
             let localTime = '';
             if (g.start_time_utc) {
                 const d = new Date(g.start_time_utc);
@@ -1725,10 +1489,14 @@
                     });
                 }
             }
-            const timePrefix = localTime
-                ? `<small class="text-muted">${escapeHtml(localTime)}</small> `
-                : '';
-            ghost.innerHTML = matchIcon + recurMarkup + timePrefix + escapeHtml(labelText);
+            const opener = window.SBHomeCalendar.ghost(ghost, g, ghostColorIndex, localTime);
+            if (matched) {
+                opener.href = `/note/new?customer_id=${g.customer_id}`
+                    + `&date=${encodeURIComponent(dateStr)}`
+                    + `&from_meeting=${g.id}`;
+            } else {
+                opener.addEventListener('click', () => openGhostMeeting(g, dateStr));
+            }
 
             const hint = matched
                 ? `Click to create a note for ${g.customer_name}`
@@ -1740,34 +1508,14 @@
             ghost.title = `${g.subject}\n${hint}`
                 + (attendeePreview ? `\nAttendees: ${attendeePreview}` : '');
 
-            ghost.addEventListener('click', function(e) {
-                if (e.target.closest('.cal-ghost-dismiss')) return;
-                if (e.target.closest('.cal-ghost-recur')) return;
-                // Matched ghosts are real anchors - let the browser handle the
-                // click (including Ctrl/middle/right for a new window).
-                if (matched) return;
-                // Unmatched: no URL yet, open the customer picker modal.
-                openGhostMeeting(g, dateStr);
-            });
-
-            if (matched) {
-                ghost.addEventListener('mouseenter', function() {
-                    document.querySelectorAll(`[data-customer-id="${g.customer_id}"]`).forEach(el => {
-                        el.classList.add('cal-highlight');
-                    });
-                });
-                ghost.addEventListener('mouseleave', function() {
-                    document.querySelectorAll(`[data-customer-id="${g.customer_id}"]`).forEach(el => {
-                        el.classList.remove('cal-highlight');
-                    });
-                });
-            }
+            window.SBHomeCalendar.bindHighlight(ghost);
 
             const dismiss = document.createElement('button');
             dismiss.type = 'button';
             dismiss.className = 'cal-ghost-dismiss';
             dismiss.innerHTML = '<i class="bi bi-x"></i>';
             dismiss.title = 'Hide this meeting';
+            dismiss.setAttribute('aria-label', `Hide meeting: ${g.subject}`);
             dismiss.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1778,8 +1526,8 @@
             if (g.is_recurring) {
                 const recurEl = ghost.querySelector('[data-role="recur"]');
                 if (recurEl) {
-                    const arrow = '<i class="bi bi-arrow-repeat text-muted"></i>';
-                    const killX = '<i class="bi bi-x-circle-fill text-danger"></i>';
+                    const arrow = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i>';
+                    const killX = '<i class="bi bi-x-circle-fill" aria-hidden="true"></i>';
                     recurEl.addEventListener('mouseenter', function() {
                         recurEl.innerHTML = killX;
                         recurEl.title = 'Hide this series (all future occurrences)';
@@ -1803,7 +1551,7 @@
     }
 
     // Surgically refresh just the days that finished syncing. Avoids the
-    // full-table rebuild flicker (yellow today badge briefly going blue,
+    // full-table rebuild flicker (Today losing its warning fill,
     // dots vanishing for a frame, etc.). Fetches the same calendar JSON
     // the full render uses, but only swaps the .cal-ghosts-container in
     // each completed cell, with a CSS fade-in.
@@ -1813,19 +1561,7 @@
         fetch(url)
             .then(r => r.json())
             .then(data => {
-                // Rebuild the customer color map from the fresh response so
-                // newly-cached ghosts pick up a stable color.
-                const allCustomerIds = new Set();
-                Object.values(data.days || {}).forEach(logs => {
-                    logs.forEach(log => { if (log.customer_id) allCustomerIds.add(log.customer_id); });
-                });
-                Object.values(data.ghosts || {}).forEach(ghosts => {
-                    ghosts.forEach(g => { if (g.customer_id) allCustomerIds.add(g.customer_id); });
-                });
-                const customerColorMap = {};
-                Array.from(allCustomerIds).forEach((id, i) => {
-                    customerColorMap[id] = (i % 15) + 1;
-                });
+                const customerColorMap = window.SBHomeCalendar.customerColors(data);
 
                 completedDates.forEach(dateStr => {
                     const cell = document.querySelector(
@@ -1849,7 +1585,7 @@
                     if (oldContainer) {
                         oldContainer.replaceWith(newContainer);
                     } else {
-                        cell.appendChild(newContainer);
+                        cell.querySelector('.sb-home-day-entries').appendChild(newContainer);
                     }
                     // Trigger the fade-in next frame so the transition
                     // animates from 0 to 1.
@@ -1858,7 +1594,7 @@
                     });
                 });
 
-                // Refresh today's badge color in case today just finished.
+                // Refresh today's control color in case today just finished.
                 if (typeof checkTodayStatus === 'function') checkTodayStatus();
             })
             .catch(err => console.error('refreshDaysInPlace failed:', err));
@@ -2177,7 +1913,7 @@ window.openHomeMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl)
 </script>
 {% endif %}
 
-<!-- Native note preview; its shared body is redesigned in a later checkpoint. -->
+<!-- Native note preview with the shared workbench body. -->
 <dialog class="sb-dialog sb-dialog-record" id="homeNoteDetailModal"
         aria-labelledby="homeNoteTitle" data-sb-backdrop-close="true">
     <div class="sb-dialog-shell">

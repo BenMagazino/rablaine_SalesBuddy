@@ -401,9 +401,11 @@ class TestResyncPreservesFlags:
 # ---------------------------------------------------------------------------
 
 class TestNoteCreationBackLink:
+    @pytest.mark.parametrize("matched", [True, False])
     def test_from_meeting_prefills_local_meeting_time(
-        self, app, client, clean_meeting_tables,
+        self, app, client, clean_meeting_tables, matched: bool,
     ):
+        """Matched and newly assigned meetings retain their local-time prefill."""
         with app.app_context():
             meeting_date = date(2026, 8, 28)
             local_start = datetime(2026, 8, 28, 9, 0)
@@ -417,7 +419,7 @@ class TestNoteCreationBackLink:
                 meeting_date=meeting_date,
                 start_time=stored_utc,
                 workiq_id='ghost-time-prefill',
-                customer_id=customer.id,
+                customer_id=customer.id if matched else None,
             )
             ghost_id = ghost.id
             customer_id = customer.id

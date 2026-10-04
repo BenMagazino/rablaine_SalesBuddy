@@ -113,7 +113,10 @@
         if (pollHandle !== null) clearInterval(pollHandle);
         pollHandle = null;
         // The calendar owns per-day refresh. Never rebuild it from this card.
-        if (reload && typeof window.checkTodayStatus === 'function') window.checkTodayStatus();
+        if (reload) {
+            if (typeof window.checkTodayStatus === 'function') window.checkTodayStatus();
+            window.dispatchEvent(new CustomEvent('sb:meetings-cache-updated'));
+        }
     }
 
     function reveal() {

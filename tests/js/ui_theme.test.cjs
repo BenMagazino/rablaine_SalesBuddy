@@ -125,6 +125,31 @@ function resolveToken(tokens, name) {
         resolveToken(tokens, reference)).replace(/\s/g, '');
 }
 
+test('shared note/milestone tag blends use Cartesian OKLab to keep topic borders yellow', () => {
+    const noteCSS = fs.readFileSync(path.join(rootPath, 'static/css/ui-note.css'), 'utf8');
+    assert.match(noteCSS,
+        /border: 1px solid color-mix\(in oklab, var\(--sb-record-tag-ink\) 40%, var\(--sb-ui-line\)\)/);
+    assert.match(noteCSS,
+        /background: color-mix\(in oklab, var\(--sb-record-tag-ink\) 10%, var\(--sb-ui-context\)\)/);
+    function lab(value) {
+        const channels = value.match(/^oklch\(([\d.]+)% ([\d.]+) ([\d.]+)\)$/);
+        assert.ok(channels, `Invalid OKLCH token: ${value}`);
+        const [l, c, h] = channels.slice(1).map(Number);
+        return [l / 100, c * Math.cos(h * Math.PI / 180), c * Math.sin(h * Math.PI / 180)];
+    }
+    for (const family of ['graphite', 'midnight', 'harbor', 'carbon']) {
+        for (const mode of ['dark', 'light']) {
+            const tokens = getTokens(css, {'data-sb-family': family, 'data-sb-mode': mode});
+            const ink = lab(tokens['--sb-ui-warning']);
+            const line = lab(tokens['--sb-ui-line']);
+            const hue = Math.atan2(.4 * ink[2] + .6 * line[2],
+                .4 * ink[1] + .6 * line[1]) * 180 / Math.PI;
+            const inkHue = Math.atan2(ink[2], ink[1]) * 180 / Math.PI;
+            assert.ok(Math.abs(hue - inkHue) < 25, `${family}-${mode}: topic border hue ${hue}`);
+        }
+    }
+});
+
 test('all eight production palettes preserve all 37 approved foundation colors exactly', () => {
     const archive = path.join(rootPath, 'design-studies/ui-theme-pairs-lab');
     const source = ['themes.css', 'outlook.css', 'status-rails.css',

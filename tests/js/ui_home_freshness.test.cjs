@@ -13,16 +13,19 @@ const sources = [
     ['u2c_import', 'homeU2CFreshness', 'U2C'],
 ];
 const urls = sources.map(([type]) => '/api/admin/sync-status/' + type);
+const meetingsURL = '/api/meetings/today-status';
+const allURLs = [urls[0], urls[1], meetingsURL, urls[3], urls[2]];
 const ok = data => ({ok: true, json: async () => data});
 const complete = {state: 'complete', completed_at: '2026-10-02T15:00:00'};
+const meetingsComplete = {synced: true, synced_at: complete.completed_at, today: '2026-10-02'};
 const format = timestamp => new Date(timestamp).toLocaleString('en-US', {
     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true,
 });
 
-function fixture(overrides = {}) {
-    const requests = [], errors = [], warnings = [];
+function fixture(overrides = {}, options = {}) {
+    const requests = [], errors = [], warnings = [], events = [];
     const handlers = new Map(), windowHandlers = new Map(), timers = new Map();
-    const queue = new Map(urls.map(url => [url, []]));
+    const queue = new Map(allURLs.map(url => [url, []]));
     let timerID = 0;
     class Element {
         constructor() { this.dataset = {}; this.attributes = new Map(); this.children = []; }
@@ -40,11 +43,11 @@ function fixture(overrides = {}) {
         }
         addEventListener(type, handler) { this[type] = handler; }
     }
-    const elements = new Map([...sources.map(([, id]) => id), 'homeFreshnessRefresh',
+    const elements = new Map([...sources.map(([, id]) => id), 'homeMeetingsFreshness', 'homeFreshnessRefresh',
         'homeFreshnessPopover', 'homeFreshnessToggle']
         .map(id => [id, new Element()]));
     const document = {
-        hidden: false, readyState: 'loading',
+        hidden: false, readyState: options.readyState || 'loading',
         getElementById: id => elements.get(id),
         createElement: () => new Element(),
         createTextNode: textContent => ({textContent}),
@@ -57,7 +60,8 @@ function fixture(overrides = {}) {
         fetch: async (url, options) => {
             requests.push({url, options});
             assert.ok(queue.has(url), 'Unexpected freshness endpoint: ' + url);
-            const value = queue.get(url).shift() ?? overrides[url] ?? ok(complete);
+            const value = queue.get(url).shift() ?? overrides[url] ??
+                ok(url === meetingsURL ? meetingsComplete : complete);
             if (value instanceof Error) throw value;
             return typeof value === 'function' ? value(options) : value;
         },
@@ -66,24 +70,27 @@ function fixture(overrides = {}) {
         setInterval: (fn, delay) => { const id = ++timerID; timers.set(id, {fn, delay}); return id; },
         clearInterval: id => timers.delete(id),
         addEventListener: (type, handler) => windowHandlers.set(type, handler),
+        CustomEvent,
+        dispatchEvent: event => { events.push(event); windowHandlers.get(event.type)?.(event); },
     };
     context.window = context;
     vm.createContext(context);
-    vm.runInContext(dates, context);
+    if (!options.deferFormatter) vm.runInContext(dates, context);
     vm.runInContext(source, context);
     const button = elements.get('homeFreshnessRefresh');
     const flush = () => new Promise(resolve => setImmediate(resolve));
-    return {elements, document, handlers, windowHandlers, requests, errors, warnings, queue,
+    return {elements, document, handlers, windowHandlers, requests, errors, warnings, events, queue,
         timers, button, flush,
+        installFormatter() { vm.runInContext(dates, context); },
         async start() { windowHandlers.get('DOMContentLoaded')(); await flush(); },
     };
 }
 
-test('all four refreshes use read-only status APIs, with Milestones and ACR first', async () => {
+test('all five refresh statuses use read-only APIs, with Milestones and ACR first', async () => {
     const f = fixture();
     assert.equal(f.requests.length, 0);
     await f.start();
-    assert.deepEqual(f.requests.map(r => r.url), urls);
+    assert.deepEqual(f.requests.map(r => r.url), allURLs);
     assert.ok(f.requests.every(r => !r.options.method));
     for (const [, id, label] of sources) {
         assert.equal(f.elements.get(id).textContent, label + ': ' + format(complete.completed_at + 'Z'));
@@ -96,6 +103,124 @@ test('all four refreshes use read-only status APIs, with Milestones and ACR firs
     assert.equal(f.errors.length, 0);
 });
 
+test('interactive startup waits for the later deferred timestamp formatter', async () => {
+    const f = fixture({}, {readyState: 'interactive', deferFormatter: true});
+    f.handlers.get('visibilitychange')();
+    assert.equal(f.requests.length, 0);
+    f.installFormatter();
+    await f.start();
+    assert.deepEqual(f.requests.map(r => r.url), allURLs);
+    assert.equal(f.errors.length, 0);
+    assert.equal(f.elements.get('homeMilestonesFreshness').dataset.state, 'neutral');
+});
+
+test('already-complete pages start immediately without waiting for a past DOM event', async () => {
+    const f = fixture({}, {readyState: 'complete'});
+    await f.flush();
+    assert.deepEqual(f.requests.map(r => r.url), allURLs);
+    assert.equal(f.errors.length, 0);
+});
+test('fresh meetings show their recorded local timestamp and publish the same status to Today', async () => {
+    const f = fixture();
+    await f.start();
+    const element = f.elements.get('homeMeetingsFreshness');
+    assert.equal(element.textContent,
+        "Today's Meetings: " + format(meetingsComplete.synced_at + 'Z'));
+    assert.equal(element.dataset.state, 'neutral');
+    assert.equal(f.events.length, 1);
+    assert.equal(f.events[0].type, 'sb:meetings-today-status');
+    assert.deepEqual(f.events[0].detail, meetingsComplete);
+});
+
+test('completed meeting pulls recheck freshness immediately instead of waiting for the minute poll', async () => {
+    const f = fixture({[meetingsURL]: ok({synced: false, synced_at: null})});
+    await f.start();
+    f.queue.get(meetingsURL).push(ok(meetingsComplete));
+    f.windowHandlers.get('sb:meetings-cache-updated')();
+    await f.flush();
+    assert.equal(f.requests.length, allURLs.length * 2);
+    assert.equal(f.elements.get('homeMeetingsFreshness').dataset.state, 'neutral');
+    assert.equal(f.events.at(-1).detail.synced, true);
+});
+
+test('cache updates during an older check wait for it and then read the newly written cache', async () => {
+    let finish;
+    const f = fixture({[meetingsURL]: () => new Promise(resolve => { finish = resolve; })});
+    await f.start();
+    f.queue.get(meetingsURL).push(ok(meetingsComplete));
+    f.windowHandlers.get('sb:meetings-cache-updated')();
+    assert.equal(f.requests.length, allURLs.length);
+    finish(ok({synced: false, synced_at: null}));
+    await f.flush();
+    assert.equal(f.requests.length, allURLs.length * 2);
+    assert.equal(f.elements.get('homeMeetingsFreshness').dataset.state, 'neutral');
+    assert.equal(f.events.at(-1).detail.synced, true);
+});
+
+test('queued completion checks do not restart reads after the page exits', async () => {
+    let finish;
+    const f = fixture({[meetingsURL]: () => new Promise(resolve => { finish = resolve; })});
+    await f.start();
+    f.windowHandlers.get('sb:meetings-cache-updated')();
+    f.windowHandlers.get('pagehide')();
+    finish(ok(meetingsComplete));
+    await f.flush();
+    assert.equal(f.requests.length, allURLs.length);
+    assert.equal(f.events.length, 0);
+});
+
+for (const synced_at of [null, '2026-10-01T12:00:00Z']) {
+    test('unrefreshed meetings stay a warning, including stale cache timestamp ' + synced_at, async () => {
+        const data = {synced: false, synced_at, today: '2026-10-02'};
+        const f = fixture({[meetingsURL]: ok(data)});
+        await f.start();
+        const element = f.elements.get('homeMeetingsFreshness');
+        assert.equal(element.textContent, "Today's Meetings: Not Pulled");
+        assert.equal(element.dataset.state, 'warning');
+        assert.equal(element.dataset.freshnessStamp, undefined);
+        assert.deepEqual(f.events[0].detail, data);
+    });
+}
+
+for (const [description, failure] of [
+    ['HTTP', {ok: false, status: 503}], ['network', new Error('Offline')],
+    ['JSON', {ok: true, json: async () => { throw new Error('Invalid JSON'); }}],
+    ['invalid flag', ok({synced: 'true'})],
+    ['missing timestamp', ok({synced: true, synced_at: null})],
+    ['invalid timestamp', ok({synced: true, synced_at: 'invalid'})],
+]) {
+    test('meeting ' + description + ' errors remain visible and retryable without changing Today', async () => {
+        const f = fixture({[meetingsURL]: failure});
+        await f.start();
+        assert.equal(f.elements.get('homeMeetingsFreshness').textContent,
+            "Today's Meetings: status unavailable");
+        assert.equal(f.elements.get('homeMeetingsFreshness').dataset.state, 'error');
+        assert.equal(f.events.length, 0);
+        assert.equal(f.errors.length, 1);
+        for (const [, id] of sources) assert.equal(f.elements.get(id).dataset.state, 'neutral');
+        f.queue.get(meetingsURL).push(ok(meetingsComplete));
+        await f.button.click();
+        assert.equal(f.elements.get('homeMeetingsFreshness').dataset.state, 'neutral');
+        assert.equal(f.events.length, 1);
+    });
+}
+
+test('late meeting responses cannot repaint Today after disposal or replace a newer check', async () => {
+    let finish;
+    const f = fixture({[meetingsURL]: () => new Promise(resolve => { finish = resolve; })});
+    await f.start();
+    const pending = f.button.click();
+    f.windowHandlers.get('pagehide')();
+    f.queue.get(meetingsURL).push(ok(meetingsComplete));
+    f.windowHandlers.get('pageshow')();
+    await f.flush();
+    finish(ok({synced: false, synced_at: null}));
+    await pending;
+    assert.equal(f.elements.get('homeMeetingsFreshness').dataset.state, 'neutral');
+    assert.equal(f.events.length, 1);
+    assert.equal(f.events[0].detail.synced, true);
+});
+
 test('opening refresh details checks status; dismissing only closes observation UI', async () => {
     const f = fixture();
     await f.start();
@@ -104,10 +229,10 @@ test('opening refresh details checks status; dismissing only closes observation 
     popover.toggle({newState: 'open'});
     assert.equal(toggle.getAttribute('aria-expanded'), 'true');
     assert.equal(f.button.getAttribute('aria-busy'), 'true');
-    assert.equal(f.requests.length, 8);
+    assert.equal(f.requests.length, allURLs.length * 2);
     popover.toggle({newState: 'closed'});
     assert.equal(toggle.getAttribute('aria-expanded'), 'false');
-    assert.equal(f.requests.length, 8);
+    assert.equal(f.requests.length, allURLs.length * 2);
     assert.ok(f.requests.every(r => !r.options.signal.aborted));
     assert.ok(f.requests.every(r => !r.options.method));
     await f.flush();
@@ -196,11 +321,11 @@ test('polling skips hidden pages, return refreshes, and unchanged timestamps ret
     const poll = [...f.timers.values()].find(t => t.delay === 60000);
     f.document.hidden = true;
     poll.fn();
-    assert.equal(f.requests.length, 4);
+    assert.equal(f.requests.length, allURLs.length);
     f.document.hidden = false;
     f.handlers.get('visibilitychange')();
     await f.flush();
-    assert.equal(f.requests.length, 8);
+    assert.equal(f.requests.length, allURLs.length * 2);
     assert.equal(f.elements.get('homeMilestonesFreshness').children[1], timestamp);
 });
 
@@ -210,7 +335,7 @@ test('duplicate checks coalesce, page exit aborts all reads, and late replies ca
     const f = fixture({[urls[1]]: () => deferred});
     f.windowHandlers.get('DOMContentLoaded')();
     const same = f.button.click();
-    assert.equal(f.requests.length, 4);
+    assert.equal(f.requests.length, allURLs.length);
     assert.equal(f.button.getAttribute('aria-disabled'), 'true');
     f.windowHandlers.get('pagehide')();
     assert.ok(f.requests.every(r => r.options.signal.aborted));
@@ -229,11 +354,11 @@ test('timed-out checks show a retryable failure instead of leaving the bar busy'
     const hang = ({signal}) => new Promise((resolve, reject) => {
         signal.addEventListener('abort', () => reject(new Error('Timed out')));
     });
-    const f = fixture(Object.fromEntries(urls.map(url => [url, hang])));
+    const f = fixture(Object.fromEntries(allURLs.map(url => [url, hang])));
     f.windowHandlers.get('DOMContentLoaded')();
     [...f.timers.values()].find(t => t.delay === 10000).fn();
     await f.flush();
-    assert.equal(f.errors.length, 4);
+    assert.equal(f.errors.length, allURLs.length);
     assert.equal(f.button.getAttribute('aria-disabled'), 'false');
     assert.equal(f.button.getAttribute('aria-busy'), 'false');
 });

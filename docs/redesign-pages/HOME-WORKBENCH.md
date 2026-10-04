@@ -1,14 +1,17 @@
 # Home workbench composition and attention panels
 
-- Status: DONE for this slice; user signed off October 3 after bar/type refinement
-- Checkpoint: 13
+- Status: DONE for checkpoint 14 calendar slice; HOME remains BUILDING
+- Checkpoint: 14, following approved checkpoint 13
 - Parent checkoffs: HOME and GLOBAL-SHELL remain BUILDING
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
-- Approved UI baseline: `c652057`, milestone body and forecast comments
-- Implementation tested: working tree based on `c652057`
-- Next action: commit this approved slice, then implement checkpoint 14 calendar styling.
-  No push, merge or deployment.
+- Approved UI baseline: `a5ed892`, Home frame and read-only refresh status
+- Implementation tested: calendar working tree based on `a5ed892`, approved October 3, 2026
+- User sign-off: October 3, 2026, including tag-color correction, native calendar
+  picker and floating refresh-failure feedback
+- Next action: commit checkpoint 14 and migrate the calendar loading/error states
+  as checkpoint 15. The New note/edit form layout is not migrated.
+  No push, merge or deployment is authorized.
 
 The approved freshness bar prompted a separate deferred feature:
 [detached data jobs](../PLAN_DETACHED_DATA_JOBS.md). Its in-place launchers are
@@ -63,7 +66,7 @@ quick-create launcher, unsaved-draft workflow and daily meeting-refresh behavior
   retryable without hiding the other sources; refresh preserves keyboard focus.
 - A right-only disclosure made the band visually lopsided. The user agrees to
   trial rendered-view counts on the left, today's local date in the center and
-  Refresh status on the right; the counts' usefulness is not approved yet.
+  Refresh status on the right, then signs off the refined composition.
   Equal grid side tracks keep the date mathematically centered. Counts follow
   the displayed month, ghost removal/day replacement and engagement filters,
   not database-wide or stale tab totals. Task counts cover the displayed month
@@ -76,7 +79,7 @@ quick-create launcher, unsaved-draft workflow and daily meeting-refresh behavior
   9.38px status band. Normal chrome line heights and heading tracking match
   the archive. These are Home-scoped tokens, not a global root-font change.
   Existing shell font family/palette already match; calendar entry styling
-  remains explicitly unmigrated below.
+  was deferred to checkpoint 14 below.
 - User likes the balanced composition but finds the literal archive type too
   small. Readability follow-up keeps the font family, normal/semibold roles and
   layout, increasing panel/tab/weekday/secondary text to 12px, row titles to
@@ -231,15 +234,134 @@ Removed temporary probes and interceptors; restored theme attributes and origina
 localStorage keys. Home is left on Calendar with all dialogs closed. The existing
 Hanger draft and separate unsaved New Note tab are untouched. No real writes.
 
+## Checkpoint 14: calendar presentation
+
+- Use the archive's opaque saved-note fills, muted ghost fills, square date
+  controls and Today cell tint. Customer palette slots retain their month-local
+  assignment and are shared by full rendering and surgical day replacement.
+- Saved work rails prioritize HVA, then MSX task, then milestone, then plain.
+  Tooltips and accessible names retain all linked statuses; engagement and
+  general-note markers remain independent. The legend uses the same three rails.
+- Ghosts keep their calendar marker, dashed boundary and striped customer rail.
+  Their native open, recurring-series hide and single-meeting hide controls are
+  siblings, not buttons inside anchors. Matched openers retain their original
+  new-note URLs and native modified-click behavior. Unmatched openers retain the
+  existing customer picker. Labels are constructed as literal DOM text.
+- Customer highlighting spans notes and ghosts on hover or focus. Focus remains
+  visible inside the day scroller and hide controls are also revealed by focus.
+- One shared per-day scroll area replaces the independent 70px note/ghost limits.
+  Full-month and day-only rendering retain all records and existing summary
+  selectors. No data-loading endpoint, note-preview contract or sync payload changes.
+- Date refresh is a named native button with busy/disabled state. Aura-owned
+  dates cannot launch a duplicate refresh; their dots are a separate native
+  details button in the day actions. State updates reuse existing dots rather
+  than restarting animations. Reduced-motion preferences disable these existing
+  animations and day-replacement fades.
+- The accepted type scale, dock width, footer heights, counts/date/freshness
+  composition and read-only refresh details are unchanged.
+- Follow-up review retains the unsynced Today warning fill. Refresh status now
+  also shows Today's Meetings, using the same existing today-status GET as the
+  calendar. Fresh cache shows its recorded local timestamp; missing or stale
+  coverage shows "Not Pulled" in warning ink. Accounts is last, after U2C.
+  This is today's meeting
+  coverage, not a timestamp claiming the entire calendar was refreshed.
+  Successful menu reads also update the existing Today health renderer.
+  Opening/Check now performs five read-only GETs; no sync is started. The new
+  row is read-only text, not a misleading link or a new sync launcher.
+  Initial reads wait for DOMContentLoaded, including the interactive/deferred
+  script phase, so the later shared timestamp formatter is ready first.
+- Refresh-failure review: the reported pull actually returned HTTP 500 because
+  WorkIQ supplied `calendar_lookup_failed`; no today cache was written.
+  The legacy day handler only logged that failure before clearing its spinner.
+  Day pulls now show per-date native error notices in a dedicated floating stack
+  above the bottom-right status bar, not the in-flow global flash stack.
+  Notices preserve literal error details and shared dismissal/focus behavior. A confirmed
+  success clears only that date's notice. A missing/invalid cache timestamp
+  cannot be treated as success, including an apparently empty response.
+- Successful day pulls notify the freshness controller immediately, including
+  after month navigation. Background sync completion uses the same signal.
+  If an older status read is pending, the controller queues a new read after it,
+  rather than coalescing completion into the old snapshot. Page exit cancels
+  these queued checks. Cache state still determines the actual warning/fresh
+  display; a finished failed attempt is not reported as a successful pull.
+- Calendar quick-create and unmatched ghosts now open the same native customer
+  picker used by global New note, retaining the selected-date heading, General
+  Note choice, search, caching, Retry, keyboard behavior and focus restoration.
+  Unmatched selections also preserve `from_meeting`, so the existing create form
+  can prefill and back-link that meeting. Ordinary day opens clear meeting
+  context, and the global picker does not inherit it. The shared helper no
+  longer has an unused Bootstrap-host branch.
+
+### Calendar evidence
+
+- Before the copy/order follow-up: all 77 scoped Home/calendar/freshness/summary/bucket
+  Node checks and all 29 isolated Home/freshness Python checks pass.
+- Copy/order/startup follow-up: 30 scoped freshness Node checks and 14 isolated
+  Home Python checks pass. Live order is Milestones, ACR, Today's Meetings,
+  U2C, Accounts; the warning reads "Today's Meetings: Not Pulled".
+- Failure/completion follow-up: 77 scoped calendar, freshness, shared-sync and
+  notification Node checks and 17 isolated Home/today-status Python checks pass.
+  On live Home, intercepting the date POST before the server and replaying the
+  user's recorded 500 produces the native error notice, clears the spinner and
+  retains the truthful warning/Not Pulled state. No WorkIQ pull or cache write
+  is made. Both native dismissal and success-path notice clearing reuse shared
+  focus behavior; the latter restores the main landmark when focus was inside
+  the notice. The unchanged desktop viewport retains zero bottom gap with and
+  without the error notice. Interception and the temporary notice are removed.
+  Successful pulls and pending-read races are verified with isolated tests,
+  not fabricated successful live cache data. The external lookup failure itself
+  is not repaired by this UI change.
+- Notification-placement follow-up keeps errors out of Home's layout. At the
+  unchanged 1806 x 1167 desktop viewport, adding the user's recorded failure
+  leaves the breadcrumb at y=46, calendar at y=175.5 with height 926.953125,
+  and status-bar bottom at y=1167. The notification ends at y=1135, 8px above
+  the bar, and the global flash stack stays empty. Multiple date errors stack
+  in a height-bounded scrollable surface rather than growing the page.
+  Two recorded errors retain exactly the same calendar geometry, and clearing
+  the focused notice transfers focus to the remaining notice's close control.
+  Graphite light/dark both keep the notification within the desktop viewport
+  without moving the breadcrumb or bottom bar; the original dark theme and
+  user's October 6 failure notice are restored. All 31 scoped calendar/feedback
+  Node checks and 14 isolated Home Python checks pass.
+- Native picker/tag follow-up: 44 scoped Node cases and 77 isolated Python cases
+  pass across calendar/picker/theme behavior and Home/navigation/note/prefill
+  contracts. Live unmatched selection uses native results, focused search and
+  a pinned 48px dialog top. Customer/General Note links retain date and meeting
+  ID; an ordinary-day reopen clears the meeting ID and global New note links
+  retain no calendar context. The note page and preview share the corrected
+  yellow topic-border blend; all eight theme pairs retain the intended hue.
+- 16 scoped calendar Node tests cover every rail-flag combination, customer
+  assignment, literal labels, general notes, preserved URLs, independent hide
+  actions, native controls, spinner/aura gating, stable dots, Today state,
+  surgical replacement and four-/five-/six-week and leap-month rendering.
+- Live September retains 7 notes / 11 meetings. Keyboard activation opens an
+  actual saved-note preview and Close restores focus. Its same-customer note
+  and ghost highlight together; moving focus away clears the highlight.
+- Real August, February and October retain six, four and five rows respectively;
+  February has all 28 dates and October all 31. Day content stays within its cell.
+- All eight family/mode pairs retain zero footer-center error, bottom gap and
+  document/calendar overflow at the unchanged 1806 x 1167 desktop viewport.
+  Actual September note/ghost text contrast is at least 8.48:1.
+- Meeting freshness follow-up: the live warning row matches the unsynced Today
+  fill. Check now performs exactly five GETs. A forced meeting-status 503 shows
+  unavailable without hiding the other four timestamps or changing Today;
+  retry restores the real status and preserves focus. The expanded five-row
+  popover fits all eight themes and the bottom bar remains 24px.
+- Native keyboard activation opens both quick-create and the unmatched picker.
+  Both close without navigation or edits. Series and single-meeting hide
+  confirmations are cancelled; all 8 October ghosts remain. No refresh, hide,
+  note creation or other live data write is performed.
+- Calendar colors, typography, borders, padding and control heights survive a
+  temporary Bootstrap stylesheet disable. Remaining legacy global/modal layout
+  dependencies are outside this slice; full Bootstrap removal is not claimed.
+- The original October Calendar view, Graphite/dark theme and existing Hanger
+  draft are preserved. The separate unsaved New Note tab is untouched.
+
 ## Remaining Home parity
 
-This is not full HOME sign-off or full Bootstrap removal. The next calendar slice
-must replace legacy table/day fills, add approved opaque saved-note customer fills,
-muted ghost fills with striped rails/dashed outlines, work-status rails and icon
-precedence, Today tint/square date treatment, customer hover/focus highlighting
-and the rail-swatch legend. Those approved treatments are absent, not complete.
-Loading/error states and date-refresh affordances retain their current
-implementation for that pass.
-Embedded engagement/project bodies, dashboard settings,
+This is not full HOME sign-off or full Bootstrap removal. Checkpoint 14 calendar
+presentation and its follow-up fixes are user-approved. Calendar loading/error
+surfaces, the separate action-item calendar, embedded engagement/project bodies,
+dashboard settings,
 action-item/revenue detail bodies and the shared bucket popover remain separate
 migration surfaces. Their current functionality is preserved, not rewritten here.

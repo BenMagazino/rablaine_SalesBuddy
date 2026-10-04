@@ -107,3 +107,17 @@ is the next comparable slice; full homepage/calendar parity, sharing/global
 surfaces, other pages, theme-family persistence and final product reconciliation
 remain later work. DONE counts stay pages 0/90, helpers 0/24, globals 5/17.
 The approved implementation is committed as `3f8ddd5`.
+
+## Checkpoint 14 tag-color correction
+
+The shared note/milestone tag border and fill now blend in Cartesian OKLab,
+rather than interpolating hue in OKLCH. This prevents yellow topic outlines from
+turning green when blended with blue-gray divider tokens. Semantic tag colors,
+geometry, label contrast and shared full-page/preview markup remain unchanged.
+This follow-up is user-approved October 3, 2026, with checkpoint 14, ready to commit.
+
+Live note 302 verifies topic border hue stays within 25 degrees of its yellow
+text in all eight theme pairs, rather than the old Graphite hue of 184 degrees.
+Graphite dark now measures about 90 degrees against 85-degree text, and the
+Home preview uses the identical computed border/text colors. Original theme
+attributes are restored; no note content or links are changed.

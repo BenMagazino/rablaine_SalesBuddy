@@ -5,8 +5,10 @@
     const sources = [
         {id: 'homeMilestonesFreshness', label: 'Milestones', type: 'milestones'},
         {id: 'homeACRFreshness', label: 'ACR', type: 'revenue_sync'},
-        {id: 'homeAccountsFreshness', label: 'Accounts', type: 'accounts'},
+        {id: 'homeMeetingsFreshness', label: "Today's Meetings", url: '/api/meetings/today-status',
+            render: renderMeetingStatus},
         {id: 'homeU2CFreshness', label: 'U2C', type: 'u2c_import'},
+        {id: 'homeAccountsFreshness', label: 'Accounts', type: 'accounts'},
     ];
     const refreshButton = document.getElementById('homeFreshnessRefresh');
     const popover = document.getElementById('homeFreshnessPopover');
@@ -58,15 +60,27 @@
         }
     }
 
+    function renderMeetingStatus(element, label, data) {
+        if (typeof data?.synced !== 'boolean') {
+            throw new Error(label + ' freshness response is invalid.');
+        }
+        if (data.synced) {
+            showTimestamp(element, label, data.synced_at);
+        } else {
+            show(element, label, 'Not Pulled', 'warning');
+        }
+        window.dispatchEvent(new CustomEvent('sb:meetings-today-status', {detail: data}));
+    }
+
     async function read(run, source) {
         const {label, type, id} = source;
         const element = document.getElementById(id);
         try {
-            const response = await fetch('/api/admin/sync-status/' + type,
+            const response = await fetch(source.url || '/api/admin/sync-status/' + type,
                 {signal: run.controller.signal});
             if (!response.ok) throw new Error(label + ' status HTTP ' + response.status + '.');
             const data = await response.json();
-            if (pending === run) renderStatus(element, label, data);
+            if (pending === run) (source.render || renderStatus)(element, label, data);
         } catch (error) {
             if (pending !== run) return;
             console.error('Unable to check ' + label + ' freshness.', error);
@@ -115,7 +129,7 @@
         if (open) refresh();
     });
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) refresh();
+        if (!document.hidden && pollHandle !== null) refresh();
     });
     window.addEventListener('pagehide', () => {
         clearInterval(pollHandle);
@@ -125,7 +139,14 @@
         if (run) run.controller.abort();
     });
     window.addEventListener('pageshow', start);
-    if (document.readyState === 'loading') {
+    window.addEventListener('sb:meetings-cache-updated', () => {
+        const recheck = () => {
+            if (pollHandle !== null) return refresh();
+        };
+        if (pending) pending.promise.then(recheck);
+        else recheck();
+    });
+    if (document.readyState !== 'complete') {
         window.addEventListener('DOMContentLoaded', start, {once: true});
     } else {
         start();

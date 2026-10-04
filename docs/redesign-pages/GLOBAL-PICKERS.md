@@ -13,8 +13,9 @@
 
 Migrate only the two global customer-selection hosts to native dialogs and
 app-owned styles. Preserve their IDs and reuse the existing shared search helper.
-The homepage calendar is a third consumer of that helper: its Bootstrap host
-remains until HOME is redesigned, with its selected-day links and styling intact.
+The homepage calendar is a third consumer of that helper. Its Bootstrap host
+was retained at checkpoint 4; the checkpoint 14 follow-up now migrates it to the
+same native picker used by global New note.
 Shared loading, safe label rendering and retry behavior apply to all three hosts.
 
 Entry points are header New note, Ctrl+K, the notes-list empty-state action and
@@ -41,7 +42,7 @@ Bootstrap Icons remains a separate dependency.
 | PICK-08 | Search receives focus; Escape, X, Cancel and backdrop close predictably | Native dialog policies; live dismissal and form Ctrl+K/Escape checks | PASS |
 | PICK-09 | Nested F1 preserves the underlying picker query | Target-specific lifecycle handling; live F1/Escape/query-retention check | PASS |
 | PICK-10 | Close clears transient state; reopen retains cached data | Generation guards, cache and shared in-flight request; Node and live checks | PASS |
-| PICK-11 | Calendar customer and general links preserve the selected date | Existing date hook and legacy lifecycle; Node and live two-day cached reopen | PASS |
+| PICK-11 | Calendar customer and general links preserve the selected date | Date hook and native lifecycle; meeting links additionally preserve `from_meeting`, and ordinary day opens clear it | PASS |
 | PICK-12 | Failed customer loading is visible and recoverable | HTTP/schema checks, logged error, Retry and focus returned to search; Node failures and live 503/recovery | PASS |
 | PICK-13 | Late responses cannot refill a closed picker | Generation guard; Node close/reopen and in-flight deduplication checks | PASS |
 | PICK-14 | Long lists scroll without losing fixed controls | Bounded native shell and single result scroller; live desktop geometry and screenshot | PASS |
@@ -70,10 +71,36 @@ Bootstrap Icons remains a separate dependency.
   empty results. Other native dialogs retain their centered placement.
   Eight theme variants remain in bounds. Retry also restores search focus.
 - Native picker hosts and launchers no longer use Bootstrap modal APIs,
-  attributes or component classes. The shared helper deliberately retains its
-  active calendar branch, not a dead compatibility fallback.
+  attributes or component classes. The checkpoint 14 follow-up removes the
+  helper's last Bootstrap path now that all three consumers are native dialogs.
 - The user signed off on both pickers on October 2, 2026, including their
   top-anchored resizing and single field focus indicator.
   GLOBAL-NOTE and GLOBAL-ENG are DONE; their host pages and destination forms
   are not approved by this checkpoint.
   Full GLOBAL-SHELL remains BUILDING. No push, merge or deployment is authorized.
+
+## Checkpoint 14 calendar follow-up
+
+Calendar quick-create and unmatched ghosts now use `SBDialog` and the existing
+native picker styling/controller. The date heading, General Note choice,
+customer/nickname/TPID search, caching, loading/Retry and keyboard behavior stay
+available. Unmatched ghosts carry their meeting ID through both customer and
+general-note links, restoring the existing backend's meeting prefill/back-link
+contract. Opening an ordinary day afterward clears that ID; the global New note
+picker never inherits calendar context.
+
+This follow-up is user-approved October 3, 2026, with checkpoint 14, ready to commit.
+
+Live Home verifies the unmatched September 23 meeting opens a native picker at
+y=48, focused on search, with native result classes and date/meeting parameters
+on both customer and General Note links. TPID filtering yields one customer;
+arrow navigation focuses its correct URL without navigating. Escape restores
+the ghost opener. Reopening for September 24 clears the meeting ID, while Ctrl+K
+retains plain global New note links. No note is created or meeting pulled.
+The real unmatched picker is left open for review, with the existing draft and
+separate unsaved New Note tab untouched.
+
+The related checks cover 44 Node cases and 77 isolated Python cases across
+calendar/picker/theme controllers, Home/navigation/note rendering and matched/
+unmatched meeting time prefill. All pass; the updated Home signature assertion
+was rerun separately after correcting its old one-argument expectation.
