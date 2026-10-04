@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-23 committed, checkpoint 24 shell composition approved, uncommitted
+- Status: BUILDING; checkpoints 1-24 committed, checkpoint 24 shell composition approved as `4320872`
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -88,7 +88,7 @@
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
-- Next action: commit the approved shell slice when requested, then adopt
+- Next action: choose the next Revenue workflow slice, then adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.

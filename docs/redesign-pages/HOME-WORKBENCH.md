@@ -1055,11 +1055,11 @@ Committed locally as `60dbdb3`; no push or merge.
 ## Checkpoint 24: continuous workbench shell and Revenue pilot
 
 Status: VERIFY for full pages; shell composition approved October 4, 2026,
-uncommitted. Scrolling is technically verified but was not manually reviewed by
-the user because their visible alerts did not require it. Page-by-page migration
-is paused to establish
+committed as `4320872`. Scrolling is technically verified but was not manually reviewed by
+the user because their visible alerts did not require it. This checkpoint establishes
 the [shared shell contract](GLOBAL-SHELL.md#shared-shell-contract-checkpoint-24).
 Analyzer and seller Revenue are its first non-Home examples.
+Estimated full-redesign completion at this commit: about 25% by effort.
 
 - Added an opt-in base `body_class` hook and shared native page-frame stylesheet.
   Only the two migrated full pages opt in; Home, other legacy pages and embedded

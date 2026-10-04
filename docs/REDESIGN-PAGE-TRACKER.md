@@ -8,7 +8,7 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 - Current page/surface: checkpoint 24, continuous workbench shell contract and
   Revenue Analyzer/seller pilot, VERIFY, shell composition approved October 4,
-  uncommitted; scrolling technically verified but not manually reviewed by the user;
+  committed as `4320872`; scrolling technically verified but not manually reviewed by the user;
   full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
@@ -28,9 +28,10 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `401846d` (native Home Revenue preview and shared details, user-approved October 4),
   `a4ec9a8` (shared native Revenue preview frames, user-approved October 4),
   `25a14d4` (shared native Revenue lists and Seller Full View, user-approved October 4),
-  `60dbdb3` (native Revenue commands and app-wide breadcrumbs, user-approved October 4)
-- Next action: commit the approved checkpoint 24 shell slice when requested,
-  then adopt the contract incrementally as pages migrate. The wider interim table
+  `60dbdb3` (native Revenue commands and app-wide breadcrumbs, user-approved October 4),
+  `4320872` (continuous shell contract and Revenue pilot, user-approved October 4)
+- Next action: choose the next Revenue workflow slice, then adopt the contract
+  incrementally as pages migrate. The wider interim table
   is not approval of the final Revenue layout. Analyzer and seller alert headers,
   summaries and commands are native; customer revenue remains legacy.
   October 4 review correction: all 90 full-page endpoints now use Home's shared
@@ -74,7 +75,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 23 sign-off, the rough effort-based estimate is **about 24%**
+As of checkpoint 24 sign-off, the rough effort-based estimate is **about 25%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -95,6 +96,9 @@ the preview controller's native-parent integration are approved at this revision
 Checkpoint 23: about 24%, user-approved October 4, 2026, committed as `60dbdb3`. Native Analyzer/seller page
 commands and app-wide canonical breadcrumbs are approved; the shared continuous
 shell contract and Revenue pilot are the next checkpoint.
+Checkpoint 24: about 25%, shell composition user-approved October 4, 2026,
+committed as `4320872`. Scrolling is technically verified, not manually reviewed
+by the user; the wider interim table is not the final Revenue layout approval.
 
 The DONE counters are stricter: they count fully reconciled pages/helpers, not
 approved sub-page checkpoints or partial completion. Consequently, `0 / 90`
