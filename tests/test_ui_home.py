@@ -24,6 +24,28 @@ def render_home(app: Flask, **overrides: object) -> BeautifulSoup:
         return BeautifulSoup(render_template("index.html", **context), "html.parser")
 
 
+@pytest.mark.parametrize("preference", [
+    "copilot_actions_enabled", "show_stale_milestones", "show_hygiene_tasks",
+])
+def test_dashboard_preferences_confirm_and_persist(
+    app: Flask, client: FlaskClient, preference: str,
+) -> None:
+    """The native controls retain the immediate-save contract and reload values."""
+    from app.models import UserPreference
+
+    for enabled in (False, True):
+        response = client.post("/api/preferences/dashboard-toggle", json={preference: enabled})
+        assert response.status_code == 200
+        assert response.json["success"] is True
+        assert response.json[preference] is enabled
+        with app.app_context():
+            pref = UserPreference.query.first()
+            assert getattr(pref, preference) is enabled
+            soup = render_home(app, pref=pref)
+            field = soup.select_one(f'[data-preference="{preference}"]')
+            assert field.has_attr("checked") is enabled
+
+
 @pytest.mark.parametrize("engagements,projects,tasks", list(product([False, True], repeat=3)))
 def test_home_frame_and_tabs_exist_in_every_conditional_branch(
     app: Flask, engagements: bool, projects: bool, tasks: bool,
@@ -76,8 +98,15 @@ def test_home_live_route_keeps_calendar_and_empty_destinations(client: FlaskClie
         assert root.find(id=element_id)
     rail = root.select_one(".sb-home-rail")
     assert rail.select_one('a[href="/action-items"]')
-    assert rail.select_one('button[data-bs-target="#dashboardSettingsModal"]')
-    assert soup.find(id="dashboardSettingsModal")
+    assert rail.select_one('button[data-sb-dialog="dashboardSettingsModal"]')
+    settings = soup.find("dialog", id="dashboardSettingsModal")
+    assert settings["data-sb-backdrop-close"] == "true"
+    assert len(settings.select("[data-sb-dialog-close]")) == 2
+    assert not settings.select(".modal, .form-check, .btn, [data-bs-dismiss]")
+    assert [field["data-preference"] for field in settings.select("[data-preference]")] == [
+        "copilot_actions_enabled", "show_stale_milestones", "show_hygiene_tasks",
+    ]
+    assert soup.select_one('script[src="/static/js/ui-dashboard-settings.js"][defer]')
     assert soup.find(id="quickCreateModal")
     assert soup.find(id="homeNoteDetailModal")
     assert b"new bootstrap.Tab" not in response.data

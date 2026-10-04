@@ -6,7 +6,7 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 15, Home calendar loading/error feedback,
+- Current page/surface: checkpoint 16, Home Action Items settings,
   user-approved October 3, 2026, ready to commit;
   full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
@@ -18,10 +18,10 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `3f8ddd5` (shared note body and divider-only metadata),
   `c652057` (shared milestone body and forecast comments),
   `a5ed892` (Home workbench and read-only refresh status),
-  `3e4c5be` (Home calendar, native calendar picker and refresh feedback)
+  `3e4c5be` (Home calendar, native calendar picker and refresh feedback),
+  `1f1472a` (native calendar read states, Retry and stale-response protection)
 - Next action: commit
-  [checkpoint 15 calendar read states](redesign-pages/HOME-WORKBENCH.md), then
-  migrate Home's Action Items settings dialog.
+  [checkpoint 16 Action Items settings](redesign-pages/HOME-WORKBENCH.md).
   New note/edit forms remain TODO.
   No live customer records were changed;
   existing user drafts are preserved. No push, merge or deployment is authorized.
@@ -47,11 +47,15 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 15 sign-off, the rough effort-based estimate is **about 15%**
+As of checkpoint 16 sign-off, the rough effort-based estimate is **about 16%**
 of the full redesign (a judgment call, approximately 10-20%, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
 admin and final reconciliation still remain.
+
+Report an updated effort-based estimate whenever a checkpoint is completed and
+committed. Keep estimates approximate; small checkpoints may not move the rounded
+percentage. Checkpoint 15: about 15%. Checkpoint 16: about 16%.
 
 The DONE counters are stricter: they count fully reconciled pages/helpers, not
 approved sub-page checkpoints or partial completion. Consequently, `0 / 90`

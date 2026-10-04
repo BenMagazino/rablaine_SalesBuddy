@@ -1,17 +1,19 @@
 # Home workbench composition and attention panels
 
-- Status: DONE for checkpoint 15 calendar read states; HOME remains BUILDING
-- Checkpoint: 15, following approved/committed checkpoint 14
+- Status: DONE for checkpoint 16 Action Items settings; HOME remains BUILDING
+- Checkpoint: 16, following approved/committed checkpoint 15
 - Parent checkoffs: HOME and GLOBAL-SHELL remain BUILDING
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
-- Approved UI baseline: `3e4c5be`, checkpoint 14 calendar and follow-ups
-- Implementation tested: checkpoint 15 working tree based on `3e4c5be`
+- Approved UI baseline: `1f1472a`, checkpoint 15 calendar read states
+- Implementation tested: checkpoint 16 working tree based on `1f1472a`
 - Checkpoint 14 user sign-off: October 3, 2026, including tag-color correction, native calendar
   picker and floating refresh-failure feedback
 - Checkpoint 14 implementation revision: `3e4c5be`
 - Checkpoint 15 user sign-off: October 3, 2026
-- Next action: commit checkpoint 15, then migrate Home's Action Items settings dialog.
+- Checkpoint 15 implementation revision: `1f1472a`
+- Checkpoint 16 user sign-off: October 3, 2026
+- Next action: commit checkpoint 16, then continue remaining Home preview surfaces.
   The New note/edit form layout is not migrated.
   No push, merge or deployment is authorized.
 
@@ -418,4 +420,28 @@ migration surfaces. Their current functionality is preserved, not rewritten here
   this read flow; no sharing code is changed or console-clean claim made.
 - Review: the native loading/error appearance, stable frame and month title,
   and Retry returning to the real month without starting a meeting sync.
-  Checkpoint 15 is user-approved October 3, 2026, ready to commit.
+  Checkpoint 15 is user-approved October 3, 2026, committed as `1f1472a`.
+
+## Checkpoint 16: Action Items settings
+
+- Replaced Home's Bootstrap settings host with the shared native dialog lifecycle:
+  Escape, opt-in backdrop dismissal, close button, Done and opener focus restoration.
+- Shared Dashboard settings partial now uses theme-token controls and divider-only
+  rows in both Home and Preferences. Other Preferences sections are not migrated.
+- Retained all three preference fields, initial checked values, immediate-save POST
+  endpoint and manual Copilot refresh endpoint. Home items still update on reload.
+- Save feedback now requires confirmed server values, disables only the saving
+  control, and restores its last confirmed value on failure. Refresh keeps its
+  button geometry, reports valid zero/singular/plural counts and exposes persistent
+  errors. Neither action claims success for failed or malformed responses.
+- Validation: 72 scoped JS tests passed; 17 isolated Home tests and 27 isolated
+  Copilot tests passed. New persistence tests exercise both boolean values for
+  every toggle. Editor diagnostics and whitespace checks are clean.
+- Live dev: native dialog and Preferences shared partial rendered with actual
+  checked preferences. Verified Escape/Done/backdrop focus behavior and all eight
+  theme geometries at the unchanged desktop viewport. Replayed HTTP 503 save
+  failure and a rejected refresh only, verified rollback/error/retry availability,
+  then removed interceptors and reloaded. No live preference writes, WorkIQ syncs,
+  customer changes or draft changes occurred. Home is left open to clean settings.
+- User review: approved October 3, 2026. Ready to commit.
+- Estimated full-redesign completion at sign-off: about 16% by effort.

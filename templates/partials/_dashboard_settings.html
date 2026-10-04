@@ -1,81 +1,48 @@
-{# Dashboard action items configuration partial.
-   Used in settings.html and as a modal on the dashboard index page.
-   Requires `pref` variable in template context. #}
-
-<div class="d-flex justify-content-between align-items-start mb-3">
-    <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="copilotActionsSwitch" {{ 'checked' if pref and pref.copilot_actions_enabled else '' }}>
-        <label class="form-check-label" for="copilotActionsSwitch">
-            Copilot daily action items
-        </label>
-        <div><small class="text-muted">Show AI-generated action items from your emails, chats, and meetings. Refreshes daily at 6 AM or on app start.</small></div>
+{# Shared by Home's native dialog and the Dashboard section of Preferences. #}
+<div class="sb-dashboard-settings" data-sb-dashboard-settings>
+    <div class="sb-dashboard-setting">
+        <div>
+            <label class="sb-dashboard-setting-label" for="copilotActionsSwitch">
+                <input type="checkbox" id="copilotActionsSwitch"
+                       data-preference="copilot_actions_enabled"
+                       aria-describedby="copilotActionsHelp"
+                       {{ 'checked' if pref and pref.copilot_actions_enabled else '' }}>
+                <span>Copilot daily action items</span>
+            </label>
+            <p id="copilotActionsHelp">Show AI-generated action items from your emails, chats,
+                and meetings. Refreshes daily at 6 AM or on app start.</p>
+        </div>
+        <button type="button" class="sb-dialog-button" id="refreshCopilotBtn">
+            <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Refresh
+        </button>
     </div>
-    <button type="button" class="btn btn-sm btn-outline-info flex-shrink-0 ms-2" id="refreshCopilotBtn" onclick="refreshCopilotActions(this)">
-        <i class="bi bi-arrow-repeat"></i> Refresh
-    </button>
+    <div class="sb-dashboard-setting">
+        <div>
+            <label class="sb-dashboard-setting-label" for="staleMilestonesSwitch">
+                <input type="checkbox" id="staleMilestonesSwitch"
+                       data-preference="show_stale_milestones"
+                       aria-describedby="staleMilestonesHelp"
+                       {{ 'checked' if pref and pref.show_stale_milestones else '' }}>
+                <span>Stale milestones in Action Items</span>
+            </label>
+            <p id="staleMilestonesHelp">Show milestones with no recent comments in the
+                Action Items panel on Home.</p>
+        </div>
+    </div>
+    <div class="sb-dashboard-setting">
+        <div>
+            <label class="sb-dashboard-setting-label" for="hygieneTasksSwitch">
+                <input type="checkbox" id="hygieneTasksSwitch"
+                       data-preference="show_hygiene_tasks"
+                       aria-describedby="hygieneTasksHelp"
+                       {{ 'checked' if pref and pref.show_hygiene_tasks else '' }}>
+                <span>Hygiene tasks</span>
+            </label>
+            <p id="hygieneTasksHelp">Surface data quality issues like active engagements
+                without milestones or milestones without estimated ACR.</p>
+        </div>
+    </div>
+    <p class="sb-dashboard-setting-result" id="dashboardRefreshResult" role="status"
+       aria-live="polite"></p>
 </div>
-<div class="form-check form-switch mb-3">
-    <input class="form-check-input" type="checkbox" id="staleMilestonesSwitch" {{ 'checked' if pref and pref.show_stale_milestones else '' }}>
-    <label class="form-check-label" for="staleMilestonesSwitch">
-        Stale milestones in Action Items
-    </label>
-    <div><small class="text-muted">Show milestones with no recent comments in the Action Items card on the dashboard.</small></div>
-</div>
-<div class="form-check form-switch">
-    <input class="form-check-input" type="checkbox" id="hygieneTasksSwitch" {{ 'checked' if pref and pref.show_hygiene_tasks else '' }}>
-    <label class="form-check-label" for="hygieneTasksSwitch">
-        Hygiene tasks
-    </label>
-    <div><small class="text-muted">Surface data quality issues like active engagements without milestones or milestones without estimated ACR.</small></div>
-</div>
-
-<script>
-(function() {
-    document.getElementById('copilotActionsSwitch').addEventListener('change', function() {
-        fetch('/api/preferences/dashboard-toggle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ copilot_actions_enabled: this.checked })
-        });
-    });
-    document.getElementById('staleMilestonesSwitch').addEventListener('change', function() {
-        fetch('/api/preferences/dashboard-toggle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ show_stale_milestones: this.checked })
-        });
-    });
-    document.getElementById('hygieneTasksSwitch').addEventListener('change', function() {
-        fetch('/api/preferences/dashboard-toggle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ show_hygiene_tasks: this.checked })
-        });
-    });
-})();
-
-function refreshCopilotActions(btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Working...';
-    fetch('/api/copilot-actions/sync', { method: 'POST' })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            btn.innerHTML = '<i class="bi bi-check-circle"></i> ' + data.items_created + ' items';
-            btn.classList.replace('btn-outline-info', 'btn-success');
-        } else {
-            btn.innerHTML = '<i class="bi bi-x-circle"></i> ' + (data.error || 'Failed');
-            btn.classList.replace('btn-outline-info', 'btn-outline-danger');
-        }
-        setTimeout(function() {
-            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Refresh';
-            btn.className = 'btn btn-sm btn-outline-info flex-shrink-0';
-            btn.disabled = false;
-        }, 3000);
-    })
-    .catch(function() {
-        btn.innerHTML = '<i class="bi bi-x-circle"></i> Error';
-        btn.disabled = false;
-    });
-}
-</script>
+<script defer src="{{ url_for('static', filename='js/ui-dashboard-settings.js') }}"></script>

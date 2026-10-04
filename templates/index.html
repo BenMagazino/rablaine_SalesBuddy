@@ -17,7 +17,7 @@
         <section class="sb-home-panel" aria-labelledby="homeActionsHeading">
             <header class="sb-home-panel-header">
                 <h2 id="homeActionsHeading" title="Action items from across the app and suggested items from Copilot"><i class="bi bi-check2-square"></i> Action Items</h2>
-                <button type="button" class="sb-home-button sb-home-icon-button" data-bs-toggle="modal" data-bs-target="#dashboardSettingsModal" aria-label="Configure action items" title="Configure action items"><i class="bi bi-gear" aria-hidden="true"></i></button>
+                <button type="button" class="sb-home-button sb-home-icon-button" data-sb-dialog="dashboardSettingsModal" aria-controls="dashboardSettingsModal" aria-label="Configure action items" title="Configure action items"><i class="bi bi-gear" aria-hidden="true"></i></button>
             </header>
             <div class="sb-home-panel-body" tabindex="0" aria-label="Action items list">
                 {% set engagement_tasks = open_tasks|selectattr('source', 'equalto', 'engagement')|list %}
@@ -313,20 +313,26 @@
 
 
 
-<!-- Dashboard Settings Modal -->
-<div class="modal fade" id="dashboardSettingsModal" tabindex="-1" aria-labelledby="dashboardSettingsLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="dashboardSettingsLabel"><i class="bi bi-gear"></i> Configure Action Items</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<dialog class="sb-dialog sb-dialog-compact" id="dashboardSettingsModal"
+        aria-labelledby="dashboardSettingsLabel" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <div class="sb-dialog-eyebrow">Home preferences</div>
+                <h2 id="dashboardSettingsLabel">Configure Action Items</h2>
             </div>
-            <div class="modal-body">
-                {% include 'partials/_dashboard_settings.html' %}
-            </div>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                    aria-label="Close action item settings"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <div class="sb-dialog-body">
+            {% include 'partials/_dashboard_settings.html' %}
+        </div>
+        <div class="sb-dialog-footer">
+            <small>Changes save immediately. Reload Home to update the displayed items.</small>
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Done</button>
         </div>
     </div>
-</div>
+</dialog>
 
 
 <style>
