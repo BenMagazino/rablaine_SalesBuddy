@@ -1,13 +1,26 @@
 {% extends "base.html" %}
 {% block title %}{{ seller_name }} - Revenue Analyzer - Sales Buddy{% endblock %}
 
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+{% set status_total = alerts|length %}
+{% set status_unit = 'alerts' %}
+{% set status_table_id = 'alertsTable' if alerts else none %}
+{% set status_hint = 'Seller totals include all buckets' %}
+{% include 'partials/_page_status.html' %}
+{% endif %}
+{% endblock %}
+
 {% block content %}
-<div class="sb-revenue-workspace" data-sb-revenue-page="seller" data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
+<div class="sb-revenue-workspace" data-sb-revenue-page="seller" data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
     {% if not request.args.get('embed') %}
-    <header class="sb-revenue-page-header">
+    <header class="sb-revenue-page-header" data-sb-page-band>
         <div>
             <h1><i class="bi bi-person" aria-hidden="true"></i> {{ seller_name }}</h1>
-            <p>Customers needing attention</p>
         </div>
         <div class="sb-revenue-command-group">
             {% if seller %}
@@ -27,8 +40,10 @@
     {% endif %}
 
 
-    {% set alert_clickable = true %}
-    {% include 'partials/revenue_alerts_content.html' %}
+    <div class="sb-revenue-workarea" data-sb-page-body>
+        {% set alert_clickable = true %}
+        {% include 'partials/revenue_alerts_content.html' %}
+    </div>
 </div>
 
 {% include 'partials/revenue_alert_preview.html' %}

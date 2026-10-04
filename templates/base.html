@@ -574,7 +574,7 @@
     {% block extra_css %}{% endblock %}
     {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <!-- Skip to main content link for keyboard/screen reader users -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
     
@@ -1364,6 +1364,11 @@
                     </tbody>
                 </table>
             </div>
+            {% if 'sb-page-frame' in self.body_class() %}
+            <div class="sb-dialog-footer">
+                <small>&copy; 2026 Sales Buddy - Your Azure Sales Companion</small>
+            </div>
+            {% endif %}
         </div>
     </dialog>
 

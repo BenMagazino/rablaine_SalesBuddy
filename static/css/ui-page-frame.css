@@ -1,0 +1,61 @@
+/* Continuous desktop workbench. Pages own their bands and work-region composition. */
+.sb-page-frame {
+    --sb-page-status-height: 24px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    margin: 0;
+    overflow: hidden;
+    background: var(--sb-ui-surface);
+    color: var(--sb-ui-ink);
+    font-family: var(--sb-ui-font);
+}
+.sb-page-frame > .sb-app-bar,
+.sb-page-frame > .sb-context-bar,
+.sb-page-frame > .sb-status-strip,
+.sb-page-frame > .sb-page-status { flex-shrink: 0; }
+.sb-page-frame > .sb-flash-stack:not(:has(.sb-notice)) { display: none; }
+.sb-page-frame #main-content {
+    box-sizing: border-box;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0 !important;
+    padding: 0;
+    overflow: hidden;
+}
+.sb-page-frame #main-content > [data-sb-page-surface] {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    background: var(--sb-ui-surface);
+}
+.sb-page-frame [data-sb-page-band] { flex-shrink: 0; }
+.sb-page-frame [data-sb-page-body] { flex: 1; min-height: 0; overflow: hidden; }
+.sb-page-status {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sb-ui-space-4);
+    height: var(--sb-page-status-height);
+    padding: 0 var(--sb-ui-space-4);
+    border-top: 1px solid var(--sb-ui-line);
+    background: var(--sb-ui-context);
+    color: var(--sb-ui-muted);
+    font: 11px/normal var(--sb-ui-font);
+}
+.sb-page-status > span {
+    min-width: 0;
+    overflow: hidden;
+    font: inherit;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

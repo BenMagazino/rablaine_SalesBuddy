@@ -52,6 +52,12 @@ def test_revenue_pages_use_native_chrome(
     root = soup.select_one(f'[data-sb-revenue-page="{kind}"]')
     assert root is not None
     assert root.select_one("h1")
+    if kind == "seller":
+        assert not root.select(".sb-revenue-page-header > div:first-child > p")
+        assert [
+            label.get_text(strip=True)
+            for label in root.select(".sb-revenue-list-summary dt")
+        ].count("Customers Needing Attention") == 1
     assert root.select_one("#bucketFilterContainer")
     assert root.select_one("#alertsTable")
     bar = soup.select_one(".sb-context-bar")
@@ -67,6 +73,88 @@ def test_revenue_pages_use_native_chrome(
         ".dropdown, .dropdown-menu, .alert, .row, .container-fluid, [data-bs-toggle]"
     )
     assert soup.select_one("dialog[data-sb-revenue-preview]")
+
+
+@pytest.mark.parametrize("path", [
+    "/reports/revenue", "/revenue/seller/Review%20UI%20Seller",
+])
+def test_revenue_pages_opt_into_native_desktop_frame(
+    client: FlaskClient, review_alert: dict[str, int], path: str,
+) -> None:
+    """Full pages divide one surface into bands, a work region and truthful view status."""
+    response = client.get(path)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert "sb-page-frame" in soup.body.get("class", [])
+    assert soup.select_one('link[href="/static/css/ui-page-frame.css"]')
+    assert soup.select_one("#main-content > [data-sb-page-surface]")
+    assert soup.select_one("[data-sb-page-surface] > [data-sb-page-band]")
+    work = soup.select_one("[data-sb-page-body]")
+    assert work.select_one(".sb-revenue-alerts-scroll[tabindex='0'] > #alertsTable")
+    footer = soup.select_one("body > footer.sb-page-status")
+    status = footer.select_one('[role="status"][aria-live="polite"]')
+    assert status["data-sb-table-status"] == "alertsTable"
+    assert status.get_text(strip=True) == "1 of 1 alerts shown"
+    assert soup.select_one('script[src="/static/js/ui-table-status.js"][defer]')
+    assert "Sales Buddy" not in footer.get_text()
+    assert soup.select_one("#keyboardShortcutsModal .sb-dialog-footer").get_text(
+        strip=True
+    ) == "© 2026 Sales Buddy - Your Azure Sales Companion"
+    assert not footer.select(".container, .bg-light, .text-muted, .py-3, .mt-5")
+    assert len(soup.select("footer")) == 1
+    assert soup.select_one("#alertsTable")
+    assert soup.select_one("dialog[data-sb-revenue-preview]")
+
+
+@pytest.mark.parametrize("path", [
+    "/reports/revenue?embed=1",
+    "/revenue/seller/Review%20UI%20Seller?embed=1",
+])
+def test_embedded_revenue_pages_do_not_take_over_the_host_frame(
+    client: FlaskClient, review_alert: dict[str, int], path: str,
+) -> None:
+    """Embedded content keeps its previous sizing and has no outer navigation or footer."""
+    soup = BeautifulSoup(client.get(path).data, "html.parser")
+    assert "sb-page-frame" not in soup.body.get("class", [])
+    assert not soup.select(".sb-app-bar, .sb-context-bar, footer")
+    assert soup.select_one("#alertsTable")
+
+
+@pytest.mark.parametrize("path", ["/", "/reports", "/preferences", "/customers"])
+def test_native_revenue_frame_does_not_restyle_legacy_or_home_pages(
+    client: FlaskClient, path: str,
+) -> None:
+    """The shared base hook does not opt unrelated pages into a new layout."""
+    response = client.get(path)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert "sb-page-frame" not in soup.body.get("class", [])
+    assert not soup.select(".sb-page-status, [data-sb-page-surface]")
+    assert not soup.select('script[src="/static/js/ui-table-status.js"]')
+
+
+@pytest.mark.parametrize("path", ["/reports/revenue", "/revenue/seller/Empty%20Seller"])
+def test_revenue_empty_workbench_status_has_no_missing_table_binding(
+    client: FlaskClient, path: str,
+) -> None:
+    """Empty views report zero rather than binding a status observer to a missing table."""
+    response = client.get(path)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert not soup.select("#alertsTable, [data-sb-table-status]")
+    assert soup.select_one('.sb-page-status [role="status"]').get_text(
+        strip=True
+    ) == "0 of 0 alerts shown"
+    assert soup.select_one("[data-sb-page-body]")
+
+
+def test_workbench_scroller_focus_stays_inside_clipped_region() -> None:
+    """Edge-connected scrollers keep their keyboard indicator within the work surface."""
+    css_path = Path(__file__).resolve().parents[1] / "static" / "css" / "ui-revenue-detail.css"
+    source = css_path.read_text()
+    selector = ".sb-page-frame .sb-revenue-workarea .sb-revenue-alerts-scroll:focus-visible"
+    rule = source.split(selector, 1)[1].split("}", 1)[0]
+    assert "outline-offset: -2px" in rule
 
 
 def test_analyzer_commands_and_seller_menu_keep_destinations(
@@ -143,7 +231,7 @@ def test_analyzer_preserves_category_values_and_import_metadata(
         assert item.select_one(".sb-revenue-category-count").text == "1"
         assert expected in item.get_text(" ", strip=True)
     assert "(4)" in soup.select_one("#revenueCustomersHeading").get_text()
-    metadata = soup.select_one(".sb-revenue-list-header p")
+    metadata = soup.select_one(".sb-page-status > span:last-child")
     assert " ".join(metadata.get_text(" ", strip=True).split()) == (
         "Last import: Sep 28, 2026 (2 months)"
     )

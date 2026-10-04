@@ -6,8 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 23, Revenue Analyzer and seller alert page
-  chrome plus app-wide breadcrumbs, user-approved October 4, 2026;
+- Current page/surface: checkpoint 24, continuous workbench shell contract and
+  Revenue Analyzer/seller pilot, VERIFY, shell composition approved October 4,
+  uncommitted; scrolling technically verified but not manually reviewed by the user;
   full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
@@ -26,10 +27,11 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `cb9f0e4` (shared native Review Alert editor, user-approved October 3),
   `401846d` (native Home Revenue preview and shared details, user-approved October 4),
   `a4ec9a8` (shared native Revenue preview frames, user-approved October 4),
-  `25a14d4` (shared native Revenue lists and Seller Full View, user-approved October 4)
-- Next action: commit checkpoint 23 locally, then implement the Revenue outer frame
-  as checkpoint 24 before auditing the customer revenue
-  family. Analyzer and seller alert headers,
+  `25a14d4` (shared native Revenue lists and Seller Full View, user-approved October 4),
+  `60dbdb3` (native Revenue commands and app-wide breadcrumbs, user-approved October 4)
+- Next action: commit the approved checkpoint 24 shell slice when requested,
+  then adopt the contract incrementally as pages migrate. The wider interim table
+  is not approval of the final Revenue layout. Analyzer and seller alert headers,
   summaries and commands are native; customer revenue remains legacy.
   October 4 review correction: all 90 full-page endpoints now use Home's shared
   context-bar styling below navigation, including pages previously without trails.
@@ -37,8 +39,12 @@ Inventory date: October 2, 2026. Baseline product SHA:
   an unlinked current page. Home is a plain location label. Customer Revenue uses
   actual Seller/Customer ownership; Analyzer belongs to Reports. This app-wide
   breadcrumb extension is verified and user-approved, not a claim that
-  the legacy page bodies are migrated. The legacy outer background/footer and missing
-  workspace boundary remain unapproved shell work; these pages are not DONE.
+  the legacy page bodies are migrated. Checkpoint 24 replaces the floating-frame
+  experiment with an edge-connected surface, fixed command/summary bands,
+  scrolling alert region and useful filtered-count status rail. The approved
+  table/review workflow remains; a queue/detail redesign is a separate decision.
+  Its opt-in scope does not restyle legacy pages, embeds or Home's grid.
+  These two pages are VERIFY, not DONE.
   New note/edit forms remain TODO.
   No live customer records were changed;
   existing user drafts are preserved. No push, merge or deployment is authorized.
@@ -86,9 +92,9 @@ Checkpoint 20: about 19%, user-approved October 4, 2026, committed as `401846d`.
 Checkpoint 21: about 20%, user-approved October 4, 2026, committed as `a4ec9a8`.
 Checkpoint 22: about 22%, user-approved October 4, 2026, committed as `25a14d4`. Shared alert lists and
 the preview controller's native-parent integration are approved at this revision.
-Checkpoint 23: about 24%, user-approved October 4, 2026. Native Analyzer/seller page
-commands and app-wide canonical breadcrumbs are approved; the Revenue outer
-background, footer and workspace boundary are the next checkpoint.
+Checkpoint 23: about 24%, user-approved October 4, 2026, committed as `60dbdb3`. Native Analyzer/seller page
+commands and app-wide canonical breadcrumbs are approved; the shared continuous
+shell contract and Revenue pilot are the next checkpoint.
 
 The DONE counters are stricter: they count fully reconciled pages/helpers, not
 approved sub-page checkpoints or partial completion. Consequently, `0 / 90`
@@ -193,10 +199,10 @@ have separate rows even when they use one template.
 | RPT-GOALS | Connect goals | `/reports/connect-goals` | `report_connect_goals.html` | TODO | - |
 | RPT-U2C | U2C | `/reports/u2c` | `report_u2c.html` | TODO | - |
 | RPT-IMPACT | Connect impact | `/reports/connect-impact` | `report_connect_impact.html` | TODO | - |
-| REV-DASH | Revenue dashboard | `/reports/revenue`; `/revenue` redirects | `revenue_dashboard.html` | BUILDING | [Controls in review; outer frame pending](redesign-pages/HOME-WORKBENCH.md#checkpoint-23-revenue-analyzer-and-seller-alert-pages) |
+| REV-DASH | Revenue dashboard | `/reports/revenue`; `/revenue` redirects | `revenue_dashboard.html` | VERIFY | [Continuous shell pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-24-continuous-workbench-shell-and-revenue-pilot) |
 | REV-IMPORT | Revenue import | `/revenue/import`; `/import/revenue` redirects | `revenue_import.html` | TODO | - |
 | REV-CONFIG | Revenue configuration | `/revenue/config` | `revenue_config.html` | TODO | - |
-| REV-SELL | Seller revenue alerts | `/revenue/seller/<seller_name>` | `revenue_seller_alerts.html` | BUILDING | [Controls in review; outer frame pending](redesign-pages/HOME-WORKBENCH.md#checkpoint-23-revenue-analyzer-and-seller-alert-pages) |
+| REV-SELL | Seller revenue alerts | `/revenue/seller/<seller_name>` | `revenue_seller_alerts.html` | VERIFY | [Continuous shell pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-24-continuous-workbench-shell-and-revenue-pilot) |
 | REV-SELL-PRODS | Seller products | `/revenue/seller/<seller_name>/products` | `revenue_seller_products.html` | TODO | - |
 | REV-SELL-PROD | Seller product detail | `/revenue/seller/<seller_name>/product/<path:product>` | `revenue_seller_product_view.html` | TODO | - |
 | REV-CUST | Customer revenue | `/revenue/customer/<int:customer_id>`; `/customer/<int:customer_id>/revenue` | `revenue_customer_view.html` | TODO | - |

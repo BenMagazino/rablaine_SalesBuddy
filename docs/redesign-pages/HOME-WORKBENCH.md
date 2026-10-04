@@ -930,7 +930,7 @@ migration surfaces. Their current functionality is preserved, not rewritten here
 | Job notices | Import/analysis incomplete and failed branches, optional details and import start timestamp | All four isolated branches; literal escaped details |
 | Recovery | Import link or POST Re-run analysis; persistent warnings are not dismissible | Isolated native notice/form assertions |
 | Empty Analyzer | No alerts yet, import guidance and Import Data action | Isolated no-data render |
-| Seller header | Name, subtitle, canonical Home/Seller/Revenue trail, optional Seller Hub, Products and CSV-for-Teams destinations | Isolated matched/unmatched seller branches and live seller page |
+| Seller header | Name, canonical Home/Seller/Revenue trail, optional Seller Hub, Products and CSV-for-Teams destinations; redundant subtitle removed in checkpoint 24 | Isolated matched/unmatched seller branches and live seller page |
 | Embed | Existing embed condition omits page header/commands but retains summary/list/preview | Isolated embed render |
 | Shared alerts | Sort controls, customer/seller links, explicit Open/Review, summaries and preview identity | Shared regressions; existing alert opening/Escape/focus restoration |
 
@@ -1012,6 +1012,7 @@ migration surfaces. Their current functionality is preserved, not rewritten here
 
 User-approved October 4, 2026, together with checkpoint 23 Revenue page chrome.
 Approved overall redesign completion is approximately 24% by effort.
+Committed locally as `60dbdb3`; no push or merge.
 
 - The user approved extending the under-navbar breadcrumb bar to all pages,
   including pages that previously had no trail. A central resolver covers all
@@ -1050,3 +1051,74 @@ Approved overall redesign completion is approximately 24% by effort.
   migration. Revenue's legacy background/footer and workspace boundary remain
   unfinished. No records or saved preferences were changed; no commit, push,
   merge or deployment is authorized by this scope approval.
+
+## Checkpoint 24: continuous workbench shell and Revenue pilot
+
+Status: VERIFY for full pages; shell composition approved October 4, 2026,
+uncommitted. Scrolling is technically verified but was not manually reviewed by
+the user because their visible alerts did not require it. Page-by-page migration
+is paused to establish
+the [shared shell contract](GLOBAL-SHELL.md#shared-shell-contract-checkpoint-24).
+Analyzer and seller Revenue are its first non-Home examples.
+
+- Added an opt-in base `body_class` hook and shared native page-frame stylesheet.
+  Only the two migrated full pages opt in; Home, other legacy pages and embedded
+  consumers keep their existing geometry.
+- Superseded the uncommitted centered/outlined frame experiment. The work surface
+  meets the shell edges; borders divide functional command, summary and work
+  regions rather than enclosing a content rectangle.
+- The alert viewport owns scrolling and keeps column headers sticky. Commands,
+  summaries, 46px navigation, 32px breadcrumbs and the 24px status rail stay in
+  place. This shell does not prescribe a single layout for all future pages.
+- The status rail reports actual shown/loaded alerts after filtering, without
+  changing existing totals or export scope. Seller scope stays explicit; Analyzer
+  retains import date/month metadata in the rail. Copyright/companion text remains
+  available in the existing Help/Keyboard Shortcuts reference on opted-in pages.
+- User review removes the redundant seller-header "Customers needing attention"
+  subtitle. The consolidated metric retains that label and its existing count.
+- Empty shared feedback stacks no longer consume space in this frame; actual
+  notices and status strips retain their existing behavior.
+- Approved table, review and preview workflows are preserved. Queue/detail
+  selection, comparison modes and customer-versus-alert metric naming remain
+  separate decisions, not incidental changes in this shell pilot.
+
+### Verification
+
+- 145 scoped Python tests passed: Revenue rendering, new full-page opt-in and
+  embed contracts, unchanged Home/navigation, and app-wide breadcrumb coverage.
+- 73 scoped JS tests passed for view counts, bucket filtering, native sorting,
+  menus, record loading/guards, Revenue preview return and report exports.
+- Live dev uses the current 1517 x 1167 desktop viewport, without resizing it.
+  Surface is x=0/y=78, width=1517; status rail is y=1143, height=24.
+  Breadcrumbs remain y=46, height=32; no document overflow.
+- Saved Databases/Fabric buckets still show 6 of 12 seller alerts and 14 of 43
+  Analyzer alerts. All 43 real Analyzer rows were temporarily revealed through
+  row styles to exercise long-table scrolling and zero-visible counts without
+  saving filter preferences. The 1771px table scroll extent leaves command bands,
+  sticky headings and status fixed. Original row visibility and sort are restored.
+- All eight palette/mode variants on both pages preserve edge connectivity with
+  no horizontal overflow. Measured Analyzer primary-cell contrast is at least
+  13.03:1, status at least 6.49:1, and seller summary/table/status text at least
+  6.38:1. Theme attributes are restored without preference writes.
+- The integrated browser is visible during these checks, unlike the earlier
+  frame experiment. Native Priority click and Ctrl+End scroll the table to
+  1771px. Actual alert 1069 opens through its native button with fifteen product/
+  total rows; native Escape restores its opener and the same table scroll.
+  Real table scroll events dismiss the page-level Sellers menu.
+- Native Tab reaches the focusable seller alert viewport with a 2px inset
+  indicator, avoiding clipping at the shell edges. Help opens natively with the
+  retained app/legal copy; Escape restores the header Help control.
+- No customer data, analysis/review records, saved preferences, clipboard or
+  downloads were modified. Protected New Note tabs were not navigated or reloaded.
+
+### Visual review
+
+The user approved the connected surface, command/summary bands and useful bottom
+status on October 4, 2026. They explicitly did not manually review scrolling
+because their visible alerts did not require it; the technical evidence above
+remains distinct from user review. Approval is for the shell, not the wider
+interim table as the final Revenue design.
+
+There is deliberately no new queue/inspector interaction in this checkpoint.
+Adopt the approved contract incrementally, not with a global legacy-page restyle.
+Customer Revenue and its charts are not migrated by this pilot.

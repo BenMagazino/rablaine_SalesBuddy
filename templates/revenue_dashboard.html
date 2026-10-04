@@ -1,8 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Revenue Analyzer - Sales Buddy{% endblock %}
 
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+{% set status_total = analyses|length %}
+{% set status_unit = 'alerts' %}
+{% set status_table_id = 'alertsTable' if analyses else none %}
+{% set status_hint %}
+{% if latest_import %}
+Last import: {{ latest_import.imported_at.strftime('%b %d, %Y') }}
+{% if months_data %}({{ months_data|length }} months){% endif %}
+{% endif %}
+{% endset %}
+{% include 'partials/_page_status.html' %}
+{% endif %}
+{% endblock %}
+
 {% block content %}
-<div class="sb-revenue-workspace" data-sb-revenue-page="analyzer">
+<div class="sb-revenue-workspace" data-sb-revenue-page="analyzer" data-sb-page-surface>
     {% if import_status and import_status.state in ['incomplete', 'failed'] %}
     <div class="sb-notice sb-revenue-job-notice" data-sb-tone="{{ 'danger' if import_status.state == 'failed' else 'warning' }}" role="alert">
         <i class="bi bi-exclamation-triangle sb-notice-icon" aria-hidden="true"></i>
@@ -42,7 +61,7 @@
     </div>
     {% endif %}
 
-    <header class="sb-revenue-page-header">
+    <header class="sb-revenue-page-header" data-sb-page-band>
         <div>
             <h1>Revenue Analyzer</h1>
             <p>Customers needing attention based on revenue trends</p>
@@ -71,7 +90,7 @@
         </div>
     </header>
 
-    <dl class="sb-revenue-categories" aria-label="Revenue alert categories">
+    <dl class="sb-revenue-categories" data-sb-page-band aria-label="Revenue alert categories">
         {% for category, label, tone, metric, suffix in [
             ('DECLINING', 'Declining', 'danger', 'total_at_risk', '/mo at risk'),
             ('RECENT_DIP', 'Recent Dip', 'warning', 'total_at_risk', '/mo at risk'),
@@ -88,11 +107,11 @@
         {% endfor %}
     </dl>
 
-    <section class="sb-revenue-page-list" aria-labelledby="revenueCustomersHeading">
-        <header class="sb-revenue-list-header">
+    <section class="sb-revenue-page-list sb-revenue-workarea" data-sb-page-body aria-labelledby="revenueCustomersHeading">
+        <header class="sb-revenue-list-header" data-sb-page-band>
             <div>
                 <h2 id="revenueCustomersHeading">Actionable Customers <span class="sb-revenue-page-meta">({{ analyses|length }})</span></h2>
-                {% if latest_import %}
+                {% if latest_import and request.args.get('embed') %}
                 <p class="sb-revenue-page-meta">
                     Last import: {{ latest_import.imported_at.strftime('%b %d, %Y') }}
                     {% if months_data %}({{ months_data|length }} months){% endif %}

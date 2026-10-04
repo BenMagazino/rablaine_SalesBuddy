@@ -1,0 +1,7 @@
+{# Optional status_table_id and status_hint; status_total/status_unit describe the view. #}
+<footer class="sb-page-status" aria-label="View status">
+    <span{% if status_table_id %} data-sb-table-status="{{ status_table_id }}" data-sb-table-unit="{{ status_unit }}"{% endif %}
+          role="status" aria-live="polite" aria-atomic="true">{{ status_total }} of {{ status_total }} {{ status_unit }} shown</span>
+    {% if status_hint and status_hint|trim %}<span>{{ status_hint|trim }}</span>{% endif %}
+</footer>
+<script src="{{ url_for('static', filename='js/ui-table-status.js') }}" defer></script>

@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-22 committed, checkpoint 23 Revenue page chrome in review
+- Status: BUILDING; checkpoints 1-23 committed, checkpoint 24 shell composition approved, uncommitted
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -52,7 +52,8 @@
   Committed as `25a14d4`; approved overall completion is about 22% by effort.
 - Checkpoint 23 Revenue Analyzer and seller alert page chrome:
   [Revenue page evidence](HOME-WORKBENCH.md#checkpoint-23-revenue-analyzer-and-seller-alert-pages),
-  technically verified, user-approved October 4. Native menus now support explicit
+  technically verified, user-approved October 4, committed as `60dbdb3`.
+  Native menus now support explicit
   command anchoring outside the app bar without changing header-menu placement.
   Analyzer opts into native export commands/feedback; other report hosts retain
   their legacy defaults. Customer revenue and the remaining global shell are not migrated.
@@ -72,14 +73,76 @@
   Parentage never depends on referrer history or report filter mode. Page titles
   are escaped once, record names stay literal, and long labels truncate with
   their complete accessible text and title retained.
+- Checkpoint 24 continuous workbench contract and Revenue pilot, technically
+  verified and visually approved October 4, 2026, except scrolling was not manually
+  reviewed by the user because their visible dataset did not overflow:
+  an opt-in `body_class` hook and shared `ui-page-frame.css`
+  connect Analyzer and seller Revenue to the shell edges. Fixed command/summary
+  bands divide the work surface from independently scrolling alert tables.
+  A 24px status rail reports actual shown/loaded alert counts and existing scope
+  or import freshness. App/legal text moves to the existing Help reference.
+  Empty feedback stacks do not create a phantom gap; real notices remain available.
+  Embedded views, Home and legacy page bodies keep their previous layouts.
+  This is not completion of the global frame or Bootstrap removal.
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
-- Next action: continue the remaining global surfaces after this checkpoint;
-  homepage and shared note/milestone dialogs are not approved by this checkpoint.
-  Continue Revenue Analyzer and seller alert page headers, summaries and controls;
+- Next action: commit the approved shell slice when requested, then adopt
+  the contract as each page is migrated. The wider interim table is not approval
+  of the final Revenue layout. The remaining global surfaces stay BUILDING;
+  this checkpoint does not approve other page bodies or global overlays.
   no push, merge or deployment is authorized.
+
+## Shared shell contract (checkpoint 24)
+
+Home is the composition reference, not a template that every page must copy.
+The initial floating Revenue frame is superseded, not a second supported layout.
+
+1. **Window ownership:** navigation and canonical breadcrumbs belong to the
+   persistent shell. Main fills the space between context and status. Do not
+   center or outline a page-sized card inside wide outer gutters.
+2. **Connected regions:** titles/commands, summaries and dataset tools are bands
+   of the same surface. One-pixel dividers mark meaningful region boundaries.
+   Do not add enclosing cards or repeat navigation inside the page.
+3. **Page-specific composition:** lists, editor/detail splits and forms can
+   choose different arrangements. Constrain readable editing/detail widths
+   within the work surface, not the app surface itself. Do not add empty panels
+   or charts just to consume space.
+4. **Scrolling:** work regions own overflow and keyboard focus. Keep commands
+   and useful context in place; tables may keep column headers sticky. Avoid
+   competing document/main/table vertical scrollbars.
+5. **Useful status:** the 24px rail reports view scope, selection, freshness or
+   task feedback when relevant. It is not a branding/copyright footer. App/legal
+   information remains reachable through Help/About. Counts must distinguish
+   visible rows from underlying totals, without silently changing metric or
+   export scope.
+6. **Incremental adoption:** only migrated standalone pages opt in. Preserve
+   embeds and legacy page bodies until their own reconciliation. Home already
+   satisfies the composition and retains its existing grid.
+
+### Reusable roles and Revenue pilot
+
+- `body.sb-page-frame` loads `ui-page-frame.css`; the direct
+  `#main-content > [data-sb-page-surface]` fills the available work area.
+- `[data-sb-page-band]` marks non-shrinking context/command bands.
+- `[data-sb-page-body]` supplies remaining height with `min-height: 0`. A page
+  owns its internal layout and focusable scroller; the generic shell prescribes
+  neither columns nor one universal page design.
+- `_page_status.html` renders optional table binding and scope/freshness copy.
+  `ui-table-status.js` counts only the bound table's body rows, respecting row
+  `display`, `hidden` and class changes and row additions/removals. Reordering
+  does not repeat unchanged live announcements. These are shown/loaded view
+  counts, not a global database count or a unique-customer metric. Empty views
+  render truthful zero without binding a nonexistent table; invalid bindings
+  report unavailable and fail explicitly.
+- Revenue-specific band spacing, summary presentation and table scrolling stay
+  in `ui-revenue-detail.css`, scoped to the opt-in frame. Existing shared list,
+  preview, review, filter and export behavior is retained.
+
+This pilot deliberately preserves the approved table workflow. An alert queue
+with a permanent selected-detail inspector, comparison modes and correction of
+the existing customer-versus-alert count label are separate workflow decisions.
 
 ## Checkpoint 1 scope
 
