@@ -58,3 +58,39 @@
 .sb-revenue-preview .sb-dialog-body { flex: 1; min-height: 0; }
 .sb-revenue-preview .sb-record-state { margin: 0; }
 .sb-revenue-preview .sb-dialog-footer p { flex: 1; margin: 0; color: var(--sb-ui-muted); font-size: 12px; }
+.sb-revenue-alerts, .sb-revenue-alerts * { box-sizing: border-box; }
+.sb-revenue-alerts { color: var(--sb-ui-ink); font: 13px/1.6 var(--sb-ui-font); }
+.sb-revenue-alerts [data-tone="danger"] { color: var(--sb-ui-danger); }
+.sb-revenue-alerts [data-tone="warning"] { color: var(--sb-ui-warning); }
+.sb-revenue-alerts [data-tone="positive"] { color: var(--sb-ui-milestone-rail); }
+.sb-revenue-alerts [data-tone="accent"] { color: var(--sb-ui-accent); }
+.sb-revenue-alerts [data-tone="neutral"] { color: var(--sb-ui-muted); }
+.sb-revenue-alerts a { color: var(--sb-ui-accent); text-decoration: none; }
+.sb-revenue-alerts a:hover { text-decoration: underline; }
+.sb-revenue-list-summary { display: flex; gap: 36px; margin: 0; padding: 0 0 20px; }
+.sb-revenue-list-summary dt { color: var(--sb-ui-muted); font-size: 12px; font-weight: 400; }
+.sb-revenue-list-summary dd { margin: 4px 0 0; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sb-revenue-alerts-scroll { overflow-x: auto; scrollbar-width: thin; }
+.sb-revenue-alerts-table { width: 100%; min-width: 1180px; border-collapse: collapse; font-size: 12px; }
+.sb-revenue-alerts-table caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.sb-revenue-alerts-table th, .sb-revenue-alerts-table td { padding: 9px 8px; border-bottom: 1px solid var(--sb-ui-line); text-align: left; vertical-align: top; }
+.sb-revenue-alerts-table thead th { color: var(--sb-ui-muted); font-weight: 500; white-space: nowrap; }
+.sb-revenue-alerts-table [data-sb-alert-sort] { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.sb-revenue-alerts-table th:is([aria-sort="ascending"], [aria-sort="descending"]) { color: var(--sb-ui-accent); }
+.sb-revenue-alerts-table tr[data-alert-clickable="true"] { cursor: pointer; }
+.sb-revenue-alerts-table tbody tr:hover { background: var(--sb-ui-raised); }
+.sb-revenue-alerts-table tbody tr { opacity: 1 !important; }
+.sb-revenue-alerts-table tr:has(.sb-review-badge:is([data-status="reviewed"], [data-status="actioned"], [data-status="dismissed"])) { color: var(--sb-ui-muted); }
+.sb-revenue-alerts-table .sb-revenue-number { font-weight: 600; font-variant-numeric: tabular-nums; }
+.sb-revenue-alerts-table .sb-revenue-money { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sb-revenue-alerts-table .sb-revenue-rationale { min-width: 220px; max-width: 320px; overflow-wrap: anywhere; }
+.sb-revenue-row-actions { white-space: nowrap; }
+.sb-revenue-seller { display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 5px; border: 1px solid var(--sb-ui-accent); font-size: 12px; }
+.sb-revenue-list-empty { padding: 32px 0; color: var(--sb-ui-muted); }
+.sb-revenue-list-empty h3 { margin: 0 0 6px; color: var(--sb-ui-ink); font-size: 16px; }
+.sb-revenue-list-empty p { margin: 0; }
+.sb-revenue-alerts :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.sb-revenue-full { width: min(1320px, calc(100vw - 96px)); height: calc(100dvh - 96px); margin: 48px auto auto; }
+.sb-revenue-full .sb-dialog-shell { height: 100%; }
+.sb-revenue-full .sb-dialog-body { flex: 1; min-height: 0; }
+.sb-revenue-full .sb-dialog-footer p { flex: 1; margin: 0; color: var(--sb-ui-muted); font-size: 12px; }

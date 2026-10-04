@@ -35,7 +35,7 @@
      */
     function getTables() {
         return Array.from(document.querySelectorAll(TABLE_SELECTOR))
-            .filter(t => !t.closest('.modal, .popover'));
+            .filter(t => !t.closest('.modal, .popover, dialog, [popover]'));
     }
 
     /**
@@ -86,9 +86,13 @@
 
     /**
      * Clean cell text: strip extra whitespace, pull text content,
-     * handle badges/spans, skip icon-only elements.
+     * handle badges/spans, skip icon-only elements. Native interactive headers
+     * supply data-export-label so removing buttons does not remove their labels.
      */
     function cleanCellText(cell) {
+        if (cell.hasAttribute('data-export-label')) {
+            return cell.getAttribute('data-export-label');
+        }
         // Boolean columns: render as Yes/blank for CSV
         if (cell.hasAttribute('data-export-bool')) {
             return cell.getAttribute('data-export-bool') === 'true' ? 'Yes' : '';

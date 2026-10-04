@@ -26,6 +26,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Review revenue alerts in shared workbench dialogs, with retryable history, protected edits and preview refreshes only after confirmed saves.
 - Open Home revenue alerts in native previews with Retry and protected reads, and show shared alert details and product revenue in a quieter workbench layout.
 - Use the same native alert preview in Revenue Analyzer and seller views, keep its size stable through Retry, and return Seller drilldowns to Full View.
+- Show sortable revenue alert lists and Seller Full View in native workbench styling, preserving nested reviews, bucket filters and labeled report exports.
 - Add compact icon navigation with centered customer search and keyboard-operated menus.
 - Show clear customer-search errors with a retry path instead of failing silently.
 - Use keyboard-friendly workbench dialogs for page help and shortcut reference, with scrolling content and focus restoration.

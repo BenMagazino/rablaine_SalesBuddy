@@ -810,7 +810,7 @@ migration surfaces. Their current functionality is preserved, not rewritten here
   horizontal overflow. Graphite dark is visually inspected and restored,
   without saving theme preferences. No live review writes or protected draft
   interactions; diagnostics/whitespace checks are clean.
-- Checkpoint 21 is approved for commit. No push, merge or deployment.
+- Checkpoint 21 is committed as `a4ec9a8`. No push, merge or deployment.
 
 ### User checkoff for checkpoint 21
 
@@ -821,3 +821,79 @@ migration surfaces. Their current functionality is preserved, not rewritten here
    preview and confirm Full View returns instead of dropping you to the page.
 3. Optional: the seller revenue alerts full page uses that same native preview.
    No real review save or manufactured network failure is needed.
+
+## Checkpoint 22: shared Revenue alert lists and native Seller Full View
+
+- Status: DONE, technically checked and user-approved October 4.
+  Baseline: `a4ec9a8`. Approved overall completion is about 22% by effort.
+- Scope: migrate the shared alert table/optional three-value summary in Analyzer,
+  seller alerts and Seller Full View; replace the Seller Full View Bootstrap
+  frame/launcher with the shared native dialog lifecycle. Revenue page headers,
+  category cards, toolbars, seller compact summary and customer revenue remain
+  legacy. No New Note form/draft changes.
+- Parity inventory: default descending priority; reversible number, text,
+  currency and status sorting; optional Seller column; customer revenue/Hub
+  links and TPID export metadata; category labels/fallbacks; action, average,
+  risk-before-opportunity amount, full rationale, review badge/previous hint/
+  pencil; bucket identities, summary fields and filtered visible count.
+  All data/API routes are unchanged. Seller links use the native blue person
+  tag convention instead of saturated legacy badge fills.
+- Native sorting buttons expose direction through `aria-sort`; every table
+  has a caption/scoped headers and a keyboard-focusable horizontal scroll
+  region. Both row clicks and a labeled native Open button launch previews,
+  without intercepting customer links or Review. Customer/bucket names travel
+  as escaped data attributes rather than inline JavaScript string literals.
+- Full View stays open beneath native alert/Review/discard children, preserving
+  sorting, filter and scroll state. Closing a child returns to its opener;
+  closing Full View restores its original launcher. Underlying Full View
+  closing is guarded while children are open. Confirmed review changes still
+  accumulate until final Full View close; standalone previews retain their
+  own confirmed-only refresh. No Bootstrap hide/return bridge remains.
+- Processed states stay subdued using muted ink rather than whole-row
+  transparency, preserving readable amounts and status colors. Native table
+  opacity remains 1 even after the legacy shared review updater sets 0.6.
+  Other legacy consumers retain their existing transparency behavior.
+- Native sorting headers provide `data-export-label`; the shared export helper
+  retains those labels when removing control buttons and excludes native
+  dialog/popover tables as well as legacy ones. Existing ordinary/boolean cell
+  behavior remains. CSV, clipboard and email destinations/buttons are retained.
+- Automated validation: 77 scoped JS tests across alert sorting/guarded opening,
+  report export helpers, native Full View/review lifecycle, record/dialog and
+  bucket filter; 79 isolated pytest tests across lists/identities/statuses,
+  all preview hosts, empty states, dollar impact, Home, review APIs and the
+  six existing report-export host cases. All pass; existing SQLAlchemy warnings only.
+- Live existing data: Austin Card's 12 alert rows, six visible Databases/Fabric
+  rows and matching count remain. Keyboard Enter sorts Avg ACR ascending across
+  all rows. 1069's detail still shows all 15 product/total rows. A temporary
+  Review draft is retained by Keep editing, then discarded without any write;
+  attempted underlying Full View closing is blocked. Closing detail restores
+  focus to 1069's Open button and keeps sorting; final Full View close restores
+  focus to the original launcher.
+- Buckets Escape closes the picker first, leaving native Full View open.
+  Stored Databases/Fabric selection is unchanged. Full Page navigates to the
+  existing seller alerts URL; Analyzer/seller list open buttons and Home's
+  original launcher still load the exact 1069 detail.
+- Live CSV generation preserves all eleven column labels and exports exactly
+  the 14 currently visible Analyzer rows; disk download was suppressed only for
+  validation and the original browser functions restored afterward.
+- All eight theme pairs stay bounded during desktop validation, with no outer
+  body horizontal overflow. The final observed desktop viewport is 1770 x 1223,
+  and Full View measures 1320 x 1127, bounded without body overflow.
+  No shared-page viewport was resized by the assistant. Processed Actioned status
+  text contrast is 6.13:1-6.37:1; temporary theme/status/style changes restored.
+  Graphite dark Full View visually inspected. Protected draft tabs untouched;
+  no live review/customer writes, no push/merge/deploy.
+- Checkpoint 22 is approved for commit, including the preview controller's
+  updated native parent integration alongside this list.
+
+### User checkoff for checkpoint 22
+
+1. Seller -> Revenue -> Full View: the larger list itself now uses the native
+   workbench. Check summary/list readability and click a column heading twice
+   to reverse its sort.
+2. Open an alert using its row or expand button, then its pencil. Escape out
+   of Review and the alert preview; Full View should stay open with the same
+   sort/filter. Close Full View to return to the seller page.
+3. Optional: Analyzer and the seller's revenue full page use the same new
+   table. Their surrounding headers/cards are intentionally not migrated yet.
+   No real review save or network-failure exercise is needed.

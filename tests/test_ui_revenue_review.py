@@ -145,9 +145,99 @@ def test_alert_preview_is_native_and_has_identity_loader_controls(
     assert soup.select_one('link[href="/static/css/ui-revenue-detail.css"]')
     if host == "seller":
         assert dialog["data-sb-revenue-parent"] == "revenueModal"
-        assert soup.select_one("#revenueModal.modal")
+        parent = soup.select_one("dialog#revenueModal")
+        assert parent
+        assert not parent.select(".modal, .btn, .card, .table, [data-bs-dismiss]")
+        assert parent.select_one("[data-sb-revenue-status]")
+        assert soup.select_one('[data-sb-dialog="revenueModal"]')
     else:
         assert not dialog.has_attr("data-sb-revenue-parent")
+
+
+@pytest.mark.parametrize("host", ["dashboard", "seller_alerts", "seller"])
+def test_alert_list_preserves_data_links_and_native_controls(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int], host: str,
+) -> None:
+    """Shared lists retain every column, literal metadata and risk-first impact."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        alert = db.session.get(RevenueAnalysis, review_alert["alert"])
+        alert.customer_name = '<Literal "customer">'
+        alert.engagement_rationale = '<Literal "rationale">'
+        alert.dollars_at_risk = 1234
+        alert.dollars_opportunity = 9000
+        db.session.commit()
+    paths = {
+        "dashboard": "/reports/revenue",
+        "seller_alerts": "/revenue/seller/Review%20UI%20Seller",
+        "seller": f'/seller/{review_alert["seller"]}',
+    }
+    response = client.get(paths[host])
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    root = soup.select_one("[data-sb-revenue-alerts]")
+    assert root
+    assert not root.select(".card, .badge, .table, .text-danger, [onclick]")
+    table = root.select_one("#alertsTable")
+    assert table.caption
+    assert all(h["scope"] == "col" for h in table.select("thead th"))
+    for header in table.select("th[data-sort-type]"):
+        assert header["data-export-label"] == header.button.get_text(" ", strip=True)
+    row = table.select_one(f'tr[data-analysis-id="{review_alert["alert"]}"]')
+    assert row["data-customer-name"] == '<Literal "customer">'
+    assert row["data-bucket"] == "Databases"
+    assert row["data-alert-clickable"] == "true"
+    assert len(row.find_all("td", recursive=False)) == len(table.select("thead th"))
+    assert row.select_one(".sb-revenue-number")["data-tone"] == "warning"
+    assert "$5,000" in row.get_text()
+    assert "$1,234/mo risk" in row.get_text()
+    assert "$9,000/mo opp" not in row.get_text()
+    assert row.select_one(".sb-revenue-rationale").get_text() == '<Literal "rationale">'
+    assert row.select_one(".sb-revenue-category").get_text() == "Declining"
+    assert row.select_one(".sb-revenue-category")["data-tone"] == "danger"
+    assert row.select_one("[data-sb-revenue-open]")["type"] == "button"
+    assert row.select_one(".review-action-btn")["data-analysis-id"] == str(review_alert["alert"])
+    assert row.select_one("[data-review-previous-id]")
+    hrefs = [a["href"] for a in row.select("a")]
+    assert f'/customer/{review_alert["customer"]}/revenue' in hrefs
+    assert f'/customer/{review_alert["customer"]}' in hrefs
+    assert len(soup.select('script[src="/static/js/ui-revenue-alerts.js"][defer]')) == 1
+    if host != "dashboard":
+        summary = root.select_one(".sb-revenue-list-summary")
+        assert summary.select_one("#revenueSummaryCount").get_text() == "1"
+        assert len(summary.select("dt")) == len(summary.select("dd")) == 3
+        assert "$1,234" in summary.get_text()
+        assert "$9,000" in summary.get_text()
+
+
+@pytest.mark.parametrize("status", ["new", "to_be_reviewed", "reviewed", "actioned", "dismissed"])
+def test_alert_list_retains_status_and_review_identity(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int], status: str,
+) -> None:
+    """Native rows retain all statuses without fading readable text through opacity."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        db.session.get(RevenueAnalysis, review_alert["alert"]).review_status = status
+        db.session.commit()
+    soup = BeautifulSoup(client.get("/reports/revenue").data, "html.parser")
+    row = soup.select_one(f'#alertsTable tr[data-analysis-id="{review_alert["alert"]}"]')
+    assert "opacity" not in row.get("style", "")
+    assert row.select_one(".sb-review-badge")["data-status"] == status
+    assert row.select_one(".review-action-btn")["data-status"] == status
+
+
+def test_empty_alert_list_is_native(client: FlaskClient) -> None:
+    """Seller alert lists preserve their healthy/below-threshold empty state."""
+    response = client.get("/revenue/seller/No%20Alerts%20Seller")
+    assert response.status_code == 200
+    root = BeautifulSoup(response.data, "html.parser").select_one("[data-sb-revenue-alerts]")
+    assert root.select_one('[role="status"]').get_text(" ", strip=True) == (
+        "No alerts All customers are healthy or below thresholds."
+    )
+    assert not root.select_one("#alertsTable")
+    assert not root.select(".card, .badge, .table")
 
 
 @pytest.mark.parametrize("category,label,tone", [

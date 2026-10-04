@@ -6,8 +6,8 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 21, shared native Revenue Alert preview frames
-  and Seller Full View return lifecycle, DONE, user-approved October 4;
+- Current page/surface: checkpoint 22, shared Revenue alert lists and native
+  Seller Full View, DONE, user-approved October 4;
   full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
@@ -24,10 +24,11 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `c1242b3` (shared Action Item preview and editor, user-approved October 3),
   `b53752c` (shared native Revenue Buckets filter, user-approved October 3),
   `cb9f0e4` (shared native Review Alert editor, user-approved October 3),
-  `401846d` (native Home Revenue preview and shared details, user-approved October 4)
-- Next action: migrate shared Revenue alert lists and Seller Full View.
-  Checkpoint 21 is approved; see [evidence](redesign-pages/HOME-WORKBENCH.md).
-  The customer revenue page and Seller Full View parent remain legacy.
+  `401846d` (native Home Revenue preview and shared details, user-approved October 4),
+  `a4ec9a8` (shared native Revenue preview frames, user-approved October 4)
+- Next action: migrate Revenue Analyzer and seller alert page headers,
+  summaries and controls; checkpoint 22 is approved.
+  Revenue page headers/toolbars/category cards and customer revenue remain legacy.
   New note/edit forms remain TODO.
   No live customer records were changed;
   existing user drafts are preserved. No push, merge or deployment is authorized.
@@ -41,7 +42,7 @@ Inventory date: October 2, 2026. Baseline product SHA:
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
 - Page progress: 0 / 90 DONE
-- Shared fragment/helper progress: 5 / 26 DONE
+- Shared fragment/helper progress: 6 / 26 DONE
 - Global/shell/error progress: 5 / 17 DONE
 - Additional pages discovered after baseline: none recorded
 - Additional shared helpers recorded: existing Revenue Buckets filter, omitted
@@ -57,7 +58,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 21 sign-off, the rough effort-based estimate is **about 20%**
+As of checkpoint 22 sign-off, the rough effort-based estimate is **about 22%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -72,7 +73,9 @@ This small shared-filter
 slice does not change the rounded approved-work estimate.
 Checkpoint 19: about 18%, user-approved October 3, 2026, committed as `cb9f0e4`.
 Checkpoint 20: about 19%, user-approved October 4, 2026, committed as `401846d`.
-Checkpoint 21: about 20%, user-approved October 4, 2026.
+Checkpoint 21: about 20%, user-approved October 4, 2026, committed as `a4ec9a8`.
+Checkpoint 22: about 22%, user-approved October 4, 2026. Shared alert lists and
+the preview controller's native-parent integration are approved at this revision.
 
 The DONE counters are stricter: they count fully reconciled pages/helpers, not
 approved sub-page checkpoints or partial completion. Consequently, `0 / 90`
@@ -218,8 +221,8 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | INC-ENG-PANEL | `partials/engagements_panel.html` | Home, engagements hub, seller | TODO | - |
 | INC-MS-TRACK | `partials/milestone_tracker_content.html` | Milestone tracker and seller | TODO | - |
 | INC-PART-ICON | `partials/partner_favicon.html` | Partner/specialty surfaces | TODO | - |
-| INC-REV-ALERTS | `partials/revenue_alerts_content.html` | Revenue/seller surfaces | TODO | - |
-| INC-REV-PREVIEW | `partials/revenue_alert_preview.html`, `static/js/ui-revenue-preview.js` | Home, Revenue Analyzer, seller alerts and Seller Full View drilldown | DONE | [Checkpoint 21 evidence](redesign-pages/HOME-WORKBENCH.md) |
+| INC-REV-ALERTS | `partials/revenue_alerts_content.html`, `static/js/ui-revenue-alerts.js` | Revenue Analyzer, seller alerts and Seller Full View | DONE | [Checkpoint 22 evidence](redesign-pages/HOME-WORKBENCH.md) |
+| INC-REV-PREVIEW | `partials/revenue_alert_preview.html`, `static/js/ui-revenue-preview.js` | Home, Revenue Analyzer, seller alerts and native Seller Full View drilldown | DONE | [Checkpoints 21-22 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-REVIEW | `partials/review_action.html`, `static/js/ui-revenue-review.js` | Home and revenue/seller surfaces | DONE | [Checkpoint 19 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-FORECAST | `_forecast_comments.html` | Milestone/opportunity details | BUILDING | [Native opt-in and legacy parity](redesign-pages/MILESTONE-BODY.md) |
 | INC-FORECAST-JS | `_forecast_comments_js.html` | Milestone/opportunity details | BUILDING | [Native opt-in and draft/write parity](redesign-pages/MILESTONE-BODY.md) |

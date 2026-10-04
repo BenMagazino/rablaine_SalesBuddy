@@ -228,7 +228,7 @@
                 <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Revenue</h5>
                 <div class="d-flex align-items-center gap-2">
                     <span id="sellerBucketFilterContainer"></span>
-                    <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#revenueModal">
+                    <button type="button" class="sb-dialog-button" data-sb-dialog="revenueModal">
                         <i class="bi bi-arrows-fullscreen"></i> Full View
                     </button>
                 </div>
@@ -301,27 +301,32 @@
 </div>
 
 {% if revenue_alerts %}
-<!-- Revenue Analyzer Modal -->
-<div class="modal fade" id="revenueModal" tabindex="-1" aria-labelledby="revenueModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1320px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2 d-flex justify-content-between align-items-center">
-                <h5 class="modal-title mb-0" id="revenueModalLabel"><i class="bi bi-exclamation-triangle"></i> Revenue - {{ seller.name }} <a href="{{ url_for('revenue.revenue_seller_view', seller_name=seller.name) }}" class="text-muted ms-2" title="Open full page" style="font-size: 0.75em;"><i class="bi bi-box-arrow-up-right"></i></a></h5>
-                <div class="d-flex align-items-center gap-2">
-                    <span id="modalBucketFilterContainer"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
+<dialog class="sb-dialog sb-revenue-full" id="revenueModal"
+        aria-labelledby="revenueModalLabel" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <div class="sb-dialog-eyebrow">Revenue</div>
+                <h2 id="revenueModalLabel">{{ seller.name }}</h2>
             </div>
-            <div class="modal-body p-3">
-                {% set alerts = revenue_alerts %}
-                {% set summary = revenue_summary %}
-
-                {% set alert_clickable = true %}
-                {% include 'partials/revenue_alerts_content.html' %}
-            </div>
+            <span id="modalBucketFilterContainer"></span>
+            <a href="{{ url_for('revenue.revenue_seller_view', seller_name=seller.name) }}"
+               class="sb-dialog-button">Full Page <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                    aria-label="Close Revenue Full View"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <div class="sb-dialog-body">
+            {% set alerts = revenue_alerts %}
+            {% set summary = revenue_summary %}
+            {% set alert_clickable = true %}
+            {% include 'partials/revenue_alerts_content.html' %}
+        </div>
+        <div class="sb-dialog-footer">
+            <p data-sb-revenue-status role="status" aria-live="polite">Review changes save when you submit them.</p>
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Close</button>
         </div>
     </div>
-</div>
+</dialog>
 {% endif %}
 
 {% if revenue_alerts %}
@@ -403,7 +408,8 @@ function updateRevenueSummaryCount() {
 }
 RevenueBucketFilter.init({ containerId: 'sellerBucketFilterContainer', onFilterChange: updateRevenueSummaryCount });
 // Also init inside the modal header
-document.getElementById('revenueModal').addEventListener('shown.bs.modal', function() {
+document.getElementById('revenueModal').addEventListener('sb:dialog-opened', function(e) {
+    if (e.target !== this) return;
     if (!document.querySelector('#modalBucketFilterContainer .sb-bucket-button')) {
         RevenueBucketFilter.init({ containerId: 'modalBucketFilterContainer', onFilterChange: updateRevenueSummaryCount });
     }
