@@ -323,68 +323,6 @@ test('disconnected review opener falls back to a single document save event', as
     assert.equal(h.dialog.open, false);
 });
 
-test('Seller confirmed-review refresh preserves Full View across repeated drilldowns', async () => {
-    const template = fs.readFileSync(path.join(__dirname, '../../templates/seller_view.html'), 'utf8');
-    const source = template.slice(template.indexOf('// Modal chain:'))
-        .split('</script>')[0];
-    class Element {
-        constructor() {
-            this.handlers = {};
-            this.shown = false;
-            this.classList = {contains: () => this.shown};
-        }
-        addEventListener(type, fn) { (this.handlers[type] ||= []).push(fn); }
-        removeEventListener(type, fn) {
-            this.handlers[type] = this.handlers[type].filter(handler => handler !== fn);
-        }
-        dispatch(type, event = {}) {
-            for (const fn of [...(this.handlers[type] || [])]) fn(event);
-        }
-        closest(selector) { return selector.includes(this.origin) ? this : null; }
-    }
-    const nodes = Object.fromEntries(['revenueModal', 'alertDetailModal', 'alertDetailTitle',
-        'alertDetailBody'].map(id => [id, new Element()]));
-    const document = new Element();
-    document.getElementById = id => nodes[id];
-    let reloads = 0;
-    class Modal {
-        constructor(el) { this.el = el; el.instance = this; }
-        show() { this.el.shown = true; }
-        hide() { this.el.shown = false; this.el.dispatch('hidden.bs.modal'); }
-        static getInstance(el) { return el.instance; }
-    }
-    const parent = new Modal(nodes.revenueModal);
-    const context = {window: {}, document, Element, bootstrap: {Modal},
-        location: {reload: () => reloads++},
-        fetch: async () => ({ok: true, text: async () => '<detail>'})};
-    vm.createContext(context); vm.runInContext(source, context);
-    const open = () => context.window.openAlertDetail(
-        {target: {closest: () => null}}, 7, 'Customer', 'Databases');
-    const saved = origin => {
-        const target = new Element(); target.origin = origin;
-        document.dispatch('sb:revenue-review-saved', {target});
-    };
-    parent.show(); open(); await settle();
-    nodes.alertDetailModal.instance.hide();
-    assert.equal(reloads, 0);
-    assert.equal(nodes.revenueModal.shown, true);
-    saved('#revenueModal');
-    open(); await settle();
-    saved('#alertDetailModal');
-    nodes.alertDetailModal.instance.hide();
-    assert.equal(reloads, 0);
-    assert.equal(nodes.revenueModal.shown, true);
-    open(); await settle();
-    nodes.alertDetailModal.instance.hide();
-    assert.equal(reloads, 0);
-    parent.hide();
-    assert.equal(reloads, 1);
-    open(); await settle(); saved('#alertDetailModal');
-    nodes.alertDetailModal.instance.hide();
-    assert.equal(reloads, 2);
-    document.dispatch('sb:revenue-review-saved', {target: {}});
-});
-
 test('a save invalidates pending history so a late timeline cannot mutate the next review', async () => {
     const h = fixture(), history = h.open(), save = h.api.save();
     h.reply(1, {success: true, review_status: 'new', review_notes: null}); await save;

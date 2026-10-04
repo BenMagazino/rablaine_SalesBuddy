@@ -325,24 +325,9 @@
 {% endif %}
 
 {% if revenue_alerts %}
-<!-- Alert Detail Modal -->
-<div class="modal fade" id="alertDetailModal" tabindex="-1" aria-labelledby="alertDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1100px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <h5 class="modal-title" id="alertDetailModalLabel"><i class="bi bi-exclamation-triangle"></i> <span id="alertDetailTitle">Loading...</span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-3" id="alertDetailBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{% with revenue_preview_parent='revenueModal' %}
+{% include 'partials/revenue_alert_preview.html' %}
+{% endwith %}
 {% endif %}
 
 {% if milestones %}
@@ -403,83 +388,6 @@ window.openStandaloneMilestoneDetail = function(event, msId, msTitle, msStatus, 
 })();
 </script>
 
-{% endif %}
-
-{% if revenue_alerts %}
-{% include 'partials/review_action.html' %}
-<script>
-// Modal chain: revenue modal → alert detail modal → back to revenue modal
-(function() {
-    let detailModal = null;
-    let detailDirty = false;
-    let revenueDirty = false;
-    let returningToParent = false;
-    const titleEl = document.getElementById('alertDetailTitle');
-    const bodyEl = document.getElementById('alertDetailBody');
-
-    function showAlertDetail(alertId, customerName, bucket) {
-        if (!detailModal) {
-            detailModal = new bootstrap.Modal(document.getElementById('alertDetailModal'));
-        }
-        detailDirty = false;
-        titleEl.textContent = customerName + ' - ' + bucket;
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        detailModal.show();
-        fetch('/api/revenue/analysis/' + alertId + '/detail')
-            .then(function(resp) {
-                if (!resp.ok) throw new Error('Failed to load');
-                return resp.text();
-            })
-            .then(function(html) { bodyEl.innerHTML = html; })
-            .catch(function() { bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load alert details.</div>'; });
-    }
-
-    window.openAlertDetail = function(event, alertId, customerName, bucket) {
-        if (event.target.closest('a, button')) return;
-        var parentModalEl = document.getElementById('revenueModal');
-        var parentModal = parentModalEl ? bootstrap.Modal.getInstance(parentModalEl) : null;
-        if (parentModal && parentModalEl.classList.contains('show')) {
-            returningToParent = true;
-            var onceHidden = function() {
-                parentModalEl.removeEventListener('hidden.bs.modal', onceHidden);
-                showAlertDetail(alertId, customerName, bucket);
-                var detailEl = document.getElementById('alertDetailModal');
-                var onceDetailHidden = function() {
-                    detailEl.removeEventListener('hidden.bs.modal', onceDetailHidden);
-                    returningToParent = false;
-                    parentModal.show();
-                };
-                detailEl.addEventListener('hidden.bs.modal', onceDetailHidden);
-            };
-            parentModalEl.addEventListener('hidden.bs.modal', onceHidden);
-            parentModal.hide();
-        } else {
-            returningToParent = false;
-            showAlertDetail(alertId, customerName, bucket);
-        }
-    };
-
-    // Refresh page when alert detail closes with changes (only if not returning to parent)
-    document.getElementById('alertDetailModal').addEventListener('hidden.bs.modal', function() {
-        if (detailDirty && !returningToParent) location.reload();
-    });
-
-    // Refresh page when revenue modal closes (to sync compact list with any status changes)
-    document.getElementById('revenueModal').addEventListener('hidden.bs.modal', function() {
-        if (revenueDirty && !returningToParent) location.reload();
-    });
-
-    document.addEventListener('sb:revenue-review-saved', function(e) {
-        if (e.target instanceof Element && e.target.closest('#alertDetailModal .review-action-btn')) {
-            detailDirty = true;
-            revenueDirty = true;
-        }
-        if (e.target instanceof Element && e.target.closest('#revenueModal .review-action-btn')) {
-            revenueDirty = true;
-        }
-    });
-})();
-</script>
 {% endif %}
 
 {% if revenue_alerts %}

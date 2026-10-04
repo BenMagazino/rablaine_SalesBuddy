@@ -751,7 +751,7 @@ migration surfaces. Their current functionality is preserved, not rewritten here
   header order and pencil focus restoration pass; New badge contrast is
   11.02:1 in Graphite dark and 7.44:1 in Graphite light. Original theme restored.
 - Diagnostics and whitespace checks are clean. Protected New Note draft tabs
-  were not touched. Checkpoint 20 is approved for commit; no push/merge/deploy.
+  were not touched. Checkpoint 20 is committed as `401846d`; no push/merge/deploy.
 
 ### User checkoff for checkpoint 20
 
@@ -762,3 +762,62 @@ migration surfaces. Their current functionality is preserved, not rewritten here
    still work; Escape/Discard returns to the larger window without closing it.
 3. Optional: the Full Revenue Page and product links should take you to the
    existing destinations. No real review save or network-failure test is needed.
+
+## Checkpoint 21: shared native Revenue Alert preview frames
+
+- Status: DONE, technically checked and user-approved October 4.
+  Baseline: `401846d`. Approved overall completion is about 20% by effort.
+- Scope: replace the remaining alert-detail Bootstrap frames in Revenue Analyzer,
+  seller revenue alerts and Seller Full View drilldown. Extract the approved Home
+  frame into one include, preserving its markup, identities, Review include and
+  deferred helper. All four hosts now share the same frame/controller.
+  Revenue lists/summary cards, Seller Full View parent and customer revenue full
+  page remain legacy; New Note drafts/forms are not in this slice.
+- Retained contracts: existing row launchers and link/button guards, customer/
+  bucket title, detail API/identity, all approved shared-body fields and links,
+  native Review/discard protection and confirmed-only refresh. No API, database
+  or review-write changes. Home retains `homeAlertDetailModal`/`homeAlertBody`;
+  the other hosts retain `alertDetailModal`/`alertDetailBody`.
+- All previews now use the same abort/version-protected, HTML/identity-checked
+  loader, visible loading/error/Retry states and child-aware transition guards.
+  Preview dimensions remain stable during loading, failures and recovery.
+- Seller Full View hides before the native drilldown opens and returns only
+  when that drilldown closes, not when its Review/discard child closes.
+  Selections made during the parent's hide transition coalesce to the newest
+  request. Confirmed changes accumulate across drilldowns and refresh the
+  Seller page on final Full View close. Standalone seller alerts refresh on
+  their own close; opening/cancelling Review never triggers a refresh.
+- Automated validation: 46 scoped JS tests across preview/review and shared
+  native record/dialog helpers, plus 64 isolated pytest tests across all four
+  host frames, Review integration/APIs, detail parity and Home. All pass.
+  The former inline Seller-chain test is replaced by shared-controller tests
+  covering direct-parent saves, repeated drilldowns, deferred refresh and
+  queued selections. Only existing SQLAlchemy warnings remain.
+- Live host matrix: Home, Revenue Analyzer, seller alerts and seller compact
+  preview each show existing alert 1069 in one native dialog, exact identity,
+  all 15 product/total rows and no horizontal overflow.
+- Live Seller Full View: opening 1069 hides the parent; a temporary Review draft
+  can be kept/discarded without closing the detail; Escape from the detail
+  restores Full View and its 12 existing rows. The bucket picker still closes
+  first on Escape without closing Full View, and restores as one control.
+  Stored Databases/Fabric selection remains unchanged.
+- Live failure checks in Analyzer: 503, JSON MIME at 200 and wrong-identity HTML
+  each clear the old body and show Retry; all recover against the real API.
+  Loading, error and recovered frames measure exactly 1071px high at the
+  unchanged 1602 x 1167 desktop viewport. A delayed real 1069 response ignoring
+  abort cannot replace newly selected 332's title/body; all fetch hooks removed.
+- All eight dark/light theme pairs remain within the viewport with no body
+  horizontal overflow. Graphite dark is visually inspected and restored,
+  without saving theme preferences. No live review writes or protected draft
+  interactions; diagnostics/whitespace checks are clean.
+- Checkpoint 21 is approved for commit. No push, merge or deployment.
+
+### User checkoff for checkpoint 21
+
+1. Revenue Analyzer: click an alert row away from its links/pencil. Its large
+   window should now match Home's approved workbench preview. Open the pencil,
+   then Escape back to the large window.
+2. Seller page: Revenue -> Full View -> click an alert row. Close its large
+   preview and confirm Full View returns instead of dropping you to the page.
+3. Optional: the seller revenue alerts full page uses that same native preview.
+   No real review save or manufactured network failure is needed.

@@ -1889,41 +1889,10 @@ window.openHomeMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl)
 {% endif %}
 
 {% if revenue_alerts %}
-<dialog class="sb-dialog sb-dialog-record sb-revenue-preview" id="homeAlertDetailModal"
-        aria-labelledby="homeAlertTitle" data-sb-backdrop-close="true">
-    <div class="sb-dialog-shell">
-        <div class="sb-dialog-header">
-            <div class="sb-dialog-heading">
-                <div class="sb-dialog-eyebrow">Revenue alert</div>
-                <h2 id="homeAlertTitle" data-sb-record-title>Revenue alert</h2>
-            </div>
-            <a class="sb-dialog-button" href="{{ url_for('revenue.revenue_dashboard') }}"
-               data-sb-record-full-link>Revenue Analyzer</a>
-            <button type="button" class="sb-dialog-close" data-sb-dialog-close
-                    aria-label="Close revenue alert"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
-        </div>
-        <div class="sb-dialog-body">
-            <p class="sb-record-state" data-sb-record-loading role="status">Loading revenue alert...</p>
-            <div class="sb-record-state" data-sb-record-error role="alert" hidden>
-                <p>Could not load this revenue alert.</p>
-                <button type="button" class="sb-dialog-button" data-sb-record-retry>Retry</button>
-            </div>
-            <div id="homeAlertBody" data-sb-record-content hidden></div>
-        </div>
-        <div class="sb-dialog-footer">
-            <p data-sb-record-status role="status" aria-live="polite"></p>
-            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Close</button>
-        </div>
-    </div>
-</dialog>
-{% include 'partials/review_action.html' %}
-<script src="{{ url_for('static', filename='js/ui-revenue-preview.js') }}" defer></script>
-<script>
-window.openHomeAlertDetail = function(event, alertId, customerName, bucket) {
-    if (event.target.closest('a, button')) return;
-    return SBRevenueAlertPreview.open(alertId, customerName, bucket);
-};
-</script>
+{% with revenue_preview_id='homeAlertDetailModal', revenue_preview_title_id='homeAlertTitle',
+        revenue_preview_body_id='homeAlertBody' %}
+{% include 'partials/revenue_alert_preview.html' %}
+{% endwith %}
 {% endif %}
 
 <!-- Native note preview with the shared workbench body. -->

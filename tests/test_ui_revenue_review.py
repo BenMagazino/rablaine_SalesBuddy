@@ -107,38 +107,47 @@ def test_history_and_save_contracts_remain_unchanged(
     assert len(response.json["history"]) == 2
 
 
-@pytest.mark.parametrize("host", [
-    "index.html", "revenue_dashboard.html", "revenue_seller_alerts.html", "seller_view.html",
-])
-def test_preview_refresh_waits_for_confirmed_review_save(host: str) -> None:
+def test_preview_refresh_waits_for_confirmed_review_save() -> None:
     """Opening/cancelling review does not mark a preview dirty and reload its page."""
     root = Path(__file__).resolve().parents[1]
-    if host == "index.html":
-        template = (root / "static" / "js" / "ui-revenue-preview.js").read_text("utf-8")
-        assert "if (dialog.open && event.target instanceof Element &&" in template
-    else:
-        template = (root / "templates" / host).read_text("utf-8")
-        assert "if (e.target instanceof Element && e.target.closest(" in template
+    template = (root / "static" / "js" / "ui-revenue-preview.js").read_text("utf-8")
+    assert "event.target instanceof Element" in template
+    assert "dialog.open && dialog.contains(event.target)" in template
     assert "document.addEventListener('sb:revenue-review-saved'" in template
 
 
-def test_home_alert_preview_is_native_and_has_identity_loader_controls(
-    client: FlaskClient, review_alert: dict[str, int],
+@pytest.mark.parametrize("host", ["home", "dashboard", "seller_alerts", "seller"])
+def test_alert_preview_is_native_and_has_identity_loader_controls(
+    client: FlaskClient, review_alert: dict[str, int], host: str,
 ) -> None:
-    """Home retains its launcher and exposes loading, Retry and close controls."""
-    response = client.get("/")
+    """Every preview host uses one identified native frame and the same controller."""
+    paths = {
+        "home": "/", "dashboard": "/reports/revenue",
+        "seller_alerts": "/revenue/seller/Review%20UI%20Seller",
+        "seller": f'/seller/{review_alert["seller"]}',
+    }
+    response = client.get(paths[host])
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
-    dialog = soup.find("dialog", id="homeAlertDetailModal")
+    dialog_id = "homeAlertDetailModal" if host == "home" else "alertDetailModal"
+    title_id = "homeAlertTitle" if host == "home" else "alertDetailTitle"
+    body_id = "homeAlertBody" if host == "home" else "alertDetailBody"
+    dialog = soup.find("dialog", id=dialog_id)
     assert dialog is not None
-    assert dialog["aria-labelledby"] == "homeAlertTitle"
+    assert len(soup.select("[data-sb-revenue-preview]")) == 1
+    assert dialog["aria-labelledby"] == title_id
     assert not dialog.select(".modal, .btn, [data-bs-dismiss]")
     for field in ["title", "full-link", "loading", "error", "retry", "content", "status"]:
         assert dialog.select_one(f"[data-sb-record-{field}]")
     assert dialog.select_one("[data-sb-record-full-link]")["href"] == "/reports/revenue"
-    assert soup.select_one('script[src="/static/js/ui-revenue-preview.js"][defer]')
+    assert dialog.select_one(f"#{body_id}[data-sb-record-content]")
+    assert len(soup.select('script[src="/static/js/ui-revenue-preview.js"][defer]')) == 1
     assert soup.select_one('link[href="/static/css/ui-revenue-detail.css"]')
-    assert "SBRevenueAlertPreview.open(alertId, customerName, bucket)" in response.text
+    if host == "seller":
+        assert dialog["data-sb-revenue-parent"] == "revenueModal"
+        assert soup.select_one("#revenueModal.modal")
+    else:
+        assert not dialog.has_attr("data-sb-revenue-parent")
 
 
 @pytest.mark.parametrize("category,label,tone", [

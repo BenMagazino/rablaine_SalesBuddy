@@ -1,10 +1,18 @@
-/** Home revenue preview using the shared native record loader. */
+/** Shared revenue preview and Seller Full View return lifecycle. */
 (() => {
     'use strict';
-    const dialog = document.getElementById('homeAlertDetailModal');
-    if (!dialog) throw new Error('Home revenue preview is missing.');
-    let preview = null, changed = false;
+    const dialog = document.querySelector('[data-sb-revenue-preview]');
+    if (!dialog) throw new Error('Revenue preview is missing.');
+    const parentId = dialog.dataset.sbRevenueParent;
+    const parent = parentId ? document.getElementById(parentId) : null;
+    if (parentId && !parent) throw new Error('Revenue preview parent is missing.');
+    let preview = null, changed = false, parentChanged = false;
+    let returningToParent = false, pendingSelection = null;
     function open(id, customerName, bucket) {
+        const selection = {id: Number(id), title: customerName + ' - ' + bucket};
+        if (!Number.isSafeInteger(selection.id) || selection.id < 1) {
+            throw new Error('Invalid revenue alert selection.');
+        }
         if (!preview) {
             preview = SBRecordDialog.create(dialog, {
                 loadUrl: id => `/api/revenue/analysis/${id}/detail`,
@@ -25,11 +33,30 @@
                 },
             });
         }
-        return preview.open({id: Number(id), title: customerName + ' - ' + bucket});
+        if (pendingSelection) {
+            pendingSelection = selection;
+            return;
+        }
+        if (parent?.classList.contains('show')) {
+            returningToParent = true;
+            pendingSelection = selection;
+            parent.addEventListener('hidden.bs.modal', () => {
+                const next = pendingSelection;
+                pendingSelection = null;
+                preview.open(next);
+            }, {once: true});
+            bootstrap.Modal.getOrCreateInstance(parent).hide();
+            return;
+        }
+        return preview.open(selection);
     }
     document.addEventListener('sb:revenue-review-saved', event => {
-        if (dialog.open && event.target instanceof Element &&
-            event.target.closest('#homeAlertDetailModal .review-action-btn')) changed = true;
+        if (!(event.target instanceof Element) || !event.target.closest('.review-action-btn')) return;
+        if (dialog.open && dialog.contains(event.target)) {
+            changed = true;
+            if (returningToParent) parentChanged = true;
+        }
+        if (parent?.contains(event.target)) parentChanged = true;
     });
     document.addEventListener('sb:dialog-closed', event => {
         if (event.target.id === 'reviewActionModal' && dialog.open) {
@@ -37,7 +64,20 @@
         }
     });
     dialog.addEventListener('sb:dialog-closed', event => {
-        if (event.target === dialog && changed) location.reload();
+        if (event.target !== dialog) return;
+        if (returningToParent) {
+            returningToParent = false;
+            bootstrap.Modal.getOrCreateInstance(parent).show();
+        } else if (changed) location.reload();
     });
+    parent?.addEventListener('hidden.bs.modal', event => {
+        if (event.target === parent && parentChanged && !returningToParent) location.reload();
+    });
+    function openFromRow(event, alertId, customerName, bucket) {
+        if (event.target.closest('a, button')) return;
+        return open(alertId, customerName, bucket);
+    }
+    window.openHomeAlertDetail = openFromRow;
+    window.openAlertDetail = openFromRow;
     window.SBRevenueAlertPreview = Object.freeze({open});
 })();

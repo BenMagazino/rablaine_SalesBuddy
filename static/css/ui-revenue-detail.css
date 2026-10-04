@@ -52,8 +52,9 @@
 .sb-revenue-missing, .sb-revenue-empty { color: var(--sb-ui-muted); }
 .sb-revenue-detail .sb-revenue-empty { margin: 0; padding: 24px 0; }
 .sb-revenue-preview, .sb-revenue-preview * { box-sizing: border-box; }
-.sb-revenue-preview { width: min(1100px, calc(100vw - 96px)); }
+.sb-revenue-preview { width: min(1100px, calc(100vw - 96px)); height: calc(100dvh - 96px); }
+.sb-revenue-preview .sb-dialog-shell { height: 100%; }
 .sb-revenue-preview button { font-family: inherit; line-height: inherit; }
-.sb-revenue-preview .sb-dialog-body { min-height: 240px; }
+.sb-revenue-preview .sb-dialog-body { flex: 1; min-height: 0; }
 .sb-revenue-preview .sb-record-state { margin: 0; }
 .sb-revenue-preview .sb-dialog-footer p { flex: 1; margin: 0; color: var(--sb-ui-muted); font-size: 12px; }
