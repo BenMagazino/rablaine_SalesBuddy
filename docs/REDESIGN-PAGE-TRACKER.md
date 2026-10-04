@@ -6,8 +6,8 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 19, shared Review Alert editor,
-  DONE, user-approved October 3, 2026;
+- Current page/surface: checkpoint 20, native Home Revenue Alert preview and
+  shared alert-detail body, DONE, user-approved October 4;
   full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
@@ -22,11 +22,12 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `1f1472a` (native calendar read states, Retry and stale-response protection),
   `6d15a91` (native Action Items settings and confirmed preference saves),
   `c1242b3` (shared Action Item preview and editor, user-approved October 3),
-  `b53752c` (shared native Revenue Buckets filter, user-approved October 3)
-- Next action: migrate Home's larger Revenue Alert preview and the shared
-  alert-detail body; see [checkpoint 19 evidence](redesign-pages/HOME-WORKBENCH.md).
-  The child editor is migrated first so a later native Revenue Alert preview
-  can display it. Preview shells and detailed alert bodies remain legacy.
+  `b53752c` (shared native Revenue Buckets filter, user-approved October 3),
+  `cb9f0e4` (shared native Review Alert editor, user-approved October 3)
+- Next action: migrate the remaining Revenue Alert preview frames in Revenue
+  Analyzer, seller alerts and Seller Full View drilldown. Checkpoint 20 is
+  approved; see [evidence](redesign-pages/HOME-WORKBENCH.md).
+  The customer revenue page and Seller Full View parent remain legacy.
   New note/edit forms remain TODO.
   No live customer records were changed;
   existing user drafts are preserved. No push, merge or deployment is authorized.
@@ -40,7 +41,7 @@ Inventory date: October 2, 2026. Baseline product SHA:
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
 - Page progress: 0 / 90 DONE
-- Shared fragment/helper progress: 3 / 25 DONE
+- Shared fragment/helper progress: 4 / 25 DONE
 - Global/shell/error progress: 5 / 17 DONE
 - Additional pages discovered after baseline: none recorded
 - Additional shared helpers recorded: existing Revenue Buckets filter, omitted
@@ -54,8 +55,8 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 19 sign-off, the rough effort-based estimate is **about 18%**
-of the full redesign (a judgment call, approximately 10-20%, not a measured metric).
+As of checkpoint 20 sign-off, the rough effort-based estimate is **about 19%**
+of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
 admin and final reconciliation still remain.
@@ -67,7 +68,8 @@ Checkpoint 17: about 17%, user-approved October 3, 2026, committed as `c1242b3`.
 Checkpoint 18: about 17%, user-approved October 3, 2026, committed as `b53752c`.
 This small shared-filter
 slice does not change the rounded approved-work estimate.
-Checkpoint 19: about 18%, user-approved October 3, 2026.
+Checkpoint 19: about 18%, user-approved October 3, 2026, committed as `cb9f0e4`.
+Checkpoint 20: about 19%, user-approved October 4, 2026.
 
 The DONE counters are stricter: they count fully reconciled pages/helpers, not
 approved sub-page checkpoints or partial completion. Consequently, `0 / 90`
@@ -200,7 +202,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | FR-OOO | `partials/one_on_one_workspace_content.html` | `/api/seller/<int:seller_id>/one-on-one/detail` | TODO | - |
 | FR-OPP | `partials/opportunity_view_content.html` | `/api/opportunity/<int:id>/detail` | TODO | - |
 | FR-PROJ | `partials/project_view_content.html` | `/api/project/<int:id>/detail` | TODO | - |
-| FR-REV | `partials/revenue_alert_detail.html` | `/api/revenue/analysis/<int:analysis_id>/detail` | TODO | - |
+| FR-REV | `partials/revenue_alert_detail.html`, `static/js/ui-revenue-preview.js` | `/api/revenue/analysis/<int:analysis_id>/detail`, Home preview | DONE | [Checkpoint 20 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-ACTION | `partials/_action_item_detail_modal.html` | Home, action hub, engagement/project details | DONE | [Evidence](redesign-pages/HOME-WORKBENCH.md) |
 | JS-REV-BUCKET | `static/js/revenue-bucket-filter.js` | Home, revenue dashboard/customer/seller views, seller summary and preview | DONE | [Checkpoint 18 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-DASH | `partials/_dashboard_settings.html` | Home and preferences | TODO | - |

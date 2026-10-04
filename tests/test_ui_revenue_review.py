@@ -112,6 +112,225 @@ def test_history_and_save_contracts_remain_unchanged(
 ])
 def test_preview_refresh_waits_for_confirmed_review_save(host: str) -> None:
     """Opening/cancelling review does not mark a preview dirty and reload its page."""
-    template = (Path(__file__).resolve().parents[1] / "templates" / host).read_text("utf-8")
+    root = Path(__file__).resolve().parents[1]
+    if host == "index.html":
+        template = (root / "static" / "js" / "ui-revenue-preview.js").read_text("utf-8")
+        assert "if (dialog.open && event.target instanceof Element &&" in template
+    else:
+        template = (root / "templates" / host).read_text("utf-8")
+        assert "if (e.target instanceof Element && e.target.closest(" in template
     assert "document.addEventListener('sb:revenue-review-saved'" in template
-    assert "if (e.target instanceof Element && e.target.closest(" in template
+
+
+def test_home_alert_preview_is_native_and_has_identity_loader_controls(
+    client: FlaskClient, review_alert: dict[str, int],
+) -> None:
+    """Home retains its launcher and exposes loading, Retry and close controls."""
+    response = client.get("/")
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    dialog = soup.find("dialog", id="homeAlertDetailModal")
+    assert dialog is not None
+    assert dialog["aria-labelledby"] == "homeAlertTitle"
+    assert not dialog.select(".modal, .btn, [data-bs-dismiss]")
+    for field in ["title", "full-link", "loading", "error", "retry", "content", "status"]:
+        assert dialog.select_one(f"[data-sb-record-{field}]")
+    assert dialog.select_one("[data-sb-record-full-link]")["href"] == "/reports/revenue"
+    assert soup.select_one('script[src="/static/js/ui-revenue-preview.js"][defer]')
+    assert soup.select_one('link[href="/static/css/ui-revenue-detail.css"]')
+    assert "SBRevenueAlertPreview.open(alertId, customerName, bucket)" in response.text
+
+
+@pytest.mark.parametrize("category,label,tone", [
+    ("DECLINING", "Declining", "danger"), ("RECENT_DIP", "Recent Dip", "warning"),
+    ("EXPANSION_OPPORTUNITY", "Expansion", "positive"), ("VOLATILE", "Volatile", "neutral"),
+    ("HEALTHY", "Healthy", "neutral"), ("NEW_CUSTOMER", "New Customer", "accent"),
+    ("CHURNED", "Churned", "neutral"), ("CUSTOM_CATEGORY", "Custom Category", "neutral"),
+])
+def test_detail_categories_preserve_labels_and_identity(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int],
+    category: str, label: str, tone: str,
+) -> None:
+    """Every category renders native markup with the requested alert identity."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        alert = db.session.get(RevenueAnalysis, review_alert["alert"])
+        alert.category = category
+        db.session.commit()
+    response = client.get(f'/api/revenue/analysis/{review_alert["alert"]}/detail')
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    root = soup.select_one("[data-sb-revenue-detail]")
+    assert root["data-sb-revenue-id"] == str(review_alert["alert"])
+    assert not root.select(".card, .badge, .row, .col-6, .table, .btn, .text-danger")
+    category_tag = root.select_one(".sb-revenue-category")
+    assert category_tag.get_text(strip=True) == label
+    assert category_tag["data-tone"] == tone
+    assert [d.get_text(strip=True) for d in root.select(".sb-revenue-metrics dt")] == [
+        "Avg Revenue", "Latest", "Trend", "Priority",
+    ]
+    assert [d.get_text(strip=True) for d in root.select(".sb-revenue-metrics dd")][:2] == [
+        "$5,000", "$4,000",
+    ]
+    assert "CHECK-IN" in root.get_text()
+    assert "months)" in root.select_one(".sb-revenue-review-meta").get_text()
+    assert root.select_one(".review-action-btn")["data-analysis-id"] == str(review_alert["alert"])
+    header_meta = root.select_one(".sb-revenue-detail-header .sb-revenue-header-meta")
+    assert header_meta.select_one(".sb-revenue-category") == category_tag
+    assert header_meta.select_one("[data-review-id]")["data-review-id"] == str(review_alert["alert"])
+    assert header_meta.select_one(".sb-revenue-review-meta")
+    assert header_meta.select_one(".review-action-btn")
+    metadata_items = header_meta.find_all(recursive=False)
+    assert len(metadata_items) == 4
+    assert "sb-revenue-review-meta" in metadata_items[0]["class"]
+    assert metadata_items[1]["data-review-id"] == str(review_alert["alert"])
+    assert metadata_items[1].select_one('.sb-review-badge[data-status="new"]')
+    assert metadata_items[2] == category_tag
+    assert "review-action-btn" in metadata_items[3]["class"]
+    assert len(root.select("[data-review-id]")) == 1
+    assert len(root.select(".sb-revenue-review-meta")) == 1
+    assert not root.select_one(".sb-revenue-products")
+
+
+@pytest.mark.parametrize("priority,tone", [
+    (80, "danger"), (79, "warning"), (60, "warning"), (59, "accent"),
+    (40, "accent"), (39, "neutral"),
+])
+def test_detail_priority_thresholds(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int], priority: int, tone: str,
+) -> None:
+    """Original priority severity thresholds are preserved at their boundaries."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        alert = db.session.get(RevenueAnalysis, review_alert["alert"])
+        alert.priority_score = priority
+        db.session.commit()
+    soup = BeautifulSoup(client.get(
+        f'/api/revenue/analysis/{review_alert["alert"]}/detail'
+    ).data, "html.parser")
+    assert soup.select(".sb-revenue-metrics dd")[-1]["data-tone"] == tone
+
+
+@pytest.mark.parametrize("trend,tone", [
+    (-3.1, "danger"), (-3.0, "neutral"), (3.0, "neutral"), (3.1, "positive"),
+])
+def test_detail_trend_thresholds(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int], trend: float, tone: str,
+) -> None:
+    """Monthly trend semantics remain unchanged, including exact neutral thresholds."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        alert = db.session.get(RevenueAnalysis, review_alert["alert"])
+        alert.trend_slope = trend
+        db.session.commit()
+    soup = BeautifulSoup(client.get(
+        f'/api/revenue/analysis/{review_alert["alert"]}/detail'
+    ).data, "html.parser")
+    field = soup.select(".sb-revenue-metrics dd")[2]
+    assert field["data-tone"] == tone
+    assert field.get_text(strip=True) == f"{trend:+.1f}%/mo"
+
+
+@pytest.mark.parametrize("risk,opportunity,expected", [
+    (200, 100, "$200/mo at risk"), (0, 100, "$100/mo opportunity"), (0, 0, None),
+])
+def test_detail_no_action_keeps_impact_without_inventing_guidance(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int],
+    risk: int, opportunity: int, expected: str | None,
+) -> None:
+    """No-action alerts still show dollar impact and preserve risk-before-opportunity."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        alert = db.session.get(RevenueAnalysis, review_alert["alert"])
+        alert.recommended_action = "NO ACTION"
+        alert.dollars_at_risk = risk
+        alert.dollars_opportunity = opportunity
+        db.session.commit()
+    soup = BeautifulSoup(client.get(
+        f'/api/revenue/analysis/{review_alert["alert"]}/detail'
+    ).data, "html.parser")
+    guidance = soup.select_one(".sb-revenue-guidance")
+    assert not soup.find("strong")
+    if expected:
+        assert guidance.get_text(strip=True) == expected
+    else:
+        assert guidance is None
+        assert soup.select_one(".sb-revenue-summary")["data-guidance"] == "false"
+
+
+def test_unmatched_detail_is_an_identified_empty_state_and_missing_is_404(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int],
+) -> None:
+    """A valid unmatched alert is distinct from missing/error HTML in the native loader."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        alert = db.session.get(RevenueAnalysis, review_alert["alert"])
+        alert.customer_id = None
+        db.session.commit()
+    response = client.get(f'/api/revenue/analysis/{review_alert["alert"]}/detail')
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert soup.select_one("[data-sb-revenue-id]")["data-sb-revenue-id"] == str(review_alert["alert"])
+    assert soup.select_one('[role="status"]').get_text(strip=True) == (
+        "No matched customer for this alert."
+    )
+    assert not soup.select(".sb-revenue-metrics, .review-action-btn")
+    assert client.get("/api/revenue/analysis/999999/detail").status_code == 404
+
+
+def test_product_breakdown_preserves_recent_seven_months_totals_links_and_change_colors(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int],
+) -> None:
+    """The real detail API retains monthly, zero, negative and all-history total semantics."""
+    from app.models import CustomerRevenueData, ProductRevenueData, RevenueImport, db
+    from app.services.revenue_import import fiscal_month_to_date
+
+    months = ["FY26-Jul", "FY26-Aug", "FY26-Sep", "FY26-Oct",
+              "FY26-Nov", "FY26-Dec", "FY26-Jan", "FY26-Feb"]
+    revenues = [100, 90, 80, 88, 100, 0, -20, 40]
+    product = '<SQL & "test">'
+    with app.app_context():
+        imported = RevenueImport(filename="isolated-detail-test", record_count=8)
+        db.session.add(imported)
+        db.session.flush()
+        for month, revenue in zip(months, revenues):
+            common = {
+                "customer_name": "Review UI Customer", "customer_id": review_alert["customer"],
+                "bucket": "Databases", "fiscal_month": month,
+                "month_date": fiscal_month_to_date(month), "revenue": revenue,
+                "last_import_id": imported.id,
+            }
+            db.session.add(CustomerRevenueData(**common))
+            db.session.add(ProductRevenueData(product=product, **common))
+        db.session.commit()
+    response = client.get(f'/api/revenue/analysis/{review_alert["alert"]}/detail')
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    table = soup.select_one(".sb-revenue-table")
+    assert [h.get_text(strip=True) for h in table.select("thead th")] == [
+        "Product", *months[1:], "Total",
+    ]
+    assert table.find("caption")
+    assert all(h["scope"] == "col" for h in table.select("thead th"))
+    assert all(h["scope"] == "row" for h in table.select("tbody th"))
+    rows = table.select("tbody tr")
+    assert len(rows) == 2
+    for row in rows:
+        cells = row.select("td")
+        assert [c.get_text(strip=True) for c in cells] == [
+            "$90", "$80", "$88", "$100", "-", "$-20", "$40", "$478",
+        ]
+        assert cells[1].select_one('[data-tone="danger"]')
+        assert not cells[2].select_one("[data-tone]")
+        assert cells[3].select_one('[data-tone="positive"]')
+        assert not cells[5].select_one("[data-tone]")
+    assert rows[1].find("a").get_text(strip=True) == product
+    assert "<SQL" not in str(rows[1])
+    assert soup.select_one(".sb-revenue-products-header a")["href"] == (
+        f'/customer/{review_alert["customer"]}/revenue'
+    )

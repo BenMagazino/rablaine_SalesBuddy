@@ -24,6 +24,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Preview and edit action items in workbench dialogs, with Retry, visible save errors and protection for unsaved edits.
 - Filter revenue buckets with stable searchable workbench controls, synchronized Seller previews and clear read or persistence failures with Retry.
 - Review revenue alerts in shared workbench dialogs, with retryable history, protected edits and preview refreshes only after confirmed saves.
+- Open Home revenue alerts in native previews with Retry and protected reads, and show shared alert details and product revenue in a quieter workbench layout.
 - Add compact icon navigation with centered customer search and keyboard-operated menus.
 - Show clear customer-search errors with a retry path instead of failing silently.
 - Use keyboard-friendly workbench dialogs for page help and shortcut reference, with scrolling content and focus restoration.

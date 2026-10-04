@@ -856,7 +856,7 @@ def api_get_analysis_detail(analysis_id: int):
     analysis = RevenueAnalysis.query.get_or_404(analysis_id)
 
     if not analysis.customer_id:
-        return '<div class="text-muted p-3">No matched customer for this alert.</div>'
+        return render_template('partials/revenue_alert_detail.html', a=analysis, bucket_data={})
 
     # Build bucket product data (same logic as revenue_customer_view)
     history = get_customer_revenue_history(

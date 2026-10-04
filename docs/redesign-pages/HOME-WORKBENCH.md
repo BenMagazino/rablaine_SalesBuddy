@@ -1,12 +1,12 @@
 # Home workbench composition and attention panels
 
-- Status: DONE for checkpoint 19 shared Review Alert editor; HOME remains BUILDING
-- Checkpoint: 19, following approved/committed checkpoint 18
+- Status: VERIFY for checkpoint 20 native Revenue preview and shared details; HOME remains BUILDING
+- Checkpoint: 20, following approved/committed checkpoint 19
 - Parent checkoffs: HOME and GLOBAL-SHELL remain BUILDING
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
-- Approved UI baseline: `b53752c`, checkpoint 18 Revenue Buckets filter
-- Implementation tested: checkpoint 18 committed as `b53752c`; checkpoint 19 working tree
+- Approved UI baseline: `cb9f0e4`, checkpoint 19 shared Review Alert editor
+- Implementation tested: checkpoint 19 committed as `cb9f0e4`; checkpoint 20 working tree
 - Checkpoint 14 user sign-off: October 3, 2026, including tag-color correction, native calendar
   picker and floating refresh-failure feedback
 - Checkpoint 14 implementation revision: `3e4c5be`
@@ -19,8 +19,9 @@
 - Checkpoint 18 user sign-off: October 3, 2026
 - Checkpoint 18 implementation revision: `b53752c`
 - Checkpoint 19 user sign-off: October 3, 2026
-- Next action: commit approved checkpoint 19.
-  Revenue Alert preview shells and detailed bodies are the next remaining slice.
+- Checkpoint 19 implementation revision: `cb9f0e4`
+- Next action: user-check checkpoint 20's larger Home Revenue Alert window.
+  Other Revenue preview shells and the customer revenue page remain legacy.
   The New note/edit form layout is not migrated.
   No push, merge or deployment is authorized.
 
@@ -662,8 +663,8 @@ migration surfaces. Their current functionality is preserved, not rewritten here
   Bootstrap CSS (800 x 507.70 pixels). Graphite/dark and the exact saved
   Databases/Fabric bucket selection plus taxonomy version were restored.
   Protected New Note tabs remain untouched.
-- Diagnostics and whitespace checks are clean. No push, merge, deployment or
-  checkpoint 19 commit has been performed.
+- Diagnostics and whitespace checks are clean. Approved checkpoint 19 was
+  committed as `cb9f0e4`; no push, merge or deployment has been performed.
 
 ### User checkoff
 
@@ -677,3 +678,87 @@ migration surfaces. Their current functionality is preserved, not rewritten here
    the alert; closing the alert restores Full View.
 5. If deliberately saving a real review, verify the saved status/notes and its
    new history entry on reopen. The badge updates only after confirmation.
+
+## Checkpoint 20: native Home Revenue Alert preview and shared details
+
+- Status: DONE, technically checked and user-approved October 4, including the
+  final header ordering and New status color.
+  Baseline: `cb9f0e4`. Approved overall completion is about 19% by effort.
+- Scope: Home's larger Revenue Alert preview is native. The shared alert body
+  is migrated wherever the detail API fragment is used: Home, Revenue Analyzer,
+  seller revenue alerts and Seller Revenue Full View drilldown. Other hosts'
+  outer preview frames and the customer revenue page are not migrated here.
+- Audited and retained: customer/bucket title, category labels and fallbacks,
+  average/latest revenue, monthly trend and its +/-3% thresholds, priority and
+  40/60/80 severity thresholds, recommended action/rationale, risk-before-
+  opportunity dollar impact, analysis date/month count, review badge/button/
+  previous hint, seven latest month columns, all-history totals, product links
+  and the conditional Full Revenue Page link. Zero values remain dashes;
+  negative amounts remain visible; monthly change color thresholds stay strict
+  +/-10%, with no comparison when the previous value is non-positive.
+- Replaced stacked colored cards with divider-separated summary, review
+  metadata and a semantic product table. Table headers have explicit scope,
+  an accessible caption and a keyboard-focusable horizontal-scroll region.
+  No new cards, Bootstrap utility classes or mobile layout rules were added.
+- October 4 layout refinement: grouped the review badge, analysis date/month
+  count and pencil beside the category in the top-right header; removed the
+  separate metadata row. All 35 scoped revenue UI tests passed, including
+  header containment/single-instance assertions for every category. Live Home
+  confirmed right-edge alignment, no group overflow, and Review close restoring
+  focus to the header pencil without closing the larger preview.
+- Follow-up refinement orders the header metadata as analysis date/month count,
+  review status, category and pencil. New uses the shared theme's muted amber
+  status color, consistently across revenue review badges; status labels remain
+  explicit so color is not the only cue.
+- Home uses the existing `SBRecordDialog` loader rather than duplicating fetch,
+  Retry, cancellation or focus logic. Detail fragments now identify the exact
+  analysis. HTTP failures, non-HTML replies and identity mismatches show Retry
+  rather than old/wrong data. Matched alerts with no products keep their
+  summary; unmatched alerts are identified successful empty states. Missing
+  analyses still return 404.
+- The approved native Review Alert child opens above the native Home parent.
+  Its pending/dirty guards are preserved. Parent transitions are blocked
+  while the child is open, and closing the child restores the parent's
+  ordinary status. Home reloads on parent close only after a confirmed review;
+  cancelling review does not reload. Other legacy parent workflows remain.
+- Automated validation: 64 scoped JS tests across Revenue preview/review,
+  native record loader/dialog, local timestamps and Revenue Buckets; 64
+  isolated pytest tests across review/detail rendering, threshold boundaries,
+  real seven-month product queries/totals, unmatched/missing branches, Home
+  parity and review APIs. All pass; only existing SQLAlchemy warnings remain.
+- Live validation used existing alerts 1069 and 332. Alert 1069 retains the
+  exact $15,557 average, $352 latest, -23.9%/mo trend, priority 95, $3,711 risk
+  and 15 table rows observed before migration. Full Revenue Page navigated
+  to existing customer 456's revenue page. No customer/review writes were sent.
+- Live history/editor close and typed-draft Keep editing/Discard were checked
+  within the native Home parent. Closing the editor restores parent focus;
+  parent close was blocked during the child and its status recovered afterward.
+  Revenue Analyzer and seller alert legacy previews showed the same new body
+  and still opened/closed Review; Seller Full View drilldown returned to its
+  parent after discarding edits.
+- Live failure replay: 503, non-HTML 200 and wrong-identity HTML all showed an
+  empty body plus explicit Retry, then recovered against the actual detail
+  API. A delayed real 1069 read deliberately ignored cancellation while 332
+  opened; after the older response arrived, title and body still identified
+  332. Every interceptor/fetch hook was removed afterward.
+- At the user's unchanged current 1602 x 1167 desktop viewport, all eight
+  theme pairs stayed bounded with no horizontal body overflow. Minimum sampled
+  detail-text contrast ranged from 7.31:1 to 8.94:1. Graphite dark and light
+  were visually inspected. Removing Bootstrap CSS left dialog, summary and
+  product-table geometry identical. Theme attributes were restored without
+  saving preferences or changing bucket storage.
+- Final refinement validation: all 35 scoped revenue UI tests pass. Live
+  header order and pencil focus restoration pass; New badge contrast is
+  11.02:1 in Graphite dark and 7.44:1 in Graphite light. Original theme restored.
+- Diagnostics and whitespace checks are clean. Protected New Note draft tabs
+  were not touched. Checkpoint 20 is approved for commit; no push/merge/deploy.
+
+### User checkoff for checkpoint 20
+
+1. On Home, click a Revenue Alert row. This time the larger window itself
+   should be restyled, including summary, review metadata and product table.
+   Check readability and scroll through the products.
+2. Click its small pencil. The previously approved Review Alert editor should
+   still work; Escape/Discard returns to the larger window without closing it.
+3. Optional: the Full Revenue Page and product links should take you to the
+   existing destinations. No real review save or network-failure test is needed.

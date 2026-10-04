@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-18 committed, checkpoint 19 shared Review Alert editor approved
+- Status: BUILDING; checkpoints 1-19 committed, checkpoint 20 Revenue preview/details approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -36,15 +36,19 @@
   technically verified across all live consumers, user-approved October 3,
   committed as `b53752c`
 - Checkpoint 19 shared Review Alert editor: [Home evidence](HOME-WORKBENCH.md),
-  technically verified across all five live consumers; user-approved October 3.
+  technically verified across all five live consumers; user-approved October 3,
+  committed as `cb9f0e4`.
   The shared child editor is migrated before the Revenue preview shells/bodies.
+- Checkpoint 20 native Home Revenue preview and shared alert details:
+  [Home evidence](HOME-WORKBENCH.md), technically verified, user-approved October 4.
+  Other outer Revenue preview shells and the customer revenue page remain legacy.
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
 - Next action: continue the remaining global surfaces after this checkpoint;
   homepage and shared note/milestone dialogs are not approved by this checkpoint.
-  Commit approved checkpoint 19, then continue Revenue preview migration;
+  Continue the remaining Revenue Alert preview frames;
   no push, merge or deployment is authorized.
 
 ## Checkpoint 1 scope
