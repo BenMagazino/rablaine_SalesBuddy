@@ -2,36 +2,28 @@
 {% block title %}{{ seller_name }} - Revenue Analyzer - Sales Buddy{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="sb-revenue-workspace" data-sb-revenue-page="seller" data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
     {% if not request.args.get('embed') %}
-    <div class="row mb-4">
-        <div class="col">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('revenue.revenue_dashboard') }}">Revenue Analyzer</a></li>
-                    <li class="breadcrumb-item active">{{ seller_name }}</li>
-                </ol>
-            </nav>
-            <h1>
-                <i class="bi bi-person"></i> {{ seller_name }}
-                {% if seller %}
-                <a href="{{ url_for('sellers.seller_view', id=seller.id) }}" class="btn btn-sm btn-outline-primary">
-                    View Seller Hub
-                </a>
-                {% endif %}
-            </h1>
-            <p class="text-muted">Customers needing attention</p>
+    <header class="sb-revenue-page-header">
+        <div>
+            <h1><i class="bi bi-person" aria-hidden="true"></i> {{ seller_name }}</h1>
+            <p>Customers needing attention</p>
         </div>
-        <div class="col-auto">
-            <span id="bucketFilterContainer" class="me-2"></span>
-            <a href="{{ url_for('revenue.revenue_seller_products', seller_name=seller_name) }}" class="btn btn-outline-primary me-2">
-                <i class="bi bi-boxes"></i> Products
+        <div class="sb-revenue-command-group">
+            {% if seller %}
+            <a href="{{ url_for('sellers.seller_view', id=seller.id) }}" class="sb-revenue-command">
+                <i class="bi bi-person" aria-hidden="true"></i> View Seller Hub
             </a>
-            <a href="{{ url_for('revenue.revenue_seller_export', seller_name=seller_name) }}" class="btn btn-primary">
-                <i class="bi bi-download"></i> Export CSV for Teams
+            {% endif %}
+            <span id="bucketFilterContainer"></span>
+            <a href="{{ url_for('revenue.revenue_seller_products', seller_name=seller_name) }}" class="sb-revenue-command">
+                <i class="bi bi-boxes" aria-hidden="true"></i> Products
+            </a>
+            <a href="{{ url_for('revenue.revenue_seller_export', seller_name=seller_name) }}" class="sb-revenue-command">
+                <i class="bi bi-download" aria-hidden="true"></i> Export CSV for Teams
             </a>
         </div>
-    </div>
+    </header>
     {% endif %}
 
 

@@ -3,18 +3,6 @@
 
 {% block content %}
 <div class="container py-4">
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('partners.partners_list') }}">Partners</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('partners.specialties_list') }}">Specialties</a></li>
-            {% if specialty %}
-            <li class="breadcrumb-item active">Edit {{ specialty.name }}</li>
-            {% else %}
-            <li class="breadcrumb-item active">New Specialty</li>
-            {% endif %}
-        </ol>
-    </nav>
-
     <div class="row">
         <div class="col-lg-6">
             <div class="card">

@@ -883,8 +883,8 @@ migration surfaces. Their current functionality is preserved, not rewritten here
   text contrast is 6.13:1-6.37:1; temporary theme/status/style changes restored.
   Graphite dark Full View visually inspected. Protected draft tabs untouched;
   no live review/customer writes, no push/merge/deploy.
-- Checkpoint 22 is approved for commit, including the preview controller's
-  updated native parent integration alongside this list.
+- Checkpoint 22 is approved and committed as `25a14d4`, including the preview
+  controller's updated native parent integration alongside this list.
 
 ### User checkoff for checkpoint 22
 
@@ -897,3 +897,156 @@ migration surfaces. Their current functionality is preserved, not rewritten here
 3. Optional: Analyzer and the seller's revenue full page use the same new
    table. Their surrounding headers/cards are intentionally not migrated yet.
    No real review save or network-failure exercise is needed.
+
+## Checkpoint 23: Revenue Analyzer and seller alert pages
+
+- Status: VERIFY, technical validation complete; user sign-off pending.
+  Product revision audited: `25a14d4`. Implementation is not committed yet.
+  Approved full-redesign completion remains about 22% by effort.
+- Pages: REV-DASH (`/reports/revenue`, `/revenue` redirect) and REV-SELL
+  (`/revenue/seller/<seller_name>`, including its existing embed variant).
+  This migrates their headings, summaries and controls, not their complete outer
+  page frame. The legacy background/footer and missing workspace outline remain
+  unfinished shell work, as raised in the October 4 review. Customer revenue,
+  the compact Seller Hub summary and other reports' export UI also remain.
+- Replaced colored category cards and the enclosing list card with a compact
+  command header, divider-only category definition list and native list toolbar.
+  Both pages use the full-width breadcrumb context bar immediately below the
+  navbar. Seller alerts retain their person title and command group.
+  The approved shared alert list, filters, review/preview dialogs and APIs remain.
+
+### Page-specific parity inventory
+
+| Surface | Preserved contract | Verification |
+| --- | --- | --- |
+| Analyzer title | Revenue Analyzer and existing revenue-trend subtitle | Isolated render and live page |
+| Export commands | CSV, formatted clipboard with plain-text fallback, Outlook .eml with CSV attachment | Isolated handlers/default-host tests; live generated output with downloads and clipboard writes intercepted locally |
+| Export identity | `revenue-analyzer` filenames and explicit Revenue Analyzer title, not the new list heading | Live CSV, HTML/plain clipboard and .eml inspection |
+| Data commands | Import Data, Products and Configure destinations; Re-analyze remains POST to the existing endpoint | Isolated rendering; unchanged route wiring, no live job started |
+| Categories | All four counts, monthly risk/opportunity and Volatile review hint; missing categories show zero | Isolated populated/empty branches; unchanged live values |
+| List metadata | Total analysis count, last import date and conditional month count | Isolated render and existing live import |
+| Buckets | Existing shared picker, saved choices, taxonomy version and visible-row count | Existing filter regressions; live Analyzer/seller navigation |
+| Sellers | Conditional count/list, original seller destinations and hidden menu/column in seller mode | Isolated seller-mode scoping; live mouse/keyboard menu |
+| Job notices | Import/analysis incomplete and failed branches, optional details and import start timestamp | All four isolated branches; literal escaped details |
+| Recovery | Import link or POST Re-run analysis; persistent warnings are not dismissible | Isolated native notice/form assertions |
+| Empty Analyzer | No alerts yet, import guidance and Import Data action | Isolated no-data render |
+| Seller header | Name, subtitle, canonical Home/Seller/Revenue trail, optional Seller Hub, Products and CSV-for-Teams destinations | Isolated matched/unmatched seller branches and live seller page |
+| Embed | Existing embed condition omits page header/commands but retains summary/list/preview | Isolated embed render |
+| Shared alerts | Sort controls, customer/seller links, explicit Open/Review, summaries and preview identity | Shared regressions; existing alert opening/Escape/focus restoration |
+
+### Implementation and evidence
+
+- Reused the existing navigation controller, now discovering document-wide menu
+  triggers. Page menus explicitly anchor to their own command; existing header
+  menus retain bar-bottom placement. Arrow keys, wrapping, Home/End, Escape,
+  outside dismissal and overlay closing remain centralized.
+  Page scrolling dismisses command menus without jumping back to the invoker;
+  scrolling inside a menu and the existing sticky-header menus are unaffected.
+- Added an optional native presentation to the existing export partial without
+  duplicating its extraction/export logic or changing unmigrated report defaults.
+  Native notifications use the shared notice/dismiss behavior and literal text.
+  Warning/error notifications remain until dismissed. Success notices retain the
+  three-second timeout, but do not remove a focused dismiss control.
+- Native page CSS defines its own main-content geometry instead of depending on
+  Bootstrap's container/spacing reset. Live Analyzer root/header/category/table
+  dimensions are identical with Bootstrap CSS enabled and temporarily disabled.
+  No mobile rules or shared viewport resizing were introduced.
+- Automated: 96 scoped JS tests and 136 isolated Python tests passed.
+  Coverage includes native page chrome, every warning branch, category units,
+  zero/empty state, matched/unmatched seller, embed, seller-mode server scoping,
+  legacy report exports, page/header menu behavior and existing revenue/Home
+  preview/review/filter contracts. Only existing SQLAlchemy legacy-query warnings.
+- Live Analyzer retains 43 rows, 14 visible rows, category counts 3/8/20/11,
+  existing risk/opportunity values and September 28 import with 27 months.
+  Existing seller alerts retain 12 total rows and six visible saved-bucket rows.
+  CSV and formatted/plain clipboard outputs retain eleven column labels and
+  exactly fourteen visible rows; .eml retains the correct subject and attachment.
+  Validation did not write the user's clipboard or create download files.
+- Live Sellers menu opens directly below its command, keyboard focuses a
+  menuitem, End moves to the last entry, and Escape restores command focus.
+  A real menu link navigates to the existing seller alert page. Existing alert
+  detail retains fifteen product/total rows and Escape restores its row Open button.
+  The `/revenue` alias was verified redirecting to the native Analyzer.
+- Replayed only clipboard API failure to verify persistent native error feedback
+  and dismiss-to-main focus. Original clipboard/download hooks were restored.
+  No import, analysis, review, preference or customer write was initiated.
+- Analyzer's eight theme pairs remain bounded at the existing 1768 x 1167 desktop
+  viewport. Header/category small-text contrast is at least 5.47:1. Theme
+  attributes were restored to Graphite/dark without changing saved preferences.
+  Saved Databases/Fabric selection and taxonomy version 3 remain unchanged.
+  Protected New Note tabs are untouched.
+- Seller page command geometry is also bounded and unchanged in all eight theme
+  pairs. Editor diagnostics and whitespace checks are clean.
+
+### User checkoff for checkpoint 23
+
+1. Revenue Analyzer: inspect the compact command row and four divider-separated
+   summaries. The old colored category cards/list card should be gone.
+2. Sellers -> a seller: inspect the matching native breadcrumb/header/commands.
+   No review save, re-analysis, import or repeated nested-dialog testing is needed.
+
+### October 4 breadcrumb placement correction
+
+- User review identified that breadcrumbs were wrongly placed inside the seller
+  workspace instead of Home's under-navbar context bar. Moved them into the new
+  base `context_bar` slot, before feedback/status strips and outside main content.
+  Analyzer uses that same slot for its current-page label. Embed variants omit it.
+- Promoted Home's existing 32-pixel context-bar styling into shared navigation
+  CSS; Home retains its breadcrumb content, draft control and layout. The shared
+  styling is reused rather than independently recreating the strip.
+- The seller bar spans the viewport and starts exactly at the navbar's 46-pixel
+  bottom edge; its height remains 32 pixels. The workspace has no duplicate
+  breadcrumb. Existing six visible rows and saved bucket choices are unchanged.
+- Remaining background, legacy footer and workspace boundary feedback is recorded
+  as unfinished work, not approved or silently dropped. Page rows remain BUILDING
+  even if this headings/commands checkpoint receives sign-off.
+- Correction validation: 121 isolated Revenue/Home/navigation rendering tests and
+  16 navigation JS tests passed. Live Home retains the same 32-pixel strip in all
+  eight theme pairs and its one existing draft control. The later app-wide
+  standard replaces the mock Overview/Activity hierarchy with plain Home.
+  Revenue bars sit directly below navigation; keyboard breadcrumb focus is visible
+  and Enter follows the existing Analyzer link. Saved buckets and protected New
+  Note tabs remain untouched. Diagnostics and whitespace checks are clean.
+
+### October 4 app-wide canonical breadcrumb standard
+
+User-approved October 4, 2026, together with checkpoint 23 Revenue page chrome.
+Approved overall redesign completion is approximately 24% by effort.
+
+- The user approved extending the under-navbar breadcrumb bar to all pages,
+  including pages that previously had no trail. A central resolver covers all
+  90 full-page endpoints; a template-inheritance coverage test prevents new pages
+  from silently relying on a generic fallback.
+- Non-home pages start with linked Home and end with an unlinked current page.
+  Only actual parent destinations are included. Names are escaped, `>` separators
+  are quiet and hidden from assistive technology, and keyboard focus is visible.
+  Long labels retain their full accessible text and title while truncating visually.
+- Home now shows a single Home location label. Its draft button, full-height
+  workbench geometry and protected Note tabs are preserved.
+- Customer Revenue uses Home > actual Seller > actual Customer > Revenue.
+  Seller-wide Revenue uses Home > actual Seller > Revenue. Revenue Analyzer uses
+  Home > Reports > Revenue Analyzer. Missing assignments are omitted; unmatched
+  imported seller names use valid reporting parents instead of fictional hubs.
+- Removed obsolete in-content breadcrumb components, including shared project
+  and engagement fragments. Embedded previews keep the underlying page's trail,
+  without growing a second navigation frame.
+- Live development checks cover Home, Reports, Analyzer, Seller Hub, Customer Hub,
+  customer/seller Revenue, Partners, Topics, Settings and Admin logs. Every
+  non-home bar is outside main content, starts at y=46, and stays 32 pixels high.
+  Eight theme variants maintain at least 6.75:1 ancestor-link contrast, no trail
+  overflow on the checked live records, and unchanged strip height. Keyboard Tab
+  gives an actual ancestor link its two-pixel native focus outline.
+- A real long-name customer also truncates at the 36-character-width cap without
+  bar overflow, preserving its full title and accessible name. Keyboard Enter on
+  Austin Card's breadcrumb opens the actual Seller Hub, not Analyzer.
+- Final scoped validation: 514 Python tests and 22 native navigation/export JS
+  tests passed. The expanded page sweep exposed an unrelated existing
+  seller-engagement API assertion expecting 83% story completeness when the
+  current seven-field model correctly returns 71% (five filled fields). That one
+  assertion is excluded from the final scoped selection; API behavior and its
+  assertion are unchanged. The obsolete Home Bootstrap-icon assertion is updated
+  to verify Home's actual current-location label.
+- Scope remains breadcrumb placement, hierarchy and styling, not page-body
+  migration. Revenue's legacy background/footer and workspace boundary remain
+  unfinished. No records or saved preferences were changed; no commit, push,
+  merge or deployment is authorized by this scope approval.

@@ -5,16 +5,6 @@
 <div class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    {% if customer %}
-                    <li class="breadcrumb-item"><a href="{{ url_for('customers.customer_view', id=customer.id) }}">{{ customer_name }}</a></li>
-                    {% else %}
-                    <li class="breadcrumb-item">{{ customer_name }}</li>
-                    {% endif %}
-                    <li class="breadcrumb-item active">Revenue</li>
-                </ol>
-            </nav>
             <h1>
                 <i class="bi bi-building"></i> {{ customer_name }}
             </h1>

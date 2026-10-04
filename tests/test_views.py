@@ -14,7 +14,7 @@ def test_home_page_loads(client):
     response = client.get('/')
     assert response.status_code == 200
     assert b'Welcome to Sales Buddy' in response.data
-    assert b'bi-star-fill text-warning' in response.data
+    assert b'aria-current="page">Home</span>' in response.data
     assert b'bi-keyboard text-warning' not in response.data
 
 

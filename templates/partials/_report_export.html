@@ -9,22 +9,36 @@
 
     Optional variables:
         export_title     - title shown in the copied HTML (defaults to page <h2> text)
+        report_export_native - opt into app-owned commands and notifications
 #}
 
-<div class="btn-group btn-group-sm" role="group" id="reportExportBtnGroup">
-    <button type="button" class="btn btn-outline-secondary" onclick="exportReportCSV()" title="Download as CSV">
+<div class="{{ 'sb-revenue-export' if report_export_native else 'btn-group btn-group-sm' }}" role="group" aria-label="Export report" id="reportExportBtnGroup">
+    <button type="button" class="{{ 'sb-revenue-command' if report_export_native else 'btn btn-outline-secondary' }}" onclick="exportReportCSV()" title="Download as CSV">
         <i class="bi bi-filetype-csv"></i> CSV
     </button>
-    <button type="button" class="btn btn-outline-secondary" onclick="copyReportForEmail()" title="Copy table for pasting into Teams or Outlook email">
+    <button type="button" class="{{ 'sb-revenue-command' if report_export_native else 'btn btn-outline-secondary' }}" onclick="copyReportForEmail()" title="Copy table for pasting into Teams or Outlook email">
         <i class="bi bi-clipboard"></i> Copy to Clipboard
     </button>
-    <button type="button" class="btn btn-outline-secondary" onclick="downloadReportEmail()" title="Download .eml file to open in Outlook as a ready-to-send email">
+    <button type="button" class="{{ 'sb-revenue-command' if report_export_native else 'btn btn-outline-secondary' }}" onclick="downloadReportEmail()" title="Download .eml file to open in Outlook as a ready-to-send email">
         <i class="bi bi-envelope"></i> Email
     </button>
 </div>
 
+{% if report_export_native %}
+<template id="reportExportNoticeTemplate">
+    <div class="sb-notice sb-revenue-export-notice">
+        <i class="bi bi-info-circle sb-notice-icon" aria-hidden="true"></i>
+        <div class="sb-notice-body"></div>
+        <button type="button" class="sb-notice-dismiss" data-sb-notice-dismiss aria-label="Dismiss export notification">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+    </div>
+</template>
+{% endif %}
+
 <script>
 (function() {
+    const NATIVE_EXPORT = {{ report_export_native|default(false)|tojson }};
     const TABLE_SELECTOR = '{{ export_table_id }}';
     const FILENAME = '{{ export_filename | default("report", true) }}';
     const CUSTOM_TITLE = '{{ export_title | default("", true) }}';
@@ -393,6 +407,22 @@
         // Remove existing toast
         const existing = document.getElementById('exportToast');
         if (existing) existing.remove();
+
+        if (NATIVE_EXPORT) {
+            const toast = document.getElementById('reportExportNoticeTemplate')
+                .content.firstElementChild.cloneNode(true);
+            toast.id = 'exportToast';
+            toast.dataset.sbTone = type;
+            toast.setAttribute('role', type === 'danger' || type === 'warning' ? 'alert' : 'status');
+            toast.querySelector('.sb-notice-body').textContent = message;
+            document.body.appendChild(toast);
+            if (type !== 'danger' && type !== 'warning') {
+                setTimeout(() => {
+                    if (!toast.contains(document.activeElement)) toast.remove();
+                }, 3000);
+            }
+            return;
+        }
 
         const toast = document.createElement('div');
         toast.id = 'exportToast';

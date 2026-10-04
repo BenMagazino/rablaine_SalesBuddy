@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-21 committed, checkpoint 22 Revenue lists/Full View approved
+- Status: BUILDING; checkpoints 1-22 committed, checkpoint 23 Revenue page chrome in review
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -49,7 +49,29 @@
   native frame/controller. Seller Full View itself and customer revenue remain legacy.
 - Checkpoint 22 shared native Revenue alert lists and Seller Full View:
   [Home evidence](HOME-WORKBENCH.md), technically verified, user-approved October 4.
-  Page-level Revenue headers/toolbars/category cards and customer revenue remain legacy.
+  Committed as `25a14d4`; approved overall completion is about 22% by effort.
+- Checkpoint 23 Revenue Analyzer and seller alert page chrome:
+  [Revenue page evidence](HOME-WORKBENCH.md#checkpoint-23-revenue-analyzer-and-seller-alert-pages),
+  technically verified, user-approved October 4. Native menus now support explicit
+  command anchoring outside the app bar without changing header-menu placement.
+  Analyzer opts into native export commands/feedback; other report hosts retain
+  their legacy defaults. Customer revenue and the remaining global shell are not migrated.
+  October 4 review moves Revenue breadcrumbs to a shared full-width context bar
+  directly below navigation, reusing Home's strip styles. Legacy page background,
+  footer and missing workspace boundary remain explicitly unfinished.
+- October 4 app-wide breadcrumb standard, user-approved:
+  all 90 base-inheriting page endpoints have declared canonical ancestry.
+  Home is linked first on non-home pages; real parent names link to real pages,
+  quiet `>` separators are hidden from assistive technology, and the current
+  page is unlinked with `aria-current="page"`. Home keeps its location label and
+  draft control. Embedded pages and injected fragments omit the outer trail.
+  Customer Revenue follows actual Seller > Customer ownership; Seller Revenue
+  follows its Seller Hub; Revenue Analyzer belongs to Reports.
+  Unassigned customers omit the absent seller, and unmatched imported seller names
+  use the reporting hierarchy rather than a broken Seller Hub link.
+  Parentage never depends on referrer history or report filter mode. Page titles
+  are escaped once, record names stay literal, and long labels truncate with
+  their complete accessible text and title retained.
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,

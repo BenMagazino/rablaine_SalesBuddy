@@ -48,3 +48,65 @@ test('report tables exclude both legacy and native popup containers', () => {
         }}});
     assert.deepEqual(Array.from(get()), [pageTable]);
 });
+
+function noticeFixture(native = true) {
+    const timers = [], appended = [], removed = [];
+    const body = {};
+    const toast = {dataset: {}, style: {}, body, attributes: {},
+        querySelector: () => body,
+        setAttribute(name, value) { this.attributes[name] = value; },
+        contains(target) { return target === this; },
+        remove() { removed.push(this); },
+    };
+    const previous = {remove() { removed.push(this); }};
+    const document = {
+        activeElement: null,
+        getElementById: id => id === 'exportToast' ? previous :
+            {content: {firstElementChild: {cloneNode: () => toast}}},
+        createElement: () => toast,
+        body: {appendChild(node) { appended.push(node); }},
+    };
+    const show = helper('showExportToast', {NATIVE_EXPORT: native, document,
+        requestAnimationFrame: callback => callback(),
+        setTimeout: callback => { timers.push(callback); }});
+    return {show, document, toast, previous, appended, removed, timers};
+}
+
+test('native export feedback keeps messages literal and uses the shared dismiss control', () => {
+    const fixture = noticeFixture();
+    fixture.show('<Literal "export">', 'success');
+    assert.equal(fixture.toast.body.textContent, '<Literal "export">');
+    assert.equal(fixture.toast.innerHTML, undefined);
+    assert.equal(fixture.toast.dataset.sbTone, 'success');
+    assert.equal(fixture.toast.attributes.role, 'status');
+    assert.deepEqual(fixture.appended, [fixture.toast]);
+    assert.deepEqual(fixture.removed, [fixture.previous]);
+    fixture.timers[0]();
+    assert.equal(fixture.removed.at(-1), fixture.toast);
+    assert.match(template, /data-sb-notice-dismiss aria-label="Dismiss export notification"/);
+});
+
+test('native warning/error feedback persists and success feedback never removes focused controls', () => {
+    for (const type of ['danger', 'warning']) {
+        const fixture = noticeFixture();
+        fixture.show('Export needs attention', type);
+        assert.equal(fixture.toast.attributes.role, 'alert');
+        assert.equal(fixture.timers.length, 0);
+    }
+    const fixture = noticeFixture();
+    fixture.show('Copied', 'success');
+    fixture.document.activeElement = fixture.toast;
+    fixture.timers[0]();
+    assert.deepEqual(fixture.removed, [fixture.previous]);
+});
+
+test('legacy report feedback retains its existing presentation and fade timers', () => {
+    const fixture = noticeFixture(false);
+    fixture.show('Copied', 'success');
+    assert.equal(fixture.toast.className, 'alert alert-success position-fixed shadow-sm');
+    assert.equal(fixture.toast.style.opacity, '1');
+    fixture.timers[0]();
+    assert.equal(fixture.toast.style.opacity, '0');
+    fixture.timers[1]();
+    assert.equal(fixture.removed.at(-1), fixture.toast);
+});

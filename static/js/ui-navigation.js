@@ -3,8 +3,8 @@
     'use strict';
 
     const bar = document.querySelector('.sb-app-bar');
-    if (!bar) return;
-    const triggers = [...bar.querySelectorAll('[data-sb-menu]')];
+    const triggers = [...document.querySelectorAll('[data-sb-menu]')];
+    if (!triggers.length) return;
     let active = null;
     let openTimer;
     let closeTimer;
@@ -25,14 +25,15 @@
         active = null;
         menuFor(previous).hidePopover();
         previous.setAttribute('aria-expanded', 'false');
-        if (returnFocus) previous.focus();
+        if (returnFocus) previous.focus({preventScroll: true});
     }
 
     function place() {
         if (!active) return;
         const menu = menuFor(active);
         const rect = active.getBoundingClientRect();
-        const top = bar.getBoundingClientRect().bottom;
+        const top = active.dataset.sbMenuAnchor === 'trigger' || !bar ?
+            rect.bottom : bar.getBoundingClientRect().bottom;
         menu.style.maxHeight = `${Math.max(0, window.innerHeight - top - 8)}px`;
         const width = menu.getBoundingClientRect().width;
         const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
@@ -95,6 +96,12 @@
         if (active && !active.contains(event.target) &&
             !menuFor(active).contains(event.target)) close();
     });
+    document.addEventListener('scroll', event => {
+        if (active && active.dataset.sbMenuAnchor === 'trigger' &&
+            !menuFor(active).contains(event.target)) {
+            close(menuFor(active).contains(document.activeElement));
+        }
+    }, true);
     document.addEventListener('keydown', event => {
         const trigger = event.target.closest('[data-sb-menu]');
         const inMenu = active && menuFor(active).contains(event.target);

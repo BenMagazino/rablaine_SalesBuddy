@@ -14,7 +14,7 @@ test('header customer search keeps one field focus indicator without an inner in
     assert.match(css, /\.sb-app-bar :is\(button, a, input\):focus-visible\s*\{[^}]*outline:\s*2px/);
 });
 
-function navigation({embedded = false, missingMenu = false} = {}) {
+function navigation({embedded = false, missingMenu = false, pageMenu = false} = {}) {
     const listeners = new Map();
     const timers = new Map();
     let timerId = 0;
@@ -27,7 +27,7 @@ function navigation({embedded = false, missingMenu = false} = {}) {
             setAttribute: (name, value) => attributes.set(name, value),
             addEventListener: (name, callback) => handlers.set(name, callback),
             getBoundingClientRect: () => ({left: 100, bottom: 38, width: 250}),
-            focus() { document.activeElement = this; },
+            focus(options) { this.focusOptions = options; document.activeElement = this; },
             contains(target) { return target === this || this.links?.includes(target); },
             closest(selector) {
                 if (selector === '[data-sb-menu]' && kind === 'trigger') return this;
@@ -46,10 +46,12 @@ function navigation({embedded = false, missingMenu = false} = {}) {
         menu.querySelectorAll = selector => selector === 'a[href]' ? menu.links : [];
     });
     triggers.forEach((trigger, index) => { trigger.dataset.sbMenu = `menu-${index}`; });
+    if (pageMenu) triggers[1].dataset.sbMenuAnchor = 'trigger';
     const bar = element('bar');
     bar.getBoundingClientRect = () => ({bottom: 46});
     bar.querySelectorAll = () => triggers;
     document.querySelector = () => embedded ? null : bar;
+    document.querySelectorAll = () => embedded && !pageMenu ? [] : triggers;
     document.getElementById = id => missingMenu ? null : menus[Number(id.slice(-1))];
     document.addEventListener = (name, callback) => listeners.set(name, callback);
     const window = {innerWidth: 1000, innerHeight: 800, addEventListener() {}};
@@ -82,6 +84,33 @@ test('click opens only one native menu and positions it below the header', () =>
     nav.triggers[1].emit('click');
     assert.equal(nav.menus[1].open, false);
     assert.equal(nav.document.activeElement, nav.triggers[1]);
+});
+
+test('page menus anchor to their command while retaining shared keyboard and focus behavior', () => {
+    for (const embedded of [false, true]) {
+        const nav = navigation({pageMenu: true, embedded});
+        nav.emit('keydown', nav.triggers[1], 'ArrowDown');
+        assert.equal(nav.menus[1].style.top, '38px');
+        assert.equal(nav.menus[1].style.maxHeight, '754px');
+        assert.equal(nav.document.activeElement, nav.menus[1].links[0]);
+        nav.emit('keydown', nav.document.activeElement, 'Escape');
+        assert.equal(nav.menus[1].open, false);
+        assert.equal(nav.document.activeElement, nav.triggers[1]);
+    }
+});
+
+test('page scrolling dismisses command menus without a focus jump; menu scrolling and header menus stay open', () => {
+    const nav = navigation({pageMenu: true});
+    nav.emit('keydown', nav.triggers[1], 'ArrowDown');
+    nav.emit('scroll', nav.menus[1]);
+    assert.equal(nav.menus[1].open, true);
+    nav.emit('scroll', {});
+    assert.equal(nav.menus[1].open, false);
+    assert.equal(nav.document.activeElement, nav.triggers[1]);
+    assert.equal(nav.triggers[1].focusOptions.preventScroll, true);
+    nav.triggers[0].emit('click');
+    nav.emit('scroll', {});
+    assert.equal(nav.menus[0].open, true);
 });
 
 test('keyboard supports first/last, wrapping and Home/End navigation', () => {

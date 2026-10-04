@@ -2,6 +2,8 @@
 
 {% block title %}Home - Sales Buddy{% endblock %}
 
+{% block context_bar %}{% endblock %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home-calendar.css') }}">
@@ -464,11 +466,10 @@
      floating card. The today-cell click handler routes through window.SyncStatus. -->
 
 <div class="sb-home-page" data-sb-home>
-<nav class="sb-home-context" aria-label="Breadcrumb">
+<nav class="sb-context-bar sb-home-context" aria-label="Breadcrumb">
     <div class="sb-home-breadcrumb">
         <i class="bi bi-house-door" aria-hidden="true"></i>
-        <span>Overview</span><span aria-hidden="true">/</span>
-        <span aria-current="page">Activity</span>
+        <span aria-current="page">Home</span>
     </div>
     <button type="button" class="sb-home-drafts-button" id="homeDraftsButton"
             data-sb-dialog="homeDraftsDialog" hidden>

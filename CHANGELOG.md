@@ -10,6 +10,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/2/2026
 
+- Use compact native Revenue Analyzer and seller-alert page commands, with quieter category summaries and persistent export-error feedback.
+- Show consistent under-navbar breadcrumbs throughout the app, with linked Home, real ownership paths and Revenue Analyzer under Reports.
 - Put the Home calendar beside distinct Action Items, Milestones Due and Revenue Alerts panels, with keyboard-operated activity tabs and preview rows.
 - Fill Home from navigation to a continuous bottom bar and keep saved drafts accessible from a compact counted control.
 - Keep Home's bottom bar quiet with on-demand Milestones, ACR, Accounts and U2C refresh details, links and a read-only status check.

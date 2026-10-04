@@ -38,6 +38,240 @@ def review_alert(app: Flask) -> dict[str, int]:
         return {"alert": alert.id, "customer": customer.id, "seller": seller.id}
 
 
+@pytest.mark.parametrize("path, kind", [
+    ("/reports/revenue", "analyzer"),
+    ("/revenue/seller/Review%20UI%20Seller", "seller"),
+])
+def test_revenue_pages_use_native_chrome(
+    client: FlaskClient, review_alert: dict[str, int], path: str, kind: str,
+) -> None:
+    """Both migrated page roots retain the shared list without Bootstrap components."""
+    response = client.get(path)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    root = soup.select_one(f'[data-sb-revenue-page="{kind}"]')
+    assert root is not None
+    assert root.select_one("h1")
+    assert root.select_one("#bucketFilterContainer")
+    assert root.select_one("#alertsTable")
+    bar = soup.select_one(".sb-context-bar")
+    navbar = soup.select_one(".sb-app-bar")
+    main = soup.select_one("#main-content")
+    assert bar is not None
+    assert navbar.find_next_sibling() == bar
+    assert bar.find_next("main") == main
+    assert not main.select('nav[aria-label="Breadcrumb"]')
+    assert bar.select_one('[aria-current="page"]')
+    assert not root.select(
+        ".card, .card-header, .card-body, .btn, .btn-group, .breadcrumb, "
+        ".dropdown, .dropdown-menu, .alert, .row, .container-fluid, [data-bs-toggle]"
+    )
+    assert soup.select_one("dialog[data-sb-revenue-preview]")
+
+
+def test_analyzer_commands_and_seller_menu_keep_destinations(
+    client: FlaskClient, review_alert: dict[str, int],
+) -> None:
+    """Native commands keep the existing POST, export functions and seller destinations."""
+    response = client.get("/reports/revenue")
+    soup = BeautifulSoup(response.data, "html.parser")
+    root = soup.select_one('[data-sb-revenue-page="analyzer"]')
+    for href in ["/revenue/import", "/products", "/revenue/config"]:
+        assert root.select_one(f'a.sb-revenue-command[href="{href}"]')
+    form = root.select_one("#reanalyze-form")
+    assert form["method"] == "post"
+    assert form["action"] == "/revenue/analyze"
+    assert root.select_one('button[type="submit"][form="reanalyze-form"]')
+    export = root.select_one("#reportExportBtnGroup")
+    assert [button["onclick"] for button in export.select("button")] == [
+        "exportReportCSV()", "copyReportForEmail()", "downloadReportEmail()",
+    ]
+    assert all("sb-revenue-command" in button["class"] for button in export.select("button"))
+    assert "const CUSTOM_TITLE = 'Revenue Analyzer';" in response.get_data(as_text=True)
+    assert root.select_one("#reportExportNoticeTemplate .sb-notice")
+    trigger = root.select_one('[data-sb-menu="revenueSellersMenu"]')
+    assert trigger["data-sb-menu-anchor"] == "trigger"
+    assert trigger["aria-controls"] == "revenueSellersMenu"
+    assert trigger["aria-haspopup"] == "menu"
+    menu = root.select_one("#revenueSellersMenu")
+    assert menu["popover"] == "manual"
+    assert menu["role"] == "menu"
+    assert menu.select_one('a[href="/revenue/seller/Review%20UI%20Seller"]')
+
+
+def test_analyzer_preserves_category_values_and_import_metadata(
+    client: FlaskClient, app: Flask, review_alert: dict[str, int],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """All four summaries preserve counts, impact units and last-import metadata."""
+    from app.models import Customer, RevenueAnalysis, RevenueImport, db
+
+    with app.app_context():
+        original = db.session.get(RevenueAnalysis, review_alert["alert"])
+        original.dollars_at_risk = 1250
+        for tpid, (category, risk, opportunity) in enumerate([
+            ("RECENT_DIP", 250, 0),
+            ("EXPANSION_OPPORTUNITY", 0, 500),
+            ("VOLATILE", 0, 0),
+        ], start=45124):
+            customer = Customer(
+                name=f"Category UI {category}", seller_id=review_alert["seller"], tpid=tpid,
+            )
+            db.session.add(customer)
+            db.session.flush()
+            db.session.add(RevenueAnalysis(
+                customer_id=customer.id, customer_name=customer.name,
+                seller_name=original.seller_name, bucket="Databases", category=category,
+                recommended_action="CHECK-IN", priority_score=70, avg_revenue=5000,
+                latest_revenue=4000, months_analyzed=6, dollars_at_risk=risk,
+                dollars_opportunity=opportunity, confidence="HIGH",
+            ))
+        db.session.add(RevenueImport(
+            filename="isolated-ui-test", imported_at=datetime(2026, 9, 28, tzinfo=timezone.utc),
+        ))
+        db.session.commit()
+    monkeypatch.setattr("app.routes.revenue.get_months_in_database", lambda: ["Jan", "Feb"])
+    soup = BeautifulSoup(client.get("/reports/revenue").data, "html.parser")
+    summary = soup.select_one(".sb-revenue-categories")
+    for category, expected in [
+        ("DECLINING", "$1,250/mo at risk"),
+        ("RECENT_DIP", "$250/mo at risk"),
+        ("EXPANSION_OPPORTUNITY", "$500/mo opportunity"),
+        ("VOLATILE", "Needs review"),
+    ]:
+        item = summary.select_one(f'[data-category="{category}"]')
+        assert item.select_one(".sb-revenue-category-count").text == "1"
+        assert expected in item.get_text(" ", strip=True)
+    assert "(4)" in soup.select_one("#revenueCustomersHeading").get_text()
+    metadata = soup.select_one(".sb-revenue-list-header p")
+    assert " ".join(metadata.get_text(" ", strip=True).split()) == (
+        "Last import: Sep 28, 2026 (2 months)"
+    )
+
+
+@pytest.mark.parametrize("job, state", [
+    ("revenue_sync", "incomplete"), ("revenue_sync", "failed"),
+    ("revenue_analysis", "incomplete"), ("revenue_analysis", "failed"),
+])
+def test_revenue_job_notices_preserve_recovery_and_literal_details(
+    client: FlaskClient, app: Flask, job: str, state: str,
+) -> None:
+    """Interrupted and failed jobs retain persistent recovery links or POST controls."""
+    from app.models import SyncStatus, db
+
+    started = datetime(2020, 1, 2, 12, tzinfo=timezone.utc)
+    with app.app_context():
+        db.session.add(SyncStatus(
+            sync_type=job, started_at=started,
+            completed_at=started if state == "failed" else None,
+            success=False if state == "failed" else None, details='<Literal "failure">',
+        ))
+        db.session.commit()
+    soup = BeautifulSoup(client.get("/reports/revenue").data, "html.parser")
+    root = soup.select_one('[data-sb-revenue-page="analyzer"]')
+    notices = root.select(".sb-revenue-job-notice")
+    assert len(notices) == 1
+    notice = notices[0]
+    assert notice["role"] == "alert"
+    assert notice["data-sb-tone"] == ("danger" if state == "failed" else "warning")
+    assert not notice.select("[data-sb-notice-dismiss]")
+    if job == "revenue_sync":
+        assert notice.select_one('a[href="/revenue/import"]')
+        if state == "incomplete":
+            timestamp = notice.select_one(".local-datetime")
+            assert timestamp["data-utc"].startswith("2020-01-02T12:00:00")
+            assert timestamp["data-fmt"] == "short"
+    else:
+        form = notice.select_one('form[action="/revenue/analyze"]')
+        assert form["method"] == "post"
+        assert form.select_one('button[type="submit"]').text == "Re-run analysis"
+    if state == "failed":
+        assert '<Literal "failure">' in notice.get_text()
+        assert not notice.find("literal")
+
+
+def test_analyzer_empty_state_retains_import_guidance(client: FlaskClient) -> None:
+    """No data has a distinct import action and zero category counts, not a blank table."""
+    soup = BeautifulSoup(client.get("/reports/revenue").data, "html.parser")
+    root = soup.select_one('[data-sb-revenue-page="analyzer"]')
+    assert not root.select(".sb-revenue-job-notice, #revenueSellersMenu, #alertsTable")
+    empty = root.select_one(".sb-revenue-page-empty")
+    assert "No alerts yet" in empty.get_text()
+    assert "Import revenue data to see customer alerts." in empty.get_text()
+    assert empty.select_one('a[href="/revenue/import"]')
+    assert [count.text for count in root.select(".sb-revenue-category-count")] == ["0"] * 4
+
+
+def test_analyzer_seller_mode_retains_scoping_without_the_seller_menu(
+    client: FlaskClient, app: Flask, review_alert: dict[str, int],
+) -> None:
+    """Seller mode hides cross-seller controls and still scopes rows server-side."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        db.session.add(RevenueAnalysis(
+            customer_name="Other seller customer", seller_name="Other seller",
+            bucket="Databases", category="DECLINING", recommended_action="CHECK-IN",
+            priority_score=70, avg_revenue=5000, latest_revenue=4000, months_analyzed=6,
+            confidence="HIGH",
+        ))
+        db.session.commit()
+    assert client.post(f'/api/seller-mode/activate/{review_alert["seller"]}').status_code == 200
+    soup = BeautifulSoup(client.get("/reports/revenue").data, "html.parser")
+    root = soup.select_one('[data-sb-revenue-page="analyzer"]')
+    assert not root.select("#revenueSellersMenu, [data-sb-menu], .sb-alert-seller")
+    rows = root.select("#alertsTable tbody tr[data-analysis-id]")
+    assert len(rows) == 1
+    assert rows[0]["data-analysis-id"] == str(review_alert["alert"])
+    assert "Other seller customer" not in root.get_text()
+
+
+@pytest.mark.parametrize("matched, embedded", [(True, False), (False, False), (True, True)])
+def test_seller_page_commands_and_embedding(
+    client: FlaskClient, review_alert: dict[str, int], matched: bool, embedded: bool,
+) -> None:
+    """Seller Hub is conditional and embedded consumers omit only the existing page chrome."""
+    name = "Review%20UI%20Seller" if matched else "Unmatched%20Seller"
+    path = f"/revenue/seller/{name}" + ("?embed=1" if embedded else "")
+    response = client.get(path)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    root = soup.select_one('[data-sb-revenue-page="seller"]')
+    assert root["data-embedded"] == str(embedded).lower()
+    if embedded:
+        assert not root.select(".sb-revenue-page-header")
+        assert not soup.select(".sb-context-bar")
+        assert root.select_one("[data-sb-revenue-alerts]")
+    else:
+        bar = soup.select_one(".sb-context-bar")
+        assert bar.select_one('a[href="/"]')
+        if matched:
+            assert bar.select_one(f'a[href="/seller/{review_alert["seller"]}"]')
+            assert not bar.select_one('a[href="/reports/revenue"]')
+        else:
+            assert bar.select_one('a[href="/reports/revenue"]')
+        assert bar.select_one('[aria-current="page"]')
+        assert not root.select('nav[aria-label="Breadcrumb"]')
+        assert root.select_one(f'a[href="/revenue/seller/{name}/products"]')
+        assert root.select_one(f'a[href="/revenue/seller/{name}/export"]')
+        hub = root.select_one(f'a[href="/seller/{review_alert["seller"]}"]')
+        assert bool(hub) == matched
+
+
+@pytest.mark.parametrize("path", [
+    "/reports/revenue?embed=1", "/revenue/seller/Review%20UI%20Seller?embed=1",
+])
+def test_embedded_revenue_pages_omit_the_shell_context_bar(
+    client: FlaskClient, review_alert: dict[str, int], path: str,
+) -> None:
+    """Embedding does not add outer navigation or duplicate breadcrumbs to the fragment."""
+    response = client.get(path)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert not soup.select(".sb-context-bar, .sb-app-bar")
+    assert soup.select_one("[data-sb-revenue-page]")
+
+
 @pytest.mark.parametrize("host", ["home", "dashboard", "customer", "seller_alerts", "seller"])
 def test_editor_is_native_in_every_host(
     client: FlaskClient, review_alert: dict[str, int], host: str,

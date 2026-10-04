@@ -1,0 +1,10 @@
+<nav class="sb-context-bar" aria-label="Breadcrumb">
+    <ol class="sb-context-breadcrumb">
+        {% for crumb in page_breadcrumbs %}
+        <li{% if loop.last %} aria-current="page"{% endif %}>
+            {% if not loop.first %}<span class="sb-context-separator" aria-hidden="true">&gt;</span>{% endif %}
+            {% if crumb.url %}<a href="{{ crumb.url }}" title="{{ crumb.label }}">{{ crumb.label }}</a>{% else %}<span title="{{ crumb.label }}">{{ crumb.label }}</span>{% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+</nav>

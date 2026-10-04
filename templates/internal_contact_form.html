@@ -1,17 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container py-4">
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('internal_contacts.internal_contacts_list') }}">Internal Contacts</a></li>
-            {% if contact %}
-            <li class="breadcrumb-item active">Edit {{ contact.name }}</li>
-            {% else %}
-            <li class="breadcrumb-item active">New Contact</li>
-            {% endif %}
-        </ol>
-    </nav>
-
     <div class="row">
         <div class="col-lg-6">
             <div class="card">

@@ -327,9 +327,7 @@ function showBucketDetail(customerId, bucket) {
             const doc = parser.parseFromString(html, 'text/html');
             const content = doc.querySelector('.container-fluid');
             if (content) {
-                // Remove breadcrumb and header from the embedded page
-                const breadcrumb = content.querySelector('nav[aria-label="breadcrumb"]');
-                if (breadcrumb) breadcrumb.remove();
+                // Remove the page heading from the embedded content.
                 const header = content.querySelector('h1');
                 if (header && header.parentElement) header.parentElement.remove();
                 document.getElementById('bucketDetailBody').innerHTML = content.innerHTML;

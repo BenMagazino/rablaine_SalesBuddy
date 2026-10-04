@@ -753,6 +753,13 @@
     </nav>
     {% endif %}
 
+    {% block context_bar %}
+        {% if not request.args.get('embed') %}
+            {% set page_breadcrumbs = get_breadcrumbs(self.title()) %}
+            {% include 'partials/_breadcrumbs.html' %}
+        {% endif %}
+    {% endblock %}
+
     <!-- VPN Blocked Banner (shown dynamically when MSX detects IP block) -->
     <div id="vpnBlockedBanner" class="sb-status-strip" data-sb-tone="danger" role="alert" hidden>
         <div class="sb-status-inner">

@@ -36,17 +36,6 @@ body:has(.sb-home-page) > .sb-flash-stack:not(:has(.sb-notice)) { display: none;
     background: var(--sb-ui-surface);
 }
 .sb-home-page *, .sb-home-page *::before, .sb-home-page *::after { box-sizing: border-box; }
-.sb-home-context {
-    display: flex;
-    align-items: center;
-    gap: var(--sb-ui-space-4);
-    height: 32px;
-    padding: 0 17px;
-    border-bottom: 1px solid var(--sb-ui-line);
-    background: var(--sb-ui-context);
-    color: var(--sb-ui-muted);
-    font-size: 12px;
-}
 .sb-home-breadcrumb { display: flex; align-items: center; gap: var(--sb-ui-space-2); }
 .sb-home-breadcrumb [aria-current] { color: var(--sb-ui-ink); }
 .sb-home-drafts-button {

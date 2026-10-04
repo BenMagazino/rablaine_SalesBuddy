@@ -136,7 +136,7 @@ def test_home_live_route_keeps_calendar_and_empty_destinations(client: FlaskClie
     assert b"function triggerDaySync(dateStr, wrapEl)" in response.data
     assert b"function openQuickCreateModal(dateStr, meetingId = null)" in response.data
     assert not soup.select("body > footer")
-    assert root.select_one('nav[aria-label="Breadcrumb"] [aria-current="page"]').text == "Activity"
+    assert root.select_one('nav[aria-label="Breadcrumb"] [aria-current="page"]').text == "Home"
     notices = root.find(id="homeMeetingNotices")
     assert notices.parent == root
     assert "sb-home-meeting-notices" in notices["class"]

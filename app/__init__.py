@@ -240,6 +240,9 @@ def create_app():
     app.register_blueprint(one_on_one_bp)
     from app.routes.alignment import alignment_bp
     app.register_blueprint(alignment_bp)
+
+    from app.services.breadcrumbs import get_breadcrumbs
+    app.jinja_env.globals["get_breadcrumbs"] = get_breadcrumbs
     
     # Start MSX token refresh job (background thread)
     # This keeps the az login token fresh for CRM API calls

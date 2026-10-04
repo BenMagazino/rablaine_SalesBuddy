@@ -6,8 +6,8 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 22, shared Revenue alert lists and native
-  Seller Full View, DONE, user-approved October 4;
+- Current page/surface: checkpoint 23, Revenue Analyzer and seller alert page
+  chrome plus app-wide breadcrumbs, user-approved October 4, 2026;
   full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
@@ -25,10 +25,20 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `b53752c` (shared native Revenue Buckets filter, user-approved October 3),
   `cb9f0e4` (shared native Review Alert editor, user-approved October 3),
   `401846d` (native Home Revenue preview and shared details, user-approved October 4),
-  `a4ec9a8` (shared native Revenue preview frames, user-approved October 4)
-- Next action: migrate Revenue Analyzer and seller alert page headers,
-  summaries and controls; checkpoint 22 is approved.
-  Revenue page headers/toolbars/category cards and customer revenue remain legacy.
+  `a4ec9a8` (shared native Revenue preview frames, user-approved October 4),
+  `25a14d4` (shared native Revenue lists and Seller Full View, user-approved October 4)
+- Next action: commit checkpoint 23 locally, then implement the Revenue outer frame
+  as checkpoint 24 before auditing the customer revenue
+  family. Analyzer and seller alert headers,
+  summaries and commands are native; customer revenue remains legacy.
+  October 4 review correction: all 90 full-page endpoints now use Home's shared
+  context-bar styling below navigation, including pages previously without trails.
+  Breadcrumbs begin with linked Home, follow canonical real parents, and end with
+  an unlinked current page. Home is a plain location label. Customer Revenue uses
+  actual Seller/Customer ownership; Analyzer belongs to Reports. This app-wide
+  breadcrumb extension is verified and user-approved, not a claim that
+  the legacy page bodies are migrated. The legacy outer background/footer and missing
+  workspace boundary remain unapproved shell work; these pages are not DONE.
   New note/edit forms remain TODO.
   No live customer records were changed;
   existing user drafts are preserved. No push, merge or deployment is authorized.
@@ -58,7 +68,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 22 sign-off, the rough effort-based estimate is **about 22%**
+As of checkpoint 23 sign-off, the rough effort-based estimate is **about 24%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -74,8 +84,11 @@ slice does not change the rounded approved-work estimate.
 Checkpoint 19: about 18%, user-approved October 3, 2026, committed as `cb9f0e4`.
 Checkpoint 20: about 19%, user-approved October 4, 2026, committed as `401846d`.
 Checkpoint 21: about 20%, user-approved October 4, 2026, committed as `a4ec9a8`.
-Checkpoint 22: about 22%, user-approved October 4, 2026. Shared alert lists and
+Checkpoint 22: about 22%, user-approved October 4, 2026, committed as `25a14d4`. Shared alert lists and
 the preview controller's native-parent integration are approved at this revision.
+Checkpoint 23: about 24%, user-approved October 4, 2026. Native Analyzer/seller page
+commands and app-wide canonical breadcrumbs are approved; the Revenue outer
+background, footer and workspace boundary are the next checkpoint.
 
 The DONE counters are stricter: they count fully reconciled pages/helpers, not
 approved sub-page checkpoints or partial completion. Consequently, `0 / 90`
@@ -180,10 +193,10 @@ have separate rows even when they use one template.
 | RPT-GOALS | Connect goals | `/reports/connect-goals` | `report_connect_goals.html` | TODO | - |
 | RPT-U2C | U2C | `/reports/u2c` | `report_u2c.html` | TODO | - |
 | RPT-IMPACT | Connect impact | `/reports/connect-impact` | `report_connect_impact.html` | TODO | - |
-| REV-DASH | Revenue dashboard | `/reports/revenue`; `/revenue` redirects | `revenue_dashboard.html` | TODO | - |
+| REV-DASH | Revenue dashboard | `/reports/revenue`; `/revenue` redirects | `revenue_dashboard.html` | BUILDING | [Controls in review; outer frame pending](redesign-pages/HOME-WORKBENCH.md#checkpoint-23-revenue-analyzer-and-seller-alert-pages) |
 | REV-IMPORT | Revenue import | `/revenue/import`; `/import/revenue` redirects | `revenue_import.html` | TODO | - |
 | REV-CONFIG | Revenue configuration | `/revenue/config` | `revenue_config.html` | TODO | - |
-| REV-SELL | Seller revenue alerts | `/revenue/seller/<seller_name>` | `revenue_seller_alerts.html` | TODO | - |
+| REV-SELL | Seller revenue alerts | `/revenue/seller/<seller_name>` | `revenue_seller_alerts.html` | BUILDING | [Controls in review; outer frame pending](redesign-pages/HOME-WORKBENCH.md#checkpoint-23-revenue-analyzer-and-seller-alert-pages) |
 | REV-SELL-PRODS | Seller products | `/revenue/seller/<seller_name>/products` | `revenue_seller_products.html` | TODO | - |
 | REV-SELL-PROD | Seller product detail | `/revenue/seller/<seller_name>/product/<path:product>` | `revenue_seller_product_view.html` | TODO | - |
 | REV-CUST | Customer revenue | `/revenue/customer/<int:customer_id>`; `/customer/<int:customer_id>/revenue` | `revenue_customer_view.html` | TODO | - |
@@ -214,7 +227,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | INC-DASH | `partials/_dashboard_settings.html` | Home and preferences | TODO | - |
 | INC-FY | `partials/_fy_management_card.html` | Admin | TODO | - |
 | INC-PROJ-FORM | `partials/_project_form_fields.html` | Project/note forms | TODO | - |
-| INC-EXPORT | `partials/_report_export.html` | Reports, revenue dashboard, milestone tracker | TODO | - |
+| INC-EXPORT | `partials/_report_export.html` | Reports, revenue dashboard, milestone tracker | BUILDING | [Native Analyzer opt-in; other hosts remain legacy](redesign-pages/HOME-WORKBENCH.md#checkpoint-23-revenue-analyzer-and-seller-alert-pages) |
 | INC-ACT-CAIP | `partials/activity_coverage_caip.html` | Activity coverage | TODO | - |
 | INC-ACT-MS | `partials/activity_coverage_milestones.html` | Activity coverage | TODO | - |
 | INC-CUST-ICON | `partials/customer_favicon.html` | Customer favicon macro, multiple hosts | TODO | - |
