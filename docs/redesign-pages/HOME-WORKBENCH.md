@@ -1,16 +1,18 @@
 # Home workbench composition and attention panels
 
-- Status: DONE for checkpoint 14 calendar slice; HOME remains BUILDING
-- Checkpoint: 14, following approved checkpoint 13
+- Status: DONE for checkpoint 15 calendar read states; HOME remains BUILDING
+- Checkpoint: 15, following approved/committed checkpoint 14
 - Parent checkoffs: HOME and GLOBAL-SHELL remain BUILDING
 - Pre-release reviewer: the user
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
-- Approved UI baseline: `a5ed892`, Home frame and read-only refresh status
-- Implementation tested: calendar working tree based on `a5ed892`, approved October 3, 2026
-- User sign-off: October 3, 2026, including tag-color correction, native calendar
+- Approved UI baseline: `3e4c5be`, checkpoint 14 calendar and follow-ups
+- Implementation tested: checkpoint 15 working tree based on `3e4c5be`
+- Checkpoint 14 user sign-off: October 3, 2026, including tag-color correction, native calendar
   picker and floating refresh-failure feedback
-- Next action: commit checkpoint 14 and migrate the calendar loading/error states
-  as checkpoint 15. The New note/edit form layout is not migrated.
+- Checkpoint 14 implementation revision: `3e4c5be`
+- Checkpoint 15 user sign-off: October 3, 2026
+- Next action: commit checkpoint 15, then migrate Home's Action Items settings dialog.
+  The New note/edit form layout is not migrated.
   No push, merge or deployment is authorized.
 
 The approved freshness bar prompted a separate deferred feature:
@@ -360,8 +362,60 @@ Hanger draft and separate unsaved New Note tab are untouched. No real writes.
 ## Remaining Home parity
 
 This is not full HOME sign-off or full Bootstrap removal. Checkpoint 14 calendar
-presentation and its follow-up fixes are user-approved. Calendar loading/error
-surfaces, the separate action-item calendar, embedded engagement/project bodies,
-dashboard settings,
+presentation and its follow-up fixes are user-approved. Checkpoint 15 calendar
+read states are user-approved. The separate action-item calendar,
+embedded engagement/project bodies, dashboard settings,
 action-item/revenue detail bodies and the shared bucket popover remain separate
 migration surfaces. Their current functionality is preserved, not rewritten here.
+
+## Checkpoint 15: calendar read states
+
+- Replace only the saved-note/meeting calendar's Bootstrap loading/error rows
+  with a native, full-height, seven-column state cell. Keep the approved toolbar,
+  weekday headers, legend, dock, counts/date/status bar and real calendar data.
+- Loading announces its state and marks the body busy. Failures show an alert
+  and a native Retry button; retry uses the same read-only month GET. Focus moves
+  to the calendar tab before the retry control is removed. No sync is launched.
+- Intentional usability correction: the title identifies the requested month
+  immediately, including while loading or unavailable, rather than keeping the
+  previous month's title until the response arrives.
+- Reject HTTP/JSON/network failures and invalid month/record envelopes instead
+  of rendering an error payload as an empty successful calendar. Confirmed
+  empty months still render normally and show zero counts.
+- Abort superseded reads and ignore their late success/error responses. Page
+  exit disposes pending reads; a cached-history return resumes a read only if
+  the page was left loading. Successful painting retains Today health, aura
+  indicators and in-flight day-refresh spinner restoration.
+- The summary understands native read-state markers without new requests.
+  Other activity tabs retain their existing loading/error detection.
+- This is not the WorkIQ day-lookup repair or the detached-data-job plan.
+  Both open New Note tabs are kept untouched; live checks use a separate Home tab.
+
+### Checkpoint 15 evidence and review
+
+- 102 scoped Node checks and 14 isolated Home Python checks pass. Coverage includes
+  HTTP/network/JSON/envelope failures, empty/leap months, Retry focus and URL,
+  stale success/error replies before and after the newer read completes, page-exit
+  cancellation, cached-history resume, native summary states and existing frame/
+  freshness/date-refresh behavior. Changed files have no editor diagnostics.
+- Live real September reads retain 7 notes / 11 meetings and zero bottom gap.
+  Holding an October GET shows native loading, busy state and the requested
+  title. Replaying a 503 shows unavailable rather than zero counts. Keyboard
+  Retry rereads real data, restores focus to the calendar tab and returns
+  October's actual 0 notes / 8 meetings. Returning to September restores its
+  actual records. A state cell spans the 1440px table, allowing its 1px border.
+- Loading and error are checked in all eight theme pairs at the unchanged
+  1806 x 1167 desktop viewport. Every case retains zero footer gap; actual state
+  text contrast is at least 7.31:1. Theme attributes are restored to Graphite/dark.
+- Inactive shared Home tabs do not advance actionability frames; live interaction
+  validation therefore uses a newly opened real dev Home tab, not a demo server
+  or cloned database. The active and protected New Note tabs are not navigated,
+  reloaded or edited. No WorkIQ pull or record mutation is initiated.
+- The new Home tab is left on September with an intentionally replayed 503 so
+  the user can inspect the error and try Retry. Its interceptor is removed, so
+  Retry performs the normal real GET. There are no leftover probe globals or
+  listeners. Existing sharing-hub CORS/400 console errors were observed outside
+  this read flow; no sharing code is changed or console-clean claim made.
+- Review: the native loading/error appearance, stable frame and month title,
+  and Retry returning to the real month without starting a meeting sync.
+  Checkpoint 15 is user-approved October 3, 2026, ready to commit.

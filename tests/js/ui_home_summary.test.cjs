@@ -155,6 +155,22 @@ test('a day-refresh spinner does not hide the already rendered calendar counts',
     assert.equal(summary.textContent, '3 notes / 2 meetings');
 });
 
+test('native calendar read states show loading/unavailable rather than stale or zero counts', () => {
+    const {summary, bodies, observer} = fixture();
+    const body = bodies.get('#calendarBody');
+    body.dataset = {sbCalendarState: 'loading'};
+    observer.update();
+    assert.equal(summary.textContent, 'Calendar: loading...');
+    body.dataset.sbCalendarState = 'error';
+    observer.update();
+    assert.equal(summary.textContent, 'Calendar: unavailable');
+    body.dataset.sbCalendarState = 'ready';
+    body.counts.set(notesSelector, 0);
+    body.counts.set('.cal-ghost[data-ghost-id]', 0);
+    observer.update();
+    assert.equal(summary.textContent, '0 notes / 0 meetings');
+});
+
 test('observer scopes exclude the summary itself and include tab selection and list replacement', () => {
     const {observer, tabs, content} = fixture();
     assert.equal(observer.targets[0].target, tabs);

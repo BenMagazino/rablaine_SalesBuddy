@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-13 committed, checkpoint 14 calendar approved October 3
+- Status: BUILDING; checkpoints 1-14 committed, checkpoint 15 approved October 3
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -24,14 +24,16 @@
   technically verified, user-approved October 3 after balanced-bar/readability refinement
 - Checkpoint 14 calendar fills/rails/native day controls: [Calendar evidence](HOME-WORKBENCH.md),
   technically verified, user-approved October 3 including native calendar picker,
-  tag-color correction and floating failure feedback; ready to commit
+  tag-color correction and floating failure feedback; committed as `3e4c5be`
+- Checkpoint 15 calendar loading/error feedback: [Calendar evidence](HOME-WORKBENCH.md),
+  technically verified, user-approved October 3 and ready to commit
 - Last product reconciliation SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
 - Next action: continue the remaining global surfaces after this checkpoint;
   homepage and shared note/milestone dialogs are not approved by this checkpoint.
-  Commit checkpoint 14, then migrate Home calendar loading/error feedback;
+  Commit checkpoint 15, then migrate Home's Action Items settings dialog;
   no push, merge or deployment is authorized.
 
 ## Checkpoint 1 scope

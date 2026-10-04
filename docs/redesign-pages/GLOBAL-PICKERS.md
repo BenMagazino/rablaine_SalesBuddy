@@ -89,7 +89,8 @@ general-note links, restoring the existing backend's meeting prefill/back-link
 contract. Opening an ordinary day afterward clears that ID; the global New note
 picker never inherits calendar context.
 
-This follow-up is user-approved October 3, 2026, with checkpoint 14, ready to commit.
+This follow-up is user-approved October 3, 2026, and committed with checkpoint 14
+as `3e4c5be`.
 
 Live Home verifies the unmatched September 23 meeting opens a native picker at
 y=48, focused on search, with native result classes and date/meeting parameters

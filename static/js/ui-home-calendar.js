@@ -116,6 +116,66 @@
             ?.querySelector('[data-sb-notice-dismiss]').click();
     }
 
+    function validateMonth(data, year, month) {
+        const dayCount = new Date(year, month, 0).getDate();
+        if (!Number.isInteger(year) || year < 1 || year > 9999 ||
+            !Number.isInteger(month) || month < 1 || month > 12 ||
+            !data || data.year !== year || data.month !== month ||
+            typeof data.month_name !== 'string' || !data.month_name.trim() ||
+            data.days_in_month !== dayCount) {
+            throw new Error('Calendar response has invalid month data.');
+        }
+        for (const name of ['days', 'ghosts']) {
+            const entries = data[name];
+            if (!entries || typeof entries !== 'object' || Array.isArray(entries)) {
+                throw new Error('Calendar response has invalid ' + name + '.');
+            }
+            for (const [key, records] of Object.entries(entries)) {
+                const day = Number(key);
+                if (!Number.isInteger(day) || day < 1 || day > dayCount ||
+                    String(day) !== key || !Array.isArray(records) ||
+                    records.some(record => !record || !Number.isInteger(record.id) ||
+                        record.id < 1)) {
+                    throw new Error('Calendar response has invalid ' + name + ' for day ' + key);
+                }
+            }
+        }
+    }
+
+    function showReadState(body, state, retry) {
+        if (!['loading', 'error'].includes(state) ||
+            (state === 'error' && typeof retry !== 'function')) {
+            throw new Error('Invalid calendar read state: ' + state);
+        }
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 7;
+        cell.className = 'sb-home-calendar-state';
+        const content = document.createElement('div');
+        content.className = 'sb-home-calendar-state-content';
+        content.appendChild(marker(state === 'loading' ? 'hourglass-split' :
+            'exclamation-circle', state === 'loading' ? 'Loading' : 'Error'));
+        const message = document.createElement('span');
+        message.className = 'sb-home-calendar-state-message';
+        message.setAttribute('role', state === 'loading' ? 'status' : 'alert');
+        message.textContent = state === 'loading' ? 'Loading calendar...' :
+            'Unable to load the calendar.';
+        content.appendChild(message);
+        if (state === 'error') {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'sb-home-button sb-home-calendar-retry';
+            button.textContent = 'Retry';
+            button.addEventListener('click', retry);
+            content.appendChild(button);
+        }
+        cell.appendChild(content);
+        row.appendChild(cell);
+        body.dataset.sbCalendarState = state;
+        body.setAttribute('aria-busy', String(state === 'loading'));
+        body.replaceChildren(row);
+    }
+
     function showRefreshError(date, message) {
         const id = 'homeMeetingRefreshError-' + date;
         let notice = document.getElementById(id);
@@ -148,5 +208,6 @@
 
     window.SBHomeCalendar = Object.freeze({
         customerColors, workStatus, note, ghost, bindHighlight, showRefreshError, clearRefreshError,
+        validateMonth, showReadState,
     });
 })();

@@ -30,6 +30,12 @@ function fixture() {
             },
             getAttribute: key => attrs[key],
             appendChild: child => { e.children.push(child); child.parent = e; return child; },
+            replaceChildren: (...children) => {
+                e.children.forEach(child => { child.parent = null; });
+                e.children = [];
+                children.forEach(child => e.appendChild(child));
+            },
+            focus: () => { document.activeElement = e; },
             insertBefore: (child, before) => {
                 e.children.splice(before ? e.children.indexOf(before) : e.children.length, 0, child);
                 child.parent = e;
@@ -43,12 +49,15 @@ function fixture() {
             },
             addEventListener: (name, handler) => { (listeners[name] ||= []).push(handler); },
             click: () => {
-                e.dispatch('click');
+                const result = e.dispatch('click');
                 if (e.getAttribute('data-sb-notice-dismiss') !== undefined) e.parent.remove();
+                return result;
             },
             dispatch: (name, extra = {}) => {
                 const event = {target: e, preventDefault() {}, stopPropagation() {}, ...extra};
-                for (const handler of listeners[name] || []) handler(event);
+                let result;
+                for (const handler of listeners[name] || []) result = handler(event);
+                return result;
             },
             querySelector: selector => e.children.find(child =>
                 selector === '[data-role="recur"]' && child.dataset.role === 'recur' ||
@@ -125,6 +134,198 @@ function dayRefreshFixture(reply, month = 10) {
     vm.runInNewContext(template.slice(start, end), f.context);
     return {...f, requests, events, spins, redraws, errors};
 }
+
+function monthData(year = 2026, month = 9) {
+    return {year, month, month_name: new Date(year, month - 1, 1)
+        .toLocaleDateString('en-US', {month: 'long'}),
+    days_in_month: new Date(year, month, 0).getDate(), days: {}, ghosts: {}};
+}
+
+function monthFixture(response) {
+    const f = fixture(), requests = [], rendered = [], effects = [], errors = [], events = {};
+    const title = f.element(), tab = f.element('button');
+    const getElement = f.document.getElementById;
+    f.document.getElementById = id => id === 'calendarTitle' ? title :
+        id === 'calendar-tab' ? tab : getElement(id);
+    f.body.contains = element => {
+        for (let node = element; node; node = node.parent) if (node === f.body) return true;
+        return false;
+    };
+    let nextResponse = response;
+    f.context.window.addEventListener = (name, callback) => { events[name] = callback; };
+    Object.assign(f.context, {AbortController, calendarYear: 2026, calendarMonth: 9,
+        console: {error: (...args) => errors.push(args)},
+        fetch: async (url, options) => {
+            requests.push({url, options});
+            if (typeof nextResponse === 'function') return nextResponse(url);
+            if (nextResponse instanceof Error) throw nextResponse;
+            return nextResponse || {ok: true, json: async () => monthData()};
+        },
+        renderCalendar: data => {
+            rendered.push(data);
+            f.body.replaceChildren(f.element('tr'));
+        },
+        checkTodayStatus: () => effects.push('today'),
+        checkAuraSync: () => effects.push('aura'),
+        _restoreInFlightSpinners: () => effects.push('spinners')});
+    const start = template.indexOf('    let calendarRead = null;');
+    const end = template.indexOf('    function renderCalendar(', start);
+    vm.runInNewContext(template.slice(start, end), f.context);
+    return {...f, title, tab, requests, rendered, effects, errors, events,
+        panel: () => f.body.children[0].children[0].children[0],
+        setResponse: value => { nextResponse = value; }};
+}
+
+test('month validation accepts confirmed empty/leap months and rejects malformed month/record data', () => {
+    const {api} = fixture();
+    api.validateMonth(monthData(), 2026, 9);
+    api.validateMonth(monthData(2024, 2), 2024, 2);
+    for (const value of [
+        null, {}, {...monthData(), year: 2025}, {...monthData(), month: 10},
+        {...monthData(), month_name: ''}, {...monthData(), days_in_month: 31},
+        {...monthData(), days: null}, {...monthData(), ghosts: []},
+        {...monthData(), days: {'31': []}}, {...monthData(), ghosts: {'0': []}},
+        {...monthData(), days: {'01': []}}, {...monthData(), days: {'1': {}}},
+        {...monthData(), ghosts: {'1': [null]}}, {...monthData(), days: {'1': [{id: 0}]}},
+    ]) assert.throws(() => api.validateMonth(value, 2026, 9), /Calendar response/);
+    assert.throws(() => api.validateMonth(monthData(2026, 0), 2026, 0), /invalid month/);
+});
+
+test('native read states expose a full-width status/alert, busy state and keyboard-native Retry', () => {
+    const {api, body} = fixture();
+    api.showReadState(body, 'loading');
+    const cell = body.children[0].children[0];
+    assert.equal(cell.colSpan, 7);
+    assert.equal(body.getAttribute('aria-busy'), 'true');
+    assert.equal(cell.children[0].children[1].getAttribute('role'), 'status');
+    assert.equal(cell.children[0].children[1].textContent, 'Loading calendar...');
+    let retried = 0;
+    api.showReadState(body, 'error', () => { retried++; });
+    const content = body.children[0].children[0].children[0];
+    assert.equal(body.getAttribute('aria-busy'), 'false');
+    assert.equal(body.dataset.sbCalendarState, 'error');
+    assert.equal(content.children[1].getAttribute('role'), 'alert');
+    assert.equal(content.children[2].tagName, 'button');
+    assert.equal(content.children[2].type, 'button');
+    content.children[2].click();
+    assert.equal(retried, 1);
+    assert.doesNotMatch(content.children.map(child => child.className).join(' '),
+        /spinner-border|text-danger|py-4/);
+    assert.throws(() => api.showReadState(body, 'error'), /Invalid calendar read state/);
+});
+
+test('month reads retain the GET contract, announce the requested month and preserve paint hooks', async () => {
+    const f = monthFixture();
+    const pending = f.context.loadCalendar(2026, 9);
+    assert.equal(f.title.textContent, 'September 2026');
+    assert.equal(f.body.dataset.sbCalendarState, 'loading');
+    await pending;
+    assert.equal(f.requests[0].url, '/api/notes/calendar?year=2026&month=9');
+    assert.equal(f.requests[0].options.method, undefined);
+    assert.equal(f.rendered.length, 1);
+    assert.deepEqual(f.effects, ['today', 'aura', 'spinners']);
+    assert.equal(f.body.dataset.sbCalendarState, 'ready');
+    assert.equal(f.body.getAttribute('aria-busy'), 'false');
+});
+
+for (const [description, response] of [
+    ['HTTP error', {ok: false, status: 503}],
+    ['network error', new Error('Network unavailable')],
+    ['JSON error', {ok: true, json: async () => { throw new Error('Bad JSON'); }}],
+    ['unconfirmed month', {ok: true, json: async () => ({error: 'Unavailable'})}],
+    ['wrong month', {ok: true, json: async () => monthData(2026, 10)}],
+]) {
+    test('month read ' + description + ' is logged, visible and retryable, not empty success', async () => {
+        const f = monthFixture(response);
+        await f.context.loadCalendar(2026, 9);
+        assert.equal(f.body.dataset.sbCalendarState, 'error');
+        assert.equal(f.body.getAttribute('aria-busy'), 'false');
+        assert.match(f.panel().children[1].textContent, /Unable to load/);
+        assert.equal(f.panel().children[2].textContent, 'Retry');
+        assert.equal(f.errors.length, 1);
+        assert.equal(f.rendered.length, 0);
+        assert.equal(f.effects.length, 0);
+    });
+}
+
+test('Retry rereads the same month and restores focus before replacing its control', async () => {
+    const f = monthFixture({ok: false, status: 500});
+    await f.context.loadCalendar(2026, 9);
+    f.setResponse({ok: true, json: async () => monthData()});
+    const retry = f.panel().children[2];
+    retry.focus();
+    await retry.click();
+    assert.equal(f.document.activeElement, f.tab);
+    assert.equal(f.requests.length, 2);
+    assert.equal(f.requests[1].url, f.requests[0].url);
+    assert.equal(f.body.dataset.sbCalendarState, 'ready');
+});
+
+for (const failed of [false, true]) {
+    test('superseded month ' + (failed ? 'failures' : 'responses') +
+        ' cannot repaint a newer month or clear its busy state', async () => {
+        const replies = [];
+        const f = monthFixture(() => new Promise((resolve, reject) => {
+            replies.push({resolve, reject});
+        }));
+        const older = f.context.loadCalendar(2026, 9);
+        const newer = f.context.loadCalendar(2026, 10);
+        assert.equal(f.requests[0].options.signal.aborted, true);
+        assert.equal(f.title.textContent, 'October 2026');
+        if (failed) replies[0].reject(new Error('Old failed read'));
+        else replies[0].resolve({ok: true, json: async () => monthData()});
+        await older;
+        assert.equal(f.body.getAttribute('aria-busy'), 'true');
+        assert.equal(f.rendered.length, 0);
+        assert.equal(f.errors.length, 0);
+        replies[1].resolve({ok: true, json: async () => monthData(2026, 10)});
+        await newer;
+        assert.equal(f.rendered.length, 1);
+        assert.equal(f.rendered[0].month, 10);
+        assert.equal(f.body.getAttribute('aria-busy'), 'false');
+    });
+}
+
+test('page exit aborts reads, late replies stay ignored and cached-back navigation resumes loading', async () => {
+    let finish;
+    const f = monthFixture(() => new Promise(resolve => { finish = resolve; }));
+    const pending = f.context.loadCalendar(2026, 9);
+    f.events.pagehide();
+    assert.equal(f.requests[0].options.signal.aborted, true);
+    finish({ok: true, json: async () => monthData()});
+    await pending;
+    assert.equal(f.rendered.length, 0);
+    assert.equal(f.effects.length, 0);
+    f.setResponse({ok: true, json: async () => monthData()});
+    f.events.pageshow({persisted: false});
+    assert.equal(f.requests.length, 1);
+    await f.events.pageshow({persisted: true});
+    assert.equal(f.requests.length, 2);
+    assert.equal(f.rendered.length, 1);
+    assert.equal(f.body.dataset.sbCalendarState, 'ready');
+    f.events.pageshow({persisted: true});
+    assert.equal(f.requests.length, 2);
+});
+
+test('late replies after the newer month has completed cannot replace its calendar or error state', async () => {
+    for (const failed of [false, true]) {
+        const replies = [];
+        const f = monthFixture(() => new Promise((resolve, reject) => {
+            replies.push({resolve, reject});
+        }));
+        const older = f.context.loadCalendar(2026, 9);
+        const newer = f.context.loadCalendar(2026, 10);
+        replies[1].resolve({ok: true, json: async () => monthData(2026, 10)});
+        await newer;
+        if (failed) replies[0].reject(new Error('Late failed read'));
+        else replies[0].resolve({ok: true, json: async () => monthData()});
+        await older;
+        assert.equal(f.title.textContent, 'October 2026');
+        assert.equal(f.rendered.length, 1);
+        assert.equal(f.body.dataset.sbCalendarState, 'ready');
+        assert.equal(f.errors.length, 0);
+    }
+});
 
 test('unmatched meetings and empty days open the native picker with separate meeting context', () => {
     const stamp = {textContent: ''}, updates = [], opened = [];

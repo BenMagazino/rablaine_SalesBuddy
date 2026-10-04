@@ -19,6 +19,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Make calendar note, meeting, day refresh and hide actions keyboard-friendly, and scroll a day's notes and meetings together.
 - Use the native customer picker for calendar notes and unmatched meetings, preserving the meeting association when choosing a customer.
 - Keep note and milestone tag outlines in their intended color instead of shifting yellow topics toward green.
+- Keep calendar loading and errors inside the workbench, with Retry and protection against outdated month responses.
 - Add compact icon navigation with centered customer search and keyboard-operated menus.
 - Show clear customer-search errors with a retry path instead of failing silently.
 - Use keyboard-friendly workbench dialogs for page help and shortcut reference, with scrolling content and focus restoration.

@@ -114,7 +114,8 @@ The shared note/milestone tag border and fill now blend in Cartesian OKLab,
 rather than interpolating hue in OKLCH. This prevents yellow topic outlines from
 turning green when blended with blue-gray divider tokens. Semantic tag colors,
 geometry, label contrast and shared full-page/preview markup remain unchanged.
-This follow-up is user-approved October 3, 2026, with checkpoint 14, ready to commit.
+This follow-up is user-approved October 3, 2026, and committed with checkpoint 14
+as `3e4c5be`.
 
 Live note 302 verifies topic border hue stays within 25 degrees of its yellow
 text in all eight theme pairs, rather than the old Graphite hue of 184 degrees.

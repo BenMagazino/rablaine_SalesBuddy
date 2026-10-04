@@ -17,6 +17,21 @@
 }
 .sb-home-calendar #calendarTable .sb-home-weekend { background: var(--sb-ui-weekend); }
 .sb-home-calendar #calendarTable .sb-home-empty-day { background: var(--sb-ui-context); }
+.sb-home-calendar #calendarTable .sb-home-calendar-state {
+    height: calc(var(--sb-home-height) - var(--sb-home-calendar-chrome, 140px)) !important;
+    padding: 24px;
+    vertical-align: middle;
+    color: var(--sb-ui-muted);
+}
+.sb-home-calendar-state-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: 14px;
+}
+#calendarBody[data-sb-calendar-state="error"] .sb-home-calendar-state-message,
+#calendarBody[data-sb-calendar-state="error"] .bi { color: var(--sb-ui-danger); }
 .sb-home-calendar #calendarTable .sb-home-today {
     background: var(--sb-ui-today-bg);
     outline: 1px solid var(--sb-ui-today-outline);

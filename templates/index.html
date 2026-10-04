@@ -1285,34 +1285,58 @@
         loadCalendar(calendarYear, calendarMonth);
     });
     
-    function loadCalendar(year, month) {
+    let calendarRead = null;
+
+    async function loadCalendar(year, month) {
         const calendarBody = document.getElementById('calendarBody');
         const calendarTitle = document.getElementById('calendarTitle');
-        
-        // Show loading state
-        calendarBody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm" role="status"></div> Loading...</td></tr>';
-        
-        fetch(`/api/notes/calendar?year=${year}&month=${month}`)
-            .then(response => response.json())
-            .then(data => {
-                calendarTitle.textContent = `${data.month_name} ${data.year}`;
-                renderCalendar(data);
-                // After the calendar paints, color the today badge based on
-                // whether this morning's sync covered today.
-                checkTodayStatus();
-                // Also paint typing dots on any aura-pending cells in view.
-                checkAuraSync();
-                // Re-apply per-day refresh spinners + drain any pending
-                // redraws for dates whose WorkIQ pull completed while
-                // the user was on a different month.
-                _restoreInFlightSpinners();
-            })
-            .catch(error => {
-                console.error('Error loading calendar:', error);
-                calendarBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error loading calendar</td></tr>';
+        const run = {controller: new AbortController()};
+        if (calendarRead) calendarRead.controller.abort();
+        calendarRead = run;
+        calendarTitle.textContent = new Date(year, month - 1, 1).toLocaleDateString('en-US',
+            {month: 'long', year: 'numeric'});
+        window.SBHomeCalendar.showReadState(calendarBody, 'loading');
+        try {
+            const response = await fetch(`/api/notes/calendar?year=${year}&month=${month}`,
+                {signal: run.controller.signal});
+            if (!response.ok) throw new Error(`Calendar request failed (HTTP ${response.status}).`);
+            const data = await response.json();
+            if (calendarRead !== run) return;
+            window.SBHomeCalendar.validateMonth(data, year, month);
+            renderCalendar(data);
+            calendarBody.dataset.sbCalendarState = 'ready';
+            checkTodayStatus();
+            checkAuraSync();
+            _restoreInFlightSpinners();
+        } catch (error) {
+            if (calendarRead !== run) return;
+            console.error('Error loading calendar:', {year, month}, error);
+            window.SBHomeCalendar.showReadState(calendarBody, 'error', () => {
+                if (calendarBody.contains(document.activeElement)) {
+                    document.getElementById('calendar-tab').focus({preventScroll: true});
+                }
+                return loadCalendar(year, month);
             });
+        } finally {
+            if (calendarRead === run) {
+                calendarRead = null;
+                calendarBody.setAttribute('aria-busy', 'false');
+            }
+        }
     }
-    
+
+    window.addEventListener('pagehide', () => {
+        const run = calendarRead;
+        calendarRead = null;
+        if (run) run.controller.abort();
+    });
+    window.addEventListener('pageshow', event => {
+        if (event.persisted &&
+            document.getElementById('calendarBody').dataset.sbCalendarState === 'loading') {
+            return loadCalendar(calendarYear, calendarMonth);
+        }
+    });
+
     function renderCalendar(data) {
         const calendarBody = document.getElementById('calendarBody');
         calendarBody.innerHTML = '';

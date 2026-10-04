@@ -32,9 +32,11 @@
         let text;
         const loading = ':scope > tr > td[colspan="7"] > .spinner-border, ' +
             ':scope > div > .spinner-border, :scope > div > .bi-hourglass-split';
-        if (!body.childElementCount || body.querySelector(loading)) {
+        if (body.dataset?.sbCalendarState === 'loading' ||
+            !body.childElementCount || body.querySelector(loading)) {
             text = label + ': loading...';
-        } else if (body.querySelector(':scope > .text-danger, :scope > tr > td.text-danger')) {
+        } else if (body.dataset?.sbCalendarState === 'error' ||
+            body.querySelector(':scope > .text-danger, :scope > tr > td.text-danger')) {
             text = label + ': unavailable';
         } else if (selected.id === 'calendar-tab') {
             const notes = body.querySelectorAll('.calendar-entries > [data-general-note], ' +

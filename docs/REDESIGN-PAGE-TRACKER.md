@@ -6,8 +6,8 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 14, Home calendar presentation, technically
-  verified and user-approved October 3, 2026, ready to commit;
+- Current page/surface: checkpoint 15, Home calendar loading/error feedback,
+  user-approved October 3, 2026, ready to commit;
   full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
@@ -17,10 +17,12 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `ce61a1d` (milestone-preview lifecycle and nested editors),
   `3f8ddd5` (shared note body and divider-only metadata),
   `c652057` (shared milestone body and forecast comments),
-  `a5ed892` (Home workbench and read-only refresh status)
-- Next action: commit the approved
-  [checkpoint 14 calendar slice](redesign-pages/HOME-WORKBENCH.md), then migrate
-  calendar loading/error feedback as checkpoint 15. New note/edit forms remain TODO.
+  `a5ed892` (Home workbench and read-only refresh status),
+  `3e4c5be` (Home calendar, native calendar picker and refresh feedback)
+- Next action: commit
+  [checkpoint 15 calendar read states](redesign-pages/HOME-WORKBENCH.md), then
+  migrate Home's Action Items settings dialog.
+  New note/edit forms remain TODO.
   No live customer records were changed;
   existing user drafts are preserved. No push, merge or deployment is authorized.
 - Deferred follow-up: [detached data jobs](PLAN_DETACHED_DATA_JOBS.md) captures
@@ -42,6 +44,19 @@ Inventory date: October 2, 2026. Baseline product SHA:
 Statuses: TODO, AUDITED, BUILDING, VERIFY, DONE, REOPEN, BLOCKED.
 Replace the dash in Evidence with a link to the page card when work starts.
 Keep counts updated, but the rows and revision-specific approvals are authoritative.
+
+## How to read overall progress
+
+As of checkpoint 15 sign-off, the rough effort-based estimate is **about 15%**
+of the full redesign (a judgment call, approximately 10-20%, not a measured metric).
+Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
+milestone slices are approved. Most entity pages, forms, reports, preferences,
+admin and final reconciliation still remain.
+
+The DONE counters are stricter: they count fully reconciled pages/helpers, not
+approved sub-page checkpoints or partial completion. Consequently, `0 / 90`
+pages DONE does not mean zero work is complete. Do not divide completed
+checkpoints by page count; checkpoints differ substantially in size.
 
 ## Suggested work order
 
