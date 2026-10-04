@@ -4,6 +4,9 @@
 {% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% if not request.args.get('embed') %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-workbench.css') }}">
+{% endif %}
 {% endblock %}
 {% block footer %}
 {% if not request.args.get('embed') %}
@@ -23,6 +26,12 @@
             <h1><i class="bi bi-person" aria-hidden="true"></i> {{ seller_name }}</h1>
         </div>
         <div class="sb-revenue-command-group">
+            {% if alerts %}
+            <div class="sb-revenue-modes" data-sb-revenue-modes role="group" aria-label="Revenue view" hidden>
+                <button class="sb-revenue-command" type="button" data-sb-revenue-mode="queue" aria-pressed="false">Queue</button>
+                <button class="sb-revenue-command" type="button" data-sb-revenue-mode="table" aria-pressed="true">Table</button>
+            </div>
+            {% endif %}
             {% if seller %}
             <a href="{{ url_for('sellers.seller_view', id=seller.id) }}" class="sb-revenue-command">
                 <i class="bi bi-person" aria-hidden="true"></i> View Seller Hub
@@ -42,11 +51,32 @@
 
     <div class="sb-revenue-workarea" data-sb-page-body>
         {% set alert_clickable = true %}
+        {% if not request.args.get('embed') %}
+        {% set summary_count_label = 'Alerts Needing Attention' %}
+        {% endif %}
+        {% if alerts and not request.args.get('embed') %}
+        {% include 'partials/_revenue_alert_summary.html' %}
+        {% set summary = none %}
+        <div class="sb-revenue-workbench" data-sb-revenue-workbench>
+            <p class="sb-revenue-queue-error" data-sb-queue-error role="alert" hidden></p>
+            {% include 'partials/_revenue_queue.html' %}
+            <div class="sb-revenue-table-view" data-sb-table-view>
+                {% include 'partials/revenue_alerts_content.html' %}
+            </div>
+        </div>
+        {% else %}
         {% include 'partials/revenue_alerts_content.html' %}
+        {% endif %}
     </div>
 </div>
 
 {% include 'partials/revenue_alert_preview.html' %}
 <script src="{{ url_for('static', filename='js/revenue-bucket-filter.js') }}"></script>
 <script>RevenueBucketFilter.init({ containerId: 'bucketFilterContainer' });</script>
+{% endblock %}
+
+{% block extra_js %}
+{% if not request.args.get('embed') %}
+<script src="{{ url_for('static', filename='js/ui-revenue-workbench.js') }}" defer></script>
+{% endif %}
 {% endblock %}

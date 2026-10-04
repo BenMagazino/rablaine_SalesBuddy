@@ -6,9 +6,11 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 24, continuous workbench shell contract and
-  Revenue Analyzer/seller pilot, VERIFY, shell composition approved October 4,
-  committed as `4320872`; scrolling technically verified but not manually reviewed by the user;
+- Current page/surface: checkpoint 25, standalone seller Revenue queue/detail
+  pilot, technically verified and visually approved October 4, 2026.
+  Checkpoint 26 customer Revenue is the next migration slice.
+  Checkpoint 24 shell composition is approved and committed as `4320872`;
+  its scrolling was technically verified but not manually reviewed by the user;
   full GLOBAL-SHELL remains BUILDING
 - Committed checkpoints: `e84b675` (theme foundation), `1fbdd64` (header/navigation),
   `160e2d9` (native help/dialog foundation), `8dd3363` (customer pickers),
@@ -30,8 +32,10 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `25a14d4` (shared native Revenue lists and Seller Full View, user-approved October 4),
   `60dbdb3` (native Revenue commands and app-wide breadcrumbs, user-approved October 4),
   `4320872` (continuous shell contract and Revenue pilot, user-approved October 4)
-- Next action: choose the next Revenue workflow slice, then adopt the contract
-  incrementally as pages migrate. The wider interim table
+- Next action: migrate customer Revenue after committing the approved seller pilot. The user
+  selected this pilot over migrating customer Revenue first. Queue is the primary
+  seller view, with Table retained for comparison; Analyzer and embeds remain
+  unchanged. The wider interim table
   is not approval of the final Revenue layout. Analyzer and seller alert headers,
   summaries and commands are native; customer revenue remains legacy.
   October 4 review correction: all 90 full-page endpoints now use Home's shared
@@ -43,7 +47,8 @@ Inventory date: October 2, 2026. Baseline product SHA:
   the legacy page bodies are migrated. Checkpoint 24 replaces the floating-frame
   experiment with an edge-connected surface, fixed command/summary bands,
   scrolling alert region and useful filtered-count status rail. The approved
-  table/review workflow remains; a queue/detail redesign is a separate decision.
+  table/review workflow remains available. Checkpoint 25 now builds the separately
+  authorized queue/detail workflow for standalone seller Revenue only.
   Its opt-in scope does not restyle legacy pages, embeds or Home's grid.
   These two pages are VERIFY, not DONE.
   New note/edit forms remain TODO.
@@ -75,7 +80,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 24 sign-off, the rough effort-based estimate is **about 25%**
+As of checkpoint 25 sign-off, the rough effort-based estimate is **about 26%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -99,6 +104,9 @@ shell contract and Revenue pilot are the next checkpoint.
 Checkpoint 24: about 25%, shell composition user-approved October 4, 2026,
 committed as `4320872`. Scrolling is technically verified, not manually reviewed
 by the user; the wider interim table is not the final Revenue layout approval.
+Checkpoint 25: about 26%, seller queue/detail user-approved October 4, 2026,
+including restored semantic priorities and the contextual modal/full-page layout
+principle. Modal lists keep shared native styling without copying full-page layout.
 
 The DONE counters are stricter: they count fully reconciled pages/helpers, not
 approved sub-page checkpoints or partial completion. Consequently, `0 / 90`
@@ -206,7 +214,7 @@ have separate rows even when they use one template.
 | REV-DASH | Revenue dashboard | `/reports/revenue`; `/revenue` redirects | `revenue_dashboard.html` | VERIFY | [Continuous shell pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-24-continuous-workbench-shell-and-revenue-pilot) |
 | REV-IMPORT | Revenue import | `/revenue/import`; `/import/revenue` redirects | `revenue_import.html` | TODO | - |
 | REV-CONFIG | Revenue configuration | `/revenue/config` | `revenue_config.html` | TODO | - |
-| REV-SELL | Seller revenue alerts | `/revenue/seller/<seller_name>` | `revenue_seller_alerts.html` | VERIFY | [Continuous shell pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-24-continuous-workbench-shell-and-revenue-pilot) |
+| REV-SELL | Seller revenue alerts | `/revenue/seller/<seller_name>` | `revenue_seller_alerts.html` | VERIFY | [Queue/detail workbench pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-25-seller-revenue-queue-and-inspector) |
 | REV-SELL-PRODS | Seller products | `/revenue/seller/<seller_name>/products` | `revenue_seller_products.html` | TODO | - |
 | REV-SELL-PROD | Seller product detail | `/revenue/seller/<seller_name>/product/<path:product>` | `revenue_seller_product_view.html` | TODO | - |
 | REV-CUST | Customer revenue | `/revenue/customer/<int:customer_id>`; `/customer/<int:customer_id>/revenue` | `revenue_customer_view.html` | TODO | - |

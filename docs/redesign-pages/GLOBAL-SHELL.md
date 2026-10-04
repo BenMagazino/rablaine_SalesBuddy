@@ -88,7 +88,11 @@
 - Entry points: every page inheriting `templates/base.html`, including embed mode
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
-- Next action: choose the next Revenue workflow slice, then adopt
+- Checkpoint 25 seller queue/detail is technically verified and user-approved
+  October 4, including priority-color restoration and contextual composition:
+  full pages support sustained work, while modals retain focused compact lists
+  with shared domain content, actions, semantic colors and native styling.
+- Next action: migrate customer Revenue, then adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.
@@ -140,9 +144,11 @@ The initial floating Revenue frame is superseded, not a second supported layout.
   in `ui-revenue-detail.css`, scoped to the opt-in frame. Existing shared list,
   preview, review, filter and export behavior is retained.
 
-This pilot deliberately preserves the approved table workflow. An alert queue
-with a permanent selected-detail inspector, comparison modes and correction of
-the existing customer-versus-alert count label are separate workflow decisions.
+Checkpoint 24 deliberately preserves the approved table workflow. On October 4,
+the user separately selected the checkpoint 25 standalone seller queue/detail
+pilot, retaining Table comparison and correcting that page's alert-count label.
+See [checkpoint 25](HOME-WORKBENCH.md#checkpoint-25-seller-revenue-queue-and-inspector).
+This does not authorize the same interaction on Analyzer or embedded consumers.
 
 ## Checkpoint 1 scope
 

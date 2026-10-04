@@ -57,7 +57,7 @@ def test_revenue_pages_use_native_chrome(
         assert [
             label.get_text(strip=True)
             for label in root.select(".sb-revenue-list-summary dt")
-        ].count("Customers Needing Attention") == 1
+        ].count("Alerts Needing Attention") == 1
     assert root.select_one("#bucketFilterContainer")
     assert root.select_one("#alertsTable")
     bar = soup.select_one(".sb-context-bar")
@@ -155,6 +155,90 @@ def test_workbench_scroller_focus_stays_inside_clipped_region() -> None:
     selector = ".sb-page-frame .sb-revenue-workarea .sb-revenue-alerts-scroll:focus-visible"
     rule = source.split(selector, 1)[1].split("}", 1)[0]
     assert "outline-offset: -2px" in rule
+
+
+def test_seller_queue_preserves_record_identity_and_comparison_fallback(
+    client: FlaskClient, review_alert: dict[str, int],
+) -> None:
+    """The standalone queue selects alerts, reuses guarded details and retains Table controls."""
+    soup = BeautifulSoup(client.get("/revenue/seller/Review%20UI%20Seller").data, "html.parser")
+    item = soup.select_one('[data-sb-queue-alert]')
+    assert item["data-sb-queue-alert"] == str(review_alert["alert"])
+    assert item["role"] == "option"
+    assert item["data-full-url"] == f'/customer/{review_alert["customer"]}'
+    assert soup.select_one('[data-sb-queue-view][hidden]')
+    assert not soup.select_one('[data-sb-table-view]').has_attr("hidden")
+    assert len(soup.select("#revenueSummaryCount")) == 1
+    assert soup.select_one('[data-sb-queue-inspector] [data-sb-record-retry]')
+    scripts = [script.get("src", "") for script in soup.select("script")]
+    assert scripts.index("/static/js/ui-record-dialog.js") < scripts.index(
+        "/static/js/ui-revenue-workbench.js"
+    )
+    assert soup.select_one('#alertsTable .review-action-btn')
+    assert soup.select_one('#alertsTable [data-sb-alert-sort]')
+
+
+@pytest.mark.parametrize("path", [
+    "/reports/revenue", "/revenue/seller/Review%20UI%20Seller?embed=1",
+])
+def test_seller_queue_does_not_change_analyzer_or_embedded_consumers(
+    client: FlaskClient, review_alert: dict[str, int], path: str,
+) -> None:
+    """The workflow pilot is not an implicit redesign of other shared-list hosts."""
+    soup = BeautifulSoup(client.get(path).data, "html.parser")
+    assert not soup.select('[data-sb-revenue-workbench], [data-sb-queue-inspector]')
+    assert not soup.select('script[src="/static/js/ui-revenue-workbench.js"]')
+    assert soup.select_one("#alertsTable")
+
+
+def test_seller_queue_counts_alerts_not_unique_customers(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int],
+) -> None:
+    """Two buckets for one customer remain distinct reviewable alerts and count as two."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        db.session.add(RevenueAnalysis(
+            customer_id=review_alert["customer"], customer_name="Review UI Customer",
+            seller_name="Review UI Seller", bucket="Fabric", category="DECLINING",
+            recommended_action="CHECK-IN", priority_score=80,
+            avg_revenue=3000, latest_revenue=2000, months_analyzed=6, confidence="HIGH",
+        ))
+        db.session.commit()
+    soup = BeautifulSoup(client.get("/revenue/seller/Review%20UI%20Seller").data, "html.parser")
+    assert soup.select_one("#revenueSummaryCount").text == "2"
+    assert soup.select_one(".sb-revenue-list-summary dt").text == "Alerts Needing Attention"
+    items = soup.select("[data-sb-queue-alert]")
+    assert len(items) == 2
+    assert len({item["data-sb-queue-alert"] for item in items}) == 2
+    assert {item["data-customer-name"] for item in items} == {"Review UI Customer"}
+
+
+@pytest.mark.parametrize("score, tone", [
+    (100, "danger"), (80, "danger"), (79, "warning"), (60, "warning"),
+    (59, "accent"), (40, "accent"), (39, "neutral"), (0, "neutral"),
+])
+def test_priority_tiers_match_queue_table_and_detail(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int], score: int, tone: str,
+) -> None:
+    """All native alert presentations preserve the same priority threshold semantics."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        alert = db.session.get(RevenueAnalysis, review_alert["alert"])
+        alert.priority_score = score
+        db.session.commit()
+    soup = BeautifulSoup(client.get("/revenue/seller/Review%20UI%20Seller").data, "html.parser")
+    queue = soup.select_one(".sb-revenue-queue-identity > span[data-tone]")
+    table = soup.select_one("#alertsTable .sb-revenue-number")
+    response = client.get(f'/api/revenue/analysis/{review_alert["alert"]}/detail')
+    assert response.status_code == 200
+    detail = BeautifulSoup(response.data, "html.parser").select_one(
+        ".sb-revenue-metrics > div:last-child > dd"
+    )
+    for element in (queue, table, detail):
+        assert element["data-tone"] == tone
+        assert element.get_text(strip=True) == str(score)
 
 
 def test_analyzer_commands_and_seller_menu_keep_destinations(
@@ -526,7 +610,9 @@ def test_alert_list_preserves_data_links_and_native_controls(
     assert f'/customer/{review_alert["customer"]}' in hrefs
     assert len(soup.select('script[src="/static/js/ui-revenue-alerts.js"][defer]')) == 1
     if host != "dashboard":
-        summary = root.select_one(".sb-revenue-list-summary")
+        summary = soup.select_one(".sb-revenue-list-summary") if host == "seller_alerts" else (
+            root.select_one(".sb-revenue-list-summary")
+        )
         assert summary.select_one("#revenueSummaryCount").get_text() == "1"
         assert len(summary.select("dt")) == len(summary.select("dd")) == 3
         assert "$1,234" in summary.get_text()

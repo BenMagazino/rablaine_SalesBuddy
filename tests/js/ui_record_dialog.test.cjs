@@ -5,7 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../../static/js/ui-record-dialog.js'), 'utf8');
 
-function record() {
+function record(presentation = 'dialog') {
     const requests = [], mounts = [], errors = [], navigations = [];
     class Event {
         constructor(type, options = {}) { this.type = type; Object.assign(this, options); }
@@ -28,7 +28,8 @@ function record() {
         setAttribute(name, value) { this.attributes.set(name, value); }
         getAttribute(name) { return this.attributes.get(name) || null; }
         hasAttribute(name) { return this.attributes.has(name); }
-        focus() {}
+        focus() { this.focused = true; }
+        contains(node) { return this === node; }
         replaceChildren(fragment) { this.fragment = fragment || null; }
         closest() { return this.href ? this : null; }
     }
@@ -67,6 +68,7 @@ function record() {
             requests.push({url, options, resolve, reject})),
     });
     const options = {
+        presentation, statusText: presentation === 'panel' ? '' : undefined,
         loadUrl: id => `/api/note/${id}/detail`, fullUrl: id => `/note/${id}`,
         fragmentSelector: '[data-detail]', identityAttribute: 'data-id',
         mount() {
@@ -96,6 +98,57 @@ function record() {
         }};
 }
 const settle = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+
+test('persistent panels reuse identity-checked loading without opening a modal', async () => {
+    const h = record('panel');
+    const pending = h.open(7); h.reply(0, 7); await pending;
+    assert.equal(h.dialog.open, false);
+    assert.equal(h.dialog.hidden, false);
+    assert.equal(h.field('content').hidden, false);
+    assert.equal(h.field('status').textContent, '');
+    h.field('retry').dispatchEvent(new h.Event('click'));
+    assert.equal(h.field('title').focused, true);
+    h.reply(1, 7); await settle();
+    const refreshed = h.api.refresh(); h.reply(2, 7); await refreshed;
+    assert.equal(h.mounts.length, 3);
+});
+
+test('panel clearing cancels pending reads and cannot be undone by a late response', async () => {
+    const h = record('panel');
+    const pending = h.open(7);
+    assert.equal(h.api.clear(), true);
+    assert.equal(h.requests[0].options.signal.aborted, true);
+    h.reply(0, 7); await pending;
+    assert.equal(h.dialog.hidden, true);
+    assert.equal(h.field('content').fragment, null);
+    assert.equal(h.field('loading').hidden, true);
+    assert.equal(h.field('content').getAttribute('aria-busy'), 'false');
+    const next = h.open(7); h.reply(1, 7); await next;
+    assert.equal(h.field('content').hidden, false);
+});
+
+test('busy panel mounts block selection, mode clearing and refresh', async () => {
+    const h = record('panel');
+    const pending = h.open(7); h.reply(0, 7); await pending;
+    h.mounts[0].busy = true;
+    assert.equal(h.open(8), false);
+    assert.equal(h.api.clear(), false);
+    assert.equal(h.api.refresh(), false);
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.dialog.hidden, false);
+    h.mounts[0].busy = false;
+    assert.equal(h.api.clear(), true);
+    assert.equal(h.mounts[0].disposed, 1);
+});
+
+test('external review guards block panel transitions even before a body is mounted', () => {
+    const h = record('panel');
+    h.options.isBusy = () => true;
+    assert.equal(h.open(7), false);
+    assert.equal(h.api.clear(), false);
+    assert.equal(h.requests.length, 0);
+    assert.equal(h.mounts.length, 0);
+});
 
 test('record loads lazily, preserves identity/Full Page and mounts/disposes once', async () => {
     const h = record();

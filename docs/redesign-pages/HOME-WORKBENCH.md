@@ -1122,3 +1122,93 @@ interim table as the final Revenue design.
 There is deliberately no new queue/inspector interaction in this checkpoint.
 Adopt the approved contract incrementally, not with a global legacy-page restyle.
 Customer Revenue and its charts are not migrated by this pilot.
+
+## Checkpoint 25: seller Revenue queue and inspector
+
+Status: technically verified and visually approved October 4, 2026, including
+restored priority colors. The user selected this workflow pilot instead of
+migrating customer Revenue first. Approved progress is about 26%.
+
+### Scope and parity
+
+- Standalone seller Revenue starts in Queue after successful enhancement. A
+  366px priority-ordered alert queue and independently scrolling detail inspector
+  divide the continuous work surface. The existing table is retained behind the
+  Queue/Table view control and remains the server-rendered fallback.
+- Queue selection is per analysis ID, not per customer. Each row carries customer,
+  bucket, category, priority, risk/opportunity and the shared review-state badge.
+  Arrow Up/Down, Home and End select visible alerts with one roving tab stop.
+- User review restored semantic queue priority colors: 80+ danger, 60-79 warning,
+  40-59 accent and below 40 neutral. Queue, native table and detail share one
+  priority-tone macro, with threshold-boundary regression coverage.
+  Follow-up validation: 82 scoped Python tests and seven queue JavaScript checks
+  pass. Live selected/unselected priorities match table/detail colors across all
+  eight themes; all four queue tone rules resolve to existing semantic tokens.
+- Detail uses the exact shared `revenue_alert_detail.html` response, including
+  guidance, reviewed state, previous-review hint, metrics and product/month
+  totals. Customer Hub and Full Revenue Page remain distinct destinations.
+  No invented charts or new analysis rules.
+- The shared `SBRecordDialog.create` controller adds explicit `presentation:
+  'panel'`, guarded `clear()`/`refresh()` and optional external `isBusy` for
+  persistent hosts. It retains identity/content-type checking, cancellation,
+  stale-response rejection, error/Retry, date rendering and mount/disposal.
+  Existing dialog callers keep their original lifecycle.
+- The approved Review Alert editor owns writes and dirty/save protection. Review
+  blocks queue selection and mode changes, including when no pane body is mounted.
+  Only a confirmed selected-pane review refreshes its detail after editor close.
+  Cancel/discard does not trigger a reload. Shared review badges update in both
+  views through the existing confirmed-write event.
+- Visibility follows the existing table's filtered rows, not a second filter
+  implementation. An excluded selection advances to the highest-priority visible
+  alert; zero results clear obsolete details and show an explicit recovery hint.
+  Comparison sorting does not reorder the priority queue.
+- Seller totals and CSV-for-Teams retain their existing all-bucket scope. The
+  summary remains visible in both modes. Its count now truthfully says Alerts
+  Needing Attention: two buckets for one customer count as two alerts. Risk and
+  opportunity remain separate.
+- The shared summary markup is extracted unchanged into one partial, with a
+  default label preserving other hosts. Analyzer, embedded seller lists, Seller
+  Full View, Home and customer Revenue retain their existing workflows.
+- Scripts initialize after the shared record loader. Invalid queue/table identity
+  or missing loader produces explicit feedback rather than a false success.
+  Mode changes do not write preferences. Cached-history return resumes selection.
+
+### Verification
+
+- 149 isolated scoped Python tests pass, covering unchanged hosts, single summary,
+  literal metadata, native controls, script ordering, duplicate-customer/different-
+  bucket identities, alert-count semantics, empty states and shell/breadcrumb parity.
+- 84 scoped JavaScript checks cover shared dialog/panel reads and guards, queue
+  keyboard/selection/filter/mode/review/history behavior, sorting, filters, menus,
+  status counts and exports.
+- Live dev remains at the unchanged 1517 x 1167 desktop viewport. Austin Card
+  shows 6 of 12 alerts with the saved Databases/Fabric filter. Alert 1069 loads
+  fifteen product/total rows. Native Arrow Down selects actual alert 332 and
+  its matching body. Table sorting and switching back preserve queue selection.
+- All eight palette/mode pairs preserve geometry and avoid document/inspector
+  horizontal overflow. Sampled selected-row, summary and status text contrast
+  is at least 5.40:1. Theme attributes are restored without preference writes.
+- Native detail-region wheel scrolling leaves the queue, page commands, selected
+  customer heading and bottom status fixed; document scrolling remains zero.
+- A replayed read-only HTTP 503 exposes Error/Retry and removes stale detail.
+  Removing the interceptor and native Retry restores real alert 1069 and all
+  fifteen product/total rows, with title focus retained.
+- Native Review opens for actual alert 332. Temporary unsaved notes survive
+  Keep editing. A guarded programmatic Table request is rejected without changing
+  selection. Discard closes the temporary draft, restores the actual Review
+  opener and clears the obsolete busy hint. No live review PATCH is submitted.
+- Temporary table-row visibility changes exercise Fabric-only 3/12 and zero
+  results without saving filters. Selection follows the correct actual alert 250,
+  zero results clear the inspector, and original row styles/filter values are
+  restored. These visibility probes are distinct from the automated picker tests.
+- No live business data, saved preferences, exports or clipboard are changed.
+  Protected New Note tabs are untouched.
+
+### Visual review
+
+The user approved the standalone seller queue/detail composition and semantic
+priority correction, while leaving room for later refinements. Modal Full View
+retains a compact native table for contextual comparison; Full Page opens the
+sustained-work queue/detail layout. Shared content and actions remain consistent,
+not identical composition. The approved shell is not being reopened. Analyzer
+remains Table-only; customer Revenue migration follows next.

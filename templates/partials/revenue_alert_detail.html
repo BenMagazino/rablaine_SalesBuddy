@@ -1,5 +1,6 @@
 {# Shared alert detail body for native and legacy preview hosts. #}
 {% from 'partials/review_action.html' import review_badge, action_buttons, previous_review_hint %}
+{% from 'partials/_revenue_priority.html' import priority_tone %}
 {% set category_labels = {
     'DECLINING': 'Declining', 'RECENT_DIP': 'Recent Dip',
     'EXPANSION_OPPORTUNITY': 'Expansion', 'VOLATILE': 'Volatile',
@@ -39,7 +40,7 @@
             <div><dt>Avg Revenue</dt><dd>${{ '{:,.0f}'.format(a.avg_revenue) }}</dd></div>
             <div><dt>Latest</dt><dd>${{ '{:,.0f}'.format(a.latest_revenue) }}</dd></div>
             <div><dt>Trend</dt><dd data-tone="{{ 'danger' if a.trend_slope < -3 else 'positive' if a.trend_slope > 3 else 'neutral' }}">{{ '{:+.1f}'.format(a.trend_slope) }}%/mo</dd></div>
-            <div><dt>Priority</dt><dd data-tone="{{ 'danger' if a.priority_score >= 80 else 'warning' if a.priority_score >= 60 else 'accent' if a.priority_score >= 40 else 'neutral' }}">{{ a.priority_score }}</dd></div>
+            <div><dt>Priority</dt><dd data-tone="{{ priority_tone(a.priority_score) }}">{{ a.priority_score }}</dd></div>
         </dl>
         {% if has_guidance %}
         <div class="sb-revenue-guidance">

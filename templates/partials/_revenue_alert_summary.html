@@ -1,0 +1,5 @@
+<dl class="sb-revenue-list-summary">
+    <div><dt>{{ summary_count_label|default('Customers Needing Attention') }}</dt><dd id="revenueSummaryCount">{{ summary.count }}</dd></div>
+    <div><dt>Total Monthly $ at Risk</dt><dd data-tone="danger">${{ '{:,.0f}'.format(summary.total_at_risk) }}</dd></div>
+    <div><dt>Total Monthly $ Opportunity</dt><dd data-tone="positive">${{ '{:,.0f}'.format(summary.total_opportunity) }}</dd></div>
+</dl>

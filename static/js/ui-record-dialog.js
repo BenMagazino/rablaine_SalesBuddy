@@ -1,4 +1,4 @@
-/** Native record loading, mount/disposal and guarded transitions. */
+/** Shared record loading and guarded dialog/persistent-panel transitions. */
 (() => {
     'use strict';
 
@@ -9,6 +9,11 @@
         const dialog = typeof target === 'string' ? document.getElementById(target) : target;
         if (!dialog) throw new Error('Record dialog is missing.');
         if (controllers.has(dialog)) return controllers.get(dialog);
+        if (options.presentation && !['dialog', 'panel'].includes(options.presentation)) {
+            throw new Error('Invalid record presentation: ' + options.presentation);
+        }
+        const panel = options.presentation === 'panel';
+        const active = () => panel ? !dialog.hidden : dialog.open;
         const find = name => {
             const element = dialog.querySelector(`[data-sb-record-${name}]`);
             if (!element) throw new Error(`Missing record dialog control: ${name}`);
@@ -17,7 +22,7 @@
         const title = find('title'), fullLink = find('full-link'), content = find('content');
         const loading = find('loading'), errorPanel = find('error'), retry = find('retry');
         const status = find('status');
-        const defaultStatus = options.statusText || DEFAULT_STATUS;
+        const defaultStatus = options.statusText ?? DEFAULT_STATUS;
         const busyText = options.busyText ||
             'Saving action item. Please wait before leaving this note.';
         const discard = document.getElementById('recordDiscardDialog');
@@ -36,7 +41,7 @@
         }
 
         function guard(proceed) {
-            if (mounted?.isBusy()) {
+            if (options.isBusy?.() || mounted?.isBusy()) {
                 status.textContent = busyText;
                 return false;
             }
@@ -71,7 +76,7 @@
                     throw new Error('Record detail response is not HTML.');
                 }
                 const html = await response.text();
-                if (version !== generation || !dialog.open) return;
+                if (version !== generation || !active()) return;
                 const template = document.createElement('template');
                 template.innerHTML = html;
                 const root = template.content.querySelector(options.fragmentSelector);
@@ -102,13 +107,19 @@
         }
 
         function replace(snapshot) {
-            if (dialog.open) dialog.querySelector('[data-sb-dialog-close]').focus({preventScroll: true});
+            if (!panel && dialog.open) focusAnchor();
             selection = snapshot;
             title.textContent = snapshot.title;
             fullLink.href = options.fullUrl(snapshot.id);
             options.onSelection?.(snapshot);
-            SBDialog.open(dialog);
+            if (panel) dialog.hidden = false;
+            else SBDialog.open(dialog);
             return load();
+        }
+
+        function focusAnchor() {
+            (panel ? title : dialog.querySelector('[data-sb-dialog-close]'))
+                .focus({preventScroll: true});
         }
 
         dialog.addEventListener('sb:dialog-before-close', event => {
@@ -121,7 +132,7 @@
             selection = null;
         });
         dialog.addEventListener(options.stateEvent || 'sb:note-action-state', () => {
-            status.textContent = mounted?.isBusy() ? busyText : defaultStatus;
+            status.textContent = options.isBusy?.() || mounted?.isBusy() ? busyText : defaultStatus;
         });
         discard.addEventListener('sb:dialog-closed', () => { transition = null; });
         confirm.addEventListener('click', () => {
@@ -134,7 +145,7 @@
             try { proceed(); } finally { bypass = false; }
         });
         retry.addEventListener('click', () => {
-            dialog.querySelector('[data-sb-dialog-close]').focus({preventScroll: true});
+            focusAnchor();
             load();
         });
         dialog.addEventListener('click', event => {
@@ -152,9 +163,30 @@
             open(snapshot) {
                 if (!Number.isSafeInteger(snapshot?.id) || snapshot.id < 1 ||
                     typeof snapshot.title !== 'string') throw new Error('Invalid record selection.');
-                if (dialog.open && selection?.id === snapshot.id) return;
-                if (!guard(() => replace(snapshot))) return;
+                if (active() && selection?.id === snapshot.id) return;
+                if (!guard(() => replace(snapshot))) return false;
                 return replace(snapshot);
+            },
+            clear() {
+                const clear = () => {
+                    dispose();
+                    selection = null;
+                    if (panel) dialog.hidden = true;
+                    loading.hidden = true;
+                    errorPanel.hidden = true;
+                    content.hidden = true;
+                    content.setAttribute('aria-busy', 'false');
+                    status.textContent = defaultStatus;
+                };
+                if (!guard(clear)) return false;
+                clear();
+                return true;
+            },
+            refresh() {
+                if (!selection || !active()) return false;
+                if (!guard(() => api.refresh())) return false;
+                if (panel && content.contains(document.activeElement)) focusAnchor();
+                return load();
             },
         };
         controllers.set(dialog, api);
