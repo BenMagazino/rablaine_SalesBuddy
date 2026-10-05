@@ -15,9 +15,9 @@ from app.models import (
 from app.services.revenue_import import (
     get_import_history, get_months_in_database,
     get_customer_revenue_history, get_product_revenue_history,
-    get_products_for_bucket, get_all_products, get_customers_using_product,
+    get_products_for_bucket, get_all_products,
     get_seller_products, get_seller_customers_using_product,
-    consolidate_products_list, consolidate_product_name,
+    consolidate_products_list, consolidate_product_name, get_product_comparison,
 )
 from app.services.revenue_analysis import (
     run_analysis_for_all, run_analysis_streaming, get_actionable_analyses,
@@ -656,36 +656,14 @@ def revenue_products_list():
 @revenue_bp.route('/product/<path:product>')
 def revenue_product_view(product: str):
     """View all customers using a specific product."""
-    from app.services.revenue_import import PRODUCT_CONSOLIDATION_PREFIXES
-    
-    # Check if this is a consolidated product (e.g., "Azure Synapse Analytics")
-    is_consolidated = product in PRODUCT_CONSOLIDATION_PREFIXES
-    
-    if is_consolidated:
-        # Get all sub-products for this consolidated product
-        all_products = get_all_products()
-        matching_products = [p['product'] for p in all_products if p['product'].startswith(product)]
-    else:
-        matching_products = [product]
-    
-    # Aggregate customers across all matching products
-    customers_dict = {}
-    for prod in matching_products:
-        prod_customers = get_customers_using_product(prod)
-        for c in prod_customers:
-            key = (c['customer_name'], c['bucket'])
-            if key not in customers_dict:
-                customers_dict[key] = {
-                    'customer_name': c['customer_name'],
-                    'bucket': c['bucket'],
-                    'customer_id': c.get('customer_id'),
-                    'total_revenue': 0,
-                    'latest_month': c.get('latest_month')
-                }
-            customers_dict[key]['total_revenue'] += c['total_revenue']
-    
-    customers = list(customers_dict.values())
-    customers.sort(key=lambda x: x['total_revenue'], reverse=True)
+    comparison = get_product_comparison(product)
+    customers = comparison['customers']
+    matching_products = comparison['matching_products']
+    is_consolidated = comparison['is_consolidated']
+    if request.args.get('comparison') == '1':
+        return render_template(
+            'partials/_revenue_product_comparison.html', product=product, customers=customers,
+        )
     
     # Get historical revenue for each customer (aggregated across matching products)
     customer_history = {}

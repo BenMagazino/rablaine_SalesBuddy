@@ -1,9 +1,11 @@
 {% from 'partials/_revenue_cells.html' import revenue_change %}
 <div class="sb-revenue-table-scroll" tabindex="0" role="region"
      aria-label="{{ history_label }} full monthly revenue history">
-    <table class="sb-revenue-table sb-revenue-history-table">
+    <table class="sb-revenue-table sb-revenue-history-table" data-sb-sortable
+           data-sb-sort-key="history:{{ history_label }}" data-sb-sort-default-column="0"
+           data-sb-sort-default-direction="descending">
         <caption>{{ history_caption }}</caption>
-        <thead><tr><th scope="col">Month</th><th scope="col">Revenue</th><th scope="col">Change</th></tr></thead>
+        <thead><tr><th scope="col" data-sb-sort-type="date">Month</th><th scope="col" data-sb-sort-type="number">Revenue</th><th scope="col" data-sb-sort-type="number">Change</th></tr></thead>
         <tbody>
             {% set prev_revenues = {} %}
             {% set prev_val = namespace(value=0) %}
@@ -13,9 +15,10 @@
             {% endfor %}
             {% for rd in history|reverse %}
             <tr>
-                <th scope="row">{{ rd.fiscal_month }}</th>
-                <td>${{ '{:,.0f}'.format(rd.revenue) }}</td>
-                <td>{{ revenue_change(rd.revenue, prev_revenues.get(rd.fiscal_month, 0)) }}</td>
+                <th scope="row" data-sb-sort-value="{{ rd.month_date.isoformat() if rd.month_date else '' }}">{{ rd.fiscal_month }}</th>
+                <td data-sb-sort-value="{{ rd.revenue }}">${{ '{:,.0f}'.format(rd.revenue) }}</td>
+                {% set previous = prev_revenues.get(rd.fiscal_month, 0) %}
+                <td data-sb-sort-value="{{ (rd.revenue - previous) / previous * 100 if previous > 0 else '' }}">{{ revenue_change(rd.revenue, previous) }}</td>
             </tr>
             {% endfor %}
         </tbody>

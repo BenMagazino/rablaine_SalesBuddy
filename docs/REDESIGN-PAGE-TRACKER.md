@@ -6,8 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 28, product Revenue comparison/history,
-  VERIFY, technically verified and user-approved October 5; ready for checkpoint commit.
+- Current page/surface: checkpoint 29, Products directory and shared Revenue column sorting,
+  VERIFY, technically verified and user-approved October 5, 2026.
+  Checkpoint 28 product Revenue is user-approved and committed as `e286617`.
   Checkpoint 27 customer bucket history is user-approved and committed as `aaf6cfd`.
   Checkpoint 26 customer Revenue is user-approved and committed as `9a4ddef`.
   Checkpoint 25 seller queue/detail is user-approved and committed as `747058a`.
@@ -36,9 +37,25 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `4320872` (continuous shell contract and Revenue pilot, user-approved October 4),
   `747058a` (seller Revenue queue/detail, user-approved October 4),
   `9a4ddef` (customer Revenue context/history, user-approved October 4),
-  `aaf6cfd` (native customer bucket history, user-approved October 4)
-- Next action: commit approved checkpoint 28, then migrate the Products directory.
-  The searchable comparison
+  `aaf6cfd` (native customer bucket history, user-approved October 4),
+  `e286617` (product Revenue comparison/trend, user-approved October 5)
+- Next action: migrate seller product list/detail after checkpoint 29 sign-off.
+  Both Products aliases use a native
+  product-left/customer-consumption-right browser with independent scrolling,
+  sticky columns and a filtered-count rail. All 573 products retain their values,
+  ordering and Full Product destinations. Shared customer rollups and markup
+  serve both panes and the approved product detail. Customer links identify the
+  exact customer/bucket entry rather than its unstable revenue-sorted position.
+  Back restores product, search and both scroll positions. Usage labels retain
+  positive-pair counts and consolidated member summing. Search/Clear, guarded
+  loading/Retry, customer drill-down, embeds and contextual Help are verified.
+  Every table column in the recent Revenue workbenches now sorts in both directions,
+  including monthly history, Analyzer, seller comparisons, inspectors and previews.
+  Shared sorting preserves row identity, selection, filters, financial colors and
+  graph chronology; totals stay pinned and Back restores independent sort states.
+  Missing values remain distinct from imported zeroes and rounded display dollars.
+  Seller product list/detail remain the next family after approval.
+  The approved product detail's searchable comparison
   table selects customer history alongside it; no duplicate customer queue.
   The selected history now includes a chronological monthly revenue graph above
   the exact-value table, with hover amounts and explicit missing-month gaps.
@@ -47,8 +64,8 @@ Inventory date: October 2, 2026. Baseline product SHA:
   Product-wide totals remain unchanged by search, with honest customer/bucket
   entry labels. Consolidated members, unmatched links, native Help, history
   navigation and browser-restored search are verified. Both standalone aliases
-  enhance into work panes; embeds retain stacked reading. The Products directory
-  and seller product pages remain legacy.
+  enhance into work panes; embeds retain stacked reading. Seller product pages
+  remain legacy.
   Customer analysis now shares
   native summary/review content with previews and the seller inspector. Product
   grids share the same rendering and preserve all-history totals. The continuous
@@ -85,7 +102,7 @@ Inventory date: October 2, 2026. Baseline product SHA:
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
 - Final candidate product SHA: not selected
 - Page progress: 0 / 90 DONE
-- Shared fragment/helper progress: 7 / 27 DONE
+- Shared fragment/helper progress: 9 / 29 DONE
 - Global/shell/error progress: 5 / 17 DONE
 - Additional pages discovered after baseline: none recorded
 - Additional shared helpers recorded: existing Revenue Buckets filter, omitted
@@ -94,6 +111,10 @@ Inventory date: October 2, 2026. Baseline product SHA:
   with the controller reused by all four preview hosts; user-approved and DONE.
   Checkpoint 28 adds the shared monthly history renderer for bucket and product
   pages; technically verified, user-approved October 5 and DONE.
+  Checkpoint 29 adds shared product customer comparison/summary fragments and
+  a history-free rollup service; user-approved October 5 and DONE.
+  It also adds the shared native table sorter across the recently migrated
+  Revenue workbenches and their fragments; user-approved October 5 and DONE.
 - Commit cadence: each coherent, verified checkpoint; no automatic push or merge
 - Pre-release reviewer: the user; external tester/users provide post-release QA
 
@@ -103,7 +124,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 28 sign-off, the rough effort-based estimate is **about 29%**
+As of checkpoint 29 sign-off, the rough effort-based estimate is **about 31%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -130,9 +151,11 @@ by the user; the wider interim table is not the final Revenue layout approval.
 Checkpoint 25: about 26%, seller queue/detail user-approved October 4, 2026, committed as `747058a`,
 including restored semantic priorities and the contextual modal/full-page layout
 principle. Modal lists keep shared native styling without copying full-page layout.
-Checkpoint 28: about 29%, product comparison/history user-approved October 5,
+Checkpoint 28: about 29%, product comparison/history user-approved October 5, committed as `e286617`,
 including the monthly graph, mirrored dollar labels, three-column comparison
-and full-pane reading width. Ready for checkpoint commit.
+and full-pane reading width. Checkpoint 29: about 31%, Products browser and shared
+column sorting user-approved October 5, including loaded previews, queue order
+and independent Back restoration.
 
 The DONE counters are stricter: they count fully reconciled pages/helpers, not
 approved sub-page checkpoints or partial completion. Consequently, `0 / 90`
@@ -245,7 +268,7 @@ have separate rows even when they use one template.
 | REV-SELL-PROD | Seller product detail | `/revenue/seller/<seller_name>/product/<path:product>` | `revenue_seller_product_view.html` | TODO | - |
 | REV-CUST | Customer revenue | `/revenue/customer/<int:customer_id>`; `/customer/<int:customer_id>/revenue` | `revenue_customer_view.html` | VERIFY | [Checkpoint 26 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-26-customer-revenue-analysis-and-history) |
 | REV-BUCKET | Customer bucket products | `/revenue/customer/<int:customer_id>/bucket/<bucket>`; `/customer/<int:customer_id>/revenue/bucket/<bucket>` | `revenue_bucket_products.html` | VERIFY | [Checkpoint 27 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-27-customer-bucket-product-history) |
-| REV-PRODS | Products | `/revenue/products`; `/products` | `revenue_products_list.html` | TODO | - |
+| REV-PRODS | Products | `/revenue/products`; `/products` | `revenue_products_list.html` | VERIFY | [Checkpoint 29 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-29-products-directory) |
 | REV-PROD | Product detail | `/revenue/product/<path:product>`; `/product/<path:product>` | `revenue_product_view.html` | VERIFY | [Checkpoint 28 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-28-product-revenue-comparison-and-history) |
 | REV-RPTS | Revenue reports | `/reports/revenue-reports`; `/revenue/reports` redirects | `revenue_reports_list.html` | TODO | - |
 | REV-SYN | Synapse customers | `/reports/synapse-customers`; `/revenue/reports/new-synapse-users` and `/reports/new-synapse-users` redirect with `?mode=new` | `revenue_report_synapse_customers.html` | TODO | - |
@@ -267,6 +290,8 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | FR-PROJ | `partials/project_view_content.html` | `/api/project/<int:id>/detail` | TODO | - |
 | FR-REV | `partials/revenue_alert_detail.html` | `/api/revenue/analysis/<int:analysis_id>/detail`, all four preview hosts | DONE | [Checkpoint 20 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | FR-REV-HISTORY | `partials/_revenue_monthly_history.html` | Customer bucket Full History and product customer history | DONE | [Checkpoint 28 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-28-product-revenue-comparison-and-history) |
+| FR-PRODUCT-COMPARE | `partials/_revenue_product_customers.html`, `partials/_revenue_product_summary.html`, `get_product_comparison` | Products inspector and Product Revenue; existing product aliases with `comparison=1` | DONE | [Checkpoint 29 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-29-products-directory) |
+| JS-TABLE-SORT | `static/js/ui-table-sort.js`, `static/css/ui-table-sort.css` | Products, Product/Customer/Bucket Revenue, Analyzer, seller alerts and shared inspectors/previews | DONE | [Sorting evidence](redesign-pages/HOME-WORKBENCH.md#shared-sortable-columns-october-5-follow-up) |
 | INC-ACTION | `partials/_action_item_detail_modal.html` | Home, action hub, engagement/project details | DONE | [Evidence](redesign-pages/HOME-WORKBENCH.md) |
 | JS-REV-BUCKET | `static/js/revenue-bucket-filter.js` | Home, revenue dashboard/customer/seller views, seller summary and preview | DONE | [Checkpoint 18 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-DASH | `partials/_dashboard_settings.html` | Home and preferences | TODO | - |

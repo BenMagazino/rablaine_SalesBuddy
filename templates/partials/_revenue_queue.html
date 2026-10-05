@@ -5,9 +5,9 @@
 <div class="sb-revenue-queue-view" data-sb-queue-view hidden>
     <section class="sb-revenue-queue" aria-labelledby="revenueQueueHeading">
         <header class="sb-revenue-queue-heading">
-            <h2 id="revenueQueueHeading">Alert queue</h2><span>Highest priority first</span>
+            <h2 id="revenueQueueHeading">Alert queue</h2><span>Matches Table order</span>
         </header>
-        <div class="sb-revenue-queue-items" role="listbox" aria-label="Revenue alerts">
+        <div class="sb-revenue-queue-items" data-sb-queue-list role="listbox" aria-label="Revenue alerts">
             {% for a in alerts %}
             <button type="button" class="sb-revenue-queue-item" role="option"
                     aria-selected="false" tabindex="-1" data-sb-queue-alert="{{ a.id }}"

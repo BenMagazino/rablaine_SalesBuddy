@@ -37,10 +37,34 @@
         }
         const trend = enhance ? window.SBProductRevenueTrend.create(root) : null;
         let selected = null;
-        const available = () => entries.filter(entry => !entry.row.hidden);
-        const fromHash = () => entries.find(entry => '#' + entry.row.id === window.location.hash);
-        const selectedUrl = () => selected ? '#' + selected.row.id :
-            window.location.pathname + window.location.search;
+        const entryRows = new Map(entries.map(entry => [entry.row, entry]));
+        const available = () => [...root.querySelectorAll('[data-sb-product-entry]')]
+            .map(row => entryRows.get(row)).filter(entry => !entry.row.hidden);
+        const fromLocation = () => {
+            const url = new URL(window.location.href);
+            return url.searchParams.has('customer') ?
+                entries.find(entry => entry.name === url.searchParams.get('customer') &&
+                    entry.row.dataset.bucket === url.searchParams.get('bucket')) :
+                entries.find(entry => '#' + entry.row.id === url.hash);
+        };
+        const selectedUrl = () => {
+            const url = new URL(window.location.href);
+            if (!url.searchParams.has('customer')) {
+                return selected ? '#' + selected.row.id : url.pathname + url.search;
+            }
+            if (selected) {
+                url.searchParams.set('customer', selected.name);
+                url.searchParams.set('bucket', selected.row.dataset.bucket);
+            } else {
+                url.searchParams.delete('customer');
+                url.searchParams.delete('bucket');
+            }
+            url.hash = selected ? selected.row.id : '';
+            return url.pathname + url.search + url.hash;
+        };
+        const locationMatches = destination => destination.startsWith('#') ?
+            window.location.hash === destination :
+            window.location.pathname + window.location.search + window.location.hash === destination;
         function select(entry, push = false) {
             if (!enhance) {
                 notice.textContent = 'Customer selection is available in the standalone product view.';
@@ -72,7 +96,7 @@
                 item.button.setAttribute('aria-pressed', String(active));
             }
             if (trend) trend.show(selected?.history ?? null);
-            if (push && window.location.hash !== selectedUrl()) {
+            if (push && !locationMatches(selectedUrl())) {
                 window.history.pushState(window.history.state, '', selectedUrl());
             }
             notice.hidden = true;
@@ -87,11 +111,20 @@
             const text = `${shown.length} of ${entries.length} customer entries shown`;
             if (status && status.textContent !== text) status.textContent = text;
             if (!enhance) return;
-            const bookmarked = fromHash();
+            const bookmarked = fromLocation();
+            if (new URL(window.location.href).searchParams.has('customer') && !bookmarked) {
+                select(null);
+                noSelection.textContent = 'Choose a customer entry to view its history.';
+                notice.textContent = 'The requested customer/bucket entry is no longer available. Choose an entry from the comparison.';
+                notice.hidden = false;
+                return;
+            }
+            noSelection.textContent = 'No matching customer entries. Clear search to view history.';
             select(restore ? (shown.includes(bookmarked) ? bookmarked : shown[0] ?? null) :
                 shown.includes(selected) ? selected :
                     shown.includes(bookmarked) ? bookmarked : shown[0] ?? null);
-            if (window.location.hash && window.location.hash !== selectedUrl()) {
+            if ((window.location.hash || new URL(window.location.href).searchParams.has('customer')) &&
+                !locationMatches(selectedUrl())) {
                 window.history.replaceState(window.history.state, '', selectedUrl());
             }
         }

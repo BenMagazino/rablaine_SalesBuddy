@@ -82,32 +82,32 @@
                 <span class="sb-revenue-review-meta">All buckets, including hidden buckets</span>
             </header>
             <div class="sb-revenue-table-scroll" tabindex="0" role="region" aria-label="Total revenue by bucket and month">
-                <table class="sb-revenue-table">
+                <table class="sb-revenue-table" data-sb-sortable data-sb-sort-key="overview-buckets">
                     <caption>All-bucket monthly revenue and all-history totals</caption>
                     <thead>
                         <tr>
-                            <th scope="col">Bucket</th>
-                            {% for month in grand_recent_months %}<th scope="col">{{ month }}</th>{% endfor %}
-                            <th scope="col">Total</th>
+                            <th scope="col" data-sb-sort-type="text">Bucket</th>
+                            {% for month in grand_recent_months %}<th scope="col" data-sb-sort-type="number">{{ month }}</th>{% endfor %}
+                            <th scope="col" data-sb-sort-type="number">Total</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="sb-revenue-total">
+                        <tr class="sb-revenue-total" data-sb-sort-fixed>
                             <th scope="row">All Buckets</th>
                             {% for month in grand_recent_months %}
                             {% set prev_month = grand_recent_months[loop.index0 - 1] if loop.index0 > 0 else none %}
-                            <td>{{ revenue_cell(grand_month_revenues.get(month, 0), grand_month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
+                            <td data-sb-sort-value="{{ grand_month_revenues.get(month, '') }}">{{ revenue_cell(grand_month_revenues.get(month, 0), grand_month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
                             {% endfor %}
-                            <td>${{ '{:,.0f}'.format(grand_total) }}</td>
+                            <td data-sb-sort-value="{{ grand_total }}">${{ '{:,.0f}'.format(grand_total) }}</td>
                         </tr>
                         {% for bucket, bdata in bucket_product_data.items() %}
                         <tr data-bucket="{{ bucket }}">
                             <th scope="row"><a href="#bucket-{{ bucket | lower | replace(' ', '-') | replace('/', '') | replace(':', '') }}">{{ bucket }}</a></th>
                             {% for month in grand_recent_months %}
                             {% set prev_month = grand_recent_months[loop.index0 - 1] if loop.index0 > 0 else none %}
-                            <td>{{ revenue_cell(bdata.bucket_month_revenues.get(month, 0), bdata.bucket_month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
+                            <td data-sb-sort-value="{{ bdata.bucket_month_revenues.get(month, '') }}">{{ revenue_cell(bdata.bucket_month_revenues.get(month, 0), bdata.bucket_month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
                             {% endfor %}
-                            <td>${{ '{:,.0f}'.format(bdata.bucket_total) }}</td>
+                            <td data-sb-sort-value="{{ bdata.bucket_total }}">${{ '{:,.0f}'.format(bdata.bucket_total) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

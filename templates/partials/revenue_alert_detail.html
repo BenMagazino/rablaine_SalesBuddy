@@ -16,6 +16,7 @@
             </a>
         </div>
         {% set revenue_bucket = a.bucket %}
+        {% set table_sort_key = 'analysis-products:' ~ a.id %}
         {% include 'partials/_revenue_product_table.html' %}
     </section>
     {% endif %}

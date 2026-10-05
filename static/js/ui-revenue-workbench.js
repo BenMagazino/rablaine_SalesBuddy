@@ -13,6 +13,7 @@
         const queue = find('[data-sb-queue-view]'), tableView = find('[data-sb-table-view]');
         const panel = find('[data-sb-queue-inspector]'), empty = find('[data-sb-queue-empty]');
         const table = find('#alertsTable');
+        const queueList = find('[data-sb-queue-list]');
         const modes = document.querySelector('[data-sb-revenue-modes]');
         if (!modes) fail('Revenue view controls are missing.');
         const items = [...root.querySelectorAll('[data-sb-queue-alert]')];
@@ -57,8 +58,17 @@
             return controller.open({id: Number(item.dataset.sbQueueAlert),
                 title: item.dataset.customerName});
         }
-        function visible() { return items.filter(item => !item.hidden); }
+        function visible() {
+            return [...queue.querySelectorAll('[data-sb-queue-alert]')].filter(item => !item.hidden);
+        }
         function sync() {
+            const current = [...queue.querySelectorAll('[data-sb-queue-alert]')];
+            const itemById = new Map(items.map(item => [item.dataset.sbQueueAlert, item]));
+            const ordered = [...table.querySelectorAll('tbody tr[data-analysis-id]')]
+                .map(row => itemById.get(row.dataset.analysisId));
+            if (ordered.some((item, index) => item !== current[index])) {
+                for (const item of ordered) queueList.appendChild(item);
+            }
             for (const item of items) {
                 const row = rows.get(item.dataset.sbQueueAlert);
                 item.hidden = row.hidden || getComputedStyle(row).display === 'none';

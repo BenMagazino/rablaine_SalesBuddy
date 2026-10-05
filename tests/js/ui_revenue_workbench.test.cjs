@@ -21,6 +21,11 @@ function fixture({invalid = false} = {}) {
     const empty = new Node(), notice = new Node(), fullLink = new Node(), modes = new Node();
     const items = [1, 2].map(id => new Node({sbQueueAlert: String(id),
         customerName: `<Customer "${id}">`, fullUrl: `/customer/${id}`, fullLabel: 'Customer Hub'}));
+    const queueItems = [...items];
+    const queueList = {appendChild(item) {
+        queueItems.splice(queueItems.indexOf(item), 1); queueItems.push(item);
+    }};
+    queue.querySelectorAll = () => queueItems;
     const rows = [1, 2].map(id => Object.assign(new Node({analysisId: String(id)}),
         {display: 'table-row'}));
     if (invalid) items[1].dataset.sbQueueAlert = '1';
@@ -33,7 +38,7 @@ function fixture({invalid = false} = {}) {
     panel.querySelector = () => fullLink;
     const regions = {'[data-sb-queue-error]': notice, '[data-sb-queue-view]': queue,
         '[data-sb-table-view]': tableView, '[data-sb-queue-inspector]': panel,
-        '[data-sb-queue-empty]': empty, '#alertsTable': table};
+        '[data-sb-queue-empty]': empty, '#alertsTable': table, '[data-sb-queue-list]': queueList};
     root.querySelector = selector => regions[selector];
     root.querySelectorAll = () => items;
     const document = new Node(), window = new Node(), review = {open: false};
@@ -60,7 +65,7 @@ function fixture({invalid = false} = {}) {
     vm.runInNewContext(source, {document, window, SBRecordDialog, MutationObserver,
         CustomEvent: class { constructor(type) { this.type = type; } },
         getComputedStyle: row => ({display: row.display})});
-    return {root, queue, tableView, panel, empty, notice, modes, items, rows, buttons, loads,
+    return {root, queue, tableView, panel, empty, notice, modes, items, queueItems, rows, buttons, loads,
         document, window, observers, review, fullLink, record,
         start: () => window.SBRevenueWorkbench.create(root),
         get options() { return options; }, get refreshes() { return refreshes; },
@@ -152,6 +157,17 @@ test('cached-history return resumes the selected read without resetting filters'
     assert.equal(h.panel.hidden, true);
     h.window.handlers.pageshow({persisted: true});
     assert.equal(h.loads.at(-1).id, 2);
+});
+
+test('queue and keyboard navigation follow sorted table order without replacing selection', () => {
+    const h = fixture(), api = h.start();
+    h.rows.reverse(); api.sync();
+    assert.deepEqual(h.queueItems.map(item => item.dataset.sbQueueAlert), ['2', '1']);
+    assert.equal(h.loads.length, 1);
+    assert.equal(h.items[0].attrs['aria-selected'], 'true');
+    h.items[0].handlers.keydown({key: 'Home', preventDefault() {}});
+    assert.equal(h.loads.at(-1).id, 2);
+    assert.equal(h.items[1].focused, true);
 });
 
 test('invalid or duplicate queue identities fail visibly and retain the original table', () => {

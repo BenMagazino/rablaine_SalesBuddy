@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../../static/js/ui-revenue-product.js'), 'utf8');
 
 function fixture({embedded = false, names = ['Alpha', 'Beta', 'Gamma'],
-    panelNames = ['Alpha', 'Gamma'], hash = ''} = {}) {
+    panelNames = ['Alpha', 'Gamma'], hash = '', query = ''} = {}) {
     class Element {
         constructor(dataset = {}) {
             this.dataset = dataset; this.hidden = false; this.attributes = {};
@@ -29,7 +29,8 @@ function fixture({embedded = false, names = ['Alpha', 'Beta', 'Gamma'],
         set textContent(v) { this.value = v; this.writes++; }};
     const panels = panelNames.map(name => new Element({sbProductHistory: name}));
     const rows = names.map((name, index) => {
-        const row = new Element({sbProductEntry: String(index + 1), customerName: name});
+        const row = new Element({sbProductEntry: String(index + 1), customerName: name,
+            bucket: ['Databases', 'Fabric', 'Storage'][index]});
         row.id = 'product-entry-' + (index + 1);
         row.button = new Element(); row.button.hidden = true; row.children.push(row.button);
         row.cells = [name, ['Databases', 'Fabric', 'Storage'][index],
@@ -53,17 +54,24 @@ function fixture({embedded = false, names = ['Alpha', 'Beta', 'Gamma'],
         querySelector: selector => selector === '[data-sb-revenue-page="product"]' ? root : status};
     const trends = [];
     const window = {SBProductRevenueTrend: {create: () => ({show: panel => trends.push(panel)})},
-        location: {hash, pathname: '/product/SQL', search: ''}, listeners: {},
+        location: {hash, pathname: '/product/SQL', search: query}, listeners: {},
         timers: [], setTimeout(fn) { this.timers.push(fn); },
         addEventListener(name, fn) { this.listeners[name] = fn; }};
+    Object.defineProperty(window.location, 'href', {get() {
+        return 'http://127.0.0.1:5000' + this.pathname + this.search + this.hash;
+    }});
+    function navigate(url) {
+        const target = new URL(url, window.location.href);
+        Object.assign(window.location, {pathname: target.pathname, search: target.search, hash: target.hash});
+    }
     window.history = {state: {}, pushes: [], replacements: [],
         pushState(state, unused, url) {
-            this.pushes.push(url); window.location.hash = url.startsWith('#') ? url : '';
+            this.pushes.push(url); navigate(url);
         },
         replaceState(state, unused, url) {
-            this.replacements.push(url); window.location.hash = url.startsWith('#') ? url : '';
+            this.replacements.push(url); navigate(url);
         }};
-    const context = {window, document};
+    const context = {window, document, URL};
     return {root, rows, panels, search, clear, reading, noSelection, missing, missingTitle,
         noMatches, notice, status, window, document, trends,
         run: () => vm.runInNewContext(source, context),
@@ -228,6 +236,7 @@ test('other pages do not mount product controls and Help covers path products, n
             document: {getElementById: id => id === 'pageHelpModalLabel' ? title : body},
             SBDialog: {toggle() {}},
         });
+
         if (pathname === '/products') assert.notEqual(title.textContent, 'Product Revenue');
         else {
             assert.equal(title.textContent, 'Product Revenue');
@@ -235,4 +244,43 @@ test('other pages do not mount product controls and Help covers path products, n
             assert.match(body.innerHTML, /all entries and all imported months/);
         }
     }
+});
+
+test('search fallback follows current sorted rows without changing original row identities', () => {
+    const h = fixture({names: ['Other', 'Match Alpha', 'Match Gamma'],
+        panelNames: ['Other', 'Match Alpha', 'Match Gamma']});
+    h.run(); h.rows.reverse(); h.query('Match');
+    assert.equal(h.api().selected, 'product-entry-3');
+    assert.equal(h.panels[2].hidden, false);
+    h.api().select('product-entry-2');
+    assert.equal(h.api().selected, 'product-entry-2');
+    assert.equal(h.panels[1].hidden, false);
+});
+
+test('stable customer/bucket links select the exact repeated-name entry over an outdated row fragment', () => {
+    const h = fixture({names: ['Alpha', 'Alpha'], panelNames: ['Alpha'],
+        hash: '#product-entry-1', query: '?customer=Alpha&bucket=Fabric'});
+    h.run();
+    assert.equal(h.api().selected, 'product-entry-2');
+    assert.equal(h.window.location.hash, '#product-entry-2');
+    assert.equal(h.panels[0].hidden, false);
+    h.rows[0].button.fire('click');
+    assert.equal(new URL(h.window.location.href).searchParams.get('bucket'), 'Databases');
+    assert.equal(h.window.history.pushes.length, 1);
+    h.window.location.search = '?customer=Alpha&bucket=Fabric';
+    h.window.location.hash = '#product-entry-2';
+    h.window.listeners.popstate();
+    assert.equal(h.api().selected, 'product-entry-2');
+});
+
+test('missing incoming customer/bucket selection is explicit and never presents a different history', () => {
+    const h = fixture({query: '?customer=Removed&bucket=Data'}); h.run();
+    assert.equal(h.api().selected, null);
+    assert.ok(h.panels.every(panel => panel.hidden));
+    assert.equal(h.notice.hidden, false);
+    assert.match(h.notice.textContent, /no longer available/);
+    h.rows[2].button.fire('click');
+    assert.equal(h.api().selected, 'product-entry-3');
+    assert.equal(h.notice.hidden, true);
+    assert.equal(new URL(h.window.location.href).searchParams.get('customer'), 'Gamma');
 });

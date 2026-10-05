@@ -17,14 +17,6 @@ function fixture() {
             throw Error('Unexpected selector ' + selector);
         }
     }
-    const kinds = ['number', 'text', 'text', 'text', 'text', 'currency', 'currency', null, 'text'];
-    const headers = kinds.map(kind => {
-        const button = kind ? new Element() : null, icon = {};
-        if (button) button.querySelector = () => icon;
-        return {dataset: {sortType: kind}, attrs: {}, button, icon,
-            querySelector: () => button,
-            setAttribute(key, value) { this.attrs[key] = value; }};
-    });
     const rows = [
         ['40', 'alpha', 'Data', 'Healthy', 'NO ACTION', '$9,050', '-', 'First', 'New'],
         ['95', '<Quoted "customer">', 'Databases', 'Declining', 'CHECK-IN', '$1,200',
@@ -45,7 +37,6 @@ function fixture() {
         this.rows.splice(this.rows.indexOf(row), 1); this.rows.push(row);
     }};
     const table = new Element();
-    table.querySelectorAll = () => headers;
     table.tBodies = [tbody];
     table.contains = row => rows.includes(row);
     const root = {querySelector: () => table}, opens = [];
@@ -53,36 +44,17 @@ function fixture() {
         document: {querySelectorAll: () => [root, {querySelector: () => null}]},
         Element, SBRevenueAlertPreview: {open: (...args) => opens.push(args)},
     });
-    return {headers, rows, tbody, table, opens, Element};
+    return {rows, tbody, table, opens, Element};
 }
 
-test('initial priority is descending and sortable headers expose their direction', () => {
+test('row binding leaves shared-sort order, data and filtered rows untouched', () => {
     const h = fixture();
-    assert.deepEqual(h.tbody.rows.map(row => row.cells[0].textContent), ['95', '70', '40']);
-    assert.equal(h.headers[0].attrs['aria-sort'], 'descending');
-    h.headers[0].button.handlers.click();
-    assert.deepEqual(h.tbody.rows.map(row => row.cells[0].textContent), ['40', '70', '95']);
-    assert.equal(h.headers[0].attrs['aria-sort'], 'ascending');
-});
-
-test('currency sorting preserves negative values, risk/opportunity amounts and filtered rows', () => {
-    const h = fixture();
-    h.headers[5].button.handlers.click();
-    assert.deepEqual(h.tbody.rows.map(row => row.dataset.analysisId), ['3', '2', '1']);
-    h.headers[5].button.handlers.click();
-    assert.deepEqual(h.tbody.rows.map(row => row.dataset.analysisId), ['1', '2', '3']);
-    h.headers[6].button.handlers.click();
+    assert.deepEqual(h.tbody.rows.map(row => row.cells[0].textContent), ['40', '95', '70']);
     assert.deepEqual(h.tbody.rows.map(row => row.dataset.analysisId), ['1', '2', '3']);
     assert.equal(h.rows[0].style.display, 'none');
-    assert.equal(h.headers[0].attrs['aria-sort'], 'none');
-});
-
-test('text/status columns sort independently of the optional Seller column', () => {
-    const h = fixture();
-    h.headers[8].button.handlers.click();
-    assert.deepEqual(h.tbody.rows.map(row => row.cells[8].textContent), ['New', 'New', 'Reviewed']);
-    assert.equal(h.headers[8].attrs['aria-sort'], 'ascending');
-    assert.equal(h.headers[8].icon.className, 'bi bi-sort-up');
+    assert.equal(h.rows[2].cells[5].textContent, '$-200');
+    h.table.handlers.click({target: new h.Element()});
+    assert.equal(h.opens.length, 0);
 });
 
 test('row clicks focus a native opener and pass literal identity fields to the shared preview', () => {

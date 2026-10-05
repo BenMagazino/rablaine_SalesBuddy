@@ -17,6 +17,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Keep bucket product history beside its analysis, with native full-history expansion and shared alert review controls.
 - Compare product customers beside their monthly history and trend graph, with searchable entries, unchanged product-wide totals and expandable consolidated-product members.
 - Simplify product comparison to customer, bucket and total, and use the full history-pane width for its graph and table.
+- Browse products beside their customer consumption, then open a customer's product graph/history with that entry selected; Back restores your browsing context.
+- Sort every Revenue workbench table column in either direction, including previews and monthly history, while retaining totals, selection and browsing context.
 - Use compact native Revenue Analyzer and seller-alert page commands, with quieter category summaries and persistent export-error feedback.
 - Show consistent under-navbar breadcrumbs throughout the app, with linked Home, real ownership paths and Revenue Analyzer under Reports.
 - Put the Home calendar beside distinct Action Items, Milestones Due and Revenue Alerts panels, with keyboard-operated activity tabs and preview rows.

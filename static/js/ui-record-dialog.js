@@ -80,11 +80,18 @@
                 const template = document.createElement('template');
                 template.innerHTML = html;
                 const root = template.content.querySelector(options.fragmentSelector);
-                if (!root || root.getAttribute(options.identityAttribute) !== String(snapshot.id)) {
+                const identity = options.identityValue ?
+                    options.identityValue(snapshot.id) : String(snapshot.id);
+                if (typeof identity !== 'string' || !identity ||
+                    !root || root.getAttribute(options.identityAttribute) !== identity) {
                     throw new Error('Record detail identity does not match the requested record.');
                 }
                 content.replaceChildren(template.content);
                 SBLocalDateTime.render(content);
+                if (content.querySelector('[data-sb-sortable]')) {
+                    if (!window.SBTableSort) throw new Error('Table sorting is unavailable.');
+                    window.SBTableSort.mount(content);
+                }
                 mounted = options.mount(content);
                 loading.hidden = true;
                 content.hidden = false;

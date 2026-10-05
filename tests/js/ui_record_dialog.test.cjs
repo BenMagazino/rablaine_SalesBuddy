@@ -31,6 +31,10 @@ function record(presentation = 'dialog') {
         focus() { this.focused = true; }
         contains(node) { return this === node; }
         replaceChildren(fragment) { this.fragment = fragment || null; }
+        querySelector(selector) {
+            assert.equal(selector, '[data-sb-sortable]');
+            return this.sortable ? {} : null;
+        }
         closest() { return this.href ? this : null; }
     }
     const dialog = new Element(), discard = new Element(), confirm = new Element();
@@ -43,7 +47,7 @@ function record(presentation = 'dialog') {
         createElement(tag) {
             assert.equal(tag, 'template');
             const template = {content: {querySelector: () => ({
-                getAttribute: () => template.innerHTML.match(/data-id="(\d+)"/)?.[1] || null,
+                getAttribute: () => template.innerHTML.match(/data-id="([^"]+)"/)?.[1] || null,
             })}};
             return template;
         },
@@ -99,6 +103,24 @@ function record(presentation = 'dialog') {
 }
 const settle = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 
+test('loaded sortable fragments mount the shared sorter before domain controls', async () => {
+    const h = record('panel'), sorted = [];
+    h.field('content').sortable = true;
+    h.window.SBTableSort = {mount(content) {
+        assert.equal(h.mounts.length, 0); sorted.push(content);
+    }};
+    const pending = h.open(7); h.reply(0, 7); await pending;
+    assert.deepEqual(sorted, [h.field('content')]);
+    assert.equal(h.field('content').hidden, false);
+    assert.equal(h.mounts.length, 1);
+    const missing = record('panel');
+    missing.field('content').sortable = true;
+    const failed = missing.open(7); missing.reply(0, 7); await failed;
+    assert.equal(missing.field('error').hidden, false);
+    assert.equal(missing.mounts.length, 0);
+    assert.equal(missing.errors.length, 1);
+});
+
 test('persistent panels reuse identity-checked loading without opening a modal', async () => {
     const h = record('panel');
     const pending = h.open(7); h.reply(0, 7); await pending;
@@ -111,6 +133,20 @@ test('persistent panels reuse identity-checked loading without opening a modal',
     h.reply(1, 7); await settle();
     const refreshed = h.api.refresh(); h.reply(2, 7); await refreshed;
     assert.equal(h.mounts.length, 3);
+});
+
+test('named product panels verify the domain identity rather than the directory row ordinal', async () => {
+    const h = record('panel');
+    h.options.identityValue = id => id === 7 ? 'SQL/Compute <literal>' : 'Other product';
+    const pending = h.open(7); h.reply(0, 'SQL/Compute <literal>'); await pending;
+    assert.equal(h.field('content').hidden, false);
+    const next = h.open(8); h.reply(1, 'SQL/Compute <literal>'); await next;
+    assert.equal(h.field('error').hidden, false);
+    assert.equal(h.mounts.length, 1);
+    assert.equal(h.errors.length, 1);
+    h.options.identityValue = () => '';
+    const invalid = h.api.refresh(); h.reply(2, ''); await invalid;
+    assert.equal(h.field('error').hidden, false);
 });
 
 test('panel clearing cancels pending reads and cannot be undone by a late response', async () => {

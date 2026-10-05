@@ -1356,7 +1356,7 @@ Approved overall progress is about 28%.
 ## Checkpoint 28: product Revenue comparison and history
 
 Status: VERIFY, technically verified and user-approved October 5, 2026;
-ready for checkpoint commit. Approved predecessor: `aaf6cfd`. Approved progress
+committed as `e286617`. Approved predecessor: `aaf6cfd`. Approved progress
 is about 29%.
 
 ### Scope and design reasoning
@@ -1426,7 +1426,7 @@ is about 29%.
 - The original saved Databases/Fabric filter and Graphite dark theme remain
   unchanged. No Revenue writes or protected draft changes occur.
 - The user approved product comparison/history October 5, including all requested
-  graph and width refinements. Commit this slice, then migrate the Products directory.
+  graph and width refinements. Committed as `e286617`; Products directory follows.
   The seller product family remains future work.
 
 ### Requested trend graph refinement
@@ -1472,3 +1472,138 @@ is about 29%.
   799px reading width, with no horizontal/document overflow. All 63 history tables
   retain their exact cell fingerprint; summaries, current selection and imported
   graph data remain unchanged.
+
+## Checkpoint 29: Products directory
+
+Status: VERIFY, technically verified and user-approved October 5, 2026,
+including the shared sorting follow-up. Approved predecessor: `e286617`.
+Approved effort estimate is about 31%.
+
+### Composition and preserved contract
+
+- The initial single-list design is superseded by the user's requested two-stage
+  browsing workflow. Products and their usage/totals are on the left; the selected
+  product's customer/bucket consumption is on the right. Customer names open the
+  approved graph/history workbench with the exact customer/bucket entry selected.
+  There is no duplicate product queue, all-customer history stack or empty filler.
+  Fixed title/search context, independently scrolling panes, sticky column headers
+  and a filtered-count rail keep the actual comparison work in view.
+- Both Products aliases retain canonical Reports > Revenue Analyzer ancestry.
+  Full Product destinations, default total-descending order, literal product names,
+  displayed currency and all usage values are unchanged. Regular product clicks
+  inspect in place; modified/new-tab clicks retain native full-page navigation.
+- The original Customers heading counted positive-revenue customer/bucket pairs.
+  Consolidation sums member counts, including repeated pairs across members.
+  Label these Usage entries and explain the count, rather than claiming unique
+  customers or silently recalculating the service. The extracted rollup preserves
+  existing query/aggregation semantics; no model or stored-data changes.
+- Search retains all three visible fields, adds native Clear and an explicit
+  zero-match recovery, and reports shown/loaded product counts. It does not
+  mutate revenue, sorting, consolidation, saved bucket preferences or links.
+  Browser-restored search is reconciled after pageshow; excluded focused links
+  return focus safely to search.
+- Genuine empty data keeps the existing import destination and explanatory
+  feedback, with disabled search and accurate zero scope. SSR leaves all rows
+  readable. Embeds omit the full page shell and use a local count, never the
+  parent's status rail.
+- Both levels use the extracted customer table and summary, backed by
+  `get_product_comparison`. Existing product aliases accept `comparison=1` for
+  an identity-tagged, history-free HTML fragment. It returns before the costly
+  monthly-history queries. Full-page defaults retain Customer Revenue/Hub links,
+  native clock selection and the original name-keyed history grouping.
+- The shared guarded panel loader verifies the real product name through an
+  optional identity mapper; default numeric record guards remain unchanged.
+  Loading, failures, Retry, disposal and stale-response cancellation are reused.
+  No fragment script activation or duplicate custom fetch handler is introduced.
+- Incoming customer links use exact customer-name/bucket query values, not a
+  revenue-sorted row number. Repeated customer names remain distinguishable;
+  unmatched imported names are navigable too. Missing bookmarks show explicit
+  feedback instead of displaying another product/customer as if it matched.
+- Contextual native Help covers both directory aliases, without displacing the
+  Product Revenue Help route. No new URL routes, writes, dependencies or distinct
+  analytical features are added.
+
+### Parity and verification
+
+| ID | Original information/action | Native destination and verification | Result |
+| --- | --- | --- | --- |
+| DIRECTORY-01 | Page identity, two aliases and ancestry | Continuous frame on both standalone aliases; canonical breadcrumbs and embed boundaries tested | PASS |
+| DIRECTORY-02 | Every product and its original destination | All 573 products retain values/order/Full Product links; literal/slash names and native modified clicks tested | PASS |
+| DIRECTORY-03 | Customer count and total revenue | Same positive-pair counts and consolidation sums, clarified Usage entries label, unchanged currency/order | PASS |
+| DIRECTORY-04 | Search over row text | Case-insensitive product/count/amount search, Clear, explicit zero matches and safe focus, with no value/order mutation | PASS |
+| DIRECTORY-05 | All-product count | Footer reports shown/loaded scope; embed owns its own count, including genuine zero data | PASS |
+| DIRECTORY-06 | Empty data and import recovery | Isolated empty tests retain import link, native feedback and disabled search | PASS |
+| DIRECTORY-07 | Reading/navigation context | Product/customer panes scroll independently; Back restores product, search and both positions exactly; embeds retain a 1120px ordinary list | PASS |
+| DIRECTORY-08 | Theme/Help compatibility | Eight live themes retain width/scroll geometry; native F1 opens correct Help; both Help aliases tested | PASS |
+| DIRECTORY-09 | Customer consumption and product history | Shared summaries/table match full detail; non-first customer opens with correct selection and visible graph; name-keyed history remains unchanged | PASS |
+| DIRECTORY-10 | Reliable inspector reads | Shared cancellation, identity checks and disposal covered; live 503 surfaces failure and Retry recovers actual customer data | PASS |
+
+- 107 scoped Python tests pass across directory, approved product detail and
+  report breadcrumbs. Forty-four JavaScript checks pass across directory,
+  product selection, graph and shared guarded panel behavior.
+- The initial list-only slice verified the original 573-row/links fingerprint.
+  The two-pane slice preserves the directory query, all 573 products and their
+  destinations; its current `{cells, href}` snapshot hashes to
+  `4e447e3a65af3c0f66bcf4fc1bca46a63a0d817ea412514de4b6969d46b741d0`.
+  All 63 approved SQL history tables still match the exact prior fingerprint
+  `af1877bb16215aaf14a62b3df953c3fb43f54d907a45d63a1b17a20aaf08ed11`.
+  Positive-pair exclusion, duplicate buckets and consolidated-member counts are
+  explicitly tested. Consolidated preview totals deduplicate the same pairs as
+  full detail, while directory usage counts intentionally retain member summing.
+- Live Premium SSD customer comparison matches all 151 full-detail entries.
+  Clicking the ninth SQL customer, CDATA SOFTWARE/Databases, opens only its
+  history and graph. Back restores SQL search, the selected SQL product and exact
+  left/right scroll positions of 120px/200px.
+- Live read failure/recovery is verified on Blob Storage: a simulated 503 shows
+  failure without stale customers, then Retry restores all 167 actual entries.
+- All eight themes keep document geometry at the unchanged 1724x1167 desktop
+  viewport with no document/horizontal overflow. Both column headers align
+  exactly with their own scroll regions after 600px scrolling. Actual embedded
+  `/revenue/products?embed=1` retains 573 rows, 1120px width, local count and no shell
+  or active inspector. The standalone aliases retain canonical ancestry.
+- The active dev tab is left on the complete directory in Graphite dark, search
+  cleared, reading scroll at zero and Help closed. Protected drafts are untouched.
+- Directory and sorting are user-approved. Seller product list/detail are next.
+
+### Shared sortable columns: October 5 follow-up
+
+- User requested ascending/descending sorting for every column in every pane
+  of the recent table-based workbenches. One shared opt-in helper now covers
+  Products, product/customer comparison, every monthly-history table, Customer
+  Overview and bucket grids, Bucket Full History, Revenue Analyzer, seller
+  alert tables and the product matrices in loaded inspectors/compact previews.
+  Non-tabular summaries, graphs and bucket navigation are not sortable columns.
+  Unmigrated seller product pages retain their existing behavior.
+- Native header buttons indicate the current direction and announce the next
+  action. Text sorts naturally; money, usage, priority and change use exact raw
+  values, not rounded display text. Month sorts by actual ISO calendar date.
+  Missing months stay distinct from imported zeroes; unavailable values sort
+  last in either direction. Summary rows keep their slots, ties are stable and
+  existing row nodes, links, controls and semantic financial colors are retained.
+- Each table owns its sort state within browser history. Search fallback follows
+  current DOM order without replacing stable entry/loader identities. Seller
+  queue ordering and keyboard navigation follow Table order without changing
+  the current selection. Graph chronology/data and server-calculated monthly
+  changes do not depend on the visible row order.
+- 127 scoped Python tests and 110 JavaScript checks pass. Coverage includes exact
+  calendar/financial metadata, missing versus zero values, pinned aggregates,
+  fragment mounting, sorted search fallback, queue keyboard order, safe history
+  restoration and nested reading offsets.
+- Live checks cover all columns in both Products panes (573 products and 197
+  selected-product customer entries), all 16 customer tables, all 13 bucket
+  tables, the Product Revenue comparison and selected monthly history, all
+  Analyzer columns, seller Table/queue and loaded inspector matrices, an actual
+  APCO alert preview and the 573-row Products embed. All 116 Product Revenue
+  tables expose sorting controls. Totals, financial colors, scope and graph
+  context remain unchanged.
+- Actual header clicks reorder the seller queue; Home selects its new first
+  alert and loads the matching matrix. A visible customer link opens the exact
+  graph/history entry; Back restores Products' independently sorted columns and
+  exact 300px/220px pane offsets. No saved scope or customer records are changed.
+- Eight themes retain unclipped header labels and no document overflow at the
+  unchanged 1724x1167 desktop viewport. The embed stays an ordinary 1120px list,
+  without an active inspector or outer shell. Help and the persisted design
+  context now establish sorting as a shared future workbench requirement.
+- The dev tab is returned to Virtual Machines Dv3 Series in Graphite dark,
+  blank search, default descending totals and zero reading offsets. Protected
+  drafts remain untouched. This follow-up is user-approved October 5, 2026.

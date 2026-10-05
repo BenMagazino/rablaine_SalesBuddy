@@ -16,32 +16,32 @@
     {% endif %}
     {% if alerts %}
     <div class="sb-revenue-alerts-scroll" tabindex="0" aria-label="Scrollable revenue alerts">
-        <table class="sb-revenue-alerts-table" id="alertsTable">
+        <table class="sb-revenue-alerts-table" id="alertsTable" data-sb-sortable
+               data-sb-sort-key="revenue-alerts" data-sb-sort-default-column="0"
+               data-sb-sort-default-direction="descending">
             <caption>Revenue alerts. Default order: highest priority first. Use column buttons to sort.</caption>
             <thead>
                 <tr>
                     {% for label, kind in [
                         ('Priority', 'number'), ('Customer', 'text'), ('Bucket', 'text'),
-                        ('Category', 'text'), ('Action', 'text'), ('Avg ACR', 'currency'),
-                        ('$ Impact', 'currency')
+                        ('Category', 'text'), ('Action', 'text'), ('Avg ACR', 'number'),
+                        ('$ Impact', 'number')
                     ] %}
-                    <th scope="col" data-sort-type="{{ kind }}" data-export-label="{{ label }}">
-                        <button type="button" data-sb-alert-sort{% if loop.first %} title="Priority score (0-100)"{% endif %}>{{ label }} <i class="bi bi-chevron-expand" aria-hidden="true"></i></button>
-                    </th>
+                    <th scope="col" data-sb-sort-type="{{ kind }}" data-export-label="{{ label }}"{% if loop.first %} title="Priority score (0-100)"{% endif %}>{{ label }}</th>
                     {% endfor %}
                     {% if show_seller %}
-                    <th scope="col" data-sort-type="text" data-export-label="Seller"><button type="button" data-sb-alert-sort>Seller <i class="bi bi-chevron-expand" aria-hidden="true"></i></button></th>
+                    <th scope="col" data-sb-sort-type="text" data-export-label="Seller">Seller</th>
                     {% endif %}
-                    <th scope="col">Rationale</th>
-                    <th scope="col" data-sort-type="text" data-export-label="Status"><button type="button" data-sb-alert-sort>Status <i class="bi bi-chevron-expand" aria-hidden="true"></i></button></th>
-                    <th scope="col">Actions</th>
+                    <th scope="col" data-sb-sort-type="text">Rationale</th>
+                    <th scope="col" data-sb-sort-type="text" data-export-label="Status">Status</th>
+                    <th scope="col" data-sb-sort-type="text">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for a in alerts %}
                 <tr data-analysis-id="{{ a.id }}" data-bucket="{{ a.bucket }}"
                     data-customer-name="{{ a.customer_name }}" data-alert-clickable="{{ 'true' if alert_clickable else 'false' }}">
-                    <td class="sb-revenue-number" data-tone="{{ priority_tone(a.priority_score) }}">{{ a.priority_score }}</td>
+                    <td class="sb-revenue-number" data-sb-sort-value="{{ a.priority_score }}" data-tone="{{ priority_tone(a.priority_score) }}">{{ a.priority_score }}</td>
                     <td{% if a.customer and a.customer.tpid_url %} data-export-url="{{ a.customer.tpid_url }}"{% endif %}>
                         {% if a.customer_id %}
                         <a href="{{ url_for('revenue.revenue_customer_view', customer_id=a.customer_id) }}">{{ a.customer_name }}</a>
@@ -53,8 +53,8 @@
                     <td>{{ a.bucket }}</td>
                     <td><span class="sb-revenue-category" data-tone="{{ category_tones.get(a.category, 'neutral') }}">{{ category_labels.get(a.category, a.category) }}</span></td>
                     <td>{{ a.recommended_action }}</td>
-                    <td class="sb-revenue-money">${{ '{:,.0f}'.format(a.avg_revenue) }}</td>
-                    <td class="sb-revenue-money">
+                    <td class="sb-revenue-money" data-sb-sort-value="{{ a.avg_revenue }}">${{ '{:,.0f}'.format(a.avg_revenue) }}</td>
+                    <td class="sb-revenue-money" data-sb-sort-value="{{ a.dollars_at_risk if a.dollars_at_risk > 0 else a.dollars_opportunity if a.dollars_opportunity > 0 else '' }}">
                         {% if a.dollars_at_risk > 0 %}
                         <span data-tone="danger">${{ '{:,.0f}'.format(a.dollars_at_risk) }}/mo risk</span>
                         {% elif a.dollars_opportunity > 0 %}
@@ -70,7 +70,7 @@
                     {% endif %}
                     <td class="sb-revenue-rationale">{{ a.engagement_rationale }}</td>
                     <td data-review-id="{{ a.id }}">{{ review_badge(a) }}{{ previous_review_hint(a) }}</td>
-                    <td class="sb-revenue-row-actions">
+                    <td class="sb-revenue-row-actions" data-sb-sort-value="{{ 'Open alert; ' if alert_clickable else '' }}Set review status">
                         {% if alert_clickable %}
                         <button type="button" class="sb-review-button" data-sb-revenue-open title="Open revenue alert" aria-label="Open revenue alert for {{ a.customer_name }}, {{ a.bucket }}"><i class="bi bi-arrows-fullscreen" aria-hidden="true"></i></button>
                         {% endif %}

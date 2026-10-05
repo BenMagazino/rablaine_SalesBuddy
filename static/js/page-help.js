@@ -94,10 +94,25 @@ const PageHelp = (function () {
     `},
 
     // ── Customers ──
+    { pattern: /^\/(?:revenue\/)?products\/?$/, title: 'Products', content: `
+      <p>Find imported products and compare their usage and total revenue, highest revenue first.</p>
+      <ul>
+        <li>Search product names, usage counts or formatted revenue. Clear restores the complete directory.</li>
+        <li>Click any column heading in either pane to sort ascending; click again for descending. Arrows show the current order. Sorting and browsing context survive Back.</li>
+        <li>Select a product on the left to compare its customers, buckets and all-history consumption on the right.</li>
+        <li>Choose a customer name on the right to open Product Revenue with that exact customer/bucket entry selected, including its graph and monthly history. The arrow beside a matched name opens Customer Hub.</li>
+        <li>Open product goes directly to the complete history workbench. Browser Back restores your product, search and both reading positions.</li>
+        <li>Usage entries count positive-revenue customer/bucket pairs, not unique customers. Consolidated products add counts across their members.</li>
+        <li>Search only changes visible products. Values include all imported months and do not change saved bucket filters.</li>
+      </ul>
+    `},
     { pattern: /^\/(?:revenue\/product|product)\/.+$/, title: 'Product Revenue', content: `
       <p>Compare customer entries using one product, then inspect imported customer history alongside the table.</p>
       <ul>
         <li>Search customer names, buckets or total revenue. Select a row or its clock button to view history.</li>
+        <li>Every comparison and history column sorts both ways. Fiscal months sort by their calendar dates; revenue and change sort by exact values, not rounded text. Unavailable changes stay last.</li>
+        <li>Sorting history does not reorder the graph or recalculate Change, which still compares preceding imported months.</li>
+        <li>Arriving from Products selects the customer/bucket entry you chose, even when several buckets share a customer name.</li>
         <li>Customer-name links open Customer Revenue; the arrow beside a matched name opens Customer Hub.</li>
         <li>Entries are customer/bucket rows, so a customer may appear more than once. Totals and averages include all entries and all imported months, not just search results.</li>
         <li>History retains the imported customer grouping. Change is unavailable when preceding revenue is zero or negative.</li>
@@ -129,7 +144,7 @@ const PageHelp = (function () {
       <p>Product revenue for one customer and bucket, with analysis alongside the history.</p>
       <ul>
         <li>The recent grid shows up to seven imported months. Product totals include all imported months.</li>
-        <li>Expand <strong>Full Product History</strong> to read every product's monthly history, newest first.</li>
+        <li>Expand <strong>Full Product History</strong> to read every product's monthly history, initially newest first. Every recent-product and history column sorts ascending or descending; totals remain pinned.</li>
         <li>Change compares each imported month with the preceding imported month. It is unavailable when preceding revenue is zero or negative.</li>
         <li>Use the pencil to review the alert, a product name for its detail page, or <strong>Customer Revenue</strong> to return to bucket navigation.</li>
       </ul>
@@ -140,6 +155,7 @@ const PageHelp = (function () {
         <li>Use <strong>Buckets</strong> to filter analysis and history together.</li>
         <li>Use the left context pane to examine a visible bucket without changing your saved filter.</li>
         <li><strong>Overview</strong> shows Total Revenue, which includes hidden buckets. Total columns include all imported months, not just the seven displayed.</li>
+        <li>Click any Overview or product-grid column to toggle ascending/descending. Summary totals remain pinned and Buckets filters stay unchanged.</li>
         <li>Use <strong>Full History</strong> for all months in a bucket, or the pencil to review an alert.</li>
       </ul>
     `},
@@ -443,12 +459,14 @@ const PageHelp = (function () {
       <ul>
         <li>The <strong>Priority</strong> score (0-100) ranks how urgently a customer needs attention</li>
         <li>The <strong>$ Impact</strong> column shows estimated monthly revenue at risk or opportunity</li>
+        <li>Every alert column sorts ascending or descending through its heading. Alert previews use the same sortable product grids, with summary totals pinned.</li>
         <li>Click a customer to see their full revenue breakdown with monthly charts</li>
         <li>Use <strong>Re-analyze</strong> after a fresh import to update all categories</li>
       </ul>
     `},
     { pattern: /^\/revenue\/seller\//, title: 'Seller Revenue Alerts', content: `
-      <p>Revenue alerts for this seller's customers, sorted by priority. Review each alert and mark it as actioned, reviewed, or dismissed.</p>
+      <p>Revenue alerts for this seller's customers, initially sorted by priority. Review each alert and mark it as actioned, reviewed, or dismissed.</p>
+      <p>Use Table view to sort any column in either direction; the alert queue follows that order. Product columns in the detail pane also sort both ways, with totals pinned.</p>
       <h6>Alert Categories</h6>
       <table class="sb-help-table">
         <tbody>

@@ -3,7 +3,7 @@
 import json
 
 from typing import TypedDict
-from urllib.parse import quote
+from urllib.parse import parse_qs, quote, urlsplit
 
 import pytest
 from bs4 import BeautifulSoup
@@ -229,10 +229,10 @@ def test_consolidated_member_information_remains_available_without_customer_entr
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Consolidation metadata does not disappear when customer summaries are unavailable."""
-    monkeypatch.setattr("app.routes.revenue.get_all_products", lambda: [
+    monkeypatch.setattr("app.services.revenue_import.get_all_products", lambda: [
         {"product": "Azure Synapse Analytics SQL", "total_revenue": 100, "customer_count": 1},
     ])
-    monkeypatch.setattr("app.routes.revenue.get_customers_using_product", lambda product: [])
+    monkeypatch.setattr("app.services.revenue_import.get_customers_using_product", lambda product: [])
     soup = BeautifulSoup(client.get("/product/Azure%20Synapse%20Analytics").data, "html.parser")
     reading = soup.select_one("[data-sb-product-reading]")
     assert not reading.has_attr("hidden")
@@ -243,7 +243,7 @@ def test_product_missing_history_is_explicit(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Customer summary metadata can remain available without imported detail rows."""
-    monkeypatch.setattr("app.routes.revenue.get_customers_using_product", lambda product: [
+    monkeypatch.setattr("app.services.revenue_import.get_customers_using_product", lambda product: [
         {"customer_name": "No history", "customer_id": None, "bucket": "Data",
          "total_revenue": 100},
     ])
@@ -256,3 +256,30 @@ def test_product_missing_history_is_explicit(
     assert root.select_one("[data-sb-product-missing-history] .sb-revenue-empty").text == (
         "No revenue history available for this customer entry."
     )
+
+
+def test_product_comparison_links_literal_matched_and_unmatched_customer_names(
+    client: FlaskClient, product_context: ProductContext,
+) -> None:
+    """Imported names stay escaped and navigable even without a matched customer ID."""
+    response = client.get(
+        f'/product/{quote(product_context["product"])}', query_string={"comparison": "1"},
+    )
+    soup = BeautifulSoup(response.data, "html.parser")
+    rows = soup.select("#directoryCustomersTable tbody tr")
+    assert len(rows) == 2
+    for row, name in zip(rows, [
+        product_context["customer_name"], product_context["unmatched_name"],
+    ]):
+        link = row.select_one("th a")
+        assert link.text == name
+        assert parse_qs(urlsplit(link["href"]).query) == {
+            "customer": [name], "bucket": [row["data-bucket"]],
+        }
+        assert client.get(link["href"]).status_code == 200
+    assert rows[0].select_one(".sb-product-hub")["href"] == (
+        f'/customer/{product_context["customer"]}'
+    )
+    assert not rows[1].select(".sb-product-hub")
+    assert "<Product & Customer>" not in response.get_data(as_text=True)
+    assert "Unmatched <literal>" not in response.get_data(as_text=True)

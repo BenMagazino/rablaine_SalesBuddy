@@ -74,7 +74,7 @@
                 <summary>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                     <span>Full Product History</span>
-                    <span class="sb-revenue-review-meta">{{ period.months|length }} imported months, newest first</span>
+                    <span class="sb-revenue-review-meta">{{ period.months|length }} imported months; default newest first</span>
                 </summary>
                 {% for product, history in product_history.items() %}
                 <section class="sb-revenue-history-product" aria-label="{{ product }} full history">
@@ -83,7 +83,7 @@
                         <span class="sb-revenue-review-meta">{{ history|length }} months</span>
                     </header>
                     {% set history_label = product %}
-                    {% set history_caption = product ~ ' full monthly revenue history, newest first' %}
+                    {% set history_caption = product ~ ' full monthly revenue history, initially newest first' %}
                     {% include 'partials/_revenue_monthly_history.html' %}
                 </section>
                 {% else %}

@@ -175,7 +175,8 @@ def test_seller_queue_preserves_record_identity_and_comparison_fallback(
         "/static/js/ui-revenue-workbench.js"
     )
     assert soup.select_one('#alertsTable .review-action-btn')
-    assert soup.select_one('#alertsTable [data-sb-alert-sort]')
+    assert soup.select_one('#alertsTable[data-sb-sortable]')
+    assert all(header.get("data-sb-sort-type") for header in soup.select("#alertsTable thead th"))
 
 
 @pytest.mark.parametrize("path", [
@@ -588,8 +589,11 @@ def test_alert_list_preserves_data_links_and_native_controls(
     table = root.select_one("#alertsTable")
     assert table.caption
     assert all(h["scope"] == "col" for h in table.select("thead th"))
-    for header in table.select("th[data-sort-type]"):
-        assert header["data-export-label"] == header.button.get_text(" ", strip=True)
+    assert table.has_attr("data-sb-sortable")
+    assert table["data-sb-sort-default-direction"] == "descending"
+    assert all(header.get("data-sb-sort-type") for header in table.select("thead th"))
+    for header in table.select("th[data-export-label]"):
+        assert header["data-export-label"] == header.get_text(" ", strip=True)
     row = table.select_one(f'tr[data-analysis-id="{review_alert["alert"]}"]')
     assert row["data-customer-name"] == '<Literal "customer">'
     assert row["data-bucket"] == "Databases"
@@ -598,6 +602,8 @@ def test_alert_list_preserves_data_links_and_native_controls(
     assert row.select_one(".sb-revenue-number")["data-tone"] == "warning"
     assert "$5,000" in row.get_text()
     assert "$1,234/mo risk" in row.get_text()
+    assert row.select_one(".sb-revenue-money")["data-sb-sort-value"] == "5000.0"
+    assert row.select(".sb-revenue-money")[1]["data-sb-sort-value"] == "1234.0"
     assert "$9,000/mo opp" not in row.get_text()
     assert row.select_one(".sb-revenue-rationale").get_text() == '<Literal "rationale">'
     assert row.select_one(".sb-revenue-category").get_text() == "Declining"
@@ -830,12 +836,17 @@ def test_product_breakdown_preserves_recent_seven_months_totals_links_and_change
         "Product", *months[1:], "Total",
     ]
     assert table.find("caption")
+    assert table.has_attr("data-sb-sortable")
+    assert all(h.get("data-sb-sort-type") for h in table.select("thead th"))
     assert all(h["scope"] == "col" for h in table.select("thead th"))
     assert all(h["scope"] == "row" for h in table.select("tbody th"))
     rows = table.select("tbody tr")
     assert len(rows) == (1 if host == "bucket" else 2)
     for row in rows:
         cells = row.select("td")
+        assert [float(cell["data-sb-sort-value"]) for cell in cells] == [
+            *revenues[1:], sum(revenues),
+        ]
         assert [c.get_text(strip=True) for c in cells] == [
             "$90", "$80", "$88", "$100", "-", "$-20", "$40", "$478",
         ]
@@ -872,6 +883,43 @@ def test_product_breakdown_preserves_recent_seven_months_totals_links_and_change
             "FY26-Jul to FY26-Feb"
         )
         assert history.find("caption")
+        assert history["data-sb-sort-default-direction"] == "descending"
+        assert all(h.get("data-sb-sort-type") for h in history.select("thead th"))
+        assert [row.find("th")["data-sb-sort-value"] for row in full_rows] == [
+            fiscal_month_to_date(month).isoformat() for month in reversed(months)
+        ]
+        assert full_rows[0].select("td")[1]["data-sb-sort-value"] == ""
+        assert float(full_rows[2].select("td")[1]["data-sb-sort-value"]) == -100
+
+
+def test_product_sort_keys_keep_missing_months_distinct_from_real_zero_and_rounded_values(
+    app: Flask,
+) -> None:
+    """Sorting uses imported values, never invented zeroes or rounded display dollars."""
+    with app.test_request_context():
+        html = app.jinja_env.get_template("partials/_revenue_product_table.html").render(
+            revenue_bucket="Data", bucket_data={
+                "recent_months": ["FY26-Jul", "FY26-Aug"],
+                "product_summary": [
+                    {"product": "Zero", "month_revenues": {
+                        "FY26-Jul": 0, "FY26-Aug": 1.234,
+                    }, "total_revenue": 1.234},
+                    {"product": "Missing", "month_revenues": {
+                        "FY26-Aug": 0.001,
+                    }, "total_revenue": 0.001},
+                ],
+            },
+        )
+    soup = BeautifulSoup(html, "html.parser")
+    rows = soup.select("tbody tr:not([data-sb-sort-fixed])")
+    assert rows[0].select("td")[0]["data-sb-sort-value"] == "0"
+    assert rows[1].select("td")[0]["data-sb-sort-value"] == ""
+    assert rows[0].select("td")[0].get_text(strip=True) == "-"
+    assert rows[1].select("td")[0].get_text(strip=True) == "-"
+    assert rows[0].select("td")[1]["data-sb-sort-value"] == "1.234"
+    assert rows[0].select("td")[1].get_text(strip=True) == "$1"
+    assert rows[1].select("td")[1]["data-sb-sort-value"] == "0.001"
+    assert rows[1].select("td")[1].get_text(strip=True) == "$0"
 
 
 @pytest.mark.parametrize("path", [
@@ -1031,6 +1079,9 @@ def test_customer_revenue_totals_and_bucket_links_preserve_scope(
     ).data, "html.parser")
     total = soup.select_one("#bucket-total")
     assert not total.has_attr("data-bucket")
+    assert total.select_one("table[data-sb-sortable]")
+    assert total.select_one("tbody tr[data-sb-sort-fixed]")
+    assert all(header.get("data-sb-sort-type") for header in total.select("thead th"))
     assert total.select_one("tbody tr").get_text(" ", strip=True) == "All Buckets $300 $300"
     assert [row["data-bucket"] for row in total.select("tr[data-bucket]")] == [
         "Databases", "Fabric",

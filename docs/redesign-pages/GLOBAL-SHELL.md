@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-27 committed, checkpoint 28 product Revenue approved October 5
+- Status: BUILDING; checkpoints 1-28 committed, checkpoint 29 Products directory/sorting user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -110,8 +110,26 @@
   Product-wide totals remain distinct from search scope. Embeds and no-script
   fallback retain stacked reading. The approved refinement adds a chronological
   graph with mirrored dollar labels, three-column comparison and full-pane history.
-  It is technically verified and user-approved October 5, ready for checkpoint commit.
-- Next action: migrate the Products directory, then adopt
+  It is technically verified and user-approved October 5, committed as `e286617`.
+- Checkpoint 29 follows the user's two-stage browsing direction: products on the
+  left, selected product's customer consumption on the right, then the approved
+  graph/history workbench for the chosen customer. The right pane has a concrete
+  comparison task rather than duplicated product navigation or empty context.
+  Both panes scroll independently under pinned headings; shared rollup/markup
+  retain existing totals, grouping and destinations. Back restores both reading
+  positions and search. Embedded content remains a bounded ordinary list with
+  local scope count, not a miniature workbench.
+  It is technically verified and user-approved October 5, 2026.
+- Checkpoint 29 sorting follow-up adds one opt-in header/ordering implementation
+  to every table column in the recent Revenue workbenches and shared fragments.
+  Native header buttons expose direction through `aria-sort`, use raw numeric
+  and ISO calendar values, keep totals pinned and retain stable row identity,
+  selection, filters and reading offsets. Per-table history state restores on
+  Back without changing URLs or graph chronology. Loaded record fragments mount
+  the same helper before their domain controls; compact embeds remain ordinary
+  sortable lists. All eight themes retain desktop geometry without clipped
+  header labels or document overflow. This becomes the future workbench standard.
+- Next action: review the Products directory, then migrate seller product pages and adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.
