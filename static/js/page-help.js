@@ -414,7 +414,14 @@ const PageHelp = (function () {
       <p>Use the From/To date pickers or preset buttons to scope which notes are considered. Only customers with notes in the selected date range will appear. Filter settings are saved between visits.</p>
     `},
     { pattern: /^\/reports\/revenue-reports/, title: 'Revenue Reports', content: `
-      <p>Pre-built reports for revenue analysis — new users, growth trends, and product adoption.</p>
+      <p>Open Synapse Customers to review adoption grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>
+    `},
+    { pattern: /^\/reports\/synapse-customers/, title: 'Synapse Customers', content: `
+      <p>New shows customers whose first imported Synapse usage is within the last six complete imported months. Current includes customers with any Synapse spend in imported history.</p>
+      <p>The report remembers New or Current when you visit without an explicit mode. A mode supplied in the URL always wins.</p>
+      <p>Click any table heading to sort ascending or descending within its seller group. First Usage uses calendar dates, not fiscal-label text.</p>
+      <p>Total Revenue includes all imported history. Latest Month excludes the in-progress calendar month; Avg (Last 4mo) uses up to four complete imported months. A dash means no positive amount for that measure.</p>
+      <p>Customer links open matched Revenue pages. CSV, Clipboard and Email export all seller tables in their visible order; formatted exports retain account links.</p>
     `},
     { pattern: /^\/reports\/revenue\/?$/, title: 'Revenue Dashboard', content: `
       <p>Overview of Azure Consumed Revenue across your customers — flagging who needs attention and why.</p>

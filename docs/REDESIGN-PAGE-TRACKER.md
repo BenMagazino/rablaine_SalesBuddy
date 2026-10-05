@@ -6,8 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 30, seller Products browser and monthly comparison,
+- Current page/surface: checkpoint 31, Revenue reports hub and Synapse Customers,
   VERIFY, technically verified and user-approved October 5, 2026.
+  Checkpoint 30 seller Products/monthly comparison is user-approved and committed as `e98c879`.
   Checkpoint 29 Products directory/shared sorting is user-approved and committed as `aed2350`.
   Checkpoint 28 product Revenue is user-approved and committed as `e286617`.
   Checkpoint 27 customer bucket history is user-approved and committed as `aaf6cfd`.
@@ -40,8 +41,14 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `9a4ddef` (customer Revenue context/history, user-approved October 4),
   `aaf6cfd` (native customer bucket history, user-approved October 4),
   `e286617` (product Revenue comparison/trend, user-approved October 5),
-  `aed2350` (Products browser/shared column sorting, user-approved October 5)
-- Next action: migrate the Revenue reports hub and Synapse report after checkpoint 30 sign-off.
+  `aed2350` (Products browser/shared column sorting, user-approved October 5),
+  `e98c879` (seller Products browser/monthly comparison, user-approved October 5)
+- Next action: migrate Revenue analysis configuration, then the revenue sync/import surface.
+  The directory has one real report, not a filler card grid. Synapse retains both
+  modes, seller grouping, original values and exports in a continuous reading
+  area with sticky seller/column headings. Every column sorts both directions;
+  first usage uses actual calendar dates. Back restores sorting and reading
+  position; embeds retain ordinary grouped tables and their mode context.
   Seller Products
   reuses the approved directory's independent product/customer panes, guarded
   scoped reads, sorting, search and Back restoration. The full detail is a native
@@ -136,7 +143,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 30 sign-off, the rough effort-based estimate is **about 33%**
+As of checkpoint 31 sign-off, the rough effort-based estimate is **about 35%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -284,8 +291,8 @@ have separate rows even when they use one template.
 | REV-BUCKET | Customer bucket products | `/revenue/customer/<int:customer_id>/bucket/<bucket>`; `/customer/<int:customer_id>/revenue/bucket/<bucket>` | `revenue_bucket_products.html` | VERIFY | [Checkpoint 27 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-27-customer-bucket-product-history) |
 | REV-PRODS | Products | `/revenue/products`; `/products` | `revenue_products_list.html` | VERIFY | [Checkpoint 29 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-29-products-directory) |
 | REV-PROD | Product detail | `/revenue/product/<path:product>`; `/product/<path:product>` | `revenue_product_view.html` | VERIFY | [Checkpoint 28 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-28-product-revenue-comparison-and-history) |
-| REV-RPTS | Revenue reports | `/reports/revenue-reports`; `/revenue/reports` redirects | `revenue_reports_list.html` | TODO | - |
-| REV-SYN | Synapse customers | `/reports/synapse-customers`; `/revenue/reports/new-synapse-users` and `/reports/new-synapse-users` redirect with `?mode=new` | `revenue_report_synapse_customers.html` | TODO | - |
+| REV-RPTS | Revenue reports | `/reports/revenue-reports`; `/revenue/reports` redirects | `revenue_reports_list.html` | VERIFY | [Checkpoint 31](redesign-pages/HOME-WORKBENCH.md#checkpoint-31-revenue-report-surfaces); native real-report list and Analyzer command; user-approved October 5 |
+| REV-SYN | Synapse customers | `/reports/synapse-customers`; `/revenue/reports/new-synapse-users` and `/reports/new-synapse-users` redirect with `?mode=new` | `revenue_report_synapse_customers.html` | VERIFY | [Checkpoint 31](redesign-pages/HOME-WORKBENCH.md#checkpoint-31-revenue-report-surfaces); native grouped reading, modes, sorting, exports and Back; user-approved October 5 |
 
 ## Shared HTML fragments and helpers
 

@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-29 committed, checkpoint 30 seller product pages user-approved
+- Status: BUILDING; checkpoints 1-30 committed, checkpoint 31 Revenue report surfaces user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -138,8 +138,14 @@
   Matched customer/bucket links and separate bucket histories are corrected;
   global history behavior stays unchanged. Dedicated Help, actual embeds, live
   parity, read recovery and eight desktop themes are technically verified.
+  This family is user-approved October 5, 2026 and committed as `e98c879`.
+- Checkpoint 31 uses a real-report directory and continuous seller-grouped
+  Synapse reading, not an artificial selector pane. Fixed mode/summary/export
+  bands and sticky seller/column headings retain full comparison context.
+  Independent calendar/numeric sorting, mode preferences, complete exports,
+  compact embeds and exact Back reading restoration are technically verified.
   This family is user-approved October 5, 2026.
-- Next action: migrate Revenue report surfaces and adopt
+- Next action: migrate Revenue analysis configuration and adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.

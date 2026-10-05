@@ -1,211 +1,124 @@
 {% extends "base.html" %}
 {% block title %}Synapse Customers - Sales Buddy{% endblock %}
-
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-detail.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-reports.css') }}">
+{% endblock %}
 {% block extra_head %}
-<script>
-// Run BEFORE the body renders so the user never sees the wrong tab flash.
-// If they landed without an explicit ?mode= and a different tab was saved
-// last visit, redirect immediately. window.location.replace() aborts the
-// current navigation so nothing paints.
-(function () {
-    try {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('mode')) return;  // explicit mode wins
-        const saved = localStorage.getItem('synapseCustomersMode');
-        if (saved === 'new' || saved === 'current') {
-            const currentMode = {{ mode|tojson }};
-            if (saved !== currentMode) {
-                window.location.replace('?mode=' + encodeURIComponent(saved));
-            }
-        }
-    } catch (e) { /* localStorage unavailable - just stay on default */ }
-})();
-</script>
+<script src="{{ url_for('static', filename='js/ui-synapse-mode.js') }}" data-mode="{{ mode }}"></script>
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="Report status">
+    <span>{{ total_count }} customer{{ 's' if total_count != 1 else '' }}; {{ sellers|length }} seller group{{ 's' if sellers|length != 1 else '' }}</span>
+    <span>Totals include all imported history; latest month excludes the in-progress month</span>
+</footer>
+{% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-
-    <div class="d-flex justify-content-between align-items-start mb-3">
+<section class="sb-revenue-reports sb-synapse-report" data-sb-page-surface
+         data-sb-report-key="synapse-{{ mode }}"
+         data-sb-report-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+         aria-labelledby="synapseTitle">
+    <header class="sb-revenue-reports-header" data-sb-page-band>
         <div>
-            <h2><i class="bi bi-database-gear"></i> Synapse Customers</h2>
-            <p class="text-muted mb-0">
-                {% if mode == 'current' %}
-                All customers with any spend on {{ product_name }}.
-                {% else %}
-                Customers who started using {{ product_name }} in the last 6 months
-                {% if lookback_months %}
-                <br><small>({{ lookback_months[0].fiscal_month }} through {{ lookback_months[-1].fiscal_month }})</small>
-                {% endif %}
-                {% endif %}
+            <h1 id="synapseTitle">Synapse Customers</h1>
+            <p>{% if mode == 'current' %}Customers with any imported {{ product_name }} spend
+                {% else %}First {{ product_name }} usage in the last 6 complete imported months{% endif %}
+                {% if mode == 'new' and lookback_months %}<span class="sb-synapse-period">({{ lookback_months[0].fiscal_month }} through {{ lookback_months[-1].fiscal_month }})</span>{% endif %}
             </p>
         </div>
-        <div class="d-flex gap-2">
-            {% set export_table_id = 'table.table' %}
-            {% set export_filename = 'synapse-customers-' ~ mode %}
-            {% include 'partials/_report_export.html' %}
-        </div>
-    </div>
+        {% set report_export_native = true %}
+        {% set export_table_id = '.sb-synapse-table' %}
+        {% set export_filename = 'synapse-customers-' ~ mode %}
+        {% set export_title = 'Synapse Customers' %}
+        {% include 'partials/_report_export.html' %}
+    </header>
 
-    <!-- Mode tabs -->
-    <ul class="nav nav-tabs mb-4">
-        <li class="nav-item">
-            <a class="nav-link {% if mode == 'new' %}active{% endif %}"
-               href="{{ url_for('revenue.report_synapse_customers', mode='new') }}">
-                <i class="bi bi-person-plus"></i> New Synapse Customers
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {% if mode == 'current' %}active{% endif %}"
-               href="{{ url_for('revenue.report_synapse_customers', mode='current') }}">
-                <i class="bi bi-people"></i> Current Synapse Customers
-            </a>
-        </li>
-    </ul>
+    <nav class="sb-synapse-modes" data-sb-page-band aria-label="Synapse customer scope">
+        <a href="{{ url_for('revenue.report_synapse_customers', mode='new', embed=request.args.get('embed')) }}"
+           {% if mode == 'new' %}aria-current="page"{% endif %}>New Synapse Customers</a>
+        <a href="{{ url_for('revenue.report_synapse_customers', mode='current', embed=request.args.get('embed')) }}"
+           {% if mode == 'current' %}aria-current="page"{% endif %}>Current Synapse Customers</a>
+    </nav>
+    <p id="synapseModeNotice" class="sb-revenue-report-notice" data-sb-page-band role="alert" hidden></p>
+    <p class="sb-revenue-report-notice" data-sb-report-context-notice data-sb-page-band role="alert" hidden></p>
 
-    {% if not has_revenue_data %}
-    <div class="text-center py-5">
-        <i class="bi bi-inbox display-1 text-muted"></i>
-        <h4 class="mt-3">No revenue data yet</h4>
-        <p class="text-muted">Import revenue data to see {{ product_name }} customers.</p>
-        <a href="{{ url_for('revenue.revenue_import') }}" class="btn btn-primary">
-            <i class="bi bi-upload"></i> Import Data
-        </a>
-    </div>
-    {% else %}
-    <!-- Summary -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    {% if mode == 'current' %}
-                    <h6 class="card-title"><i class="bi bi-people"></i> Customers</h6>
-                    <h3>{{ total_count }}</h3>
-                    <small>customers using {{ product_name }}</small>
-                    {% else %}
-                    <h6 class="card-title"><i class="bi bi-person-plus"></i> New Users</h6>
-                    <h3>{{ total_count }}</h3>
-                    <small>customers started using {{ product_name }}</small>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-people"></i> Sellers</h6>
-                    <h3>{{ sellers|length }}</h3>
-                    <small>sellers with {{ product_name }} customers</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-currency-dollar"></i> Total Revenue</h6>
-                    <h3>${{ '{:,.0f}'.format(users|sum(attribute='total_revenue')) }}</h3>
-                    <small>cumulative {{ product_name }} revenue</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-dark">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-calendar-check"></i> Latest Month</h6>
-                    <h3>${{ '{:,.0f}'.format(users|sum(attribute='latest_month_revenue')) }}</h3>
-                    <small>{{ lookback_months[-1].fiscal_month if lookback_months else 'current' }} revenue</small>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% if has_revenue_data %}
+    <dl class="sb-synapse-summary" data-sb-page-band>
+        <div><dt>{{ 'Customers' if mode == 'current' else 'New Users' }}</dt><dd>{{ total_count }}</dd></div>
+        <div><dt>Sellers</dt><dd>{{ sellers|length }}</dd></div>
+        <div><dt>Total Revenue <span>all history</span></dt><dd>${{ '{:,.0f}'.format(users|sum(attribute='total_revenue')) }}</dd></div>
+        <div><dt>Latest Month{% if lookback_months %} <span>{{ lookback_months[-1].fiscal_month }}</span>{% endif %}</dt><dd>${{ '{:,.0f}'.format(users|sum(attribute='latest_month_revenue')) }}</dd></div>
+    </dl>
+    {% endif %}
 
-    <!-- Grouped by Seller -->
-    {% for seller_name, customers in sellers.items() %}
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white d-flex align-items-center">
-            <i class="bi bi-person me-2"></i>
-            <strong>{{ seller_name }}</strong>
-            <span class="badge bg-light text-primary ms-2">{{ customers|length }} customer{{ 's' if customers|length != 1 else '' }}</span>
-            <span class="ms-auto text-white-50">
-                ${{ '{:,.0f}'.format(customers|sum(attribute='total_revenue')) }} total
-            </span>
+    <div class="sb-revenue-reports-body" data-sb-page-body tabindex="0" role="region" aria-label="Seller-grouped Synapse customers">
+        {% if not has_revenue_data %}
+        <div class="sb-revenue-empty">
+            <h2>No revenue data yet</h2>
+            <p>Import revenue data to find customers using {{ product_name }}.</p>
+            <a class="sb-revenue-command" href="{{ url_for('revenue.revenue_import') }}">Import revenue data</a>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Customer</th>
-                            {% if mode == 'current' %}
-                            <th class="text-end">Avg (Last 4mo)</th>
-                            {% else %}
-                            <th class="text-center">First Usage</th>
-                            {% endif %}
-                            <th class="text-end">Total Revenue</th>
-                            <th class="text-end">Latest Month</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for customer in customers %}
-                        <tr>
-                            <td{% if customer.tpid_url %} data-export-url="{{ customer.tpid_url }}"{% endif %}>
-                                {% if customer.customer_id %}
-                                <a href="{{ url_for('revenue.revenue_customer_view', customer_id=customer.customer_id) }}">
-                                    {{ customer.customer_name }}
-                                </a>
-                                {% else %}
-                                {{ customer.customer_name }}
-                                {% endif %}
-                            </td>
-                            {% if mode == 'current' %}
-                            <td class="text-end">
-                                {% if customer.avg_4mo_revenue and customer.avg_4mo_revenue > 0 %}
-                                ${{ '{:,.0f}'.format(customer.avg_4mo_revenue) }}
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            {% else %}
-                            <td class="text-center">
-                                <span class="badge bg-success">{{ customer.first_usage_fiscal or 'Unknown' }}</span>
-                            </td>
-                            {% endif %}
-                            <td class="text-end">${{ '{:,.0f}'.format(customer.total_revenue) }}</td>
-                            <td class="text-end">
-                                {% if customer.latest_month_revenue > 0 %}
-                                <span class="text-success">${{ '{:,.0f}'.format(customer.latest_month_revenue) }}</span>
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    {% else %}
-    <div class="alert alert-info">
-        {% if mode == 'current' %}
-        <i class="bi bi-info-circle"></i> No customers have any spend on {{ product_name }}.
         {% else %}
-        <i class="bi bi-info-circle"></i> No customers have started using {{ product_name }} in the last 6 months.
+        {% for seller_name, customers in sellers.items() %}
+        <section class="sb-synapse-group" aria-labelledby="synapseSeller{{ loop.index }}">
+            <header class="sb-synapse-group-header">
+                <h2 id="synapseSeller{{ loop.index }}" title="{{ seller_name }}"><i class="bi bi-person" aria-hidden="true"></i> {{ seller_name }}</h2>
+                <span>{{ customers|length }} customer{{ 's' if customers|length != 1 else '' }}</span>
+                <span class="sb-synapse-group-total">${{ '{:,.0f}'.format(customers|sum(attribute='total_revenue')) }} total</span>
+            </header>
+            <table class="sb-synapse-table" data-sb-sortable
+                   data-sb-sort-key="synapse-{{ mode }}-{{ seller_name }}"
+                   {% if mode == 'current' %}data-sb-sort-default-column="3" data-sb-sort-default-direction="descending"{% endif %}
+                   aria-labelledby="synapseSeller{{ loop.index }}">
+                <thead><tr>
+                    <th data-sb-sort-type="text" data-export-label="Customer">Customer</th>
+                    {% if mode == 'current' %}
+                    <th data-sb-sort-type="number" data-export-label="Avg (Last 4mo)">Avg (Last 4mo)</th>
+                    {% else %}
+                    <th data-sb-sort-type="date" data-export-label="First Usage">First Usage</th>
+                    {% endif %}
+                    <th data-sb-sort-type="number" data-export-label="Total Revenue">Total Revenue</th>
+                    <th data-sb-sort-type="number" data-export-label="Latest Month">Latest Month</th>
+                </tr></thead>
+                <tbody>
+                {% for customer in customers %}
+                    <tr>
+                        <td {% if customer.tpid_url %}data-export-url="{{ customer.tpid_url }}"{% endif %}>
+                            {% if customer.customer_id %}<a href="{{ url_for('revenue.revenue_customer_view', customer_id=customer.customer_id) }}">{{ customer.customer_name }}</a>
+                            {% else %}{{ customer.customer_name }}{% endif %}
+                        </td>
+                        {% if mode == 'current' %}
+                        <td data-sb-sort-value="{{ customer.avg_4mo_revenue }}">
+                            {% if customer.avg_4mo_revenue > 0 %}${{ '{:,.0f}'.format(customer.avg_4mo_revenue) }}{% else %}<span class="sb-synapse-unavailable">-</span>{% endif %}
+                        </td>
+                        {% else %}
+                        <td data-sb-sort-value="{{ customer.first_usage_date.isoformat() if customer.first_usage_date else '' }}">{{ customer.first_usage_fiscal or 'Unknown' }}</td>
+                        {% endif %}
+                        <td data-sb-sort-value="{{ customer.total_revenue }}">${{ '{:,.0f}'.format(customer.total_revenue) }}</td>
+                        <td data-sb-sort-value="{{ customer.latest_month_revenue }}">
+                            {% if customer.latest_month_revenue > 0 %}<span class="sb-synapse-positive">${{ '{:,.0f}'.format(customer.latest_month_revenue) }}</span>{% else %}<span class="sb-synapse-unavailable">-</span>{% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% else %}
+        <div class="sb-revenue-empty">
+            <h2>No {{ 'current' if mode == 'current' else 'new' }} Synapse customers</h2>
+            <p>{% if mode == 'current' %}No customers have any spend on {{ product_name }}.
+               {% else %}No customers have started using {{ product_name }} in the last 6 months.{% endif %}</p>
+        </div>
+        {% endfor %}
         {% endif %}
     </div>
-    {% endfor %}
-    {% endif %}
-</div>
+</section>
 {% endblock %}
-
 {% block extra_js %}
-<script>
-// Persist the active tab so the next visit lands here. The redirect logic
-// runs in extra_head before paint; this just records the current state.
-(function () {
-    try {
-        localStorage.setItem('synapseCustomersMode', {{ mode|tojson }});
-    } catch (e) {}
-})();
-</script>
+<script src="{{ url_for('static', filename='js/ui-revenue-reports.js') }}"></script>
 {% endblock %}

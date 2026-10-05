@@ -1611,7 +1611,7 @@ Committed as `aed2350`. Approved effort estimate is about 31%.
 ## Checkpoint 30: Seller Products and monthly comparison
 
 Status: VERIFY, technically verified and user-approved October 5, 2026.
-Approved predecessor: `aed2350`; approved effort estimate is about 33%.
+Committed as `e98c879`. Approved predecessor: `aed2350`; approved effort estimate is about 33%.
 
 ### Composition and preserved scope
 
@@ -1688,3 +1688,79 @@ Approved predecessor: `aed2350`; approved effort estimate is about 33%.
 - Protected note drafts are untouched. No customer/revenue records are edited.
   No push, merge or deployment is authorized. This family is user-approved;
   Revenue report surfaces are next.
+
+## Checkpoint 31: Revenue report surfaces
+
+Status: VERIFY, technically verified and user-approved October 5, 2026.
+Approved predecessor: `e98c879`; approved effort estimate is about 35%.
+
+### Composition and preserved behavior
+
+- Revenue Reports is a native directory row for the one actual Synapse report,
+  with its original description/destination and a Revenue Analyzer command.
+  No invented reports, filler cards or unnecessary selector pane.
+- Synapse retains New and Current as real navigable scopes, four quiet full-report
+  summary measures and all seller groups. A continuous, independently scrolling
+  reading area replaces stacked Bootstrap cards. Seller labels and column headings
+  stay together while scrolling. With only three current seller groups, the task
+  benefits from visible grouped comparisons rather than a redundant sidebar.
+- Existing routes, redirects, provider queries, matched customer IDs, all-history
+  totals, complete-month calculations, fiscal labels, default ordering and
+  positive-amount/dash formatting are unchanged. No model or analytical endpoints
+  are added. Header copy distinguishes the New imported-month window from
+  Current's unrestricted imported-history population. All four columns in every
+  group sort in both directions through the
+  approved shared sorter. Dates use ISO calendar values, financial fields retain
+  exact fractions/zero/negatives, and Unknown dates remain unavailable.
+- Native export commands reuse the existing helper and feedback. Header labels
+  remain exportable after conversion to sorting buttons. CSV/EML filenames retain
+  their modes; formatted copies retain account links and every grouped table.
+  Export selection is restricted to the actual Synapse tables, not Help tables.
+- The existing `synapseCustomersMode` preference still applies before paint only
+  when the URL has no explicit mode. Explicit and server-normalized modes win.
+  Preference redirects preserve other query parameters, embed context and fragments.
+  Storage/invalid-preference/navigation failures are logged and visibly explained,
+  without disabling usable scope links.
+- A private reading-position controller merges per-report offsets into browser
+  history without replacing independent table sorts or other feature state.
+  Restore follows sorting; malformed context and history-write failures report
+  explicitly. Compact embeds never own the parent's reading history, hide the
+  outer shell/status and retain embed context when switching modes.
+- Dedicated F1 Help explains the two populations, financial scope, sorting,
+  remembered mode, matched customer navigation and complete export scope.
+
+### Verification
+
+- 160 scoped Python tests pass for new native rendering, existing report behavior,
+  exports and canonical breadcrumbs. 48 JavaScript checks pass for preferences,
+  reading restoration, export contracts and the shared sorter. Editor diagnostics
+  and whitespace validation are clean.
+- Original/new current-mode table fingerprint is identical:
+  `8bf904fbdceff7f899934dc99534bb9e18cb540cc61c791073bd2fa7f425a2f9`.
+  Its three tables retain 28 customers, three seller groups, $1,337,727 all-history
+  revenue and $43,514 latest-month revenue.
+- Original/new new-mode table fingerprint is identical:
+  `c242591519e0fe2b3a3011aa1f273d34838c957204d75a15221827169dbe93d8`.
+  Its one table retains three customers, one seller group, $442 total and $0 latest.
+- All 16 live column headings pass both directions, 32 column/direction checks.
+  First Usage explicitly orders April, July and August 2026 chronologically.
+  Returning from New to Current restores the current group's Total Revenue ASC.
+- A visible Hanger Inc. row opens actual Customer Revenue at customer 107.
+  Back restores Current, Total Revenue ASC and the exact 340px reading offset.
+- Actual CSV/EML payload generation and clipboard HTML retain mode-specific
+  filenames, all three current-mode headers/tables, 28 rows and 28 original
+  account hyperlinks. Clipboard row names match the live tables; EML includes
+  its mode-specific CSV attachment. Downloads and clipboard writes were
+  intercepted locally for validation, not sent or left on the user's clipboard.
+- The report-directory link respects the saved Current mode. Actual current
+  embed retains 28 rows, both mode links retain `embed=1`, and it has no shell,
+  status bar or horizontal overflow.
+- Eight Synapse theme geometries retain distinct approved surfaces/readable ink
+  and unclipped headers without changing the current desktop viewport or saved
+  theme preferences. At a 500px reading offset the seller and table headings
+  remain at their intended 0px and 44px sticky offsets.
+- Empty imports, no matching users, unmatched names, unknown dates, fractional/
+  nonpositive values and preference/history failures are tested only against
+  isolated fixtures. Live verification uses the existing development database.
+  No customer/revenue records are manually changed; protected drafts are untouched.
+  No push, merge or deployment is authorized.

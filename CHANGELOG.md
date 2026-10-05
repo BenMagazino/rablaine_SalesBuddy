@@ -21,6 +21,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Sort every Revenue workbench table column in either direction, including previews and monthly history, while retaining totals, selection and browsing context.
 - Browse seller products beside scoped customer consumption, with searchable, sortable recent-month comparisons and retained full-history totals.
 - Restore matched customer and bucket links in seller product comparisons, and keep repeated customers' monthly values separate for each bucket.
+- Read Synapse adoption in native seller-grouped tables with sortable columns, retained New/Current modes and exports, and restored reading position after customer drill-downs.
 - Use compact native Revenue Analyzer and seller-alert page commands, with quieter category summaries and persistent export-error feedback.
 - Show consistent under-navbar breadcrumbs throughout the app, with linked Home, real ownership paths and Revenue Analyzer under Reports.
 - Put the Home calendar beside distinct Action Items, Milestones Due and Revenue Alerts panels, with keyboard-operated activity tabs and preview rows.
