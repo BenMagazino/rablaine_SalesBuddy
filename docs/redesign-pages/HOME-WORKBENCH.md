@@ -1692,7 +1692,7 @@ Committed as `e98c879`. Approved predecessor: `aed2350`; approved effort estimat
 ## Checkpoint 31: Revenue report surfaces
 
 Status: VERIFY, technically verified and user-approved October 5, 2026.
-Approved predecessor: `e98c879`; approved effort estimate is about 35%.
+Committed as `15e8333`. Approved predecessor: `e98c879`; approved effort estimate is about 35%.
 
 ### Composition and preserved behavior
 
@@ -1764,3 +1764,68 @@ Approved predecessor: `e98c879`; approved effort estimate is about 35%.
   isolated fixtures. Live verification uses the existing development database.
   No customer/revenue records are manually changed; protected drafts are untouched.
   No push, merge or deployment is authorized.
+
+## Checkpoint 32: Revenue analysis configuration
+
+Status: VERIFY, technically verified and user-approved October 5, 2026.
+Approved predecessor: `15e8333`; approved effort estimate is about 36%.
+
+### Composition and parity
+
+- A readable 1120px settings editor sits inside the full-width continuous
+  workbench. Four contextual sections replace Bootstrap cards and the detached
+  About panel. Each explanation stays beside its fields, without inventing a
+  selector or redundant settings sidebar.
+- Save Configuration and Cancel stay in the command band. The native submit
+  button associates with the original POST form through its `form` attribute;
+  browser number validation and keyboard semantics remain browser-owned.
+  Cancel still returns to Revenue Analyzer without submitting.
+- All nine original names, values, input types, step values, optional status
+  and absence of min/max constraints remain. Saved zeroes do not fall back to
+  defaults. Dollar values remain integers; drop/growth remain stored signed
+  decimal ratios. The old percent suffixes are clarified as ratio/ratio-per-month,
+  with the existing -0.15/0.08 examples, not a new conversion or calculation.
+- Original gates, overrides, tier boosts and category sensitivity explanations
+  remain beside their controls. Loaded-source status distinguishes built-in
+  defaults from saved configuration without implying current edits are saved.
+  Saving does not re-run analysis; the original next-analysis/Re-analyze guidance
+  remains available, including the Analyzer link.
+- Routes, model, providers and save logic are unchanged. No dependencies,
+  analytical endpoints, auto-save, new field restrictions or client save protocol.
+  The existing shared native input/command styles are reused; one local macro
+  keeps field labels, accessible descriptions and unit treatment consistent.
+- Compact embeds omit shell/status and stack section explanations above ordinary
+  fields. They do not contain a miniature full-window editor. Dedicated F1 Help
+  describes the actual thresholds and save/apply timing.
+
+### Verification
+
+- 248 scoped Python tests pass across native configuration, revenue analysis/
+  routes, breadcrumbs and existing native Revenue hosts. Eight new isolated
+  contracts cover default/saved/zero values, both full and embedded rendering,
+  native number constraints, form association, create/update POST, unchanged
+  ratios, redirect/flash, read-only Cancel and no implicit analysis.
+  The 66 SQLAlchemy `Query.get()` warnings are pre-existing.
+- Original/new live input fingerprint is identical:
+  `4d7ebec3c966d118417bb2416b86b5d99919f3bdda3e7d084db7497bc65a8e86`.
+  All nine field names/values/types/steps/range/required properties are unchanged.
+  Native header-button activation submits the original nine-value payload to
+  `/revenue/config` by POST; the submit event was intercepted locally only to
+  avoid writing the live configuration. Actual persistence is verified in the
+  isolated test database, including loading through `AnalysisConfig.from_db`.
+- Live frame geometry is edge-to-edge: main/surface x=0 and width=1724; the
+  header begins exactly at the context bar's 78px bottom. The editor remains
+  constrained inside that surface rather than centering the whole page.
+  An initially duplicated legacy stylesheet overrode the frame; it was removed
+  and a stylesheet-order regression assertion prevents its return.
+- All eight approved themes retain distinct surfaces/readable ink, no horizontal
+  overflow and unclipped labels/inputs/commands at the current desktop viewport.
+  Theme attributes are restored; no saved theme preference or viewport changes.
+- Actual embed renders all nine fields with one stacked context column and
+  two category-field columns, without navbar, frame or status and without
+  horizontal overflow. No sample records or separate server are used.
+- The actual F1 handler opens native Revenue Configuration Help with ratio and
+  analysis-timing guidance. Help syntax/editor diagnostics and whitespace validation are clean.
+  No customer, revenue or configuration records are manually written in live
+  development; protected note drafts are untouched. No push, merge or deployment.
+  Revenue sync/import remains the next separate surface.

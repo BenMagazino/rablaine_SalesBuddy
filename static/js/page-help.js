@@ -393,7 +393,10 @@ const PageHelp = (function () {
       </ul>
     `},
     { pattern: /^\/revenue\/config/, title: 'Revenue Configuration', content: `
-      <p>Configure revenue tracking settings — product groupings, alert thresholds, and seller mappings.</p>
+      <p>Tune the nine thresholds used by Revenue Analyzer. Revenue gates reduce noise, dollar overrides force material alerts, tiers boost account priority, and category thresholds adjust sensitivity.</p>
+      <p>Dollar fields use whole dollar amounts. Drop and growth fields use decimal ratios, not whole percentages: -0.15 means a 15% drop; 0.08 means 8% growth.</p>
+      <p>Save Configuration stores the settings and returns to Revenue Analyzer. Saving does not re-run analysis. Use Re-analyze there to apply changes immediately, or wait for the next analysis run.</p>
+      <p>Cancel returns to Revenue Analyzer without submitting the form. The command band remains available while the editor scrolls.</p>
     `},
     { pattern: /^\/reports\/workload/, title: 'Workload Report', content: `
       <p>Customers grouped by workload topic. Use this to find accounts working on a specific technology for workshop targeting or account team questions.</p>

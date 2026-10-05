@@ -1,0 +1,34 @@
+.sb-revenue-config [hidden] { display: none !important; }
+.sb-page-frame .sb-revenue-config [data-sb-page-body] { overflow: auto; }
+.sb-page-frame .sb-revenue-config .sb-revenue-page-header { padding-inline: 24px; }
+.sb-revenue-config-reading { padding: 0 24px 24px; scrollbar-gutter: stable; }
+.sb-revenue-config-reading > form,
+.sb-revenue-config-apply-note { max-width: 1120px; }
+.sb-revenue-config-group {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 32px;
+    padding: 24px 0;
+    border-bottom: 1px solid var(--sb-ui-line);
+}
+.sb-revenue-config-context h2 { margin: 0 0 7px; font: 600 14px/1.5 var(--sb-ui-font); }
+.sb-revenue-config-context p { margin: 0; color: var(--sb-ui-muted); font-size: 12px; }
+.sb-revenue-config-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    align-content: start;
+}
+.sb-revenue-config-category-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sb-revenue-config[data-embedded="true"] .sb-revenue-config-group { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.sb-revenue-config[data-embedded="true"] .sb-revenue-config-category-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sb-revenue-config-field { min-width: 0; }
+.sb-revenue-config-field label { color: var(--sb-ui-ink); font-size: 12px; }
+.sb-revenue-config-field .sb-record-field-row { gap: 8px; }
+.sb-revenue-config-field .sb-record-field { flex: 1; font-variant-numeric: tabular-nums; }
+.sb-revenue-config-field .sb-record-field-suffix { font-size: 11px; }
+.sb-revenue-config-field p { margin: 6px 0 0; color: var(--sb-ui-muted); font-size: 11px; }
+.sb-revenue-config-save { background: var(--sb-ui-selection); border-color: var(--sb-ui-control-line); }
+.sb-revenue-config-save:hover { background: var(--sb-ui-control-hover); }
+.sb-revenue-config-apply-note { margin: 18px 0 0; color: var(--sb-ui-muted); font-size: 12px; }
+.sb-revenue-config-apply-note a { color: var(--sb-ui-accent); }

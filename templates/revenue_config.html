@@ -1,180 +1,107 @@
 {% extends "base.html" %}
 {% block title %}Revenue Analysis Configuration - Sales Buddy{% endblock %}
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-config.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="Configuration status">
+    <span>9 thresholds; loaded from {{ 'saved configuration' if config else 'built-in defaults' }}</span>
+    <span>Changes apply on the next analysis run</span>
+</footer>
+{% endif %}
+{% endblock %}
+
+{% macro threshold(name, label, description, unit='$', step=None) %}
+<div class="sb-revenue-config-field">
+    <label class="sb-record-field-label" for="{{ name }}">{{ label }}</label>
+    <div class="sb-record-field-row">
+        {% if unit == '$' %}<span id="{{ name }}Unit" class="sb-record-field-suffix">$</span>{% endif %}
+        <input type="number" class="sb-record-field" id="{{ name }}" name="{{ name }}"
+               value="{{ config[name] if config else defaults[name] }}"
+               aria-describedby="{{ name }}Help {{ name }}Unit"
+               {% if step %}step="{{ step }}"{% endif %}>
+        {% if unit != '$' %}<span id="{{ name }}Unit" class="sb-record-field-suffix">{{ unit }}</span>{% endif %}
+    </div>
+    <p id="{{ name }}Help">{{ description }}</p>
+</div>
+{% endmacro %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row mb-4">
-        <div class="col">
-            <h1><i class="bi bi-gear"></i> Revenue Analysis Configuration</h1>
-            <p class="text-muted">Adjust thresholds that determine which customers need attention</p>
+<section class="sb-revenue-workspace sb-revenue-config" data-sb-page-surface
+         data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+         aria-labelledby="revenueConfigTitle">
+    <header class="sb-revenue-page-header" data-sb-page-band>
+        <div><h1 id="revenueConfigTitle">Revenue Analysis Configuration</h1>
+            <p>Adjust thresholds that determine which customers need attention.</p></div>
+        <div class="sb-revenue-command-group">
+            <button type="submit" form="revenueConfigForm" class="sb-revenue-command sb-revenue-config-save">
+                <i class="bi bi-check" aria-hidden="true"></i> Save Configuration
+            </button>
+            <a href="{{ url_for('revenue.revenue_dashboard') }}" class="sb-revenue-command">Cancel</a>
         </div>
+    </header>
+    <div class="sb-revenue-config-reading" data-sb-page-body tabindex="0"
+         role="region" aria-label="Revenue analysis thresholds">
+        <form id="revenueConfigForm" action="{{ url_for('revenue.revenue_config') }}" method="post">
+            <section class="sb-revenue-config-group" aria-labelledby="revenueGatesTitle">
+                <div class="sb-revenue-config-context">
+                    <h2 id="revenueGatesTitle">Revenue Gates</h2>
+                    <p>Filter out noise from small customers and small dollar impacts.</p>
+                </div>
+                <div class="sb-revenue-config-fields">
+                    {{ threshold('min_revenue_for_outreach', 'Minimum Revenue for Outreach',
+                        "Customers below this average revenue won't trigger alerts.") }}
+                    {{ threshold('min_dollar_impact', 'Minimum Dollar Impact',
+                        'Monthly dollars at risk or opportunity must exceed this amount.') }}
+                </div>
+            </section>
+            <section class="sb-revenue-config-group" aria-labelledby="revenueOverridesTitle">
+                <div class="sb-revenue-config-context">
+                    <h2 id="revenueOverridesTitle">Dollar Impact Overrides</h2>
+                    <p>Force alerts for material risk or opportunity, even when other conditions are not met.</p>
+                </div>
+                <div class="sb-revenue-config-fields">
+                    {{ threshold('dollar_at_risk_override', '$ At Risk Override',
+                        'Force a check-in when monthly dollars at risk exceed this amount.') }}
+                    {{ threshold('dollar_opportunity_override', '$ Opportunity Override',
+                        'Flag expansion when growth opportunity exceeds this amount.') }}
+                </div>
+            </section>
+            <section class="sb-revenue-config-group" aria-labelledby="revenueTiersTitle">
+                <div class="sb-revenue-config-context">
+                    <h2 id="revenueTiersTitle">Revenue Tiers</h2>
+                    <p>Boost priority for important accounts so strategic customers receive more attention.</p>
+                </div>
+                <div class="sb-revenue-config-fields">
+                    {{ threshold('high_value_threshold', 'High Value Threshold',
+                        'Customers above this threshold receive +12 priority.') }}
+                    {{ threshold('strategic_threshold', 'Strategic Account Threshold',
+                        'Customers above this threshold receive +20 priority.') }}
+                </div>
+            </section>
+            <section class="sb-revenue-config-group" aria-labelledby="revenueCategoriesTitle">
+                <div class="sb-revenue-config-context">
+                    <h2 id="revenueCategoriesTitle">Category Thresholds</h2>
+                    <p>Tune alert sensitivity for the characteristics of your territory.</p>
+                </div>
+                <div class="sb-revenue-config-fields sb-revenue-config-category-fields">
+                    {{ threshold('volatile_min_revenue', 'Volatile Min Revenue',
+                        'Minimum revenue to investigate volatility.') }}
+                    {{ threshold('recent_drop_threshold', 'Recent Drop Threshold',
+                        'Enter a signed ratio: -0.15 means a 15% drop.', 'ratio', '0.01') }}
+                    {{ threshold('expansion_growth_threshold', 'Expansion Growth Threshold',
+                        'Enter a ratio: 0.08 means 8% growth for expansion outreach.',
+                        'ratio/mo', '0.01') }}
+                </div>
+            </section>
+        </form>
+        <p class="sb-revenue-config-apply-note">Saving does not re-run analysis.
+            Changes take effect on the next analysis run. Use Re-analyze in
+            <a href="{{ url_for('revenue.revenue_dashboard') }}">Revenue Analyzer</a>
+            to apply them immediately.</p>
     </div>
-
-    <div class="row">
-        <div class="col-lg-8">
-            <form action="{{ url_for('revenue.revenue_config') }}" method="post">
-                <!-- Revenue Gates -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Revenue Gates</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="min_revenue_for_outreach" class="form-label">Minimum Revenue for Outreach</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="min_revenue_for_outreach" 
-                                           name="min_revenue_for_outreach" 
-                                           value="{{ config.min_revenue_for_outreach if config else defaults.min_revenue_for_outreach }}">
-                                </div>
-                                <div class="form-text">Customers below this avg revenue won't trigger alerts</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="min_dollar_impact" class="form-label">Minimum Dollar Impact</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="min_dollar_impact" 
-                                           name="min_dollar_impact" 
-                                           value="{{ config.min_dollar_impact if config else defaults.min_dollar_impact }}">
-                                </div>
-                                <div class="form-text">Monthly $ at risk/opportunity must exceed this</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Dollar Overrides -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Dollar Impact Overrides</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="dollar_at_risk_override" class="form-label">$ At Risk Override</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="dollar_at_risk_override" 
-                                           name="dollar_at_risk_override" 
-                                           value="{{ config.dollar_at_risk_override if config else defaults.dollar_at_risk_override }}">
-                                </div>
-                                <div class="form-text">Force check-in if monthly $ at risk exceeds this</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="dollar_opportunity_override" class="form-label">$ Opportunity Override</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="dollar_opportunity_override" 
-                                           name="dollar_opportunity_override" 
-                                           value="{{ config.dollar_opportunity_override if config else defaults.dollar_opportunity_override }}">
-                                </div>
-                                <div class="form-text">Flag for expansion if growth opportunity exceeds this</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Revenue Tiers -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Revenue Tiers (Priority Boost)</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="high_value_threshold" class="form-label">High Value Threshold</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="high_value_threshold" 
-                                           name="high_value_threshold" 
-                                           value="{{ config.high_value_threshold if config else defaults.high_value_threshold }}">
-                                </div>
-                                <div class="form-text">Customers above this get +12 priority</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="strategic_threshold" class="form-label">Strategic Account Threshold</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="strategic_threshold" 
-                                           name="strategic_threshold" 
-                                           value="{{ config.strategic_threshold if config else defaults.strategic_threshold }}">
-                                </div>
-                                <div class="form-text">Customers above this get +20 priority</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Category Thresholds -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Category Thresholds</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label for="volatile_min_revenue" class="form-label">Volatile Min Revenue</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="volatile_min_revenue" 
-                                           name="volatile_min_revenue" 
-                                           value="{{ config.volatile_min_revenue if config else defaults.volatile_min_revenue }}">
-                                </div>
-                                <div class="form-text">Min revenue to investigate volatility</div>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="recent_drop_threshold" class="form-label">Recent Drop Threshold</label>
-                                <div class="input-group">
-                                    <input type="number" step="0.01" class="form-control" id="recent_drop_threshold" 
-                                           name="recent_drop_threshold" 
-                                           value="{{ config.recent_drop_threshold if config else defaults.recent_drop_threshold }}">
-                                    <span class="input-group-text">%</span>
-                                </div>
-                                <div class="form-text">e.g., -0.15 = 15% drop triggers alert</div>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="expansion_growth_threshold" class="form-label">Expansion Growth Threshold</label>
-                                <div class="input-group">
-                                    <input type="number" step="0.01" class="form-control" id="expansion_growth_threshold" 
-                                           name="expansion_growth_threshold" 
-                                           value="{{ config.expansion_growth_threshold if config else defaults.expansion_growth_threshold }}">
-                                    <span class="input-group-text">%/mo</span>
-                                </div>
-                                <div class="form-text">e.g., 0.08 = 8% growth for expansion outreach</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check"></i> Save Configuration
-                    </button>
-                    <a href="{{ url_for('revenue.revenue_dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
-                </div>
-            </form>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> About These Settings</h6>
-                </div>
-                <div class="card-body">
-                    <p><strong>Revenue Gates</strong> filter out noise - small customers with small dollar impacts don't warrant your time.</p>
-                    
-                    <p><strong>Dollar Overrides</strong> force alerts even if other conditions aren't met - material risk/opportunity shouldn't be missed.</p>
-                    
-                    <p><strong>Revenue Tiers</strong> boost priority scores for important accounts - strategic customers get more attention.</p>
-                    
-                    <p><strong>Category Thresholds</strong> tune sensitivity - adjust based on your territory's characteristics.</p>
-                    
-                    <hr>
-                    <p class="mb-0"><small class="text-muted">Changes take effect on next analysis run. Click "Re-analyze" on the dashboard to apply immediately.</small></p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 {% endblock %}

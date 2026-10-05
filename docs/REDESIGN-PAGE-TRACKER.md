@@ -6,8 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 31, Revenue reports hub and Synapse Customers,
+- Current page/surface: checkpoint 32, Revenue analysis configuration,
   VERIFY, technically verified and user-approved October 5, 2026.
+  Checkpoint 31 Revenue reports/Synapse is user-approved and committed as `15e8333`.
   Checkpoint 30 seller Products/monthly comparison is user-approved and committed as `e98c879`.
   Checkpoint 29 Products directory/shared sorting is user-approved and committed as `aed2350`.
   Checkpoint 28 product Revenue is user-approved and committed as `e286617`.
@@ -42,8 +43,14 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `aaf6cfd` (native customer bucket history, user-approved October 4),
   `e286617` (product Revenue comparison/trend, user-approved October 5),
   `aed2350` (Products browser/shared column sorting, user-approved October 5),
-  `e98c879` (seller Products browser/monthly comparison, user-approved October 5)
-- Next action: migrate Revenue analysis configuration, then the revenue sync/import surface.
+  `e98c879` (seller Products browser/monthly comparison, user-approved October 5),
+  `15e8333` (native Revenue reports/Synapse, user-approved October 5)
+- Next action: migrate the revenue sync/import surface.
+  Configuration has a constrained editor inside the full-width shell, contextual
+  section explanations and fixed Save/Cancel commands. All nine original fields,
+  values, native number constraints, POST behavior and next-analysis timing remain.
+  Decimal-ratio labels replace misleading percentage suffixes without rescaling.
+  Embeds stack section context above ordinary fields and do not own the window.
   The directory has one real report, not a filler card grid. Synapse retains both
   modes, seller grouping, original values and exports in a continuous reading
   area with sticky seller/column headings. Every column sorts both directions;
@@ -143,7 +150,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 31 sign-off, the rough effort-based estimate is **about 35%**
+As of checkpoint 32 sign-off, the rough effort-based estimate is **about 36%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -176,7 +183,10 @@ and full-pane reading width. Checkpoint 29: about 31%, Products browser and shar
 column sorting user-approved October 5, committed as `aed2350`, including loaded
 previews, queue order and independent Back restoration. Checkpoint 30: about 33%,
 seller Products and monthly comparison user-approved October 5, including scoped
-reads, corrected matched links and separate bucket histories.
+reads, corrected matched links and separate bucket histories. Checkpoint 31:
+about 35%, native Revenue reports/Synapse user-approved October 5 and committed
+as `15e8333`, retaining populations, financial values, mode preferences,
+sorting, complete exports and exact reading restoration.
 
 The DONE counters are stricter: they count fully reconciled pages/helpers, not
 approved sub-page checkpoints or partial completion. Consequently, `0 / 90`
@@ -283,7 +293,7 @@ have separate rows even when they use one template.
 | RPT-IMPACT | Connect impact | `/reports/connect-impact` | `report_connect_impact.html` | TODO | - |
 | REV-DASH | Revenue dashboard | `/reports/revenue`; `/revenue` redirects | `revenue_dashboard.html` | VERIFY | [Continuous shell pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-24-continuous-workbench-shell-and-revenue-pilot) |
 | REV-IMPORT | Revenue import | `/revenue/import`; `/import/revenue` redirects | `revenue_import.html` | TODO | - |
-| REV-CONFIG | Revenue configuration | `/revenue/config` | `revenue_config.html` | TODO | - |
+| REV-CONFIG | Revenue configuration | `/revenue/config` | `revenue_config.html` | VERIFY | [Checkpoint 32](redesign-pages/HOME-WORKBENCH.md#checkpoint-32-revenue-analysis-configuration); native contextual editor, exact fields/values and save parity; user-approved October 5 |
 | REV-SELL | Seller revenue alerts | `/revenue/seller/<seller_name>` | `revenue_seller_alerts.html` | VERIFY | [Queue/detail workbench pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-25-seller-revenue-queue-and-inspector) |
 | REV-SELL-PRODS | Seller products | `/revenue/seller/<seller_name>/products` | `revenue_seller_products.html` | VERIFY | [Checkpoint 30 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-30-seller-products-and-monthly-comparison) |
 | REV-SELL-PROD | Seller product detail | `/revenue/seller/<seller_name>/product/<path:product>` | `revenue_seller_product_view.html` | VERIFY | [Checkpoint 30 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-30-seller-products-and-monthly-comparison) |

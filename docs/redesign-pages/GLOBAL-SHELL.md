@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-30 committed, checkpoint 31 Revenue report surfaces user-approved
+- Status: BUILDING; checkpoints 1-31 committed, checkpoint 32 Revenue configuration user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -144,8 +144,15 @@
   bands and sticky seller/column headings retain full comparison context.
   Independent calendar/numeric sorting, mode preferences, complete exports,
   compact embeds and exact Back reading restoration are technically verified.
-  This family is user-approved October 5, 2026.
-- Next action: migrate Revenue analysis configuration and adopt
+  This family is user-approved October 5, 2026 and committed as `15e8333`.
+- Checkpoint 32 uses a constrained native settings editor inside the full-width
+  shell. Explanations belong beside their fields, not in a duplicate sidebar.
+  Fixed Save/Cancel commands associate with the actual POST form. Loaded-source
+  status is not a claim that unsaved edits have been saved. All original fields,
+  numeric constraints and analysis timing remain; ratio labels explain the
+  existing stored decimals. Compact embeds stack context without owning the
+  application frame. This family is user-approved October 5, 2026.
+- Next action: migrate Revenue sync/import and adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.
