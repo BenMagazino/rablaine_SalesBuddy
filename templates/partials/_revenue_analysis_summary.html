@@ -1,0 +1,46 @@
+{% from 'partials/review_action.html' import review_badge, action_buttons, previous_review_hint %}
+{% from 'partials/_revenue_priority.html' import priority_tone %}
+{% set category_labels = {
+    'DECLINING': 'Declining', 'RECENT_DIP': 'Recent Dip',
+    'EXPANSION_OPPORTUNITY': 'Expansion', 'VOLATILE': 'Volatile',
+    'HEALTHY': 'Healthy', 'NEW_CUSTOMER': 'New Customer',
+    'CHURNED': inactive_category_label|default('Churned')
+} %}
+{% set category_tones = {
+    'DECLINING': 'danger', 'RECENT_DIP': 'warning',
+    'EXPANSION_OPPORTUNITY': 'positive', 'NEW_CUSTOMER': 'accent'
+} %}
+<header class="sb-revenue-detail-header">
+    <h3>{% if analysis_history_href %}<a href="{{ analysis_history_href }}">{{ a.bucket }} <i class="bi bi-arrow-down-short" aria-hidden="true"></i></a>{% else %}{{ a.bucket }}{% endif %}</h3>
+    <div class="sb-revenue-header-meta">
+        <span class="sb-revenue-review-meta">Analyzed {{ a.analyzed_at.strftime('%b %d, %Y') }} ({{ a.months_analyzed }} months)</span>
+        <span data-review-id="{{ a.id }}">{{ review_badge(a) }}</span>
+        <span class="sb-revenue-category" data-tone="{{ category_tones.get(a.category, 'neutral') }}">
+            {{ category_labels.get(a.category, a.category|replace('_', ' ')|title) }}
+        </span>
+        {{ action_buttons(a) }}
+    </div>
+</header>
+{% set has_guidance = a.recommended_action != 'NO ACTION' or a.dollars_at_risk > 0 or a.dollars_opportunity > 0 %}
+<div class="sb-revenue-summary" data-guidance="{{ 'true' if has_guidance else 'false' }}">
+    <dl class="sb-revenue-metrics">
+        <div><dt>Avg Revenue</dt><dd>${{ '{:,.0f}'.format(a.avg_revenue) }}</dd></div>
+        <div><dt>Latest</dt><dd>${{ '{:,.0f}'.format(a.latest_revenue) }}</dd></div>
+        <div><dt>Trend</dt><dd data-tone="{{ 'danger' if a.trend_slope < -3 else 'positive' if a.trend_slope > 3 else 'neutral' }}">{{ '{:+.1f}'.format(a.trend_slope) }}%/mo</dd></div>
+        <div><dt>Priority</dt><dd data-tone="{{ priority_tone(a.priority_score) }}">{{ a.priority_score }}</dd></div>
+    </dl>
+    {% if has_guidance %}
+    <div class="sb-revenue-guidance">
+        {% if a.recommended_action != 'NO ACTION' %}
+        <strong>{{ a.recommended_action }}</strong>
+        {% if a.engagement_rationale %}<p>{{ a.engagement_rationale }}</p>{% endif %}
+        {% endif %}
+        {% if a.dollars_at_risk > 0 %}
+        <p data-tone="danger"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> ${{ '{:,.0f}'.format(a.dollars_at_risk) }}/mo at risk</p>
+        {% elif a.dollars_opportunity > 0 %}
+        <p data-tone="positive"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i> ${{ '{:,.0f}'.format(a.dollars_opportunity) }}/mo opportunity</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{{ previous_review_hint(a) }}

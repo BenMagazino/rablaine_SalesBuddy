@@ -790,8 +790,10 @@ def test_unmatched_detail_is_an_identified_empty_state_and_missing_is_404(
     assert client.get("/api/revenue/analysis/999999/detail").status_code == 404
 
 
+@pytest.mark.parametrize("host", ["detail", "customer"])
 def test_product_breakdown_preserves_recent_seven_months_totals_links_and_change_colors(
     app: Flask, client: FlaskClient, review_alert: dict[str, int],
+    host: str,
 ) -> None:
     """The real detail API retains monthly, zero, negative and all-history total semantics."""
     from app.models import CustomerRevenueData, ProductRevenueData, RevenueImport, db
@@ -815,7 +817,11 @@ def test_product_breakdown_preserves_recent_seven_months_totals_links_and_change
             db.session.add(CustomerRevenueData(**common))
             db.session.add(ProductRevenueData(product=product, **common))
         db.session.commit()
-    response = client.get(f'/api/revenue/analysis/{review_alert["alert"]}/detail')
+    path = (
+        f'/api/revenue/analysis/{review_alert["alert"]}/detail' if host == "detail"
+        else f'/revenue/customer/{review_alert["customer"]}'
+    )
+    response = client.get(path)
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     table = soup.select_one(".sb-revenue-table")
@@ -838,6 +844,147 @@ def test_product_breakdown_preserves_recent_seven_months_totals_links_and_change
         assert not cells[5].select_one("[data-tone]")
     assert rows[1].find("a").get_text(strip=True) == product
     assert "<SQL" not in str(rows[1])
-    assert soup.select_one(".sb-revenue-products-header a")["href"] == (
-        f'/customer/{review_alert["customer"]}/revenue'
+    if host == "detail":
+        assert soup.select_one(".sb-revenue-products-header a")["href"] == (
+            f'/customer/{review_alert["customer"]}/revenue'
+        )
+    else:
+        assert soup.select_one(".sb-revenue-products-header a")["href"] == (
+            f'/customer/{review_alert["customer"]}/revenue/bucket/Databases'
+        )
+
+
+@pytest.mark.parametrize("path", [
+    "/revenue/customer/{customer}", "/customer/{customer}/revenue",
+])
+def test_customer_revenue_has_connected_native_regions_and_shared_analysis(
+    client: FlaskClient, review_alert: dict[str, int], path: str,
+) -> None:
+    """Both customer aliases preserve analysis, review and ancestry in a native shell."""
+    response = client.get(path.format(**review_alert))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert "sb-page-frame" in soup.body["class"]
+    root = soup.select_one('[data-sb-revenue-page="customer"][data-sb-page-surface]')
+    assert root.select_one('[data-sb-page-body][role="region"][tabindex="0"]')
+    assert root.select_one('[data-sb-customer-nav][hidden]')
+    assert root.select_one('[data-sb-customer-bucket="Databases"]')["href"] == (
+        f'#analysis-{review_alert["alert"]}'
     )
+    assert not root.select("[data-sb-customer-overview-link]")
+    assert root.select_one(".sb-revenue-customer-context [data-sb-customer-analysis]")
+    assert root.select_one(".sb-revenue-customer-history-area")
+    assert not root.has_attr("data-sb-customer-enhanced")  # Stacked SSR fallback.
+    assert root.select_one('a.sb-revenue-command[href="/customer/' +
+                           str(review_alert["customer"]) + '"]')
+    assert not root.select(".card, .btn, .badge, .row, .table, .alert, .table-responsive")
+    assert not root.select("nav[aria-label='Breadcrumb']")
+    assert soup.select_one(
+        ".sb-context-bar [aria-current='page'] > span[title]"
+    ).text == "Revenue"
+    detail = root.select_one("[data-sb-customer-analysis]")
+    preview = BeautifulSoup(client.get(
+        f'/api/revenue/analysis/{review_alert["alert"]}/detail'
+    ).data, "html.parser")
+    for selector in (".sb-revenue-detail-header", ".sb-revenue-summary", ".sb-review-previous"):
+        assert detail.select_one(selector).get_text(strip=True) == (
+            preview.select_one(selector).get_text(strip=True)
+        )
+    assert not detail.select_one("h3 a")  # No invented anchor when history is absent.
+    assert detail.select_one(".review-action-btn")["data-notes"] == '<Draft "notes">'
+    assert len(soup.select("#reviewActionModal")) == 1
+    assert soup.select_one("[data-sb-customer-revenue-status]")
+    assert "Totals include all buckets and all imported months" in soup.get_text()
+
+
+def test_customer_revenue_totals_and_bucket_links_preserve_scope(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int],
+) -> None:
+    """Filtering does not recalculate all-bucket totals or remove history destinations."""
+    from app.models import CustomerRevenueData, ProductRevenueData, RevenueImport, db
+    from app.services.revenue_import import fiscal_month_to_date
+
+    with app.app_context():
+        imported = RevenueImport(filename="isolated-customer-test", record_count=2)
+        db.session.add(imported)
+        db.session.flush()
+        for bucket, revenue in [("Databases", 100), ("Fabric", 200)]:
+            common = {
+                "customer_name": "Review UI Customer", "customer_id": review_alert["customer"],
+                "bucket": bucket, "fiscal_month": "FY26-Jul",
+                "month_date": fiscal_month_to_date("FY26-Jul"), "revenue": revenue,
+                "last_import_id": imported.id,
+            }
+            db.session.add(CustomerRevenueData(**common))
+            if bucket == "Databases":
+                db.session.add(ProductRevenueData(product="SQL", **common))
+        db.session.commit()
+    soup = BeautifulSoup(client.get(
+        f'/revenue/customer/{review_alert["customer"]}'
+    ).data, "html.parser")
+    total = soup.select_one("#bucket-total")
+    assert not total.has_attr("data-bucket")
+    assert total.select_one("tbody tr").get_text(" ", strip=True) == "All Buckets $300 $300"
+    assert [row["data-bucket"] for row in total.select("tr[data-bucket]")] == [
+        "Databases", "Fabric",
+    ]
+    assert total.select_one('a[href="#bucket-fabric"]')
+    assert soup.select_one('[data-sb-customer-overview-link]')["href"] == "#bucket-total"
+    assert [item["data-sb-customer-bucket"] for item in soup.select(
+        "[data-sb-customer-bucket]"
+    )] == ["Databases", "Fabric"]
+    assert not soup.select("[data-sb-customer-bucket][data-bucket]")
+    assert soup.select_one("[data-sb-customer-analysis] h3 a")["href"] == "#bucket-databases"
+    assert soup.select_one("#bucket-fabric .sb-revenue-empty").text == (
+        "No product data available for this bucket."
+    )
+    assert not soup.select_one("#bucket-fabric a")
+    assert soup.select_one("#bucket-databases .sb-revenue-products-header a")
+    assert soup.select_one("#bucket-databases table tbody a")["href"] == "/product/SQL"
+
+
+@pytest.mark.parametrize("category,label,tone", [
+    ("DECLINING", "Declining", "danger"), ("RECENT_DIP", "Recent Dip", "warning"),
+    ("EXPANSION_OPPORTUNITY", "Expansion", "positive"), ("VOLATILE", "Volatile", "neutral"),
+    ("HEALTHY", "Healthy", "neutral"), ("NEW_CUSTOMER", "New Customer", "accent"),
+    ("CHURNED", "Inactive", "neutral"), ("CUSTOM_CATEGORY", "Custom Category", "neutral"),
+])
+def test_customer_analysis_preserves_category_labels_and_tones(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int],
+    category: str, label: str, tone: str,
+) -> None:
+    """Customer labels retain Inactive while the shared preview retains Churned."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        alert = db.session.get(RevenueAnalysis, review_alert["alert"])
+        alert.category = category
+        db.session.commit()
+    soup = BeautifulSoup(client.get(
+        f'/revenue/customer/{review_alert["customer"]}'
+    ).data, "html.parser")
+    tag = soup.select_one(".sb-revenue-category")
+    assert tag.get_text(strip=True) == label
+    assert tag["data-tone"] == tone
+
+
+def test_customer_revenue_empty_and_embedded_views_do_not_invent_analysis(
+    app: Flask, client: FlaskClient,
+) -> None:
+    """Customers without imported records retain explicit empty feedback and embed boundaries."""
+    from app.models import Customer, db
+
+    with app.app_context():
+        customer = Customer(name="No imported data", tpid=56789)
+        db.session.add(customer)
+        db.session.commit()
+        customer_id = customer.id
+    for suffix in ("", "?embed=1"):
+        soup = BeautifulSoup(client.get(
+            f"/revenue/customer/{customer_id}{suffix}"
+        ).data, "html.parser")
+        root = soup.select_one('[data-sb-revenue-page="customer"]')
+        assert not root.select("[data-sb-customer-analysis], [data-sb-customer-history], table")
+        assert "No revenue history found for this customer." in soup.get_text()
+        assert bool(soup.select(".sb-page-status")) == (not suffix)
+        assert ("sb-page-frame" in soup.body.get("class", [])) == (not suffix)

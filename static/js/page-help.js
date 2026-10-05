@@ -114,6 +114,15 @@ const PageHelp = (function () {
     { pattern: /^\/customer\/\d+\/edit/, title: 'Edit Customer', content: `
       <p>Update this customer's information — name, territory, sellers, and other details.</p>
     `},
+    { pattern: /^\/(?:revenue\/customer\/\d+|customer\/\d+\/revenue)\/?$/, title: 'Customer Revenue', content: `
+      <p>Bucket analysis and monthly product revenue for this customer.</p>
+      <ul>
+        <li>Use <strong>Buckets</strong> to filter analysis and history together.</li>
+        <li>Use the left context pane to examine a visible bucket without changing your saved filter.</li>
+        <li><strong>Overview</strong> shows Total Revenue, which includes hidden buckets. Total columns include all imported months, not just the seven displayed.</li>
+        <li>Use <strong>Full History</strong> for all months in a bucket, or the pencil to review an alert.</li>
+      </ul>
+    `},
     { pattern: /^\/customer\/\d+/, title: 'Customer Details', content: `
       <p>Everything about this customer — notes, engagements, opportunities, and revenue all in one place.</p>
       <h6>Actions</h6>

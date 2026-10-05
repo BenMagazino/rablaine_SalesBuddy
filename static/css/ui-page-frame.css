@@ -1,4 +1,5 @@
 /* Continuous desktop workbench. Pages own their bands and work-region composition. */
+html:has(> body.sb-page-frame) { overflow: clip; }
 .sb-page-frame {
     --sb-page-status-height: 24px;
     box-sizing: border-box;

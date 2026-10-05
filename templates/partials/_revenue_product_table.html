@@ -1,0 +1,38 @@
+{% from 'partials/_revenue_cells.html' import revenue_cell %}
+{% set recent_months = bucket_data.get('recent_months', []) %}
+{% set product_summary = bucket_data.get('product_summary', []) %}
+{% set bucket_month_revenues = bucket_data.get('bucket_month_revenues', {}) %}
+{% set bucket_total = bucket_data.get('bucket_total', 0) %}
+<div class="sb-revenue-table-scroll" tabindex="0" role="region"
+     aria-label="{{ revenue_bucket }} product revenue by month">
+    <table class="sb-revenue-table">
+        <caption>{{ revenue_bucket }} monthly product revenue and totals</caption>
+        <thead>
+            <tr>
+                <th scope="col">Product</th>
+                {% for month in recent_months %}<th scope="col">{{ month }}</th>{% endfor %}
+                <th scope="col">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="sb-revenue-total">
+                <th scope="row">{{ revenue_bucket }} Total</th>
+                {% for month in recent_months %}
+                {% set prev_month = recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
+                <td>{{ revenue_cell(bucket_month_revenues.get(month, 0), bucket_month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
+                {% endfor %}
+                <td>${{ '{:,.0f}'.format(bucket_total) }}</td>
+            </tr>
+            {% for p in product_summary %}
+            <tr>
+                <th scope="row"><a href="{{ url_for('revenue.revenue_product_view', product=p.product) }}">{{ p.product }}</a></th>
+                {% for month in recent_months %}
+                {% set prev_month = recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
+                <td>{{ revenue_cell(p.month_revenues.get(month, 0), p.month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
+                {% endfor %}
+                <td>${{ '{:,.0f}'.format(p.total_revenue) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

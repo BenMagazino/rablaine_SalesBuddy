@@ -1126,7 +1126,7 @@ Customer Revenue and its charts are not migrated by this pilot.
 ## Checkpoint 25: seller Revenue queue and inspector
 
 Status: technically verified and visually approved October 4, 2026, including
-restored priority colors. The user selected this workflow pilot instead of
+restored priority colors; committed as `747058a`. The user selected this workflow pilot instead of
 migrating customer Revenue first. Approved progress is about 26%.
 
 ### Scope and parity
@@ -1212,3 +1212,85 @@ retains a compact native table for contextual comparison; Full Page opens the
 sustained-work queue/detail layout. Shared content and actions remain consistent,
 not identical composition. The approved shell is not being reopened. Analyzer
 remains Table-only; customer Revenue migration follows next.
+
+## Checkpoint 26: customer Revenue analysis and history
+
+Status: VERIFY, technically verified and user-approved October 4, 2026;
+ready for checkpoint commit. Approved overall progress is about 27%.
+
+### Scope and parity
+
+- Both customer Revenue aliases adopt the continuous workbench shell. Commands
+  remain fixed above independently scrolling context/history panes; breadcrumbs
+  retain canonical Seller > Customer > Revenue ancestry and Help owns legal copy.
+- Replace floating Bootstrap analysis cards with divider-separated native strips.
+  Extract the existing preview header, metrics, guidance and previous-review
+  hint into a shared summary include. Customer analysis retains its Inactive
+  label; previews retain Churned. Thresholds, risk-before-opportunity and native
+  Review actions remain unchanged. Neutral priorities now use the same muted
+  semantic token in detail as in queue/table.
+- Total Revenue and bucket product grids use native table styling and accessible
+  captions/headers. Share the exact product grid and month-cell formatting with
+  the existing detail body, including seven-month windows, zero/negative amounts,
+  change-color thresholds, product destinations and all-history totals.
+- Bucket filters apply to analysis strips, total-table bucket rows and history
+  sections together. The all-bucket aggregate remains independent, now explicitly
+  labeled as including hidden buckets. No totals or analysis are recalculated.
+- The status rail counts actual analysis/history regions rather than duplicate
+  `data-bucket` appearances. A zero-result filter has recovery feedback; no-data
+  customers retain their distinct no-history message. Embedded pages do not
+  acquire the full-page shell/status rail.
+- At the user's request, the initial stacked reading layout becomes a 340px
+  bucket-context pane beside a product grid capped at 1120px, down from about
+  1660px. Analysis, rationale, metrics and Review stay alongside selected history.
+  Navigation lists only in-scope buckets and does not change the saved filter.
+  A single visible bucket has no redundant chooser. Overview is separate, retains
+  all-bucket totals and supplies a single-bucket return link when appropriate.
+- Selection supports fragment links and Back/Forward, advances when filtering
+  excludes the current bucket, protects an open Review editor, and distinguishes
+  missing analysis from missing history. Embedded/no-data pages retain their
+  stacked fallback. Full History and product pages retain their existing legacy
+  destinations. No navigation preference, report, service/query or write API is added.
+- Contextual Help covers both aliases without claiming bucket/product routes.
+
+### Verification
+
+- 170 scoped Python tests pass across Revenue, breadcrumbs, Home and navigation.
+  Coverage includes shared preview parity, both customer aliases, all categories,
+  metadata/escaping, analysis-only/no-data customers, embed boundaries, grand
+  totals, no-product buckets and real seven-month/all-history amount semantics.
+- 102 scoped JavaScript checks pass across customer navigation, scope counts,
+  zero-result recovery, fragments/history/focus, Review deferral, embed fallback,
+  Help aliases, shared filters, Review, preview/controller, queue and shell helpers.
+  Editor diagnostics and whitespace validation are clean.
+- Existing Standard Technology Inc. dev data has ten analyses and ten history
+  buckets. All eleven monthly grids retain identical pre/post cell-text hashes
+  and row counts. Saved Databases/Fabric selection shows one history bucket and
+  one analysis; selecting all shows ten of each, not thirty duplicate appearances.
+- All eight themes retain the 340px context pane and 1120px product grid, semantic
+  priority colors, and no document or pane horizontal overflow at the unchanged
+  desktop viewport. Theme attributes are restored without preference writes.
+- Native Review opens actual alert 1069, loads existing history, protects an
+  unsaved temporary draft through Keep editing, and discards it with focus returned
+  to its opener. No live review PATCH is submitted.
+- Native Select all exposes ten bucket destinations. Selecting Other Services
+  displays its 35-row grid at 1120px without writing the saved filter. Its history
+  scrolls 384px while context/document scrolling stay zero. Back returns to
+  Overview and Forward restores Other Services. Initial stacked-layout testing
+  identified a native fragment root-scroll regression; scoped root overflow
+  clipping keeps opted-in workbench frames fixed, without changing legacy/Home.
+- Full History opens the actual Databases product-history page. F1 opens correct
+  customer Revenue guidance. Seller queue reload still selects alert 1069 and
+  renders fifteen product/total rows after the shared extraction.
+- Temporary local filter selections are restored to the exact original
+  Databases/Fabric value. No live business data, clipboard, protected draft tabs
+  or persistent theme preferences are changed.
+
+### Visual review
+
+The user approved the context/history split October 4 and requested that future
+pages follow this type of design decision. Preserve useful adjacent context,
+readable table widths, separate scope/navigation and nonredundant controls without
+forcing the same composition everywhere. The customer reading layout is distinct
+from the approved seller triage queue. Customer bucket Full History follows next;
+other full-history/product surfaces remain future work.

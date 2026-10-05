@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-24 committed, checkpoint 24 shell composition approved as `4320872`
+- Status: BUILDING; checkpoints 1-25 committed, checkpoint 25 seller workbench approved as `747058a`
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -89,10 +89,17 @@
 - Dependencies: existing `dark_mode` preference, first-launch OS detection,
   onboarding theme choice, menu toggle and preferences page
 - Checkpoint 25 seller queue/detail is technically verified and user-approved
-  October 4, including priority-color restoration and contextual composition:
+  October 4, committed as `747058a`, including priority-color restoration and contextual composition:
   full pages support sustained work, while modals retain focused compact lists
   with shared domain content, actions, semantic colors and native styling.
-- Next action: migrate customer Revenue, then adopt
+- Checkpoint 26 customer Revenue adopts the shared shell with a 340px bucket-context
+  pane, monthly grids capped at 1120px and filtered scope counts. The two panes
+  scroll independently. Navigation chooses content within the saved filter;
+  Overview retains all-bucket totals. It is technically verified and user-approved
+  October 4, ready for checkpoint commit. Initial native bucket anchors revealed
+  root scrolling despite the fixed body; opted-in frame roots now use overflow
+  clipping. Current navigation switches panes rather than jumping a long page.
+- Next action: migrate customer bucket Full History, then adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.

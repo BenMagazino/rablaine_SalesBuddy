@@ -1,67 +1,12 @@
 {# Shared alert detail body for native and legacy preview hosts. #}
-{% from 'partials/review_action.html' import review_badge, action_buttons, previous_review_hint %}
-{% from 'partials/_revenue_priority.html' import priority_tone %}
-{% set category_labels = {
-    'DECLINING': 'Declining', 'RECENT_DIP': 'Recent Dip',
-    'EXPANSION_OPPORTUNITY': 'Expansion', 'VOLATILE': 'Volatile',
-    'HEALTHY': 'Healthy', 'NEW_CUSTOMER': 'New Customer'
-} %}
-{% set category_tones = {
-    'DECLINING': 'danger', 'RECENT_DIP': 'warning',
-    'EXPANSION_OPPORTUNITY': 'positive', 'NEW_CUSTOMER': 'accent'
-} %}
-{% macro revenue_cell(current_rev, prev_rev) %}
-{% if current_rev %}
-    {% set change = ((current_rev - prev_rev) / prev_rev * 100) if prev_rev > 0 else 0 %}
-    <span{% if change < -10 %} data-tone="danger"{% elif change > 10 %} data-tone="positive"{% endif %}>${{ '{:,.0f}'.format(current_rev) }}</span>
-{% else %}
-    <span class="sb-revenue-missing">-</span>
-{% endif %}
-{% endmacro %}
 
 <section class="sb-revenue-detail" data-sb-revenue-detail data-sb-revenue-id="{{ a.id }}">
 {% if not a.customer_id %}
     <p class="sb-revenue-empty" role="status">No matched customer for this alert.</p>
 {% else %}
-    <header class="sb-revenue-detail-header">
-        <h3>{{ a.bucket }}</h3>
-        <div class="sb-revenue-header-meta">
-            <span class="sb-revenue-review-meta">Analyzed {{ a.analyzed_at.strftime('%b %d, %Y') }} ({{ a.months_analyzed }} months)</span>
-            <span data-review-id="{{ a.id }}">{{ review_badge(a) }}</span>
-            <span class="sb-revenue-category" data-tone="{{ category_tones.get(a.category, 'neutral') }}">
-                {{ category_labels.get(a.category, a.category|replace('_', ' ')|title) }}
-            </span>
-            {{ action_buttons(a) }}
-        </div>
-    </header>
-    {% set has_guidance = a.recommended_action != 'NO ACTION' or a.dollars_at_risk > 0 or a.dollars_opportunity > 0 %}
-    <div class="sb-revenue-summary" data-guidance="{{ 'true' if has_guidance else 'false' }}">
-        <dl class="sb-revenue-metrics">
-            <div><dt>Avg Revenue</dt><dd>${{ '{:,.0f}'.format(a.avg_revenue) }}</dd></div>
-            <div><dt>Latest</dt><dd>${{ '{:,.0f}'.format(a.latest_revenue) }}</dd></div>
-            <div><dt>Trend</dt><dd data-tone="{{ 'danger' if a.trend_slope < -3 else 'positive' if a.trend_slope > 3 else 'neutral' }}">{{ '{:+.1f}'.format(a.trend_slope) }}%/mo</dd></div>
-            <div><dt>Priority</dt><dd data-tone="{{ priority_tone(a.priority_score) }}">{{ a.priority_score }}</dd></div>
-        </dl>
-        {% if has_guidance %}
-        <div class="sb-revenue-guidance">
-            {% if a.recommended_action != 'NO ACTION' %}
-            <strong>{{ a.recommended_action }}</strong>
-            {% if a.engagement_rationale %}<p>{{ a.engagement_rationale }}</p>{% endif %}
-            {% endif %}
-            {% if a.dollars_at_risk > 0 %}
-            <p data-tone="danger"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> ${{ '{:,.0f}'.format(a.dollars_at_risk) }}/mo at risk</p>
-            {% elif a.dollars_opportunity > 0 %}
-            <p data-tone="positive"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i> ${{ '{:,.0f}'.format(a.dollars_opportunity) }}/mo opportunity</p>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
-    {{ previous_review_hint(a) }}
+    {% include 'partials/_revenue_analysis_summary.html' %}
 
-    {% set recent_months = bucket_data.get('recent_months', []) %}
     {% set product_summary = bucket_data.get('product_summary', []) %}
-    {% set bucket_month_revenues = bucket_data.get('bucket_month_revenues', {}) %}
-    {% set bucket_total = bucket_data.get('bucket_total', 0) %}
     {% if product_summary %}
     <section class="sb-revenue-products" aria-labelledby="revenueProductsTitle-{{ a.id }}">
         <div class="sb-revenue-products-header">
@@ -70,39 +15,8 @@
                 Full Revenue Page <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
             </a>
         </div>
-        <div class="sb-revenue-table-scroll" tabindex="0" role="region"
-             aria-label="{{ a.bucket }} product revenue by month">
-            <table class="sb-revenue-table">
-                <caption>{{ a.bucket }} monthly product revenue and totals</caption>
-                <thead>
-                    <tr>
-                        <th scope="col">Product</th>
-                        {% for month in recent_months %}<th scope="col">{{ month }}</th>{% endfor %}
-                        <th scope="col">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="sb-revenue-total">
-                        <th scope="row">{{ a.bucket }} Total</th>
-                        {% for month in recent_months %}
-                        {% set prev_month = recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
-                        <td>{{ revenue_cell(bucket_month_revenues.get(month, 0), bucket_month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
-                        {% endfor %}
-                        <td>${{ '{:,.0f}'.format(bucket_total) }}</td>
-                    </tr>
-                    {% for p in product_summary %}
-                    <tr>
-                        <th scope="row"><a href="{{ url_for('revenue.revenue_product_view', product=p.product) }}">{{ p.product }}</a></th>
-                        {% for month in recent_months %}
-                        {% set prev_month = recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
-                        <td>{{ revenue_cell(p.month_revenues.get(month, 0), p.month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
-                        {% endfor %}
-                        <td>${{ '{:,.0f}'.format(p.total_revenue) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        {% set revenue_bucket = a.bucket %}
+        {% include 'partials/_revenue_product_table.html' %}
     </section>
     {% endif %}
 {% endif %}
