@@ -15,7 +15,6 @@
 {% endblock %}
 
 {% block content %}
-{% from 'partials/_revenue_cells.html' import revenue_change %}
 {% set period = namespace(months=[], first=none, last=none) %}
 {% for history in product_history.values() %}
     {% for rd in history %}
@@ -83,28 +82,9 @@
                         <h3><a href="{{ url_for('revenue.revenue_product_view', product=product) }}">{{ product }}</a></h3>
                         <span class="sb-revenue-review-meta">{{ history|length }} months</span>
                     </header>
-                    <div class="sb-revenue-table-scroll" tabindex="0" role="region"
-                         aria-label="{{ product }} full monthly revenue history">
-                        <table class="sb-revenue-table sb-revenue-history-table">
-                            <caption>{{ product }} full monthly revenue history, newest first</caption>
-                            <thead><tr><th scope="col">Month</th><th scope="col">Revenue</th><th scope="col">Change</th></tr></thead>
-                            <tbody>
-                                {% set prev_revenues = {} %}
-                                {% set prev_val = namespace(value=0) %}
-                                {% for rd in history %}
-                                    {% if prev_revenues.update({rd.fiscal_month: prev_val.value}) %}{% endif %}
-                                    {% set prev_val.value = rd.revenue %}
-                                {% endfor %}
-                                {% for rd in history|reverse %}
-                                <tr>
-                                    <th scope="row">{{ rd.fiscal_month }}</th>
-                                    <td>${{ '{:,.0f}'.format(rd.revenue) }}</td>
-                                    <td>{{ revenue_change(rd.revenue, prev_revenues.get(rd.fiscal_month, 0)) }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                    {% set history_label = product %}
+                    {% set history_caption = product ~ ' full monthly revenue history, newest first' %}
+                    {% include 'partials/_revenue_monthly_history.html' %}
                 </section>
                 {% else %}
                 <p class="sb-revenue-empty">No product history available for this bucket.</p>

@@ -1,0 +1,23 @@
+{% from 'partials/_revenue_cells.html' import revenue_change %}
+<div class="sb-revenue-table-scroll" tabindex="0" role="region"
+     aria-label="{{ history_label }} full monthly revenue history">
+    <table class="sb-revenue-table sb-revenue-history-table">
+        <caption>{{ history_caption }}</caption>
+        <thead><tr><th scope="col">Month</th><th scope="col">Revenue</th><th scope="col">Change</th></tr></thead>
+        <tbody>
+            {% set prev_revenues = {} %}
+            {% set prev_val = namespace(value=0) %}
+            {% for rd in history %}
+                {% if prev_revenues.update({rd.fiscal_month: prev_val.value}) %}{% endif %}
+                {% set prev_val.value = rd.revenue %}
+            {% endfor %}
+            {% for rd in history|reverse %}
+            <tr>
+                <th scope="row">{{ rd.fiscal_month }}</th>
+                <td>${{ '{:,.0f}'.format(rd.revenue) }}</td>
+                <td>{{ revenue_change(rd.revenue, prev_revenues.get(rd.fiscal_month, 0)) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

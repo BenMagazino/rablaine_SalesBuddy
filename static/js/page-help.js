@@ -94,6 +94,17 @@ const PageHelp = (function () {
     `},
 
     // ── Customers ──
+    { pattern: /^\/(?:revenue\/product|product)\/.+$/, title: 'Product Revenue', content: `
+      <p>Compare customer entries using one product, then inspect imported customer history alongside the table.</p>
+      <ul>
+        <li>Search customer names, buckets or total revenue. Select a row or its clock button to view history.</li>
+        <li>Customer-name links open Customer Revenue; the arrow beside a matched name opens Customer Hub.</li>
+        <li>Entries are customer/bucket rows, so a customer may appear more than once. Totals and averages include all entries and all imported months, not just search results.</li>
+        <li>History retains the imported customer grouping. Change is unavailable when preceding revenue is zero or negative.</li>
+        <li>The monthly revenue graph reads oldest to newest. Hover a point for its exact amount; missing imported months are gaps, not zero revenue. The table below retains every original value.</li>
+        <li>For consolidated products, expand the member list to see every included product.</li>
+      </ul>
+    `},
     { pattern: /^\/customers\/?$/, title: 'Customers', content: `
       <p>Your customer directory. Each customer can have notes, engagements, opportunities, and revenue data linked to them.</p>
       <h6>Tips</h6>

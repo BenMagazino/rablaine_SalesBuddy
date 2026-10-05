@@ -1298,7 +1298,7 @@ other full-history/product surfaces remain future work.
 ## Checkpoint 27: customer bucket product history
 
 Status: VERIFY, technically verified and user-approved October 4, 2026;
-ready for checkpoint commit. Approved predecessor: `9a4ddef`.
+committed as `aaf6cfd`. Approved predecessor: `9a4ddef`.
 Approved overall progress is about 28%.
 
 ### Scope and design reasoning
@@ -1352,3 +1352,123 @@ Approved overall progress is about 28%.
   Saved Databases/Fabric filter remains unchanged. No live review is saved.
 - The user approved the bucket history composition October 4 and requested the
   next phase. Product-level Revenue detail follows next.
+
+## Checkpoint 28: product Revenue comparison and history
+
+Status: VERIFY, technically verified and user-approved October 5, 2026;
+ready for checkpoint commit. Approved predecessor: `aaf6cfd`. Approved progress
+is about 29%.
+
+### Scope and design reasoning
+
+- Both product-detail aliases adopt the continuous standalone shell and retain
+  canonical Products ancestry. The job is cross-customer comparison and reading,
+  not bucket analysis. Use the three-column comparison as the navigator
+  beside selected customer history, rather than adding a duplicate customer list.
+- Compact product-wide summary replaces three floating metric cards. Values and
+  denominator stay identical. Labels now say customer entries and average per
+  entry because the existing query counts customer/bucket rows, not unique names.
+  Searching never recalculates the summary or changes saved bucket preferences.
+- Search covers customer, bucket and formatted total. A row or its
+  clock button selects history; customer Revenue and Hub links retain their
+  separate original destinations. Excluding selection advances within results;
+  zero matches clear stale history and offer Clear recovery.
+- Keep selection keyed by unique row IDs and histories keyed by the existing
+  customer-name grouping. Duplicate bucket entries remain distinct and share the
+  same existing history. Aggregation, ordering and query behavior are unchanged;
+  this slice does not reinterpret the route's grouping as bucket-specific data.
+- Preserve every monthly history table in SSR. Standalone enhancement presents
+  one at a time; embedded/no-script content remains stacked. An invalid mapping
+  reports an error before replacing that fallback. Missing history and an empty
+  product have distinct feedback. Consolidation metadata remains independently
+  available, with every member exposed through a native disclosure.
+- Extract the exact bucket monthly-history renderer for reuse with product
+  histories. Preserve reverse rendering, chronological-predecessor lookup,
+  zero/negative amounts, percentage rounding and strict +/-10% color thresholds.
+  Bucket caption/disclosure behavior stays unchanged.
+- Product search gets a unique ID so it cannot collide with the shared note
+  picker. Browser-restored form values are reconciled after pageshow, preventing
+  stale search scope on Back. Selection supports fragments and Back/Forward,
+  safe focus movement and stable scroll for unchanged customer history.
+- Comparison is bounded to 1120px; standalone graph/history fill the reading pane.
+  Embedded/no-script histories retain their 640px reading limit. Both panes scroll independently;
+  search, summary, commands/status and selected customer identity stay visible.
+  No new routes, models, services, write APIs or dependencies are added.
+
+### Feature parity evidence
+
+| ID | Original control/information | Native destination and verification | Result |
+| --- | --- | --- | --- |
+| PRODUCT-01 | Product name, Products destination and canonical trail | Fixed command band, same links and both path aliases; embedded boundary tested | PASS |
+| PRODUCT-02 | Count, total and average | Identical values/denominator, explicit entry and all-history labels; duplicates, empty and search tested | PASS |
+| PRODUCT-03 | Search across comparison row text | Three visible fields, case-insensitive input/clear and explicit zero matches; date search removed with its column by user request | PASS |
+| PRODUCT-04 | Customer/bucket/total comparison | Three columns and all 63 live entries; Latest Month removed by explicit user request | PASS |
+| PRODUCT-05 | Matched Revenue/Hub links and unmatched names | Actual Hub navigation and return verified; unmatched entries have no invented links | PASS |
+| PRODUCT-06 | Complete customer history and month counts | All 63 history tables retain cell hash and row counts; selected history remains reachable for every entry | PASS |
+| PRODUCT-07 | Consolidated member preview and totals | Native complete member list; live seven-member, 28-entry product and isolated aggregation/escaping tests | PASS |
+| PRODUCT-08 | Empty and missing history | Disabled empty search, zero metrics and distinct missing-history feedback tested | PASS |
+| PRODUCT-09 | Reading context and desktop themes | Full-pane standalone graph/history, no horizontal/root overflow, independent scrolling and sticky customer heading | PASS |
+| PRODUCT-10 | Help and integration boundaries | F1 opens Product Revenue for both path aliases; unique search ID and restored-form Back behavior covered | PASS |
+
+### Verification and handoff
+
+- 197 scoped Python tests pass across product rendering, shared Revenue content
+  and report breadcrumbs. Forty JavaScript checks pass across product/customer
+  navigation, Help aliases and shared Review. Editor diagnostics and whitespace
+  checks are clean.
+- All history table cell values and row counts match the live pre-change fingerprint.
+  Shared extraction also retains the prior bucket page's fifteen-table fingerprint.
+  Product count, total and average stay identical throughout search/selection.
+- Native Enter selection, Back/Forward, search/no-match/Clear, Hub navigation and
+  restoration, consolidation disclosure and F1 Help are verified. Eight themes
+  retain comparison scroll 650px and history scroll 189px while document stays
+  at zero; selected-customer heading stays visible.
+- The original saved Databases/Fabric filter and Graphite dark theme remain
+  unchanged. No Revenue writes or protected draft changes occur.
+- The user approved product comparison/history October 5, including all requested
+  graph and width refinements. Commit this slice, then migrate the Products directory.
+  The seller product family remains future work.
+
+### Requested trend graph refinement
+
+- Add a 220px monthly revenue line graph above the selected customer's exact-value
+  history. It reuses the existing local Chart.js vendor, not a new dependency or
+  remote script. Only one chart exists at a time; selection destroys the old one,
+  repeated same-customer selection retains it, and zero results clear it.
+- Graph calendar dates run oldest to newest without changing the table's original
+  ordering or change calculations. Missing months are null gaps, never invented
+  zeroes. Zero and negative revenue remain exact points, one month remains visible,
+  and hover identifies the fiscal month with its precise currency amount.
+- Theme changes repaint from the existing accent, muted and line tokens.
+  Embeds/no-script fallback retain tables without a miniature chart application.
+  Canvas has an accessible label and the full history remains the text equivalent.
+- Refinement validation: 10 product Python tests and 16 product/controller/chart
+  JavaScript checks pass. The live 64-table fingerprint and all three summary
+  values remain unchanged. Selection/search update the graph from the exact
+  matching records; zero results dispose it and Clear restores it. Native hover
+  shows the correct fiscal month and precise amount. All eight theme variants
+  retain a 640px by 220px graph, zero document/horizontal overflow and independent
+  history scrolling. Graphite dark and the original selection/search are restored.
+- Requested mirrored dollar labels use a right-hand axis with the exact left-hand
+  bounds, tick values, currency formatting and theme typography. It adds no second
+  data series, chart-area gridlines or right border.
+- Mirrored-scale validation: six chart tests pass, including negative/fractional
+  ticks and independent Chart.js limit rounding. Live labels and their vertical
+  positions match exactly in all eight themes (zero pixel offset). The selected
+  customer, chart data and desktop viewport are preserved.
+
+### Requested comparison and width refinement
+
+- Remove Latest Month from product comparison, its search scope, placeholder,
+  contextual Help, column-specific styling and associated assertions. Imported
+  history dates and other Revenue pages remain unchanged.
+- The standalone reading section, graph and table now use its full content width
+  instead of stopping at 640px. Consolidated-member disclosure shares that width.
+  The change is explicitly scoped to the enhanced product page; embedded and
+  no-script stacked history retain their existing reading width.
+- Refinement verification: 10 product Python tests and 17 JavaScript checks pass.
+  Both aliases and embedded rendering have exactly three columns/search fields.
+  In all eight live themes, section/table/chart widths exactly match the available
+  799px reading width, with no horizontal/document overflow. All 63 history tables
+  retain their exact cell fingerprint; summaries, current selection and imported
+  graph data remain unchanged.

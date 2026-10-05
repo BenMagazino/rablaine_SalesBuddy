@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-25 committed, checkpoint 25 seller workbench approved as `747058a`
+- Status: BUILDING; checkpoints 1-27 committed, checkpoint 28 product Revenue approved October 5
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -103,8 +103,15 @@
   analysis/scope stays beside bounded recent and complete product history.
   This single-bucket destination has no redundant scope navigation; embedded
   content remains stacked. It is technically verified and user-approved October 4,
-  ready for checkpoint commit.
-- Next action: migrate product-level Revenue detail, then adopt
+  committed as `aaf6cfd`.
+- Checkpoint 28 product Revenue uses the comparison itself to navigate customer
+  history. Independently scrolling comparison/history panes have bounded widths,
+  fixed summary/search context and a sticky selected-customer heading.
+  Product-wide totals remain distinct from search scope. Embeds and no-script
+  fallback retain stacked reading. The approved refinement adds a chronological
+  graph with mirrored dollar labels, three-column comparison and full-pane history.
+  It is technically verified and user-approved October 5, ready for checkpoint commit.
+- Next action: migrate the Products directory, then adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.
