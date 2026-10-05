@@ -55,9 +55,15 @@
             fragmentSelector: '[data-sb-products-comparison]',
             identityAttribute: 'data-sb-products-comparison',
             identityValue: id => entryById(id).name,
-            statusText: 'All imported months. Choose a customer to open its graph and history.',
+            statusText: root.dataset.comparisonStatus ||
+                'All imported months. Choose a customer to open its graph and history.',
             errorText: 'Customer consumption could not be loaded. Retry or use Open product.',
             mount(content) {
+                const comparison = content.querySelector('[data-sb-products-comparison]');
+                if (!comparison || (comparison.dataset.sbProductsSeller || '') !==
+                    (root.dataset.sellerName || '')) {
+                    throw new Error('Product customer comparison does not match this seller scope.');
+                }
                 const scroll = content.querySelector('[data-sb-products-customer-scroll]');
                 if (!scroll) throw new Error('Product customer reading region is missing.');
                 customerScroll = scroll;

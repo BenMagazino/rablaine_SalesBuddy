@@ -11,7 +11,7 @@
             <th scope="row">
                 <span data-sb-product-search-value>
                     {% if directory_comparison|default(false) %}
-                    <a href="{{ url_for('revenue.revenue_product_view', product=product, customer=c.customer_name, bucket=c.bucket) }}">{{ c.customer_name }}</a>
+                    <a href="{{ url_for('revenue.revenue_seller_product_view', seller_name=seller_name, product=product, customer=c.customer_name, bucket=c.bucket) if seller_name is defined else url_for('revenue.revenue_product_view', product=product, customer=c.customer_name, bucket=c.bucket) }}">{{ c.customer_name }}</a>
                     {% elif c.customer_id %}
                     <a href="{{ url_for('revenue.revenue_customer_view', customer_id=c.customer_id) }}">{{ c.customer_name }}</a>
                     {% else %}{{ c.customer_name }}{% endif %}

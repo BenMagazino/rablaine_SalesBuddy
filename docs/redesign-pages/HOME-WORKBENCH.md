@@ -1477,7 +1477,7 @@ is about 29%.
 
 Status: VERIFY, technically verified and user-approved October 5, 2026,
 including the shared sorting follow-up. Approved predecessor: `e286617`.
-Approved effort estimate is about 31%.
+Committed as `aed2350`. Approved effort estimate is about 31%.
 
 ### Composition and preserved contract
 
@@ -1607,3 +1607,84 @@ Approved effort estimate is about 31%.
 - The dev tab is returned to Virtual Machines Dv3 Series in Graphite dark,
   blank search, default descending totals and zero reading offsets. Protected
   drafts remain untouched. This follow-up is user-approved October 5, 2026.
+
+## Checkpoint 30: Seller Products and monthly comparison
+
+Status: VERIFY, technically verified and user-approved October 5, 2026.
+Approved predecessor: `aed2350`; approved effort estimate is about 33%.
+
+### Composition and preserved scope
+
+- Seller Products reuses the approved directory template/controller and shared
+  comparison markup, rather than duplicating the browser. Products are on the
+  left; actual seller-scoped customer consumption is on the right. The original
+  Back to Alerts link remains, and native headings replace the old two-button
+  sorting controls. Existing `sort=revenue` and `sort=customers` URLs retain
+  their initial descending order, while every column sorts both ways.
+- The full seller product page stays a wide customer/month comparison grid.
+  Comparing recent months across customers is a different task from examining
+  one customer's full product history, so no redundant selector or graph pane
+  is forced into this page. Fixed title, full-scope summary/search bands,
+  independently scrolling grid, sticky headings and truthful shown/loaded
+  counts connect it to the continuous shell.
+- Seller membership still comes from the existing revenue-analysis query, not
+  a silently substituted live account assignment. Directory usage retains
+  positive customer/bucket counts and consolidated member summing. Seller
+  detail retains zero/negative entries and deduplicated consolidated pairs.
+  Labels explain that these are entries, not unique customers.
+- Shared rollup accepts an optional seller scope without altering global
+  defaults. Existing seller product routes accept `comparison=1` and return
+  before monthly-history reads. The shared loader checks product identity and
+  seller identity, retaining cancellation, visible failure and Retry.
+- Customer links open the scoped monthly grid at the exact customer/bucket
+  entry. Native Customer Revenue and bucket links use the original matched IDs;
+  unmatched imports remain plain text. View All Customers remains a separate
+  global destination retaining the requested entry. Back to Products retains the product,
+  while browser Back
+  restores the directory's search, independent sorts and reading context.
+- Two tightly coupled route defects are corrected: customer IDs were omitted
+  from the monthly summary, suppressing intended links; monthly history was
+  keyed only by name, allowing one bucket to overwrite another. Seller history
+  now uses `(customer_name, bucket)` and regression tests cover distinct values.
+  The approved global product history grouping is not changed.
+- Every monthly column uses exact financial sort values. Missing months remain
+  distinct from imported zeroes. Currency, seven-month chronological coverage,
+  all-history totals and change-color thresholds are retained. Consolidated
+  members are fully available through native disclosure, not a truncated list.
+- Embeds remain ordinary scoped lists/grids with local counts, without outer
+  shell or an active directory inspector. F1 has dedicated seller-directory and
+  monthly-comparison guidance rather than matching generic Seller Alerts Help.
+
+### Verification
+
+- 142 scoped Python tests and 119 JavaScript checks pass across the affected
+  Revenue hosts and controllers. Isolated coverage includes seller boundaries,
+  consolidation, nonpositive entries, literal names, both legacy sort URLs,
+  customer IDs, separate bucket histories, seven recent months versus full
+  totals, lightweight reads, empty data, embeds, search and safe Back restoration.
+- All 237 live Rick Bowles products retain their exact original values/order/
+  destinations, fingerprint
+  `1be16f994b05452f4a99e62fc7e552e2c8a37628ed92ae4a078191fbbe895176`.
+  Premium SSD's four monthly rows and ten headings retain exact original values,
+  fingerprint `a4860e9018840d886c8d05983866c87fc9b438b927dbdca91a5518bde55eb2d6`.
+- All three columns in both directory panes and all ten monthly-grid columns
+  sort correctly in both directions. Financial text/colors and selected scope
+  remain unchanged. Actual matched links open Customer Revenue successfully.
+- A simulated Blob Storage read 503 hides stale content, shows an explicit
+  failure with the scoped full-page destination, and Retry restores its four
+  actual customer entries. No sample data or separate server is used.
+- The Virtual Machines Esv5 comparison opens Actabl/General Purpose Compute
+  exactly. Filtering Actabl shows 2 of 6 entries without changing full totals.
+  After a Customer Revenue drilldown, Back restores that search and Bucket ASC.
+  Back again restores the selected product, `virtual` search, both Name ASC
+  sorts and the directory's exact 240px reading offset.
+- Both pages pass eight live theme geometries at the unchanged current
+  1724x1174 desktop viewport, with no clipped headers or document overflow.
+  Actual directory/detail embeds retain 237/6 rows, correct local counts and
+  no shell; the directory is a 1120px ordinary list with its inspector hidden.
+- Seller-scoped panes with few customer entries do not overflow vertically in
+  this live dataset. Shared controller tests cover restoration of overflowing
+  customer-pane positions; no artificial records or viewport changes are used.
+- Protected note drafts are untouched. No customer/revenue records are edited.
+  No push, merge or deployment is authorized. This family is user-approved;
+  Revenue report surfaces are next.

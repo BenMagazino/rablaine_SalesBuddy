@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-28 committed, checkpoint 29 Products directory/sorting user-approved
+- Status: BUILDING; checkpoints 1-29 committed, checkpoint 30 seller product pages user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -119,7 +119,7 @@
   retain existing totals, grouping and destinations. Back restores both reading
   positions and search. Embedded content remains a bounded ordinary list with
   local scope count, not a miniature workbench.
-  It is technically verified and user-approved October 5, 2026.
+  It is technically verified and user-approved October 5, 2026, committed as `aed2350`.
 - Checkpoint 29 sorting follow-up adds one opt-in header/ordering implementation
   to every table column in the recent Revenue workbenches and shared fragments.
   Native header buttons expose direction through `aria-sort`, use raw numeric
@@ -129,7 +129,17 @@
   the same helper before their domain controls; compact embeds remain ordinary
   sortable lists. All eight themes retain desktop geometry without clipped
   header labels or document overflow. This becomes the future workbench standard.
-- Next action: review the Products directory, then migrate seller product pages and adopt
+- Checkpoint 30 reuses the shared Products browser for seller scope, with guarded
+  scoped customer reads and unchanged directory aggregation semantics. Full
+  detail remains a wide recent-month comparison grid because cross-customer
+  comparison is its task, not single-customer history inspection. Fixed bands,
+  native search/sorting, independently scrolling data and local scope counts
+  connect it to the same shell without inventing a duplicate sidebar.
+  Matched customer/bucket links and separate bucket histories are corrected;
+  global history behavior stays unchanged. Dedicated Help, actual embeds, live
+  parity, read recovery and eight desktop themes are technically verified.
+  This family is user-approved October 5, 2026.
+- Next action: migrate Revenue report surfaces and adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.

@@ -88,16 +88,22 @@ class ProductComparison(TypedDict):
     is_consolidated: bool
 
 
-def get_product_comparison(product: str) -> ProductComparison:
-    """Aggregate the existing positive customer/bucket pairs across product members."""
+def get_product_comparison(product: str, seller_name: str | None = None) -> ProductComparison:
+    """Roll up product members using the existing global or seller-scoped query semantics."""
     is_consolidated = product in PRODUCT_CONSOLIDATION_PREFIXES
     matching_products = (
-        [p['product'] for p in get_all_products() if p['product'].startswith(product)]
+        [p['product'] for p in (
+            get_seller_products(seller_name) if seller_name is not None else get_all_products()
+        ) if p['product'].startswith(product)]
         if is_consolidated else [product]
     )
     customers_dict: dict[tuple[str, str], dict] = {}
     for member in matching_products:
-        for customer in get_customers_using_product(member):
+        member_customers = (
+            get_seller_customers_using_product(seller_name, member)
+            if seller_name is not None else get_customers_using_product(member)
+        )
+        for customer in member_customers:
             key = (customer['customer_name'], customer['bucket'])
             if key not in customers_dict:
                 customers_dict[key] = {

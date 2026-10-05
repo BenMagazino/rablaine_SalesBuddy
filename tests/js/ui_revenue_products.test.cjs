@@ -5,7 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../../static/js/ui-revenue-products.js'), 'utf8');
 
-function fixture({embedded = false, empty = false, product = '', products = null} = {}) {
+function fixture({embedded = false, empty = false, product = '', products = null, seller = ''} = {}) {
     const document = {activeElement: null};
     class Element {
         constructor() {
@@ -30,20 +30,24 @@ function fixture({embedded = false, empty = false, product = '', products = null
     ]).map(values => {
         const row = new Element(); row.link = new Element(); row.button = new Element();
         row.dataset.productName = values[0];
-        row.link.setAttribute('href', '/product/' + encodeURIComponent(values[0]));
+        row.link.setAttribute('href', (seller ?
+            '/revenue/seller/' + encodeURIComponent(seller) + '/product/' : '/product/') +
+            encodeURIComponent(values[0]));
         row.querySelector = selector => selector === '[data-sb-products-link]' ? row.link : row.button;
         row.querySelectorAll = () => values.map(textContent => ({textContent}));
         return row;
     });
     const inspector = new Element(), reading = new Element(), noSelection = new Element();
     const customerScroll = new Element(), content = new Element();
-    content.querySelector = () => customerScroll;
+    const comparison = {dataset: {sbProductsSeller: seller}};
+    content.querySelector = selector => selector === '[data-sb-products-comparison]' ?
+        comparison : customerScroll;
     content.children = [customerScroll]; inspector.children = [content];
     const nodes = {'#directoryProductSearch': search, '[data-sb-products-clear]': clear,
         '[data-sb-products-no-matches]': noMatches, '[data-sb-products-count]': count};
     Object.assign(nodes, {'[data-sb-products-inspector]': inspector,
         '[data-sb-products-reading]': reading, '[data-sb-products-no-selection]': noSelection});
-    const root = {dataset: {embedded: String(embedded)},
+    const root = {dataset: {embedded: String(embedded), sellerName: seller},
         querySelector: selector => nodes[selector], querySelectorAll: () => rows};
     document.querySelector = selector => selector === '[data-sb-products-directory]' ?
         root : embedded ? parentCount : count;
@@ -76,11 +80,22 @@ function fixture({embedded = false, empty = false, product = '', products = null
             Object.assign(window.location, {pathname: url.pathname, search: url.search, hash: url.hash});
         }};
     return {search, clear, noMatches, count, parentCount, rows, root, document, window,
-        inspector, reading, noSelection, customerScroll, content, requests, loader,
+        inspector, reading, noSelection, customerScroll, content, comparison, requests, loader,
         get loaderOptions() { return loaderOptions; },
         run: () => vm.runInNewContext(source, {window, document, URL}),
         query(value) { search.value = value; search.fire('input'); }};
 }
+
+test('seller directories keep read/navigation URLs scoped and reject another seller response', () => {
+    const h = fixture({seller: 'Seller <literal &>'}); h.run();
+    assert.equal(h.loaderOptions.loadUrl(2),
+        '/revenue/seller/Seller%20%3Cliteral%20%26%3E/product/SQL%2FCompute%20%3Cliteral%3E?comparison=1');
+    assert.equal(h.loaderOptions.fullUrl(2), h.rows[1].link.getAttribute('href'));
+    assert.equal(h.loaderOptions.identityValue(2), 'SQL/Compute <literal>');
+    assert.doesNotThrow(() => h.loaderOptions.mount(h.content));
+    h.comparison.dataset.sbProductsSeller = 'Different seller';
+    assert.throws(() => h.loaderOptions.mount(h.content), /does not match this seller scope/);
+});
 
 test('directory mounts once and preserves all products in original order', () => {
     const h = fixture(); h.run();

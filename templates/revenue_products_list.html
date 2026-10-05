@@ -10,17 +10,23 @@
 {% if not request.args.get('embed') %}
 <footer class="sb-page-status" aria-label="View status">
     <span data-sb-products-count role="status" aria-live="polite" aria-atomic="true">{{ products|length }} of {{ products|length }} products shown</span>
-    <span>All products; all imported months</span>
+    <span>{{ seller_name ~ "'s products" if seller_name is defined else 'All products' }}; all imported months</span>
 </footer>
 {% endif %}
 {% endblock %}
 
 {% block content %}
 <div class="sb-revenue-workspace sb-products-directory" data-sb-products-directory
-     data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
+     data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+     data-seller-name="{{ seller_name|default('') }}"
+     data-comparison-status="{{ 'All imported months. Choose a customer to open its monthly comparison.' if seller_name is defined else 'All imported months. Choose a customer to open its graph and history.' }}">
     <header class="sb-revenue-page-header" data-sb-page-band>
-        <h1><i class="bi bi-boxes" aria-hidden="true"></i> Products</h1>
+        <h1><i class="bi bi-boxes" aria-hidden="true"></i> {{ seller_name ~ "'s Products" if seller_name is defined else 'Products' }}</h1>
+        {% if seller_name is defined %}
+        <a href="{{ url_for('revenue.revenue_seller_view', seller_name=seller_name) }}" class="sb-revenue-command">Back to Alerts</a>
+        {% else %}
         <span class="sb-revenue-review-meta">Default: highest total revenue first</span>
+        {% endif %}
     </header>
     <div class="sb-products-workarea" data-sb-page-body>
     <section class="sb-products-catalog" aria-label="Products">
@@ -31,7 +37,7 @@
                    placeholder="Product, usage count or total" {% if not products %}disabled{% endif %}>
             <button type="button" class="sb-revenue-command" data-sb-products-clear hidden>Clear</button>
         </div>
-        <p>Usage entries count customer/bucket pairs. Consolidated products add their member counts.</p>
+        <p>Usage entries count customer/bucket pairs with positive totals. Consolidated products add their member counts.{% if seller_name is defined %} Customer comparisons also retain zero and negative entries.{% endif %}</p>
         {% if request.args.get('embed') %}
         <span data-sb-products-count role="status" aria-live="polite" aria-atomic="true">{{ products|length }} of {{ products|length }} products shown</span>
         {% endif %}
@@ -40,15 +46,15 @@
              role="region" aria-label="Product revenue comparison">
         {% if products %}
         <table class="sb-revenue-table sb-products-table" id="productsTable" data-sb-sortable
-               data-sb-sort-key="products-directory" data-sb-sort-default-column="2"
+               data-sb-sort-key="products-directory" data-sb-sort-default-column="{{ 1 if sort|default('revenue') == 'customers' else 2 }}"
                data-sb-sort-default-direction="descending">
-            <caption>Imported products, initially ordered by total revenue</caption>
+            <caption>Imported products, initially ordered by {{ 'usage entries' if sort|default('revenue') == 'customers' else 'total revenue' }}</caption>
             <thead><tr><th scope="col" data-sb-sort-type="text">Product</th><th scope="col" data-sb-sort-type="number">Usage entries</th><th scope="col" data-sb-sort-type="number">Total Revenue</th></tr></thead>
             <tbody>
                 {% for p in products %}
                 <tr data-sb-directory-product data-product-name="{{ p.product }}">
                     <th scope="row" data-sb-directory-value>
-                        <a data-sb-products-link href="{{ url_for('revenue.revenue_product_view', product=p.product) }}">{{ p.product }}</a>
+                        <a data-sb-products-link href="{{ url_for('revenue.revenue_seller_product_view', seller_name=seller_name, product=p.product) if seller_name is defined else url_for('revenue.revenue_product_view', product=p.product) }}">{{ p.product }}</a>
                         <button type="button" class="sb-product-select" data-sb-products-select
                                 aria-label="Show customers using {{ p.product }}" hidden><i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i></button>
                     </th>
@@ -61,8 +67,8 @@
         <p class="sb-revenue-empty" data-sb-products-no-matches hidden>No matching products. Clear search to see all products.</p>
         {% else %}
         <section class="sb-revenue-page-empty">
-            <h2>No product data yet</h2>
-            <p>Import revenue data to see products.</p>
+            <h2>{{ 'No product data for this seller' if seller_name is defined else 'No product data yet' }}</h2>
+            <p>{{ 'Products appear for customers linked to this seller in revenue analyses.' if seller_name is defined else 'Import revenue data to see products.' }}</p>
             <a href="{{ url_for('revenue.revenue_import') }}" class="sb-revenue-command"><i class="bi bi-upload" aria-hidden="true"></i> Import Data</a>
         </section>
         {% endif %}

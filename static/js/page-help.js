@@ -464,6 +464,16 @@ const PageHelp = (function () {
         <li>Use <strong>Re-analyze</strong> after a fresh import to update all categories</li>
       </ul>
     `},
+    { pattern: /^\/revenue\/seller\/[^/]+\/products\/?$/, title: 'Seller Products', content: `
+      <p>Browse this seller's products beside their customer consumption. Choose a product on the left, then a customer entry to open the seller's recent-month comparison.</p>
+      <p>Search product names, usage counts or totals. Every column sorts in both directions. Usage counts retain customer/bucket pairs and consolidated member counts.</p>
+      <p>Open product reads the full monthly grid. Back restores product selection, search, sorting and pane positions. Embedded views remain compact lists.</p>
+    `},
+    { pattern: /^\/revenue\/seller\/[^/]+\/product\//, title: 'Seller Product Comparison', content: `
+      <p>Compare this seller's customer and bucket entries across the seven most recent imported months. Total revenue includes all imported months, not only the displayed months.</p>
+      <p>Search customer, bucket or amount; Clear restores every entry. Every column sorts ascending or descending without changing monthly comparisons or totals.</p>
+      <p>Customer and bucket links open their Revenue pages when matched. View All Customers opens the global product workbench; Back to Products returns to the seller's browser. Consolidated products disclose every member.</p>
+    `},
     { pattern: /^\/revenue\/seller\//, title: 'Seller Revenue Alerts', content: `
       <p>Revenue alerts for this seller's customers, initially sorted by priority. Review each alert and mark it as actioned, reviewed, or dismissed.</p>
       <p>Use Table view to sort any column in either direction; the alert queue follows that order. Product columns in the detail pane also sort both ways, with totals pinned.</p>
