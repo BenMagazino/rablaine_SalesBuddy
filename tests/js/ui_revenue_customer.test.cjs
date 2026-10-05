@@ -246,10 +246,10 @@ test('other pages do not initialize customer controls', () => {
     vm.runInNewContext(source, {window: {}, document: {querySelector: () => null}});
 });
 
-test('customer help matches both aliases without claiming legacy product-history routes', () => {
+test('customer and bucket help match their own aliases and explain history scope', () => {
     const helpSource = fs.readFileSync(path.join(__dirname, '../../static/js/page-help.js'), 'utf8');
     for (const pathname of ['/revenue/customer/456', '/customer/456/revenue',
-        '/customer/456/revenue/bucket/Databases']) {
+        '/customer/456/revenue/bucket/Databases', '/revenue/customer/456/bucket/Databases']) {
         const title = {}, body = {};
         let opened;
         vm.runInNewContext(helpSource + '\nPageHelp.show();', {
@@ -259,7 +259,9 @@ test('customer help matches both aliases without claiming legacy product-history
         });
         assert.equal(opened, 'pageHelpModal');
         if (pathname.endsWith('/Databases')) {
-            assert.notEqual(title.textContent, 'Customer Revenue');
+            assert.equal(title.textContent, 'Bucket Product History');
+            assert.match(body.innerHTML, /Full Product History/);
+            assert.match(body.innerHTML, /all imported months/);
         } else {
             assert.equal(title.textContent, 'Customer Revenue');
             assert.match(body.innerHTML, /includes hidden buckets/);

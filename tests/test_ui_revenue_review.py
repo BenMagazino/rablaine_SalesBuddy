@@ -790,12 +790,12 @@ def test_unmatched_detail_is_an_identified_empty_state_and_missing_is_404(
     assert client.get("/api/revenue/analysis/999999/detail").status_code == 404
 
 
-@pytest.mark.parametrize("host", ["detail", "customer"])
+@pytest.mark.parametrize("host", ["detail", "customer", "bucket"])
 def test_product_breakdown_preserves_recent_seven_months_totals_links_and_change_colors(
     app: Flask, client: FlaskClient, review_alert: dict[str, int],
     host: str,
 ) -> None:
-    """The real detail API retains monthly, zero, negative and all-history total semantics."""
+    """All three hosts retain monthly, zero, negative and all-history total semantics."""
     from app.models import CustomerRevenueData, ProductRevenueData, RevenueImport, db
     from app.services.revenue_import import fiscal_month_to_date
 
@@ -817,10 +817,11 @@ def test_product_breakdown_preserves_recent_seven_months_totals_links_and_change
             db.session.add(CustomerRevenueData(**common))
             db.session.add(ProductRevenueData(product=product, **common))
         db.session.commit()
-    path = (
-        f'/api/revenue/analysis/{review_alert["alert"]}/detail' if host == "detail"
-        else f'/revenue/customer/{review_alert["customer"]}'
-    )
+    path = {
+        "detail": f'/api/revenue/analysis/{review_alert["alert"]}/detail',
+        "customer": f'/revenue/customer/{review_alert["customer"]}',
+        "bucket": f'/customer/{review_alert["customer"]}/revenue/bucket/Databases',
+    }[host]
     response = client.get(path)
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
@@ -832,7 +833,7 @@ def test_product_breakdown_preserves_recent_seven_months_totals_links_and_change
     assert all(h["scope"] == "col" for h in table.select("thead th"))
     assert all(h["scope"] == "row" for h in table.select("tbody th"))
     rows = table.select("tbody tr")
-    assert len(rows) == 2
+    assert len(rows) == (1 if host == "bucket" else 2)
     for row in rows:
         cells = row.select("td")
         assert [c.get_text(strip=True) for c in cells] == [
@@ -842,16 +843,122 @@ def test_product_breakdown_preserves_recent_seven_months_totals_links_and_change
         assert not cells[2].select_one("[data-tone]")
         assert cells[3].select_one('[data-tone="positive"]')
         assert not cells[5].select_one("[data-tone]")
-    assert rows[1].find("a").get_text(strip=True) == product
-    assert "<SQL" not in str(rows[1])
+    assert rows[-1].find("a").get_text(strip=True) == product
+    assert "<SQL" not in str(rows[-1])
     if host == "detail":
         assert soup.select_one(".sb-revenue-products-header a")["href"] == (
             f'/customer/{review_alert["customer"]}/revenue'
         )
-    else:
+    elif host == "customer":
         assert soup.select_one(".sb-revenue-products-header a")["href"] == (
             f'/customer/{review_alert["customer"]}/revenue/bucket/Databases'
         )
+    else:
+        history = soup.select_one("#fullHistory .sb-revenue-history-table")
+        assert not soup.select_one("#fullHistory").has_attr("open")
+        full_rows = history.select("tbody tr")
+        assert [r.find("th").text for r in full_rows] == list(reversed(months))
+        assert [r.select("td")[0].text for r in full_rows] == [
+            "$40", "$-20", "$0", "$100", "$88", "$80", "$90", "$100",
+        ]
+        assert [r.select("td")[1].get_text(strip=True) for r in full_rows] == [
+            "-", "-", "-100.0%", "+13.6%", "+10.0%", "-11.1%", "-10.0%", "-",
+        ]
+        assert full_rows[2].select_one('[data-tone="danger"]')
+        assert full_rows[3].select_one('[data-tone="positive"]')
+        assert not full_rows[4].select_one("[data-tone]")
+        assert not full_rows[6].select_one("[data-tone]")
+        assert soup.select_one(".sb-revenue-bucket-scope").get_text(" ", strip=True).endswith(
+            "FY26-Jul to FY26-Feb"
+        )
+        assert history.find("caption")
+
+
+@pytest.mark.parametrize("path", [
+    "/revenue/customer/{customer}/bucket/Databases",
+    "/customer/{customer}/revenue/bucket/Databases",
+])
+@pytest.mark.parametrize("embedded", [False, True])
+def test_bucket_history_native_composition_and_embed_boundary(
+    client: FlaskClient, review_alert: dict[str, int], path: str, embedded: bool,
+) -> None:
+    """Bucket drilldowns share domain content without duplicate scope navigation."""
+    url = path.format(**review_alert) + ("?embed=1" if embedded else "")
+    response = client.get(url)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    root = soup.select_one('[data-sb-revenue-page="bucket"][data-sb-page-surface]')
+    assert root.select_one('[data-sb-page-body]')
+    assert root.select_one('.sb-revenue-bucket-context[tabindex="0"]')
+    assert root.select_one('.sb-revenue-bucket-reading[role="region"][tabindex="0"]')
+    assert not root.select(".card, .btn, .badge, .table, .alert, [data-bs-toggle]")
+    assert not root.select("[data-bucket], #bucketFilterContainer, nav")
+    assert root.select_one("details#fullHistory > summary")
+    assert not root.select_one("#fullHistory").has_attr("open")
+    assert not root.select("table")  # The isolated fixture has analysis, but no product data.
+    assert "No product data available" in root.get_text()
+    assert "No product history available" in root.get_text()
+    assert root.select_one(".review-action-btn")["data-analysis-id"] == str(review_alert["alert"])
+    assert len(soup.select("#reviewActionModal")) == 1
+    assert root.select_one("a.sb-revenue-command")["href"] == (
+        f'/customer/{review_alert["customer"]}/revenue'
+    )
+    if embedded:
+        assert "sb-page-frame" not in soup.body.get("class", [])
+        assert not soup.select(".sb-app-bar, .sb-context-bar, footer")
+    else:
+        assert "sb-page-frame" in soup.body["class"]
+        assert soup.select_one(".sb-context-bar [aria-current='page'] > span[title]").text == (
+            "Databases Products"
+        )
+        assert soup.select_one("body > footer.sb-page-status").get_text(" ", strip=True) == (
+            "0 products, 0 recent months Product totals include all imported months"
+        )
+
+
+@pytest.mark.parametrize("category", ["HEALTHY", "CHURNED"])
+def test_bucket_history_preserves_no_action_rationale_without_changing_preview_defaults(
+    app: Flask, client: FlaskClient, review_alert: dict[str, int], category: str,
+) -> None:
+    """Original bucket rationale remains visible even when no engagement is recommended."""
+    from app.models import RevenueAnalysis, db
+
+    with app.app_context():
+        alert = db.session.get(RevenueAnalysis, review_alert["alert"])
+        alert.category = category
+        alert.recommended_action = "NO ACTION"
+        alert.engagement_rationale = '<Existing "context">'
+        alert.dollars_at_risk = 0
+        alert.dollars_opportunity = 0
+        db.session.commit()
+    soup = BeautifulSoup(client.get(
+        f'/customer/{review_alert["customer"]}/revenue/bucket/Databases'
+    ).data, "html.parser")
+    analysis = soup.select_one(".sb-revenue-bucket-analysis")
+    assert analysis.select_one(".sb-revenue-guidance p").text == '<Existing "context">'
+    assert "<Existing" not in str(analysis)
+    assert analysis.select_one(".sb-revenue-category").get_text(strip=True) == (
+        "Inactive" if category == "CHURNED" else "Healthy"
+    )
+    preview = BeautifulSoup(client.get(
+        f'/api/revenue/analysis/{review_alert["alert"]}/detail'
+    ).data, "html.parser")
+    assert not preview.select_one(".sb-revenue-guidance")
+
+
+def test_bucket_history_missing_analysis_is_not_an_empty_analysis_panel(
+    client: FlaskClient, review_alert: dict[str, int],
+) -> None:
+    """A bucket without analysis or products has distinct honest empty states."""
+    soup = BeautifulSoup(client.get(
+        f'/customer/{review_alert["customer"]}/revenue/bucket/No%20data'
+    ).data, "html.parser")
+    root = soup.select_one('[data-sb-revenue-page="bucket"]')
+    assert "No analysis available for this bucket." in root.get_text()
+    assert "No product data available for this bucket." in root.get_text()
+    assert "No product history available for this bucket." in root.get_text()
+    assert not root.select(".sb-revenue-bucket-analysis, .review-action-btn, table")
+    assert not soup.select("#reviewActionModal")
 
 
 @pytest.mark.parametrize("path", [

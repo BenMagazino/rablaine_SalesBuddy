@@ -1,0 +1,31 @@
+/* Bucket reading surface: useful context beside bounded product history. */
+.sb-revenue-bucket-workarea { background: var(--sb-ui-canvas); }
+.sb-page-frame .sb-revenue-bucket-workarea { display: grid; grid-template-columns: 340px minmax(0, 1fr); }
+.sb-revenue-bucket-context, .sb-revenue-bucket-reading { min-height: 0; padding: 16px 24px; }
+.sb-page-frame :is(.sb-revenue-bucket-context, .sb-revenue-bucket-reading) { overflow: auto; }
+.sb-page-frame .sb-revenue-bucket-context { border-right: 1px solid var(--sb-ui-line); }
+.sb-revenue-bucket :focus-visible { outline-offset: -2px; }
+.sb-revenue-bucket-scope { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-revenue-bucket-scope > a { font-weight: 600; }
+.sb-revenue-bucket-scope .sb-revenue-metrics { margin-top: 16px; }
+.sb-revenue-bucket-scope p { margin: 8px 0 0; color: var(--sb-ui-muted); font-size: 12px; }
+.sb-revenue-bucket-context .sb-revenue-detail-header { display: block; padding-bottom: 10px; border-bottom: 0; }
+.sb-revenue-bucket-context .sb-revenue-header-meta { justify-content: flex-start; gap: 8px; margin-top: 10px; }
+.sb-revenue-bucket-context .sb-revenue-review-meta { width: 100%; white-space: normal; }
+.sb-revenue-bucket-context .sb-revenue-summary { display: block; padding: 8px 0; }
+.sb-revenue-bucket-context .sb-revenue-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sb-revenue-bucket-context .sb-revenue-guidance { margin-top: 20px; padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--sb-ui-line); }
+.sb-revenue-bucket-reading > section, .sb-revenue-history-disclosure { max-width: 1120px; }
+.sb-revenue-bucket-recent h2 { margin: 0; font: 600 15px/1.5 var(--sb-ui-font); }
+.sb-revenue-bucket-recent .sb-revenue-products-header { padding: 0 0 12px; flex-wrap: wrap; }
+.sb-revenue-history-disclosure { margin-top: 24px; border-top: 1px solid var(--sb-ui-line); }
+.sb-revenue-history-disclosure > summary { display: flex; align-items: center; gap: 8px; padding: 16px 0; font-weight: 600; cursor: pointer; list-style: none; }
+.sb-revenue-history-disclosure > summary::-webkit-details-marker { display: none; }
+.sb-revenue-history-disclosure > summary > .sb-revenue-review-meta { margin-left: auto; font-weight: 400; }
+.sb-revenue-history-disclosure[open] > summary > i { transform: rotate(90deg); }
+.sb-revenue-history-product { padding-bottom: 24px; border-top: 1px solid var(--sb-ui-line); }
+.sb-revenue-history-product .sb-revenue-products-header { align-items: flex-start; }
+.sb-revenue-history-product h3 { min-width: 0; }
+.sb-revenue-history-product .sb-revenue-table-scroll { max-width: 640px; }
+.sb-revenue-history-table { min-width: 0; }
+.sb-revenue-bucket-recent td:last-child { font-weight: 600; }

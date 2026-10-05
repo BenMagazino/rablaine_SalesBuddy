@@ -14,6 +14,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Add a seller Revenue alert queue with side-by-side details, retaining Table view for comparison and sharing bucket filters across both views.
 - Clarify that seller Revenue counts alerts, including separate buckets for the same customer, rather than unique customers.
 - Show customer Revenue analysis beside a narrower product grid, with navigation limited to filtered buckets and a separate all-bucket Overview.
+- Keep bucket product history beside its analysis, with native full-history expansion and shared alert review controls.
 - Use compact native Revenue Analyzer and seller-alert page commands, with quieter category summaries and persistent export-error feedback.
 - Show consistent under-navbar breadcrumbs throughout the app, with linked Home, real ownership paths and Revenue Analyzer under Reports.
 - Put the Home calendar beside distinct Action Items, Milestones Due and Revenue Alerts panels, with keyboard-operated activity tabs and preview rows.

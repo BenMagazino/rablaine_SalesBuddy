@@ -6,3 +6,12 @@
     <span class="sb-revenue-missing">-</span>
 {% endif %}
 {% endmacro %}
+
+{% macro revenue_change(current_rev, prev_rev) %}
+{% if prev_rev > 0 %}
+    {% set change = (current_rev - prev_rev) / prev_rev * 100 %}
+    <span{% if change < -10 %} data-tone="danger"{% elif change > 10 %} data-tone="positive"{% endif %}>{{ '{:+.1f}'.format(change) }}%</span>
+{% else %}
+    <span class="sb-revenue-missing">-</span>
+{% endif %}
+{% endmacro %}

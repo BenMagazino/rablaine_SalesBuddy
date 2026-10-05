@@ -15,6 +15,7 @@
             </tr>
         </thead>
         <tbody>
+            {% if show_bucket_total|default(true) %}
             <tr class="sb-revenue-total">
                 <th scope="row">{{ revenue_bucket }} Total</th>
                 {% for month in recent_months %}
@@ -23,6 +24,7 @@
                 {% endfor %}
                 <td>${{ '{:,.0f}'.format(bucket_total) }}</td>
             </tr>
+            {% endif %}
             {% for p in product_summary %}
             <tr>
                 <th scope="row"><a href="{{ url_for('revenue.revenue_product_view', product=p.product) }}">{{ p.product }}</a></th>

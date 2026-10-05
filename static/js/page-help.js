@@ -114,6 +114,15 @@ const PageHelp = (function () {
     { pattern: /^\/customer\/\d+\/edit/, title: 'Edit Customer', content: `
       <p>Update this customer's information — name, territory, sellers, and other details.</p>
     `},
+    { pattern: /^\/(?:revenue\/customer\/\d+\/bucket\/[^/]+|customer\/\d+\/revenue\/bucket\/[^/]+)\/?$/, title: 'Bucket Product History', content: `
+      <p>Product revenue for one customer and bucket, with analysis alongside the history.</p>
+      <ul>
+        <li>The recent grid shows up to seven imported months. Product totals include all imported months.</li>
+        <li>Expand <strong>Full Product History</strong> to read every product's monthly history, newest first.</li>
+        <li>Change compares each imported month with the preceding imported month. It is unavailable when preceding revenue is zero or negative.</li>
+        <li>Use the pencil to review the alert, a product name for its detail page, or <strong>Customer Revenue</strong> to return to bucket navigation.</li>
+      </ul>
+    `},
     { pattern: /^\/(?:revenue\/customer\/\d+|customer\/\d+\/revenue)\/?$/, title: 'Customer Revenue', content: `
       <p>Bucket analysis and monthly product revenue for this customer.</p>
       <ul>

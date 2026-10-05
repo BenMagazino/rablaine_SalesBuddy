@@ -21,7 +21,7 @@
         {{ action_buttons(a) }}
     </div>
 </header>
-{% set has_guidance = a.recommended_action != 'NO ACTION' or a.dollars_at_risk > 0 or a.dollars_opportunity > 0 %}
+{% set has_guidance = a.recommended_action != 'NO ACTION' or a.dollars_at_risk > 0 or a.dollars_opportunity > 0 or (always_show_rationale|default(false) and a.engagement_rationale) %}
 <div class="sb-revenue-summary" data-guidance="{{ 'true' if has_guidance else 'false' }}">
     <dl class="sb-revenue-metrics">
         <div><dt>Avg Revenue</dt><dd>${{ '{:,.0f}'.format(a.avg_revenue) }}</dd></div>
@@ -33,8 +33,8 @@
     <div class="sb-revenue-guidance">
         {% if a.recommended_action != 'NO ACTION' %}
         <strong>{{ a.recommended_action }}</strong>
-        {% if a.engagement_rationale %}<p>{{ a.engagement_rationale }}</p>{% endif %}
         {% endif %}
+        {% if a.engagement_rationale and (a.recommended_action != 'NO ACTION' or always_show_rationale|default(false)) %}<p>{{ a.engagement_rationale }}</p>{% endif %}
         {% if a.dollars_at_risk > 0 %}
         <p data-tone="danger"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> ${{ '{:,.0f}'.format(a.dollars_at_risk) }}/mo at risk</p>
         {% elif a.dollars_opportunity > 0 %}

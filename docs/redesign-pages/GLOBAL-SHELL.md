@@ -96,10 +96,15 @@
   pane, monthly grids capped at 1120px and filtered scope counts. The two panes
   scroll independently. Navigation chooses content within the saved filter;
   Overview retains all-bucket totals. It is technically verified and user-approved
-  October 4, ready for checkpoint commit. Initial native bucket anchors revealed
+  October 4, committed as `9a4ddef`. Initial native bucket anchors revealed
   root scrolling despite the fixed body; opted-in frame roots now use overflow
   clipping. Current navigation switches panes rather than jumping a long page.
-- Next action: migrate customer bucket Full History, then adopt
+- Checkpoint 27 applies task-shaped composition to customer bucket Full History:
+  analysis/scope stays beside bounded recent and complete product history.
+  This single-bucket destination has no redundant scope navigation; embedded
+  content remains stacked. It is technically verified and user-approved October 4,
+  ready for checkpoint commit.
+- Next action: migrate product-level Revenue detail, then adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.

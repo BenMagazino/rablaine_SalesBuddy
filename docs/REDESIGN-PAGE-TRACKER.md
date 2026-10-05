@@ -6,8 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 26, customer Revenue analysis/history,
+- Current page/surface: checkpoint 27, customer bucket product history,
   VERIFY, technically verified and user-approved October 4; ready for checkpoint commit.
+  Checkpoint 26 customer Revenue is user-approved and committed as `9a4ddef`.
   Checkpoint 25 seller queue/detail is user-approved and committed as `747058a`.
   Checkpoint 24 shell composition is approved and committed as `4320872`;
   its scrolling was technically verified but not manually reviewed by the user;
@@ -32,16 +33,22 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `25a14d4` (shared native Revenue lists and Seller Full View, user-approved October 4),
   `60dbdb3` (native Revenue commands and app-wide breadcrumbs, user-approved October 4),
   `4320872` (continuous shell contract and Revenue pilot, user-approved October 4),
-  `747058a` (seller Revenue queue/detail, user-approved October 4)
-- Next action: commit approved checkpoint 26, then migrate customer bucket Full
-  History using the same task-shaped composition reasoning. Customer analysis now shares
+  `747058a` (seller Revenue queue/detail, user-approved October 4),
+  `9a4ddef` (customer Revenue context/history, user-approved October 4)
+- Next action: commit approved checkpoint 27, then migrate product-level Revenue
+  detail. Its bounded
+  recent grid and native expandable history sit beside analysis and truthful
+  product/month scope, without a duplicate bucket chooser. Existing cells retain
+  exact pre/post hashes. Shared Review and native Help are verified.
+  Customer analysis now shares
   native summary/review content with previews and the seller inspector. Product
   grids share the same rendering and preserve all-history totals. The continuous
   shell has fixed commands, independently scrolling bucket context/history panes,
   a narrower product grid and filtered scope counts. Bucket navigation does not
   change saved scope; all-bucket totals remain a separate Overview.
-  Full History and product drilldowns remain legacy
-  destinations, not migrated implicitly. Seller Queue/Table and compact modal
+  Customer bucket Full History is explicitly migrated by checkpoint 27; other
+  product drilldowns remain legacy destinations, not migrated implicitly.
+  Seller Queue/Table and compact modal
   lists keep their approved distinct compositions.
   October 4 review correction: all 90 full-page endpoints now use Home's shared
   context-bar styling below navigation, including pages previously without trails.
@@ -85,7 +92,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 26 sign-off, the rough effort-based estimate is **about 27%**
+As of checkpoint 27 sign-off, the rough effort-based estimate is **about 28%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -223,7 +230,7 @@ have separate rows even when they use one template.
 | REV-SELL-PRODS | Seller products | `/revenue/seller/<seller_name>/products` | `revenue_seller_products.html` | TODO | - |
 | REV-SELL-PROD | Seller product detail | `/revenue/seller/<seller_name>/product/<path:product>` | `revenue_seller_product_view.html` | TODO | - |
 | REV-CUST | Customer revenue | `/revenue/customer/<int:customer_id>`; `/customer/<int:customer_id>/revenue` | `revenue_customer_view.html` | VERIFY | [Checkpoint 26 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-26-customer-revenue-analysis-and-history) |
-| REV-BUCKET | Customer bucket products | `/revenue/customer/<int:customer_id>/bucket/<bucket>`; `/customer/<int:customer_id>/revenue/bucket/<bucket>` | `revenue_bucket_products.html` | TODO | - |
+| REV-BUCKET | Customer bucket products | `/revenue/customer/<int:customer_id>/bucket/<bucket>`; `/customer/<int:customer_id>/revenue/bucket/<bucket>` | `revenue_bucket_products.html` | VERIFY | [Checkpoint 27 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-27-customer-bucket-product-history) |
 | REV-PRODS | Products | `/revenue/products`; `/products` | `revenue_products_list.html` | TODO | - |
 | REV-PROD | Product detail | `/revenue/product/<path:product>`; `/product/<path:product>` | `revenue_product_view.html` | TODO | - |
 | REV-RPTS | Revenue reports | `/reports/revenue-reports`; `/revenue/reports` redirects | `revenue_reports_list.html` | TODO | - |

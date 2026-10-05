@@ -1216,7 +1216,7 @@ remains Table-only; customer Revenue migration follows next.
 ## Checkpoint 26: customer Revenue analysis and history
 
 Status: VERIFY, technically verified and user-approved October 4, 2026;
-ready for checkpoint commit. Approved overall progress is about 27%.
+committed as `9a4ddef`. Approved overall progress is about 27%.
 
 ### Scope and parity
 
@@ -1294,3 +1294,61 @@ readable table widths, separate scope/navigation and nonredundant controls witho
 forcing the same composition everywhere. The customer reading layout is distinct
 from the approved seller triage queue. Customer bucket Full History follows next;
 other full-history/product surfaces remain future work.
+
+## Checkpoint 27: customer bucket product history
+
+Status: VERIFY, technically verified and user-approved October 4, 2026;
+ready for checkpoint commit. Approved predecessor: `9a4ddef`.
+Approved overall progress is about 28%.
+
+### Scope and design reasoning
+
+- Both customer bucket aliases adopt the continuous standalone workbench.
+  Breadcrumbs retain real Home > Seller > Customer > Revenue > Bucket ancestry.
+  Embedded pages keep stacked content without taking over the host shell.
+- The page already has one bucket in scope. Do not add a duplicate chooser,
+  saved filter or product-navigation list that merely repeats the comparison grid.
+  Place useful analysis and actual product/month scope beside the reading area.
+- Context remains 340px. The recent comparison grid is capped at 1120px rather
+  than its previous 1270px. Three-column full-history tables are capped at 640px.
+  Context and reading panes scroll independently beneath fixed commands/status.
+- Reuse the shared summary, monthly cell formatter, product grid and native Review.
+  The grid's optional bucket-total row defaults on for existing hosts, but is off
+  here to preserve the original product-only comparison.
+- Preserve the bucket's rationale even with a NO ACTION recommendation through an
+  explicit summary option. Existing preview/customer defaults remain unchanged.
+- Replace Bootstrap's single collapsed history group with native details/summary,
+  still closed initially and exposing every product together when opened.
+  Keep every imported history row, newest-first order, chronological predecessor
+  lookup and exact change/zero-denominator semantics. No route/query/write API changes.
+- Shared Review adds direct review access beside the bucket analysis. Help covers
+  both aliases and distinguishes seven displayed months from all-history totals.
+
+### Feature parity evidence
+
+| ID | Original information/control | Native destination and verification | Result |
+| --- | --- | --- | --- |
+| BUCKET-01 | Customer/bucket title, ownership trail, back link | Canonical context bar, fixed commands, customer context; both aliases/embeds tested; live return reaches customer Revenue | PASS |
+| BUCKET-02 | Category, rationale, priority, risk-before-opportunity | Shared semantic analysis; NO ACTION rationale and Inactive label covered without changing preview defaults | PASS |
+| BUCKET-03 | Recent seven-month product comparison and all-history totals | Shared grid, unchanged cells/product links; zero/negative amounts and exact +/-10% boundaries tested | PASS |
+| BUCKET-04 | One collapsed full-history group | Native details, initially closed; keyboard expansion exposes all fourteen live product histories | PASS |
+| BUCKET-05 | Newest-first history, revenue, change from previous imported row | Exact pre/post cell hash for all fifteen grids; positive/zero/negative predecessor cases and change colors tested | PASS |
+| BUCKET-06 | Product drilldown links | Shared original destination; actual product page opens and Back returns to bucket history | PASS |
+| BUCKET-07 | Empty product data and absent analysis | Distinct analysis/product/history messages; isolated populated/empty fixtures and embed boundaries | PASS |
+| BUCKET-08 | Readable content and complete history | Eight themes retain 340px context, 1120px recent grid, 640px history; reading scrolls 1800px with context/document at zero | PASS |
+| BUCKET-09 | Alert review available elsewhere | Shared editor now available in context; live dirty draft discarded, zero PATCH requests, opener focus restored | PASS |
+| BUCKET-10 | Scope and assistance | Actual product/imported-month counts, all-history total labels; F1 opens bucket-specific native Help | PASS |
+
+### Verification and handoff
+
+- 187 isolated Python tests pass across Revenue UI/shared content and report
+  breadcrumbs. Twenty-nine scoped JavaScript checks pass for customer navigation,
+  customer/bucket Help aliases and the shared Review editor. Editor diagnostics
+  and whitespace checks are clean.
+- Live pre/post SHA-256 of all table cells matches, including every recent/full
+  grid and row count. No financial values, chronology or product destinations change.
+- Native keyboard history expansion, independent long-history scrolling, Review
+  discard, F1 Help, product navigation and return to customer Revenue are verified.
+  Saved Databases/Fabric filter remains unchanged. No live review is saved.
+- The user approved the bucket history composition October 4 and requested the
+  next phase. Product-level Revenue detail follows next.
