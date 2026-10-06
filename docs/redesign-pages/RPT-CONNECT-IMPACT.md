@@ -2,7 +2,7 @@
 
 - Checkpoint: 40; status: VERIFY, user-approved October 6, 2026.
 - Route: `/reports/connect-impact`, including `embed=1`.
-- Audited baseline: `858b85df`; approved implementation ready for checkpoint commit.
+- Audited baseline: `858b85df`; approved revision committed as `eb588a08`.
 - Files: `report_connect_impact.html`, `ui-impact.css`, `ui-impact.js`.
 - Provider: existing commitment query/aggregation unchanged; fiscal shortcuts reuse existing date helpers.
 - Next action: retain verified behavior during remaining report migrations.

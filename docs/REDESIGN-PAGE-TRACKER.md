@@ -7,14 +7,15 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: Connect Impact, checkpoint 40, user-approved October 6.
-- Current task: checkpoint 41, Connect Goals, BUILDING.
-- Active card: Connect Impact approved; Connect Goals card follows scoped verification.
-- Approved effort estimate: about 44%; strict DONE counters below are separate.
+- Last approved implementation: Connect Goals, checkpoint 41; local commit authorized.
+- Current task: commit the approved dashboard and begin Activity Coverage, checkpoint 42.
+- Active card: [RPT-GOALS](redesign-pages/RPT-CONNECT-GOALS.md); user-approved October 6.
+- Approved effort estimate: about 45%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
-- Next action: commit Connect Impact, migrate Connect Goals and notify on Discord when ready.
+- Every future segment includes before/after screenshots and one Discord review-ready notification.
+- Next action: capture the live Activity Coverage baseline, migrate and verify it for review.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -42,7 +43,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 40 sign-off, the rough effort-based estimate is **about 44%**
+As of checkpoint 41 sign-off, the rough effort-based estimate is **about 45%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -180,7 +181,7 @@ have separate rows even when they use one template.
 | RPT-WHITE | Whitespace | `/reports/whitespace` | `report_whitespace.html` | VERIFY | [Page card](redesign-pages/RPT-WHITESPACE.md); user-approved October 6, committed `fe758b9b` |
 | RPT-MSX | MSX workspace | `/reports/msx-workspace` | `report_msx_workspace.html` | TODO | - |
 | RPT-MKT | Marketing insights | `/reports/marketing-insights` | `report_marketing_insights.html` | VERIFY | [Page card](redesign-pages/RPT-MARKETING.md); user-approved October 6 |
-| RPT-GOALS | Connect goals | `/reports/connect-goals` | `report_connect_goals.html` | TODO | - |
+| RPT-GOALS | Connect goals | `/reports/connect-goals` | `report_connect_goals.html` | VERIFY | [Card](redesign-pages/RPT-CONNECT-GOALS.md); native dashboard/frame, user-approved October 6 |
 | RPT-U2C | U2C | `/reports/u2c` | `report_u2c.html` | TODO | - |
 | RPT-IMPACT | Connect impact | `/reports/connect-impact` | `report_connect_impact.html` | VERIFY | [Page card](redesign-pages/RPT-CONNECT-IMPACT.md); user-approved October 6 |
 | REV-DASH | Revenue dashboard | `/reports/revenue`; `/revenue` redirects | `revenue_dashboard.html` | VERIFY | [Continuous shell pilot](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-24-continuous-workbench-shell-and-revenue-pilot) |

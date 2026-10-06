@@ -33,6 +33,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Browse Marketing customers beside sortable activity and contact details, with local timestamps, working filtered-summary exports and restored selection/reading context on Back.
 - Review Connect Impact in native customer-ranking and milestone panes, with sortable data, remembered commitment dates and restored customer/date context on Back.
 - Set Connect Impact's committed-since date quickly from the current fiscal-year or quarter start, while keeping custom dates available.
+- Put Connect Goals in the shared app frame with a visible footer, keeping its U2C/team/HVA dashboard, whitespace wins and reading context on Back; remove the external earnings placeholder.
 - Use compact native Revenue Analyzer and seller-alert page commands, with quieter category summaries and persistent export-error feedback.
 - Show consistent under-navbar breadcrumbs throughout the app, with linked Home, real ownership paths and Revenue Analyzer under Reports.
 - Put the Home calendar beside distinct Action Items, Milestones Due and Revenue Alerts panels, with keyboard-operated activity tabs and preview rows.
@@ -113,7 +114,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 ## 9/24/2026 - df23519
 
 - Add an FY27 Data Connect Goals action center with best-effort calculations for U2C pace, milestone and HVA coverage, technical validation, and sustained whitespace. Official results may differ.
-- Add direct MINT Earnings access, in-page FY27 compensation bucket selection, and updated HVA categories including Assessment and RFP/RFI while excluding Briefing.
+- Add in-page FY27 compensation bucket selection and updated HVA categories including Assessment and RFP/RFI while excluding Briefing.
 
 ## 9/23/2026 - fa8df50
 

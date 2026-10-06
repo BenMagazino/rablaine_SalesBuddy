@@ -102,7 +102,7 @@ def test_connect_goals_route_shows_setup_gate(client):
 
 
 def test_connect_goals_route_renders_action_metrics(client, app):
-    """A confirmed FY27 scope renders action metrics and MINT connection."""
+    """Keep three primary dashboard metrics and the supporting whitespace workflow."""
     with app.app_context():
         _seed_required_buckets()
         _confirm_scope()
@@ -112,24 +112,44 @@ def test_connect_goals_route_renders_action_metrics(client, app):
 
     assert response.status_code == 200
     assert b'Quarterly U2C progression' in response.data
-    assert b'Quota attainment' in response.data
-    assert b'Open MINT Earnings' in response.data
-    assert b'https://aka.ms/msxearnings' in response.data
-    assert b'Connect to MINT' not in response.data
     assert b'Select FY27 Comp Buckets' in response.data
-    assert b'data-bs-target="#connectBucketModal"' in response.data
+    assert b'data-sb-dialog="connectBucketModal"' in response.data
     assert b'Edit FY27 priorities' not in response.data
     assert b'Save Comp Buckets' in response.data
-    assert b'connect-modal-bucket ms-0 mt-0 flex-shrink-0' in response.data
     assert b'Milestone team coverage' in response.data
     assert b'Milestone HVA coverage' in response.data
     assert b'Fabric and database whitespace wins' in response.data
     page = BeautifulSoup(response.data, 'html.parser')
     headings = [
         heading.get_text(strip=True)
-        for heading in page.select('.connect-dashboard h2')
+        for heading in page.select('.sb-goals-dashboard h2')
     ]
-    assert headings[-1] == 'Quota attainment'
+    assert headings == [
+        'Quarterly U2C progression', 'Milestone team coverage',
+        'Milestone HVA coverage', 'Fabric and database whitespace wins',
+    ]
+    assert len(page.select('.sb-goals-section:not(.is-supporting)')) == 3
+    assert page.select_one('.sb-goals-section.is-supporting')['aria-labelledby'] == (
+        'whitespaceGoalTitle'
+    )
+    dialog = page.select_one('dialog#connectBucketModal')
+    assert dialog.select_one('form.sb-dialog-shell')
+    assert len(dialog.select('[data-sb-dialog-close]')) == 2
+    assert not page.select('.sb-connect-goals [data-bs-toggle], .sb-connect-goals .btn')
+    assert page.select_one('body.sb-page-frame')
+    assert page.select_one('#main-content > [data-sb-page-surface]')
+    assert page.select_one('#connectGoalsReading[data-sb-page-body]')
+    assert page.select_one('body > footer.sb-page-status')['aria-label'] == 'Connect Goals status'
+    assert not page.select('#main-content main')
+    config = json.loads(page.select_one('#connectGoalsData').string)
+    assert config['teamFilter']['area'] == ['Data']
+    assert config['teamFilter']['myTeam'] == 'off'
+    assert config['teamFilter']['quarters'] == [
+        'FY27 Q1', 'FY27 Q2', 'FY27 Q3', 'FY27 Q4',
+        'FY28 Q1', 'FY28 Q2', 'FY28 Q3', 'FY28 Q4',
+    ]
+    assert config['teamFilter']['status'] == list(connect_goals.ACTIVE_MILESTONE_STATUSES)
+    assert config['teamFilter']['favoritesOnly'] is False
     assert b'No matched Databases or Fabric revenue history is available.' in response.data
 
 
@@ -298,6 +318,14 @@ def test_whitespace_win_requires_sustained_consumption(app, client):
         assert b'Feb26' in response.data
         assert b'First positive' not in response.data
         assert b'Sustained' in response.data
+        page = BeautifulSoup(response.data, 'html.parser')
+        history = page.select_one('.sb-goals-history-table')
+        assert len(history.select('td.is-danger')) == 5
+        assert len(history.select('td.is-success')) == 3
+        assert not page.select('.sb-connect-goals .text-success, .sb-connect-goals .text-danger')
+        assert page.select_one('[data-goals-history-key]')['data-goals-history-key'] == (
+            f'Fabric:{customer.id}'
+        )
 
 
 def test_whitespace_tracks_ramping_and_excludes_lapsed_activation(app):
@@ -399,6 +427,50 @@ def test_connect_goals_api_serializes_shared_data(client):
 
     assert response.status_code == 200
     assert set(response.get_json()) == {'scope', 'setup', 'widgets'}
+
+
+def test_ready_connect_goals_api_has_four_shared_widgets(client, app):
+    """The page, API and tool provider share the same four measurable goals."""
+    with app.app_context():
+        _seed_required_buckets()
+        _confirm_scope()
+        db.session.commit()
+
+    data = client.get('/api/reports/connect-goals').get_json()
+    assert data['setup']['ready'] is True
+    assert [widget['key'] for widget in data['widgets']] == [
+        'u2c', 'team_coverage', 'hva_coverage', 'whitespace',
+    ]
+
+
+def test_setup_form_uses_native_scope_choices(client, app):
+    """Annual setup still offers required buckets before metrics are available."""
+    with app.app_context():
+        _seed_required_buckets()
+        db.session.commit()
+
+    page = BeautifulSoup(client.get('/reports/connect-goals').data, 'html.parser')
+    form = page.select_one('#connectSetupForm')
+    assert form
+    assert {item['value'] for item in form.select('input[type="checkbox"]')} == {
+        'Databases', 'Fabric',
+    }
+    assert len(form.select('.sb-goals-tag.is-required')) == 2
+    assert not page.select('.sb-goals-section, #connectBucketModal')
+    assert page.select_one('#connectSetupStatus')['aria-live'] == 'polite'
+
+
+def test_embedded_connect_goals_does_not_own_the_window_footer(client, app):
+    """An embedded dashboard leaves window and footer ownership to its host."""
+    with app.app_context():
+        _seed_required_buckets()
+        _confirm_scope()
+        db.session.commit()
+
+    page = BeautifulSoup(client.get('/reports/connect-goals?embed=1').data, 'html.parser')
+    assert page.select_one('.sb-connect-goals')['data-embedded'] == 'true'
+    assert page.select_one('#connectGoalsReading')
+    assert not page.select('body.sb-page-frame, body > footer')
 
 
 def test_u2c_widget_uses_data_snapshot(app):

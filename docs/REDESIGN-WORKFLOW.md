@@ -33,6 +33,10 @@ the offline studies already have production feature parity.
 - Update changelog for user-visible work. Update global contracts only when those
   contracts change. Do not duplicate each checkpoint in Home and global-shell logs.
 - Preserve existing history and anchors when archiving; do not rewrite old proof.
+- Standing user instruction: every future segment includes live Before/After
+  screenshots in its review handoff and one generic Discord review-ready message
+  through the reusable notifier. No reminder or new authorization is needed.
+  Do not send private screenshots, customer data, code or URLs through Discord.
 
 The tracker is the durable source of progress across chats and working days.
 Do not rely on conversation memory or a screenshot to declare a page complete.
@@ -107,6 +111,13 @@ Render the page in the live development app (`http://127.0.0.1:5000`) with its
 existing data. Inspect the template, included partials, JavaScript, route/service
 code, and relevant tests. Do not use production port 5151 for development.
 
+Before editing a page, save a screenshot of the current live desktop UI in the
+private session artifacts. Capture from the top of the page so fixed navigation
+does not land in the middle of a full-page image. Do not resize the shared viewport.
+After verification, capture the same theme, viewport and expansion state, then
+provide both Before and After links in the review handoff. Screenshots supplement
+field/behavior checks; they do not replace them or belong in git or Discord.
+
 Inventory each control and each information surface as a separate parity row:
 
 - Navigation, links, keyboard shortcuts, hover actions, menus, contextual actions.
@@ -127,6 +138,12 @@ Private captures may stay outside the repository; commit sanitized descriptions
 and reproducible steps. Never copy the live database into the design archive.
 
 ### 2. Rework the page using shared components
+
+Keeping a page's dashboard composition does not exempt it from the shared window
+frame. Full report pages use the native header/scope bands, owned reading region
+and status footer. Verify the footer stays visible at both ends of the reading
+area, with no document-level scroll; embeds leave window ownership to their host.
+Do not retain a legacy container or recreate its utility classes to preserve a layout.
 
 Map every original parity row to a redesigned destination. Layout and interaction
 placement can improve; functionality and information must remain available.
