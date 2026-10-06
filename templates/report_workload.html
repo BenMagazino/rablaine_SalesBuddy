@@ -1,283 +1,125 @@
 {% extends "base.html" %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
-
 {% block title %}Workload Report - Sales Buddy{% endblock %}
-
-{% block content %}
-<div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-        <h2><i class="bi bi-diagram-3"></i> Workload Report</h2>
-        <p class="text-muted mb-0">Customers grouped by workload topic. Click a topic to expand.</p>
-    </div>
-    <div class="d-flex gap-2">
-        {% set export_table_id = 'table.table' %}
-        {% set export_filename = 'workload-report' %}
-        {% include 'partials/_report_export.html' %}
-    </div>
-</div>
-
-<!-- Date Filters -->
-<div class="card mb-3">
-    <div class="card-body py-2">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <label class="small text-muted fw-semibold mb-0">Filter by note date:</label>
-            <input type="date" id="dateFrom" class="form-control form-control-sm" style="width: auto;">
-            <span class="text-muted">to</span>
-            <input type="date" id="dateTo" class="form-control form-control-sm" style="width: auto;">
-            <div class="btn-group ms-2" role="group">
-                <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="fq">{{ fq_label }}</button>
-                <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="prev_fq">{{ prev_fq_label }}</button>
-                <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="30d">30d</button>
-                <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="90d">90d</button>
-                <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="all">All</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Summary Cards -->
-<div class="row mb-3">
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body py-2">
-                <h3 class="mb-0" id="statUniqueCustomers">-</h3>
-                <small class="text-muted">Unique Customers</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body py-2">
-                <h3 class="mb-0" id="statWorkloads">-</h3>
-                <small class="text-muted">Workloads</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body py-2">
-                <h3 class="mb-0" id="statCustomers">-</h3>
-                <small class="text-muted">Customer Engagements</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center border-success">
-            <div class="card-body py-2">
-                <h3 class="mb-0 text-success" id="statAcr">-</h3>
-                <small class="text-muted">Total ACR/mo (visible)</small>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Workload Groups -->
-<div id="workloadContainer">
-{% if workload_groups %}
-{% for group in workload_groups %}
-<div class="card mb-2 workload-group" data-topic-id="{{ group.topic.id }}">
-    <div class="card-header py-2 collapsed" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#workload-{{ group.topic.id }}">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <i class="bi bi-chevron-right workload-chevron" style="transition: transform 0.2s;"></i>
-                <span class="badge bg-warning text-dark"><i class="bi bi-tag"></i> {{ group.topic.name }}</span>
-                <span class="badge bg-secondary ms-1 group-count">{{ group.customer_count }} customer{{ 's' if group.customer_count != 1 }}</span>
-            </div>
-            <span class="text-success fw-semibold group-acr"></span>
-        </div>
-    </div>
-    <div id="workload-{{ group.topic.id }}" class="collapse">
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0" style="font-size: 0.88em;">
-                <thead>
-                    <tr class="text-muted" style="font-size: 0.85em;">
-                        <th class="ps-3">Customer</th>
-                        <th class="text-center" title="Active engagements for this customer">Engagements</th>
-                        <th class="text-center" title="Active milestones linked to notes tagged with this topic">Milestones</th>
-                        <th class="text-end" title="Estimated ACR from milestones linked to notes tagged with this topic">Est. ACR</th>
-                        <th class="text-end pe-3" title="Most recent note tagged with this topic for this customer">Last Activity</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for cd in group.customers %}
-                    <tr class="workload-row" data-note-date="{{ cd.latest_note_iso }}" data-acr="{{ cd.acr }}" data-milestone-ids="{{ cd.milestone_ids | join(',') }}">
-                        <td class="ps-3"{% if cd.customer.tpid_url %} data-export-url="{{ cd.customer.tpid_url }}"{% endif %}>
-                            {{ customer_favicon(cd.customer) }}
-                            <a href="{{ url_for('customers.customer_view', id=cd.customer.id) }}" class="text-decoration-none">{{ cd.customer.name }}</a>
-                            {% if cd.committed %}<span class="badge bg-primary ms-1" style="font-size: 0.7em;">Committed</span>{% endif %}
-                        </td>
-                        <td class="text-center">
-                            {% if cd.engagement_count %}<span class="badge bg-info">{{ cd.engagement_count }}</span>{% else %}<span class="text-muted">-</span>{% endif %}
-                        </td>
-                        <td class="text-center">
-                            {% if cd.milestone_count %}<span class="badge bg-secondary">{{ cd.milestone_count }}</span>{% else %}<span class="text-muted">-</span>{% endif %}
-                        </td>
-                        <td class="text-end">
-                            {% if cd.acr %}<span class="text-success">${{ '{:,.0f}'.format(cd.acr) }}/mo</span>{% else %}<span class="text-muted">-</span>{% endif %}
-                        </td>
-                        <td class="text-end pe-3">
-                            {% if cd.latest_note_date %}<small class="text-muted">{{ cd.latest_note_date.strftime('%b %d, %Y') }}</small>{% else %}<span class="text-muted">-</span>{% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-{% endfor %}
-{% else %}
-<div class="alert alert-info">
-    <i class="bi bi-info-circle"></i> No workload data yet. Tag your notes with topics to see them grouped here.
-</div>
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-workload.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="Workload report status">
+    <span data-sb-workload-scope>Checking date scope</span>
+    <span data-sb-workload-selected>No workload selected</span>
+</footer>
 {% endif %}
-</div>
-
-<div id="emptyState" class="alert alert-info d-none">
-    <i class="bi bi-info-circle"></i> No workloads found in the selected date range.
-</div>
-
-<style>
-    .workload-chevron {
-        transition: transform 0.2s;
-        display: inline-block;
-    }
-</style>
-
-<script>
-(function() {
-    // Chevron rotation - toggle on each click
-    document.querySelectorAll('.workload-group .card-header').forEach(function(header) {
-        header.addEventListener('click', function() {
-            var chevron = this.querySelector('.workload-chevron');
-            if (chevron) chevron.style.transform = chevron.style.transform === 'rotate(90deg)' ? '' : 'rotate(90deg)';
-        });
-    });
-    // Milestone ACR map for deduplicated grand total (milestone_id -> monthly_usage)
-    var milestoneAcr = {{ milestone_acr_map | tojson }};
-
-    var dateFrom = document.getElementById('dateFrom');
-    var dateTo = document.getElementById('dateTo');
-    var presets = {
-        fq:      { from: '{{ fq_start }}', to: '{{ fq_end }}' },
-        prev_fq: { from: '{{ prev_fq_start }}', to: '{{ prev_fq_end }}' },
-    };
-
-    // Default to current FQ
-    dateFrom.value = presets.fq.from;
-    dateTo.value = presets.fq.to;
-
-    var STORAGE_KEY = 'salesbuddy_workload_filter';
-
-    function saveFilter(preset) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-            from: dateFrom.value, to: dateTo.value, preset: preset || ''
-        }));
-    }
-
-    function applyFilter() {
-        var from = dateFrom.value;
-        var to = dateTo.value;
-        var visibleGroups = 0;
-        var totalCustomers = 0;
-        var uniqueCustomerNames = new Set();
-        // Track unique milestone IDs across all groups to avoid double-counting
-        var seenMilestoneIds = new Set();
-        var totalAcr = 0;
-
-        document.querySelectorAll('.workload-group').forEach(function(group) {
-            var rows = group.querySelectorAll('.workload-row');
-            var visibleRows = 0;
-            var groupAcr = 0;
-            rows.forEach(function(row) {
-                var noteDate = row.dataset.noteDate;
-                var show = true;
-                if (from && noteDate && noteDate < from) show = false;
-                if (to && noteDate && noteDate > to) show = false;
-                if (!noteDate && (from || to)) show = false;
-                row.style.display = show ? '' : 'none';
-                if (show) {
-                    visibleRows++;
-                    groupAcr += parseFloat(row.dataset.acr) || 0;
-                    var name = row.querySelector('a');
-                    if (name) uniqueCustomerNames.add(name.textContent.trim());
-                    // Accumulate deduplicated grand total by unique milestone ID
-                    var ids = row.dataset.milestoneIds ? row.dataset.milestoneIds.split(',').filter(Boolean) : [];
-                    ids.forEach(function(id) {
-                        if (!seenMilestoneIds.has(id)) {
-                            seenMilestoneIds.add(id);
-                            totalAcr += milestoneAcr[id] || 0;
-                        }
-                    });
-                }
-            });
-
-            var countBadge = group.querySelector('.group-count');
-            if (countBadge) countBadge.textContent = visibleRows + ' customer' + (visibleRows !== 1 ? 's' : '');
-
-            var acrEl = group.querySelector('.group-acr');
-            if (acrEl) acrEl.textContent = groupAcr > 0 ? '$' + groupAcr.toLocaleString('en-US', {maximumFractionDigits: 0}) + '/mo' : '';
-
-            group.style.display = visibleRows > 0 ? '' : 'none';
-            if (visibleRows > 0) visibleGroups++;
-            totalCustomers += visibleRows;
-        });
-
-        document.getElementById('statWorkloads').textContent = visibleGroups;
-        document.getElementById('statCustomers').textContent = totalCustomers;
-        document.getElementById('statAcr').textContent = '$' + totalAcr.toLocaleString('en-US', {maximumFractionDigits: 0});
-        document.getElementById('statUniqueCustomers').textContent = uniqueCustomerNames.size;
-        document.getElementById('emptyState').classList.toggle('d-none', visibleGroups > 0);
-    }
-
-    dateFrom.addEventListener('change', function() { saveFilter(''); applyFilter(); });
-    dateTo.addEventListener('change', function() { saveFilter(''); applyFilter(); });
-
-    document.querySelectorAll('.preset-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var p = this.dataset.preset;
-            document.querySelectorAll('.preset-btn').forEach(function(b) {
-                b.classList.remove('btn-primary');
-                b.classList.add('btn-outline-secondary');
-            });
-            this.classList.remove('btn-outline-secondary');
-            this.classList.add('btn-primary');
-
-            if (p === 'all') {
-                dateFrom.value = '';
-                dateTo.value = '';
-            } else if (p === '30d' || p === '90d') {
-                var days = parseInt(p);
-                var d = new Date();
-                d.setDate(d.getDate() - days);
-                dateFrom.value = d.toISOString().split('T')[0];
-                dateTo.value = new Date().toISOString().split('T')[0];
-            } else if (presets[p]) {
-                dateFrom.value = presets[p].from;
-                dateTo.value = presets[p].to;
-            }
-            saveFilter(p);
-            applyFilter();
-        });
-    });
-
-    // Restore saved filter or default to current FQ
-    var saved = null;
-    try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e) {}
-    if (saved && (saved.from || saved.to)) {
-        dateFrom.value = saved.from || '';
-        dateTo.value = saved.to || '';
-        if (saved.preset) {
-            var btn = document.querySelector('[data-preset="' + saved.preset + '"]');
-            if (btn) { btn.classList.remove('btn-outline-secondary'); btn.classList.add('btn-primary'); }
-        }
-    } else {
-        dateFrom.value = presets.fq.from;
-        dateTo.value = presets.fq.to;
-        document.querySelector('[data-preset="fq"]').classList.remove('btn-outline-secondary');
-        document.querySelector('[data-preset="fq"]').classList.add('btn-primary');
-    }
-    applyFilter();
-})();
-</script>
+{% endblock %}
+{% block content %}
+{% set embedded = request.args.get('embed') %}
+<section class="sb-workload" data-sb-workload data-sb-page-surface
+         data-embedded="{{ 'true' if embedded else 'false' }}" aria-labelledby="workloadTitle">
+    <header class="sb-workload-header" data-sb-page-band>
+        <div><h1 id="workloadTitle">Workload Report</h1>
+            <p>Customers grouped by topics from your notes.</p></div>
+        {% set export_table_id = '.sb-workload-table[data-workload-visible=true]' %}
+        {% set export_filename = 'workload-report' %}
+        {% set export_title = 'Workload Report' %}
+        {% set report_export_native = true %}
+        {% include 'partials/_report_export.html' %}
+    </header>
+    <div class="sb-workload-filters" data-sb-page-band>
+        <span>Latest note date</span>
+        <label for="dateFrom">From</label><input type="date" id="dateFrom">
+        <label for="dateTo">To</label><input type="date" id="dateTo">
+        <div class="sb-workload-presets" role="group" aria-label="Date presets">
+            <button type="button" data-preset="fq" data-from="{{ fq_start }}" data-to="{{ fq_end }}">{{ fq_label }}</button>
+            <button type="button" data-preset="prev_fq" data-from="{{ prev_fq_start }}" data-to="{{ prev_fq_end }}">{{ prev_fq_label }}</button>
+            <button type="button" data-preset="30d">30d</button>
+            <button type="button" data-preset="90d">90d</button>
+            <button type="button" data-preset="all">All</button>
+        </div>
+    </div>
+    <div class="sb-workload-notice" data-sb-workload-notice data-sb-page-band hidden>
+        <p data-sb-workload-error role="alert"></p>
+        <button type="button" data-sb-workload-retry>Retry saved date filter</button>
+    </div>
+    <dl class="sb-workload-summary" data-sb-page-band>
+        <div><dt>Unique Customers</dt><dd id="statUniqueCustomers">-</dd></div>
+        <div><dt>Workloads</dt><dd id="statWorkloads">-</dd></div>
+        <div><dt>Customer/workload entries</dt><dd id="statCustomers">-</dd></div>
+        <div><dt>Total ACR/mo (visible, deduplicated)</dt><dd id="statAcr">-</dd></div>
+    </dl>
+    <div class="sb-workload-workarea" data-sb-page-body>
+        {% if not embedded %}
+        <aside class="sb-workload-topics" aria-label="Workload selection">
+            <div class="sb-workload-pane-header"><h2>Workloads</h2><span>Selection does not change date scope</span></div>
+            <div class="sb-workload-topic-reading" tabindex="0" role="region" aria-label="Available workloads">
+                <table class="sb-workload-topic-table" data-sb-sortable data-sb-sort-key="workload-topics">
+                    <thead><tr>
+                        <th data-sb-sort-type="text" data-export-label="Topic">Topic</th>
+                        <th data-sb-sort-type="number" data-export-label="Customers">Customers</th>
+                        <th data-sb-sort-type="number" data-export-label="Est. ACR">Est. ACR</th>
+                    </tr></thead>
+                    <tbody>{% for group in workload_groups %}
+                        <tr data-sb-topic-row="{{ group.topic.id }}">
+                            <td data-sb-sort-value="{{ group.topic.name }}"><button type="button" data-sb-topic-select="{{ group.topic.id }}" aria-pressed="false"><i class="bi bi-tag" aria-hidden="true"></i> {{ group.topic.name }}</button></td>
+                            <td data-sb-topic-count data-sb-sort-value="{{ group.customer_count }}">{{ group.customer_count }}</td>
+                            <td data-sb-topic-acr data-sb-sort-value="{{ group.total_acr }}"></td>
+                        </tr>
+                    {% endfor %}</tbody>
+                </table>
+            </div>
+        </aside>
+        {% endif %}
+        <div class="sb-workload-customers" tabindex="0" role="region" aria-label="Workload customers">
+            <p id="emptyState" class="sb-workload-empty" role="status" hidden>No workloads found in the selected date range. Try All to see stored activity.</p>
+            {% for group in workload_groups %}
+            {% if embedded %}
+            <details class="sb-workload-group" data-topic-id="{{ group.topic.id }}">
+                <summary><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="sb-workload-topic-label"><i class="bi bi-tag" aria-hidden="true"></i> {{ group.topic.name }}</span>
+                    <span class="group-count">{{ group.customer_count }} customers</span><span class="group-acr"></span></summary>
+            {% else %}
+            <section class="sb-workload-group" data-topic-id="{{ group.topic.id }}" hidden
+                     aria-labelledby="workloadTopic{{ group.topic.id }}">
+                <header class="sb-workload-pane-header">
+                    <h2 class="sb-workload-topic-label" id="workloadTopic{{ group.topic.id }}"><i class="bi bi-tag" aria-hidden="true"></i> {{ group.topic.name }}</h2>
+                    <span class="group-count">{{ group.customer_count }} customers</span>
+                    <span class="group-acr"></span>
+                </header>
+            {% endif %}
+                <table class="sb-workload-table" data-sb-sortable
+                       data-sb-sort-key="workload-customers-{{ group.topic.id }}">
+                    <thead><tr>
+                        <th data-sb-sort-type="text" data-export-label="Customer">Customer</th>
+                        <th data-sb-sort-type="number" data-export-label="Engagements" title="All active engagements for this customer, not topic-scoped">Engagements</th>
+                        <th data-sb-sort-type="number" data-export-label="Milestones" title="Active milestones linked to notes tagged with this topic">Milestones</th>
+                        <th data-sb-sort-type="number" data-export-label="Est. ACR" title="Estimated ACR from those topic-linked active milestones">Est. ACR</th>
+                        <th data-sb-sort-type="date" data-export-label="Last Activity" title="Latest note for this customer and topic">Last Activity</th>
+                    </tr></thead>
+                    <tbody>{% for cd in group.customers %}
+                        <tr class="workload-row" data-note-date="{{ cd.latest_note_iso }}"
+                            data-acr="{{ cd.acr }}" data-milestone-ids="{{ cd.milestone_ids|join(',') }}">
+                            <td data-sb-sort-value="{{ cd.customer.name }}"{% if cd.customer.tpid_url %} data-export-url="{{ cd.customer.tpid_url }}"{% endif %}>
+                                {{ customer_favicon(cd.customer) }}
+                                <a href="{{ url_for('customers.customer_view', id=cd.customer.id) }}">{{ cd.customer.name }}</a>
+                                {% if cd.committed %}<span class="sb-workload-commit">Committed</span>{% endif %}
+                            </td>
+                            <td data-sb-sort-value="{{ cd.engagement_count }}">{{ cd.engagement_count if cd.engagement_count else '-' }}</td>
+                            <td data-sb-sort-value="{{ cd.milestone_count }}">{{ cd.milestone_count if cd.milestone_count else '-' }}</td>
+                            <td data-sb-sort-value="{{ cd.acr }}" class="sb-workload-money">{{ '${:,.0f}/mo'.format(cd.acr) if cd.acr else '-' }}</td>
+                            <td data-sb-sort-value="{{ cd.latest_note_iso }}">{{ cd.latest_note_date.strftime('%b %d, %Y') if cd.latest_note_date else '-' }}</td>
+                        </tr>
+                    {% endfor %}</tbody>
+                </table>
+            {% if embedded %}</details>{% else %}</section>{% endif %}
+            {% else %}
+            <p class="sb-workload-empty">No workload data yet. Tag your notes with topics to see them grouped here.</p>
+            {% endfor %}
+        </div>
+    </div>
+    <script type="application/json" data-sb-workload-data>{{ milestone_acr_map|tojson }}</script>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-workload.js') }}"></script>
 {% endblock %}

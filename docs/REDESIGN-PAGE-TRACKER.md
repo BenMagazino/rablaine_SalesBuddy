@@ -6,8 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 34, main Reports directory,
-  VERIFY, technically verified and user-approved October 5, 2026.
+- Current page/surface: checkpoint 35, Workload Report,
+  VERIFY, technically verified and user-approved October 6, 2026.
+  Checkpoint 34 main Reports directory is user-approved and committed as `da43a54`.
   Checkpoint 33 Revenue sync/import is user-approved and committed as `a6b6253`.
   Checkpoint 32 Revenue configuration is user-approved and committed as `350e152`.
   Checkpoint 31 Revenue reports/Synapse is user-approved and committed as `15e8333`.
@@ -48,8 +49,15 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `e98c879` (seller Products browser/monthly comparison, user-approved October 5),
   `15e8333` (native Revenue reports/Synapse, user-approved October 5),
   `350e152` (native Revenue configuration, user-approved October 5),
-  `a6b6253` (native Revenue sync/import, user-approved October 5)
-- Next action: migrate the Workload report.
+  `a6b6253` (native Revenue sync/import, user-approved October 5),
+  `da43a54` (native grouped Reports directory, user-approved October 5)
+- Next action: migrate the Engagement / Milestone Hygiene report.
+  Workloads form a sortable context list beside the selected customer grid.
+  Original latest-note date scope, customer-wide engagements, topic-linked
+  active milestones and ID-deduplicated ACR remain unchanged. All matching
+  topics export even when only one panel is selected. Saved All/manual presets,
+  explicit storage/range failures, Retry and Back context are verified.
+  Embedded workloads remain ordinary expandable native tables.
   Fifteen real destinations retain all four groups, menu order, names, icons and
   descriptions in a compact native directory. Fixed search/status bands surround
   a readable grouped list, not fifteen cards or an unnecessary navigation pane.
@@ -168,7 +176,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 34 sign-off, the rough effort-based estimate is **about 38%**
+As of checkpoint 35 sign-off, the rough effort-based estimate is **about 39%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -300,7 +308,7 @@ have separate rows even when they use one template.
 | RPT-INIT | Initiative Tracker | `/reports/initiative-tracker`; `/reports/manager-one-on-one` | `report_manager_one_on_one.html` | TODO | - |
 | RPT-ACT | Activity coverage | `/reports/activity-coverage` | `report_activity_coverage.html` | TODO | - |
 | RPT-OOO | Seller 1:1 preparation | `/reports/one-on-one` | `report_one_on_one.html` | TODO | - |
-| RPT-WORK | Workload | `/reports/workload` | `report_workload.html` | TODO | - |
+| RPT-WORK | Workload | `/reports/workload` | `report_workload.html` | VERIFY | [Checkpoint 35](redesign-pages/HOME-WORKBENCH.md#checkpoint-35-workload-report); native topic/customer browser, preserved scope/totals/exports, sorting, Back and compact embeds; user-approved October 6 |
 | RPT-HYG | Hygiene | `/reports/hygiene` | `report_hygiene.html` | TODO | - |
 | RPT-NEW | What's New | `/reports/whats-new` | `report_whats_new.html` | TODO | - |
 | RPT-WHITE | Whitespace | `/reports/whitespace` | `report_whitespace.html` | TODO | - |

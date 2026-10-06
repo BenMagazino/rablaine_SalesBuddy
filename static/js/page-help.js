@@ -412,8 +412,9 @@ const PageHelp = (function () {
       <h6>How it works</h6>
       <ul>
         <li>Topics from your notes are used as workload tags</li>
-        <li>Click a topic row to expand and see the customers</li>
-        <li><strong>Committed</strong> badge means at least one milestone linked to a note with this topic is committed</li>
+        <li>Select a workload on the left to see its customers on the right. Embedded reports use expandable workload groups.</li>
+        <li>Click any column heading to sort either direction. Selection does not change date scope or totals.</li>
+        <li><strong>Committed</strong> means at least one active milestone linked to a note with this topic is committed</li>
         <li><strong>Last Activity</strong> shows the most recent note date for that topic + customer</li>
       </ul>
       <h6>Column definitions</h6>
@@ -423,7 +424,10 @@ const PageHelp = (function () {
         <li><strong>Est. ACR</strong> - sum of monthly usage from those topic-linked milestones only (not the customer's full ACR)</li>
       </ul>
       <h6>Date filter</h6>
-      <p>Use the From/To date pickers or preset buttons to scope which notes are considered. Only customers with notes in the selected date range will appear. Filter settings are saved between visits.</p>
+      <p>From/To filters each customer's <strong>latest note for that topic</strong>, inclusively. Earlier notes in the range do not qualify an entry whose latest note is outside it. Counts and ACR still describe the linked active engagements and milestones, not activity recomputed within the range.</p>
+      <p>Dates default to the current fiscal quarter. Presets, including All, are saved between visits. Editing dates clears the active preset. Invalid ranges leave the previous valid scope visible. Storage failures have Retry; choosing a preset replaces a malformed saved filter.</p>
+      <p>Unique Customers counts distinct customer names. Customer/workload entries counts appearances across topics. Total ACR deduplicates milestone IDs across visible workloads; individual workload sums can overlap.</p>
+      <p>CSV, Clipboard and Email include all workloads matching the date scope, not just the selected workload. Back restores date scope, selected workload, sorting and reading positions. Embedded reports do not change their parent's view history.</p>
     `},
     { pattern: /^\/reports\/revenue-reports/, title: 'Revenue Reports', content: `
       <p>Open Synapse Customers to review adoption grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>

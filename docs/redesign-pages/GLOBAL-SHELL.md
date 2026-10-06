@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-33 committed, checkpoint 34 Reports directory user-approved
+- Status: BUILDING; checkpoints 1-34 committed, checkpoint 35 Workload Report user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -173,8 +173,16 @@
   Embedded rows stack descriptions below names without owning parent history.
   Registry/menu parity, Back, no-match/Clear, Help, SE/DSS contexts, embeds and
   eight desktop themes are verified. This surface is user-approved October 5, 2026,
-  including the visible-sibling divider correction; approved progress is about 38%.
-- Next action: migrate the Workload report, then adopt
+  including the visible-sibling divider correction; committed as `da43a54`;
+  approved progress is about 38%.
+- Checkpoint 35 uses sortable workload context beside the selected customer
+  grid, with fixed scope/summary commands and independent reading regions.
+  Shared numeric/calendar sorting, all-topic exports and actual provider data
+  remain intact. Back restores scope, topic, sorts and reading; saved All and
+  failed storage writes recover explicitly. Embedded workloads use expandable
+  native groups, not a miniature split window. It is technically verified and
+  user-approved October 6, 2026; approved progress is about 39%.
+- Next action: migrate the Engagement / Milestone Hygiene report, then adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.

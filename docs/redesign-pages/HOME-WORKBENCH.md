@@ -1982,4 +1982,92 @@ Approved predecessor: `a6b6253`; approved effort estimate is about 38%.
   unchanged. The working browser finishes on the normal Reports directory.
 - Editor diagnostics and patch whitespace are clean. No manual live record or
   preference writes, no production access, and protected note drafts are
-  untouched. Checkpoint 33 alone is committed; no push, merge or deployment.
+  untouched. Checkpoint 34 is committed as `da43a54`; no push, merge or deployment.
+
+## Checkpoint 35: Workload Report
+
+Status: VERIFY, technically verified and user-approved October 6, 2026.
+Approved predecessor: `da43a54`; approved effort estimate is about 39%.
+
+### Composition and parity
+
+- The full-window report has fixed native title/export, date-scope and summary
+  bands. A narrower sortable topic list supplies real context beside the
+  selected topic's full-width customer grid. Each region owns its reading;
+  selected-topic and column headings remain pinned. Topic selection is not a
+  filter and does not alter totals, saved date scope or export scope.
+- The original provider/query is unchanged. Latest customer/topic note dates
+  determine inclusive date visibility. Earlier qualifying notes do not rescue
+  an entry whose latest note is outside the range. Engagements remain
+  customer-wide; milestone counts/ACR remain topic-linked active milestones,
+  not recomputed financials or engagement counts within the date range.
+- Source topic/customer order, raw amounts, IDs, note dates, Committed meaning,
+  customer favicons, customer links and TPID export links are preserved.
+  Unique Customers keeps the original trimmed, case-sensitive name counting;
+  customer/workload entries counts appearances. Grand-total ACR deduplicates
+  milestone IDs, while group/row ACR retain original potentially overlapping sums.
+  Display rounding uses the original locale-based zero-fraction convention.
+- Every topic/customer table column sorts both ways using exact text, numeric
+  or ISO calendar keys. Date filtering updates the topic count/ACR keys and
+  reapplies active sorting without recreating rows, links or controls.
+- CSV/Clipboard/Email target nonempty date-visible customer tables from all
+  topics, including hidden unselected panels. Date-hidden rows retain inline
+  display filtering for shared export compatibility. Empty date scopes cannot
+  export a misleading collection of headers. Export title stays Workload Report.
+- Dates default to current fiscal quarter. The existing storage key and object
+  shape remain. Saved All now actually restores; manual edits clear preset
+  styling. Malformed/unavailable storage, failed saves, invalid ranges and view
+  state failures are explicit, not silent defaults or success-shaped zeros.
+  Retry saves the latest local scope after write failure. Invalid ranges retain
+  the previous valid data and do not overwrite saved scope. Original rolling
+  preset local-subtraction/UTC-serialization boundaries remain unchanged.
+- Back history merges with other feature/draft/sort state and restores scope,
+  selection and independent reading positions without writing preferences.
+  Compact embeds retain ordinary expandable native workload groups, with
+  actual disclosure-state chevrons and the same sortable/exportable tables.
+  They do not own the window or their parent's contextual history.
+
+### Verification
+
+- 76 scoped Python tests pass across native Workload rendering/provider parity,
+  Reports registry/services and the approved Reports directory. Five new tests
+  cover full/embed composition, columns/keys, date/export controls, favicons/
+  links, topic-linked financial precision, latest-note dates, customer-wide
+  engagements, active/closed milestones, seller scope, empty sources and Help.
+- 48 JavaScript tests pass (18 Workload and 30 shared sorter). They cover
+  deduplication, trimmed name semantics, fractional/
+  negative/zero ACR, inclusive/open/missing dates, invalid values/overflow,
+  rolling boundaries, saved All, manual presets, changed sort keys, all-topic
+  export flags, explicit failures/Retry, Back offsets, history merging and embeds.
+  Shared sorter tests cover its actual ordering, row identity and state contract.
+- Original/native full live metadata SHA-256 is identical:
+  `bd7f4b5e962aa87af0adb2d570e95293adeee663f3ba964c1ef3e37f849b2276`.
+  All shows 81 topics, 187 entries, 22 unique names and $210,500/month. Current
+  FQ2 is honestly empty. August 2026 gives 22 topics, 32 entries, five customer
+  names and $200,000/month, with recalculated topic ACR still descending.
+- All 82 live tables pass 816 column/direction ordering checks. A separate
+  816 actual heading activations verify direction toggles and ordering.
+  The deliberately rapid test-only heading burst triggered Chrome's navigation
+  throttling warning; ordinary customer navigation/Back subsequently succeeded.
+- Actual customer navigation from Cost Management opens CUSTOMER BANK.
+  Back restores topic 18, All scope, ascending ACR, 550px left reading and
+  unchanged totals. The actual customer pane fits this desktop viewport and
+  has zero offset; nonzero right-offset restoration is unit-tested rather than
+  claimed as live overflow.
+- Intercepted real exporter output contains CSV and EML downloads with the
+  correct filenames/title, 81 HTML tables, 187 customer rows and 187 TPID
+  links. It includes unselected topics without sorter-label artifacts; no real
+  clipboard write, email send or local download was performed.
+- Live inverted dates retain 187 entries and report the previous-valid-scope
+  error. An intentionally blocked storage write applies FQ2 locally with Retry,
+  then confirms the current scope after recovery. Real F1 Help explains latest
+  notes, deduplication and all-topic exports.
+- Actual embed has 81 expandable groups, a working state-driven chevron and
+  sortable customer grid, all 81 export tables and unchanged totals, without
+  navbar/window frame/status. All eight approved themes retain desktop width,
+  y=78 surface boundary, footer bottom=1174, legible native date controls and
+  complete column labels without document/pane horizontal overflow.
+- No analytical routes, business queries, models, new SalesIQ tools or
+  dependencies. No live record/server-preference changes, production access,
+  protected-draft navigation, push, merge or deployment. The user's original
+  absent saved date filter is restored after browser verification.
