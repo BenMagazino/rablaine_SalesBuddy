@@ -2,10 +2,10 @@
 
 - Checkpoint: 38; status: VERIFY, user-approved October 6, 2026.
 - Route: `/reports/whitespace`, including `embed=1`.
-- Audited baseline: `175a0b0b`; working tree pending visual approval.
+- Audited baseline: `175a0b0b`; approved revision committed as `fe758b9b`.
 - Files: `report_whitespace.html`, `ui-whitespace.css`, `ui-whitespace.js`.
 - Providers: existing report APIs in `reports.py`, unchanged.
-- Next action: approved implementation ready for checkpoint commit.
+- Next action: retain verified behavior during remaining report migrations.
 
 ## Scope
 

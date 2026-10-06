@@ -7,14 +7,14 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: Whitespace, checkpoint 38, user-approved October 6.
-- Current task: selecting checkpoint 39 from remaining reports.
-- Active card: [RPT-WHITE](redesign-pages/RPT-WHITESPACE.md).
-- Approved effort estimate: about 42%; strict DONE counters below are separate.
+- Last approved implementation: Marketing Insights, checkpoint 39, user-approved October 6.
+- Current task: checkpoint 40, Connect Impact, BUILDING.
+- Active card: Marketing approved; Connect Impact card follows scoped verification.
+- Approved effort estimate: about 43%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
-- Next action: commit approved Whitespace, then migrate next report and notify on Discord.
+- Next action: commit Marketing, migrate Connect Impact and notify on Discord when ready.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -42,7 +42,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 38 sign-off, the rough effort-based estimate is **about 42%**
+As of checkpoint 39 sign-off, the rough effort-based estimate is **about 43%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -177,9 +177,9 @@ have separate rows even when they use one template.
 | RPT-WORK | Workload | `/reports/workload` | `report_workload.html` | VERIFY | [Checkpoint 35](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-35-workload-report); native topic/customer browser, preserved scope/totals/exports, sorting, Back and compact embeds; user-approved October 6 |
 | RPT-HYG | Hygiene | `/reports/hygiene` | `report_hygiene.html` | VERIFY | [Checkpoint 36](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-36-engagement--milestone-hygiene); native sortable data columns, plain Fix headings, confirmed annotations, protected dialogs, authoritative refresh, both-queue exports and Back; user-approved October 6, committed `9195a2c8` |
 | RPT-NEW | What's New | `/reports/whats-new` | `report_whats_new.html` | VERIFY | [Page card](redesign-pages/RPT-WHATS-NEW.md); user-approved October 6, committed `175a0b0b` |
-| RPT-WHITE | Whitespace | `/reports/whitespace` | `report_whitespace.html` | VERIFY | [Page card](redesign-pages/RPT-WHITESPACE.md); user-approved October 6 |
+| RPT-WHITE | Whitespace | `/reports/whitespace` | `report_whitespace.html` | VERIFY | [Page card](redesign-pages/RPT-WHITESPACE.md); user-approved October 6, committed `fe758b9b` |
 | RPT-MSX | MSX workspace | `/reports/msx-workspace` | `report_msx_workspace.html` | TODO | - |
-| RPT-MKT | Marketing insights | `/reports/marketing-insights` | `report_marketing_insights.html` | TODO | - |
+| RPT-MKT | Marketing insights | `/reports/marketing-insights` | `report_marketing_insights.html` | VERIFY | [Page card](redesign-pages/RPT-MARKETING.md); user-approved October 6 |
 | RPT-GOALS | Connect goals | `/reports/connect-goals` | `report_connect_goals.html` | TODO | - |
 | RPT-U2C | U2C | `/reports/u2c` | `report_u2c.html` | TODO | - |
 | RPT-IMPACT | Connect impact | `/reports/connect-impact` | `report_connect_impact.html` | TODO | - |

@@ -466,6 +466,17 @@ const PageHelp = (function () {
       </ul>
       <p>CSV, Clipboard and Email export only the loaded grid, in its current order and coverage scope, even when another analysis tab is selected. Back restores the analysis view, confirmed bucket scope, draft selection, sorting and reading positions. Failed reads offer Retry.</p>
     `},
+    { pattern: /^\/reports\/marketing-insights/, title: 'Marketing Insights', content: `
+      <p>Choose a customer in the left list to inspect its account summary, sales-play breakdown and engaged contacts. The report uses cached MSX marketing data; sync and re-sync remain in Admin.</p>
+      <ul>
+        <li>Filter matches the customer's display name, case-insensitively. Report totals always cover all synced customers, not just filtered matches.</li>
+        <li>Every data heading sorts both directions. Counts use raw numbers; Last Date uses its UTC timestamp rather than a formatted local label. Unavailable values stay last.</li>
+        <li>Top Engaged Contacts retains the existing ten contacts with the highest combined email and meeting interactions. Account engaged-contact totals can therefore exceed the displayed list.</li>
+        <li>CSV, Clipboard and Email include the filtered customer summary in its current order, not the selected customer's detail tables. Customer names link to their local records.</li>
+        <li>Click the selected customer's heading to open its record. Back restores the filter, selection, per-table sorting and independent reading positions.</li>
+      </ul>
+      <p>Summary-only accounts remain selectable. Empty results and incomplete or failed syncs are explicit. Embedded reports stack the chooser and details without owning the page frame.</p>
+    `},
     { pattern: /^\/reports\/revenue-reports/, title: 'Revenue Reports', content: `
       <p>Open Synapse Customers to review adoption grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>
     `},
