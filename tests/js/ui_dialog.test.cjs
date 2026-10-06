@@ -242,8 +242,8 @@ function pageHelp(pathname) {
 
 test('contextual entries have unique routes, valid content and the current Hygiene help contract', () => {
     const help = pageHelp('/');
-    assert.equal(help.helpMap.length, 56);
-    assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 56);
+    assert.equal(help.helpMap.length, 57);
+    assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 57);
     for (const entry of [...help.helpMap, help.fallbackHelp]) {
         assert.equal(typeof entry.title, 'string');
         assert.ok(entry.title.trim().length > 0);

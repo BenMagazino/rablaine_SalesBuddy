@@ -454,6 +454,18 @@ const PageHelp = (function () {
       </ul>
       <p>CSV, Clipboard and Email include both lists' expanded rows in their current order, retaining section, seller and customer context. Collapsed rows are excluded. Back restores scope, grouping, sorts and each pane's reading position. Embedded reports stack the lists without changing their parent's view history.</p>
     `},
+    { pattern: /^\/reports\/whitespace/, title: 'Whitespace Analysis', content: `
+      <p>Three views answer different adoption questions. They intentionally use different time scopes.</p>
+      <ul>
+        <li>Whitespace Grid averages stored revenue rows within 62 days of the latest imported month. Missing months are not filled with zero. Select buckets, then Show Whitespace; changing a checkbox alone does not change the loaded grid.</li>
+        <li>Multiple buckets show customers with some, but not all, selected buckets. Include fully covered customers adds the remaining spenders. A single bucket shows its spenders. Customers with no spend in any selected bucket are not part of the grid.</li>
+        <li>Initial selection uses the saved Revenue bucket filter, or compensated buckets when that filter is absent or empty. This report does not change the saved Revenue filter.</li>
+        <li>Reverse Lookup searches name, nickname or TPID after two characters. Arrow keys and Enter select a match. Missing buckets and products use positive spend at any time in imported history, not the grid's recent window.</li>
+        <li>Bucket Penetration counts historical positive spend. Its denominator includes every customer with imported revenue, including zero-only customers. Click a bucket for the with-spend and without-spend lists.</li>
+        <li>Data headings sort both directions using raw values. Missing amounts stay last. Click a grid amount for existing product details and full history without losing this report.</li>
+      </ul>
+      <p>CSV, Clipboard and Email export only the loaded grid, in its current order and coverage scope, even when another analysis tab is selected. Back restores the analysis view, confirmed bucket scope, draft selection, sorting and reading positions. Failed reads offer Retry.</p>
+    `},
     { pattern: /^\/reports\/revenue-reports/, title: 'Revenue Reports', content: `
       <p>Open Synapse Customers to review adoption grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>
     `},

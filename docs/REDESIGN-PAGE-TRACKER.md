@@ -7,14 +7,14 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: What's New, checkpoint 37, `175a0b0b`.
-- Current task: checkpoint 38, Whitespace Analysis, BUILDING.
+- Last approved implementation: Whitespace, checkpoint 38, user-approved October 6.
+- Current task: selecting checkpoint 39 from remaining reports.
 - Active card: [RPT-WHITE](redesign-pages/RPT-WHITESPACE.md).
-- Approved effort estimate: about 41%; strict DONE counters below are separate.
+- Approved effort estimate: about 42%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
-- Next action: implement and verify Whitespace, then wait for visual approval.
+- Next action: commit approved Whitespace, then migrate next report and notify on Discord.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -42,7 +42,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 37 sign-off, the rough effort-based estimate is **about 41%**
+As of checkpoint 38 sign-off, the rough effort-based estimate is **about 42%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -177,7 +177,7 @@ have separate rows even when they use one template.
 | RPT-WORK | Workload | `/reports/workload` | `report_workload.html` | VERIFY | [Checkpoint 35](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-35-workload-report); native topic/customer browser, preserved scope/totals/exports, sorting, Back and compact embeds; user-approved October 6 |
 | RPT-HYG | Hygiene | `/reports/hygiene` | `report_hygiene.html` | VERIFY | [Checkpoint 36](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-36-engagement--milestone-hygiene); native sortable data columns, plain Fix headings, confirmed annotations, protected dialogs, authoritative refresh, both-queue exports and Back; user-approved October 6, committed `9195a2c8` |
 | RPT-NEW | What's New | `/reports/whats-new` | `report_whats_new.html` | VERIFY | [Page card](redesign-pages/RPT-WHATS-NEW.md); user-approved October 6, committed `175a0b0b` |
-| RPT-WHITE | Whitespace | `/reports/whitespace` | `report_whitespace.html` | BUILDING | [Page card](redesign-pages/RPT-WHITESPACE.md) |
+| RPT-WHITE | Whitespace | `/reports/whitespace` | `report_whitespace.html` | VERIFY | [Page card](redesign-pages/RPT-WHITESPACE.md); user-approved October 6 |
 | RPT-MSX | MSX workspace | `/reports/msx-workspace` | `report_msx_workspace.html` | TODO | - |
 | RPT-MKT | Marketing insights | `/reports/marketing-insights` | `report_marketing_insights.html` | TODO | - |
 | RPT-GOALS | Connect goals | `/reports/connect-goals` | `report_connect_goals.html` | TODO | - |
