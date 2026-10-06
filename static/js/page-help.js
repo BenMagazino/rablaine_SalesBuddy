@@ -429,6 +429,19 @@ const PageHelp = (function () {
       <p>Unique Customers counts distinct customer names. Customer/workload entries counts appearances across topics. Total ACR deduplicates milestone IDs across visible workloads; individual workload sums can overlap.</p>
       <p>CSV, Clipboard and Email include all workloads matching the date scope, not just the selected workload. Back restores date scope, selected workload, sorting and reading positions. Embedded reports do not change their parent's view history.</p>
     `},
+    { pattern: /^\/reports\/hygiene/, title: 'Engagement / Milestone Hygiene', content: `
+      <p>Two repair queues show active engagements with no linked milestones and active customer milestones with no linked engagements. Any existing milestone link, including a completed milestone, removes an engagement from its gap queue.</p>
+      <ul>
+        <li>Switch between Engagement gaps and Milestone gaps. Data columns sort in either direction; Fix is a plain action heading.</li>
+        <li>On Team only and Group by Seller affect the milestone queue. The top milestone total includes all team statuses.</li>
+        <li>Reason notes save on blur, Enter or after 2 seconds. Only confirmed notes update the annotated count and exports. Not saved offers Retry note, preserving your latest text.</li>
+        <li>Add Milestones links an engagement. Add to Engagement retains its existing links. Create Engagement starts with the source milestone selected; you can change that selection.</li>
+        <li>Repairs refresh both queues only after confirmation. A failed refresh offers a read-only Retry. If creation cannot be confirmed, review the customer engagements before attempting it again.</li>
+        <li>Unsaved reason notes must be saved before repairing. Closing an edited repair asks before discarding your fields or selection.</li>
+      </ul>
+      <p>CSV, Clipboard and Email include both queues, not just the selected tab, respecting On Team only. Grouped exports identify each seller in the milestone heading. Exports contain confirmed reasons and story percentages, without save-status or action-button text.</p>
+      <p>Back restores the queue, scope, grouping, sorting and reading positions. Embedded reports show both queues stacked and do not change their parent's view history.</p>
+    `},
     { pattern: /^\/reports\/revenue-reports/, title: 'Revenue Reports', content: `
       <p>Open Synapse Customers to review adoption grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>
     `},

@@ -1,0 +1,67 @@
+<dialog class="sb-dialog sb-hygiene-dialog" id="linkMilestonesModal" aria-labelledby="linkMilestonesModalLabel">
+    <header class="sb-dialog-header"><h2 id="linkMilestonesModalLabel">Add Milestones</h2>
+        <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
+    <div class="sb-dialog-body">
+        <p id="linkMilestonesContext"></p>
+        <div class="sb-hygiene-picker" id="hygieneLinkPicker" data-milestone-picker="link">
+            <label for="hygieneLinkSearch">Customer milestones</label>
+            <input type="search" id="hygieneLinkSearch" data-milestone-picker-search placeholder="Search milestones..." autocomplete="off">
+            <div data-milestone-picker-results style="display: none;"></div>
+            <p data-milestone-picker-help></p><div data-milestone-picker-selected></div>
+        </div>
+        <p class="sb-hygiene-error" role="alert" id="linkMilestonesError" hidden></p>
+        <button type="button" class="sb-hygiene-command" data-hygiene-dialog-retry="link" hidden>Retry milestones</button>
+        <button type="button" class="sb-hygiene-command" data-hygiene-confirm-refresh hidden>Refresh queues to verify repair</button>
+    </div>
+    <footer class="sb-dialog-footer"><button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+        <button type="button" class="sb-dialog-button primary" id="saveEngagementMilestones">Save Milestones</button></footer>
+</dialog>
+<dialog class="sb-dialog sb-dialog-compact sb-hygiene-dialog" id="addExistingEngagementModal" aria-labelledby="addExistingEngagementModalLabel">
+    <header class="sb-dialog-header"><h2 id="addExistingEngagementModalLabel">Add to Engagement</h2>
+        <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
+    <div class="sb-dialog-body">
+        <p id="addExistingEngagementContext"></p>
+        <label for="existingEngagementSelect">Existing engagement</label><select id="existingEngagementSelect" disabled></select>
+        <div id="noExistingEngagements" hidden><p>No engagements exist for this customer.</p>
+            <button type="button" class="sb-hygiene-command" id="createEngagementFromEmptyState">Create Engagement</button></div>
+        <p class="sb-hygiene-error" role="alert" id="addExistingEngagementError" hidden></p>
+        <button type="button" class="sb-hygiene-command" data-hygiene-dialog-retry="existing" hidden>Retry engagements</button>
+        <button type="button" class="sb-hygiene-command" data-hygiene-confirm-refresh hidden>Refresh queues to verify repair</button>
+    </div>
+    <footer class="sb-dialog-footer"><button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+        <button type="button" class="sb-dialog-button primary" id="saveExistingEngagement" disabled>Add to Engagement</button></footer>
+</dialog>
+<dialog class="sb-dialog sb-hygiene-dialog" id="createEngagementModal" aria-labelledby="createEngagementModalLabel">
+    <form id="createEngagementForm">
+        <header class="sb-dialog-header"><h2 id="createEngagementModalLabel">Create Engagement</h2>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
+        <div class="sb-dialog-body">
+            <div class="sb-hygiene-fields">
+                <label class="sb-hygiene-wide" for="hygieneEngagementTitle">Title *<input id="hygieneEngagementTitle" name="title" required></label>
+                <label for="hygieneEngagementStatus">Status<select id="hygieneEngagementStatus" name="status">
+                    <option value="Active">Active</option><option value="On Hold">On Hold</option><option value="Won">Won</option><option value="Lost">Lost</option></select></label>
+                <label class="sb-hygiene-wide" for="hygieneTechnicalProblem">Technical/Business Problem<textarea id="hygieneTechnicalProblem" name="technical_problem" rows="2"></textarea></label>
+                <label class="sb-hygiene-wide" for="hygieneBusinessImpact">Business Process/Strategy Impact<textarea id="hygieneBusinessImpact" name="business_impact" rows="2"></textarea></label>
+                <label class="sb-hygiene-wide" for="hygieneSolutionResources">Solution Resources<textarea id="hygieneSolutionResources" name="solution_resources" rows="2"></textarea></label>
+                <label for="hygieneEstimatedAcr">Estimated $ACR (monthly)<input type="number" id="hygieneEstimatedAcr" name="estimated_acr" min="0" step="1"></label>
+                <label for="hygieneTargetDate">Target Date/Timeline<input type="date" id="hygieneTargetDate" name="target_date"></label>
+            </div>
+            <div class="sb-hygiene-picker" id="hygieneCreatePicker" data-milestone-picker="create">
+                <label for="hygieneCreateSearch">Milestones</label><input type="search" id="hygieneCreateSearch" data-milestone-picker-search placeholder="Search milestones..." autocomplete="off">
+                <div data-milestone-picker-results style="display: none;"></div>
+                <p data-milestone-picker-help></p><div data-milestone-picker-selected></div>
+            </div>
+            <p class="sb-hygiene-error" role="alert" id="createEngagementError" hidden></p>
+            <button type="button" class="sb-hygiene-command" data-hygiene-dialog-retry="create" hidden>Retry additional milestones</button>
+            <button type="button" class="sb-hygiene-command" data-hygiene-confirm-refresh hidden>Refresh queues to verify repair</button>
+        </div>
+        <footer class="sb-dialog-footer"><button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+            <button type="submit" class="sb-dialog-button primary" id="createEngagementSubmit">Create Engagement</button></footer>
+    </form>
+</dialog>
+<dialog class="sb-dialog sb-dialog-compact sb-hygiene-dialog" id="hygieneDiscardDialog" aria-labelledby="hygieneDiscardTitle">
+    <header class="sb-dialog-header"><h2 id="hygieneDiscardTitle">Discard unsaved changes?</h2></header>
+    <div class="sb-dialog-body"><p>Your engagement fields or milestone selection have not been saved.</p></div>
+    <footer class="sb-dialog-footer"><button type="button" class="sb-dialog-button" data-sb-dialog-close>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="hygieneDiscardConfirm">Discard changes</button></footer>
+</dialog>

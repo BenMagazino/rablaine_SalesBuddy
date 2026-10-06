@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-34 committed, checkpoint 35 Workload Report user-approved
+- Status: BUILDING; checkpoints 1-35 committed, checkpoint 36 Hygiene user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -181,8 +181,16 @@
   remain intact. Back restores scope, topic, sorts and reading; saved All and
   failed storage writes recover explicitly. Embedded workloads use expandable
   native groups, not a miniature split window. It is technically verified and
-  user-approved October 6, 2026; approved progress is about 39%.
-- Next action: migrate the Engagement / Milestone Hygiene report, then adopt
+  user-approved October 6, 2026 and committed as `70ec157`;
+  approved progress is about 39%.
+- Checkpoint 36 applies the frame to two native Hygiene repair queues with
+  sortable columns, confirmed annotation state and guarded native repair dialogs.
+  Authoritative refresh updates both queues, preserving source semantics and
+  exposing read/write failures without repeating uncertain creations.
+  Full/embed composition, exact data parity, exports, Back and all eight desktop
+  themes are technically verified. User-approved October 6, including plain Fix
+  headings and removal of the trailing export divider; approved progress is about 40%.
+- Next action: commit Hygiene and migrate What's New, then adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.

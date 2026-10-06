@@ -6,8 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 35, Workload Report,
+- Current page/surface: checkpoint 36, Engagement / Milestone Hygiene,
   VERIFY, technically verified and user-approved October 6, 2026.
+  Checkpoint 35 Workload Report is user-approved and committed as `70ec157`.
   Checkpoint 34 main Reports directory is user-approved and committed as `da43a54`.
   Checkpoint 33 Revenue sync/import is user-approved and committed as `a6b6253`.
   Checkpoint 32 Revenue configuration is user-approved and committed as `350e152`.
@@ -50,8 +51,18 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `15e8333` (native Revenue reports/Synapse, user-approved October 5),
   `350e152` (native Revenue configuration, user-approved October 5),
   `a6b6253` (native Revenue sync/import, user-approved October 5),
-  `da43a54` (native grouped Reports directory, user-approved October 5)
-- Next action: migrate the Engagement / Milestone Hygiene report.
+  `da43a54` (native grouped Reports directory, user-approved October 5),
+  `70ec157` (native Workload Report, user-approved October 6)
+- Next action: migrate What's New after committing approved Hygiene.
+  Two native repair queues with sortable data columns share fixed commands and meaningful counts,
+  without forcing a split-pane layout. Original query semantics, record/action
+  metadata and seller scope are unchanged. Reasons serialize saves, protect the
+  latest draft and count/export confirmed text only. Native repair dialogs retain
+  all three existing workflows, selected milestone metadata and form constraints.
+  Confirmed repairs reconcile both queues from the authoritative report.
+  Ambiguous creation cannot automatically resubmit after an inconclusive refresh.
+  Both-queue exports retain seller context, including native plaintext fallback.
+  Back restores queue/scope/grouping/sorts and exact reading; embeds stack queues.
   Workloads form a sortable context list beside the selected customer grid.
   Original latest-note date scope, customer-wide engagements, topic-linked
   active milestones and ID-deduplicated ACR remain unchanged. All matching
@@ -176,7 +187,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 35 sign-off, the rough effort-based estimate is **about 39%**
+As of checkpoint 36 sign-off, the rough effort-based estimate is **about 40%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -309,7 +320,7 @@ have separate rows even when they use one template.
 | RPT-ACT | Activity coverage | `/reports/activity-coverage` | `report_activity_coverage.html` | TODO | - |
 | RPT-OOO | Seller 1:1 preparation | `/reports/one-on-one` | `report_one_on_one.html` | TODO | - |
 | RPT-WORK | Workload | `/reports/workload` | `report_workload.html` | VERIFY | [Checkpoint 35](redesign-pages/HOME-WORKBENCH.md#checkpoint-35-workload-report); native topic/customer browser, preserved scope/totals/exports, sorting, Back and compact embeds; user-approved October 6 |
-| RPT-HYG | Hygiene | `/reports/hygiene` | `report_hygiene.html` | TODO | - |
+| RPT-HYG | Hygiene | `/reports/hygiene` | `report_hygiene.html` | VERIFY | [Checkpoint 36](redesign-pages/HOME-WORKBENCH.md#checkpoint-36-engagement--milestone-hygiene); native sortable data columns, plain Fix headings, confirmed annotations, protected dialogs, authoritative refresh, both-queue exports and Back; user-approved October 6 |
 | RPT-NEW | What's New | `/reports/whats-new` | `report_whats_new.html` | TODO | - |
 | RPT-WHITE | Whitespace | `/reports/whitespace` | `report_whitespace.html` | TODO | - |
 | RPT-MSX | MSX workspace | `/reports/msx-workspace` | `report_msx_workspace.html` | TODO | - |

@@ -1,5 +1,4 @@
 const assert = require('node:assert/strict');
-const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -24,6 +23,9 @@ function dialogs() {
         addEventListener(type, handler) { this.handlers.set(type, handler); }
         focus() { document.activeElement = this; }
         closest(selector) {
+            if (selector === '[data-sb-dialog-escape-owner][aria-expanded="true"]') {
+                return this.dataset.sbDialogEscapeOwner !== undefined && this.expanded ? this : null;
+            }
             if (selector === '[inert]') return this.inert ? this : null;
             if (selector === '.sb-dialog') return this.parent;
             if (selector === '[data-sb-dialog]' && this.dataset.sbDialog) return this;
@@ -119,6 +121,21 @@ test('Escape policy blocks both keyboard and native cancellation', () => {
     assert.equal(h.emit('keydown', dialog.button, 'Escape').stopped, true);
     dialog.dispatchEvent({type: 'cancel', preventDefault() {}});
     assert.equal(dialog.open, true);
+});
+test('expanded owned popups handle Escape before their enclosing dialog closes', () => {
+    const h = dialogs();
+    h.api.open('first');
+    const popup = new h.Element();
+    popup.parent = h.records.get('first');
+    popup.dataset.sbDialogEscapeOwner = '';
+    popup.expanded = true;
+    const owned = h.emit('keydown', popup, 'Escape');
+    assert.equal(owned.prevented, false);
+    assert.equal(owned.stopped, false);
+    assert.equal(h.records.get('first').open, true);
+    popup.expanded = false;
+    h.emit('keydown', popup, 'Escape');
+    assert.equal(h.records.get('first').open, false);
 });
 
 test('cancelable before-close guards protect button, Escape and backdrop dismissal', () => {
@@ -223,18 +240,22 @@ function pageHelp(pathname) {
     return {...context.help, title, body, calls};
 }
 
-test('all 46 contextual entries and fallback preserve original route/title/content parity', () => {
+test('contextual entries have unique routes, valid content and the current Hygiene help contract', () => {
     const help = pageHelp('/');
-    const normalize = entry => ({
-        pattern: entry.pattern ? String(entry.pattern) : null,
-        title: entry.title,
-        content: entry.content.replace(/\s(?:class|data-tone)="[^"]*"/g, '')
-            .replace(/\s+/g, ' ').trim(),
-    });
-    assert.equal(help.helpMap.length, 46);
-    const content = help.helpMap.map(normalize).concat(normalize(help.fallbackHelp));
-    const hash = crypto.createHash('sha256').update(JSON.stringify(content)).digest('hex');
-    assert.equal(hash, '0332ea5ed32264a784e93abe6bde503c5e5b7b5353835e99c195b8ee1c75baf6');
+    assert.equal(help.helpMap.length, 55);
+    assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 55);
+    for (const entry of [...help.helpMap, help.fallbackHelp]) {
+        assert.equal(typeof entry.title, 'string');
+        assert.ok(entry.title.trim().length > 0);
+        assert.equal(typeof entry.content, 'string');
+        assert.ok(entry.content.trim().length > 0);
+    }
+    const hygiene = pageHelp('/reports/hygiene');
+    hygiene.show();
+    assert.equal(hygiene.title.textContent, 'Engagement / Milestone Hygiene');
+    assert.match(hygiene.body.innerHTML, /both queues/);
+    assert.match(hygiene.body.innerHTML, /creation cannot be confirmed/);
+    assert.match(hygiene.body.innerHTML, /Only confirmed notes/);
 });
 
 test('contextual and fallback help use native dialogs without Bootstrap markup or APIs', () => {

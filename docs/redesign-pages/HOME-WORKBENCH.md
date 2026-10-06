@@ -1987,6 +1987,7 @@ Approved predecessor: `a6b6253`; approved effort estimate is about 38%.
 ## Checkpoint 35: Workload Report
 
 Status: VERIFY, technically verified and user-approved October 6, 2026.
+Committed locally as `70ec157`; no push, merge or deployment.
 Approved predecessor: `da43a54`; approved effort estimate is about 39%.
 
 ### Composition and parity
@@ -2071,3 +2072,114 @@ Approved predecessor: `da43a54`; approved effort estimate is about 39%.
   dependencies. No live record/server-preference changes, production access,
   protected-draft navigation, push, merge or deployment. The user's original
   absent saved date filter is restored after browser verification.
+
+## Checkpoint 36: Engagement / Milestone Hygiene
+
+Status: VERIFY, technically verified and user-approved October 6, 2026.
+Approved predecessor: `70ec157`. Approved overall effort is about 40%.
+
+### Composition and parity
+
+- Fixed native title/export, summary and queue bands surround one continuous
+  reading surface. Engagement gaps and milestone gaps are task-specific tabs,
+  not an unnecessary split window. Every data column sorts both directions, using
+  raw financial, story, customer/status and ISO calendar values. On Team only
+  and Group by Seller retain the original storage key, shape and meaning.
+- The provider, business queries and remediation endpoints are unchanged.
+  Engagement gaps still mean active engagements with no milestone relationship
+  at all, including completed relationships. Milestone gaps still mean active,
+  customer-owned milestones with no engagements. Seller mode remains
+  provider-scoped. The all-team summary does not become the filtered count.
+- Original record IDs, customer names, local/MSX links, export URLs, ACR, due
+  dates, source-milestone seed metadata and repair action datasets remain.
+  Story percentage is now visible as well as graphical. Confirmed reason text
+  and story percentage export without save-state/retry or action-button chrome.
+- Reason saves are debounced and serialized per row. Concurrent edits coalesce
+  without overwriting newer text. Only confirmed snapshots affect annotation
+  counts and exports. HTTP, JSON and confirmation failures show Not saved plus
+  Retry note. Dirty/busy reasons block repair operations and protect navigation.
+- Native dialogs retain Add Milestones, Add to Engagement and Create Engagement,
+  including all story fields, status options, native amount/date constraints and
+  the existing ability to create without selected milestones. Edited drafts
+  require explicit discard; pending writes block closing. Obsolete/aborted
+  choice reads cannot overwrite another dialog. Empty existing-engagement
+  choices hand off to seeded creation without Bootstrap modal events.
+- The shared milestone picker has an opt-in native renderer with in-flow
+  scrolling results, combobox/listbox state, keyboard selection and read Retry.
+  Source selection survives failed optional reads. Default consumers keep their
+  original Bootstrap rendering/request behavior.
+- Confirmed repairs read the authoritative embedded report and reconcile both
+  queues. Both source collections validate before either is mutated. Existing
+  reason/input identities survive; removed controls dispose, new gaps appear,
+  stale export URLs are cleared and sort wrappers rebuild around retained rows.
+  Failed refresh retries are read-only. An uncertain creation with an unresolved
+  source remains blocked rather than automatically risking a duplicate record.
+- CSV/Clipboard/Email export both queues regardless of the active tab, respecting
+  team filtering. Seller-group headings identify the seller in exported column
+  labels. Native plaintext clipboard payload/fallback includes every export
+  table; legacy first-table plaintext behavior remains unchanged.
+- Back merges/restores queue, team scope, grouping, sorts and reading without
+  preference writes. Native reading regions disable automatic scroll anchoring
+  so explicit restoration is not shifted by row/table rebuilding.
+  Embeds show ordinary stacked labeled regions, without navigation/window/status
+  ownership or changes to their parent's report history.
+
+### Verification
+
+- 273 scoped Python checks pass across Hygiene, engagement remediation, reports
+  and shared Revenue export/frame contracts. Coverage includes full/embed native
+  markup, raw precision/dates, saved annotations, export labels, form constraints,
+  seller scope, completed links, inactive/no-account exclusions, real isolated
+  link/add/create writes and legitimate creation without milestones. The older
+  legacy-frame assertion now excludes the already-approved native Reports hub.
+- 77 JavaScript checks cover serialized/latest-wins reasons, failed confirmations,
+  deletion, disposal, scope/row schemas, HTTP/JSON failures, atomic reconciliation,
+  ambiguous creation recovery, stale choices, discard/write/navigation guards,
+  native/legacy picker behavior and clipboard payload/fallback scope.
+  Thirty of these are the unchanged shared sorter regressions. Shared dialog
+  tests verify opt-in popup Escape ownership before closing a repair; empty
+  picker results consume Enter instead of submitting the form. The Help contract
+  validates all 55 current routes rather than freezing obsolete release content.
+- Original/native live canonical metadata SHA-256 matches exactly:
+  engagements `a16c8c40ed47823a302f7a8dc5519d8b1afee38283b0e6941a6b339afadcfca8`;
+  milestones `734bf0b6a72b50f294b736fbeb517871aa8ac384ce9992bc178ec8b4f14e07f6`.
+  Intentional visible story/retry additions are normalized for comparison.
+  The live source remains seven engagement gaps, 938 milestone gaps, 43 on-team
+  gaps and zero annotations.
+- All six columns pass 204 actual heading activations and ordering checks across
+  all/on-team and grouped/ungrouped scopes. Text comparisons normalize whitespace,
+  matching the shared sorter's established natural case-insensitive semantics.
+  Filter/group rebuilding retains every one of the 945 source rows.
+- Actual BL HARBERT navigation and Back restore milestone scope, grouping,
+  ascending ACR and the exact 640px reading position. An initial 100px anchoring
+  shift was reproduced and corrected before final verification.
+- Real CSV/EML and HTML/plaintext clipboard output is intercepted without real
+  downloads, clipboard writes or email sends. Both ungrouped tables export all
+  50 filtered records. Grouped output exports six tables with the same 50 records
+  and all five visible seller labels. Story percentages remain; actions, save
+  chrome and sort-direction descriptions do not export.
+- Real dialogs load customer choices. CUSTOMER BANK's milestone picker displays
+  590 actual options. MANSFIELD OIL's empty engagement list hands off to a seeded
+  creation with one selected source milestone. Edited draft cancellation opens
+  the explicit discard dialog; confirmation closes without a record write.
+- Live embeds show both ordinary regions, all 945 source rows and actual Help,
+  without navbar/window/status chrome or report-history mutation. Eight approved
+  dark/light themes retain the 1724px desktop width, native token colors, complete
+  column labels and no document horizontal overflow. A successful foreground
+  screenshot verifies the real full-page composition.
+- No analytical/provider changes, new models/migrations/tools or dependencies.
+  No manual live record/server-preference changes, production access,
+  protected-draft navigation, push, merge or deployment. Original local scope
+  `{"onlyOnTeam":true,"groupBySeller":false}` and test sort/reading state are restored.
+  User approved Hygiene October 6, including the following visual-review refinements.
+
+### October 6 visual-review refinement
+
+- Fix is a plain, non-sortable action heading in both queues and every rebuilt
+  seller table. Data columns retain both sorting directions. Previously saved
+  Fix sorts reset to source order without changing other sorts or Back context.
+- Full/embed rendering and table-rebuild regressions explicitly verify five
+  sortable headings plus the plain Fix heading. The original 204-activation
+  evidence above predates this intentional action-column exception.
+- The inherited export separator is removed only in the Hygiene header. There
+  are no commands after Email here; Revenue toolbars retain their useful divider.

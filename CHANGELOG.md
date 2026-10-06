@@ -26,6 +26,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Manage Revenue sync, sortable import history/month coverage and compensated buckets in a native workbench, with clear interrupted-sync feedback and retryable reads/saves.
 - Find and open reports in a compact grouped directory, retaining every destination, menu order and browsing context on Back.
 - Browse workloads beside sortable customer details, keeping date scope, deduplicated ACR and all-workload exports intact, with saved All and retryable filter persistence.
+- Repair engagement/milestone gaps in native sortable queues, with protected drafts, confirmed reason-note saves, both-queue exports and retryable repair refreshes.
+- Keep Hygiene repair actions under a plain Fix heading while data columns remain sortable.
 - Use compact native Revenue Analyzer and seller-alert page commands, with quieter category summaries and persistent export-error feedback.
 - Show consistent under-navbar breadcrumbs throughout the app, with linked Home, real ownership paths and Revenue Analyzer under Reports.
 - Put the Home calendar beside distinct Action Items, Milestones Due and Revenue Alerts panels, with keyboard-operated activity tabs and preview rows.

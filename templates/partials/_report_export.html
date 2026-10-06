@@ -277,9 +277,12 @@
 
         const blob = new Blob([html], { type: 'text/html' });
         const tables = getTables();
-        const plainText = tables.length > 0
-            ? tableToRows(tables[0]).map(r => r.join('\t')).join('\n')
-            : '';
+        const plainRows = NATIVE_EXPORT
+            ? tables.flatMap((table, index) => [
+                ...(index ? [[]] : []), ...tableToRows(table),
+            ])
+            : tables.length > 0 ? tableToRows(tables[0]) : [];
+        const plainText = plainRows.map(r => r.join('\t')).join('\n');
 
         navigator.clipboard.write([
             new ClipboardItem({

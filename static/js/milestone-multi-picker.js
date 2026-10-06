@@ -47,6 +47,17 @@
         this.activeIndex = -1;
         this.matches = [];
         this.resultsInteracting = false;
+        this.loadVersion = 0;
+        this.loadRequest = null;
+        if (this.options.native) {
+            this.input.setAttribute('role', 'combobox');
+            this.input.setAttribute('aria-autocomplete', 'list');
+            this.input.setAttribute('data-sb-dialog-escape-owner', '');
+            this.results.id = root.id + 'Results';
+            this.results.setAttribute('role', 'listbox');
+            this.input.setAttribute('aria-controls', this.results.id);
+            this.input.setAttribute('aria-expanded', 'false');
+        }
         this.bind();
     }
 
@@ -56,7 +67,17 @@
         this.input.addEventListener('click', function() { picker.renderResults(); });
         this.input.addEventListener('input', function() { picker.renderResults(); });
         this.input.addEventListener('keydown', function(event) {
-            if (!picker.matches.length) return;
+            if (picker.options.native && event.key === 'Escape' &&
+                picker.results.style.display !== 'none') {
+                event.preventDefault();
+                event.stopPropagation();
+                picker.closeResults();
+                return;
+            }
+            if (!picker.matches.length) {
+                if (picker.options.native && event.key === 'Enter') event.preventDefault();
+                return;
+            }
             if (event.key === 'ArrowDown') {
                 event.preventDefault();
                 picker.activeIndex = (picker.activeIndex + 1) % picker.matches.length;
@@ -94,6 +115,11 @@
         initialSelections
     ) {
         var picker = this;
+        var version = ++this.loadVersion;
+        if (this.options.native) {
+            this.loadRequest?.abort();
+            this.loadRequest = new AbortController();
+        }
         this.customerId = customerId;
         this.milestones = [];
         this.selected = (initialSelections || []).slice();
@@ -104,12 +130,36 @@
         this.renderSelected();
         this.closeResults();
 
-        return fetch('/api/msx/milestones-for-customer/' + customerId)
-            .then(function(response) { return response.json(); })
-            .then(function(data) {
-                if (!data.success || !Array.isArray(data.milestones)) {
-                    throw new Error(data.error || 'Could not load milestones');
+        return fetch('/api/msx/milestones-for-customer/' + customerId,
+            this.options.native ? {signal: this.loadRequest.signal} : undefined)
+            .then(function(response) {
+                if (picker.options.native && !response.ok) {
+                    throw new Error('Milestones HTTP ' + response.status);
                 }
+                if (picker.options.native &&
+                    !response.headers.get('content-type')?.includes('application/json')) {
+                    throw new Error('Expected JSON milestone response');
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (picker.options.native && version !== picker.loadVersion) {
+                    throw new DOMException('Superseded milestone load', 'AbortError');
+                }
+                if (!data?.success || !Array.isArray(data.milestones)) {
+                    throw new Error(data?.error || 'Could not load milestones');
+                }
+                if (picker.options.native && (data.success !== true || data.milestones.some(
+                    function(item) {
+                        return !item || typeof item !== 'object' ||
+                            (!item.local_milestone_id &&
+                                !(typeof item.id === 'string' && item.id.trim()) &&
+                                !(Number.isInteger(item.id) && item.id > 0)) ||
+                            (item.local_milestone_id != null &&
+                                (!Number.isInteger(item.local_milestone_id) ||
+                                 item.local_milestone_id <= 0));
+                    }
+                ))) throw new Error('Invalid milestone list');
                 picker.milestones = data.milestones;
                 var wanted = new Set((preselectedIds || []).map(String));
                 var loadedSelections = picker.milestones.filter(function(milestone) {
@@ -137,10 +187,19 @@
                 return picker.milestones;
             })
             .catch(function(error) {
+                if (picker.options.native && version !== picker.loadVersion) throw error;
                 picker.input.placeholder = 'Could not load milestones';
                 picker.help.textContent = error.message;
                 throw error;
             });
+    };
+
+    MilestoneMultiPicker.prototype.cancelLoad = function() {
+        if (this.options.native) {
+            this.loadVersion++;
+            this.loadRequest?.abort();
+        }
+        this.closeResults();
     };
 
     MilestoneMultiPicker.prototype.availableMatches = function() {
@@ -158,22 +217,32 @@
         this.activeIndex = this.matches.length ? 0 : -1;
         this.results.replaceChildren();
         if (!this.matches.length) {
-            this.results.appendChild(createElement('div', 'list-group-item text-muted',
+            this.results.appendChild(createElement('div', this.options.native ?
+                'sb-ms-empty' : 'list-group-item text-muted',
                 'No matching milestones'));
         } else {
             this.matches.forEach(function(milestone, index) {
                 var button = createElement('button',
-                    'list-group-item list-group-item-action text-start', null);
+                    picker.options.native ? 'sb-ms-option' :
+                        'list-group-item list-group-item-action text-start', null);
                 button.type = 'button';
-                var title = createElement('div', 'fw-semibold', milestone.name || 'Milestone');
+                if (picker.options.native) {
+                    button.id = picker.results.id + '-' + index;
+                    button.setAttribute('role', 'option');
+                }
+                var title = createElement('div', picker.options.native ?
+                    'sb-ms-title' : 'fw-semibold', milestone.name || 'Milestone');
                 var statusText = milestone.status || 'Unknown';
                 var status = createElement('span',
-                    'badge ' + statusBadgeClass(statusText) + ' ms-2', statusText);
+                    picker.options.native ? 'sb-ms-status' :
+                        'badge ' + statusBadgeClass(statusText) + ' ms-2', statusText);
+                if (picker.options.native) status.dataset.status = statusText;
                 title.appendChild(status);
                 button.appendChild(title);
                 var detail = [milestone.number, milestone.opportunity_name, milestone.workload]
                     .filter(Boolean).join(' · ');
-                if (detail) button.appendChild(createElement('small', 'text-muted d-block', detail));
+                if (detail) button.appendChild(createElement('small', picker.options.native ?
+                    'sb-ms-detail' : 'text-muted d-block', detail));
                 button.addEventListener('mousedown', function(event) {
                     event.preventDefault();
                     picker.select(milestone);
@@ -186,18 +255,32 @@
             });
         }
         this.results.style.display = 'block';
+        if (this.options.native) this.input.setAttribute('aria-expanded', 'true');
         this.updateActiveResult();
     };
 
     MilestoneMultiPicker.prototype.updateActiveResult = function() {
         var activeIndex = this.activeIndex;
+        var picker = this;
+        if (this.options.native) this.input.removeAttribute('aria-activedescendant');
         this.results.querySelectorAll('button').forEach(function(button, index) {
             button.classList.toggle('active', index === activeIndex);
+            if (picker.options.native) {
+                button.setAttribute('aria-selected', String(index === activeIndex));
+                if (index === activeIndex) {
+                    picker.input.setAttribute('aria-activedescendant', button.id);
+                    button.scrollIntoView({block: 'nearest'});
+                }
+            }
         });
     };
 
     MilestoneMultiPicker.prototype.closeResults = function() {
         this.results.style.display = 'none';
+        if (this.options.native) {
+            this.input.setAttribute('aria-expanded', 'false');
+            this.input.removeAttribute('aria-activedescendant');
+        }
     };
 
     MilestoneMultiPicker.prototype.select = function(milestone) {
@@ -221,19 +304,24 @@
         var picker = this;
         this.selectedContainer.replaceChildren();
         this.selected.forEach(function(milestone) {
-            var item = createElement('div', 'card border-success mb-2');
+            var item = createElement('div', picker.options.native ?
+                'sb-ms-selected' : 'card border-success mb-2');
             var body = createElement('div',
-                'card-body d-flex justify-content-between align-items-center py-2 px-3');
-            var copy = createElement('div', 'me-2');
-            var title = createElement('div', 'fw-semibold');
-            var selectedIcon = createElement('i', 'bi bi-check-circle-fill text-success me-1');
+                picker.options.native ? 'sb-ms-selected-body' :
+                    'card-body d-flex justify-content-between align-items-center py-2 px-3');
+            var copy = createElement('div', picker.options.native ? 'sb-ms-copy' : 'me-2');
+            var title = createElement('div', picker.options.native ? 'sb-ms-title' : 'fw-semibold');
+            var selectedIcon = createElement('i', picker.options.native ?
+                'bi bi-check-circle-fill sb-ms-check' : 'bi bi-check-circle-fill text-success me-1');
             title.appendChild(selectedIcon);
             title.appendChild(document.createTextNode(milestone.name || 'Milestone'));
             copy.appendChild(title);
             var detail = [milestone.number, milestone.status, milestone.opportunity_name]
                 .filter(Boolean).join(' · ');
-            if (detail) copy.appendChild(createElement('small', 'text-muted', detail));
-            var remove = createElement('button', 'btn btn-sm btn-outline-danger', null);
+            if (detail) copy.appendChild(createElement('small', picker.options.native ?
+                'sb-ms-detail' : 'text-muted', detail));
+            var remove = createElement('button', picker.options.native ?
+                'sb-ms-remove' : 'btn btn-sm btn-outline-danger', null);
             remove.type = 'button';
             remove.setAttribute('aria-label', 'Remove ' + (milestone.name || 'milestone'));
             remove.innerHTML = '<i class="bi bi-x-lg"></i>';
@@ -245,6 +333,7 @@
             item.appendChild(body);
             picker.selectedContainer.appendChild(item);
         });
+        this.options.onSelectionChange?.();
     };
 
     MilestoneMultiPicker.prototype.getSelectedIds = function() {

@@ -120,7 +120,7 @@ def test_embedded_revenue_pages_do_not_take_over_the_host_frame(
     assert soup.select_one("#alertsTable")
 
 
-@pytest.mark.parametrize("path", ["/", "/reports", "/preferences", "/customers"])
+@pytest.mark.parametrize("path", ["/", "/preferences", "/customers"])
 def test_native_revenue_frame_does_not_restyle_legacy_or_home_pages(
     client: FlaskClient, path: str,
 ) -> None:

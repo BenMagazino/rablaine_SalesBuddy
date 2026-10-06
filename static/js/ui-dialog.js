@@ -117,6 +117,9 @@
     document.addEventListener('keydown', event => {
         const dialog = top();
         if (event.key !== 'Escape' || !dialog) return;
+        const popup = event.target.closest?.(
+            '[data-sb-dialog-escape-owner][aria-expanded="true"]');
+        if (popup && dialog.contains(popup)) return;
         event.preventDefault();
         event.stopImmediatePropagation();
         if (dialog.dataset.sbEscapeClose !== 'false') close(dialog, 'escape');

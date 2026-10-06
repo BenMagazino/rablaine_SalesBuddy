@@ -1,7 +1,11 @@
 """Tests for the Engagement / Milestone Hygiene report and reason-note API."""
 import json
+from datetime import date
+from unittest.mock import patch
 
 import pytest
+from bs4 import BeautifulSoup
+from flask.testing import FlaskClient
 from app.models import db, Customer, Seller, Engagement, Milestone, HygieneNote
 
 
@@ -110,18 +114,15 @@ class TestHygieneReport:
         html = resp.data.decode()
         assert 'groupBySellerToggle' in html
         assert 'data-seller-name="Test Seller"' in html
-        assert 'salesbuddy_hygiene_milestone_view' in html
-        assert '--bs-table-bg: var(--bs-tertiary-bg)' in html
-        assert "row.className = 'ms-seller-group table-light'" not in html
-        assert 'milestoneGlobalHeader' in html
-        assert "row.className = 'ms-group-columns'" in html
-        assert 'tbody.appendChild(createColumnHeader())' in html
-        engagement_section = html.split('Active Engagements without Milestones', 1)[1]
-        engagement_table = engagement_section.split('</table>', 1)[0]
-        milestone_section = html.split('Milestones without Engagements', 1)[1]
-        milestone_table = milestone_section.split('</table>', 1)[0]
-        assert 'id="milestoneGlobalHeader"' not in engagement_table
-        assert 'id="milestoneGlobalHeader"' in milestone_table
+        soup = BeautifulSoup(html, 'html.parser')
+        assert soup.select_one('#onTeamToggle').has_attr('checked')
+        assert not soup.select_one('#groupBySellerToggle').has_attr('checked')
+        assert soup.select_one('[data-hygiene-ms-tables] #milestoneGlobalHeader')
+        assert not soup.select_one('[data-hygiene-eng-tables] #milestoneGlobalHeader')
+        source = client.get('/static/js/ui-hygiene.js').get_data(as_text=True)
+        assert 'salesbuddy_hygiene_milestone_view' in source
+        assert "heading.className = 'sb-hygiene-seller'" in source
+        assert "'hygiene-seller-' + name" in source
 
     def test_report_renders_remediation_actions(self, client, hygiene_data):
         """Gap rows should expose inline milestone and engagement fixes."""
@@ -138,20 +139,19 @@ class TestHygieneReport:
         assert 'id="engagementAnnotatedCount"' in html
         assert 'data-create-engagement-milestone-status=' in html
         assert 'data-create-engagement-milestone-msx-id=' in html
-        assert 'modal-dialog modal-lg hygiene-picker-overflow-dialog' in html
-        assert 'modal-dialog modal-xl hygiene-picker-overflow-dialog' in html
-        assert '.hygiene-picker-overflow-dialog .modal-body' in html
-        assert 'modal-xl modal-dialog-scrollable' not in html
-        assert 'min-height: min(720px' not in html
-        assert 'z-index: 1090 !important' in html
+        soup = BeautifulSoup(html, 'html.parser')
+        assert soup.select_one('dialog.sb-dialog#linkMilestonesModal')
+        assert soup.select_one('dialog.sb-dialog#createEngagementModal')
+        assert soup.select_one('dialog.sb-dialog#addExistingEngagementModal')
+        assert soup.select_one('dialog#hygieneDiscardDialog')
+        assert not soup.select_one('[data-hygiene] .modal')
         assert 'js/milestone-multi-picker.js' in html
-        assert 'removeResolvedMilestones' in html
-        assert '/api/customer/' in html
-        assert "'/milestones/' + activeMilestoneId + '/add'" in html
-        assert "existingModalElement.addEventListener('hidden.bs.modal'" in html
-        assert 'openCreateEngagement(createButton)' in html
-        assert 'function updateHygieneSummaryCounts()' in html
-        assert html.count('updateHygieneSummaryCounts();') == 3
+        source = client.get('/static/js/ui-hygiene.js').get_data(as_text=True)
+        assert '/api/customer/' in source
+        assert "'/milestones/' + current.milestoneId + '/add'" in source
+        assert 'sb:dialog-before-close' in source
+        assert "openDialog('create', source)" in source
+        assert 'async function refreshQueues()' in source
         assert 'Why no milestone?' in html
         assert 'data-entity-type="milestone"' not in html
 
@@ -161,8 +161,168 @@ class TestHygieneReport:
         html = resp.data.decode()
         assert 'data-customer-name="Acme Corp"' in html
         assert 'data-acr=' in html
-        assert 'customerOrder' in html
-        assert 'acrOrder' in html
+        soup = BeautifulSoup(html, 'html.parser')
+        row = soup.select_one('.ms-row')
+        assert row.select('td')[1]['data-sb-sort-value'] == 'Acme Corp'
+        assert row.select('td')[3].has_attr('data-sb-sort-value')
+        assert row.select('td')[4].has_attr('data-sb-sort-value')
+
+    @pytest.mark.parametrize('embedded', [False, True])
+    def test_native_frame_and_export_scope(self, client: FlaskClient, hygiene_data: dict,
+                                          embedded: bool) -> None:
+        """Full pages and embeds retain both complete, sortable export queues."""
+        response = client.get('/reports/hygiene', query_string={'embed': 1} if embedded else {})
+        soup = BeautifulSoup(response.data, 'html.parser')
+        root = soup.select_one('[data-hygiene]')
+        assert root['data-embedded'] == str(embedded).lower()
+        assert ('sb-page-frame' in soup.body.get('class', [])) is not embedded
+        assert bool(soup.select('.sb-page-status')) is not embedded
+        assert root.select_one('#milestoneQueue').has_attr('hidden') is not embedded
+        assert root.select_one('#engagementQueue')['role'] == (
+            'region' if embedded else 'tabpanel')
+        assert not root.select('.card, .btn, .badge, .modal, [data-bs-toggle]')
+        tables = root.select('table[data-sb-sortable]')
+        assert len(tables) == 2
+        for table in tables:
+            assert len(table.select('thead th[data-export-label][data-sb-sort-type]')) == 5
+            fix = table.select('thead th')[-1]
+            assert fix['data-export-label'] == 'Fix'
+            assert not fix.has_attr('data-sb-sort-type')
+            for row in table.select('tbody tr'):
+                assert all(cell.has_attr('data-sb-sort-value') for cell in row.select('td')[:5])
+                assert not row.select('td')[-1].has_attr('data-sb-sort-value')
+        assert '.sb-hygiene-table[data-export-visible=true]' in response.get_data(as_text=True)
+        assert "const CUSTOM_TITLE = 'Engagement / Milestone Hygiene'" in response.get_data(
+            as_text=True)
+        assert 'tables.flatMap' in response.get_data(as_text=True)
+        assert soup.select_one('input[name="title"][required]')
+        assert soup.select_one('input[name="estimated_acr"][min="0"][step="1"]')
+        assert soup.select_one('input[name="target_date"][type="date"]')
+        assert len(soup.select('[data-hygiene-confirm-refresh]')) == 3
+        styles = client.get('/static/css/ui-hygiene.css').get_data(as_text=True)
+        assert 'overflow-anchor: none' in styles
+        assert '.sb-hygiene-header .sb-revenue-export { padding-right: 0; border-right: 0; }' in styles
+
+    def test_precision_dates_and_confirmed_annotation_exports(
+        self, app, client: FlaskClient, hygiene_data: dict,
+    ) -> None:
+        """Financial sorting uses raw values and exports keep saved notes and story values."""
+        with app.app_context():
+            engagement = db.session.get(Engagement, hygiene_data['eng_no_ms_id'])
+            milestone = db.session.get(Milestone, hygiene_data['ms_no_eng_id'])
+            engagement.estimated_acr = 1234
+            milestone.monthly_usage = 10.25
+            milestone.due_date = date(2026, 10, 6)
+            db.session.add(HygieneNote(
+                entity_type='engagement', entity_id=engagement.id, note='Confirmed reason',
+            ))
+            db.session.commit()
+            soup = BeautifulSoup(client.get('/reports/hygiene').data, 'html.parser')
+            eng = soup.select_one('.engagement-gap-row')
+            cells = eng.select('td')
+            assert cells[2]['data-sb-sort-value'] == '1234'
+            assert cells[3]['data-export-label'] == f'{engagement.story_completeness}% complete'
+            assert cells[4]['data-export-label'] == 'Confirmed reason'
+            assert cells[4].select_one('input')['value'] == 'Confirmed reason'
+            assert cells[5]['data-export-label'] == ''
+            ms = soup.select_one(f'.ms-row[data-milestone-id="{milestone.id}"]')
+            assert ms.select('td')[3]['data-sb-sort-value'] == '10.25'
+            assert ms.select('td')[4]['data-sb-sort-value'] == '2026-10-06'
+            assert ms.select_one('a')['href'] == f'/milestone/{milestone.id}'
+
+    def test_provider_keeps_completed_links_and_active_customer_gap_semantics(
+        self, app, client: FlaskClient, hygiene_data: dict,
+    ) -> None:
+        """A completed link still resolves engagement hygiene; inactive/no-account gaps stay out."""
+        with app.app_context():
+            engagement = db.session.get(Engagement, hygiene_data['eng_no_ms_id'])
+            linked = db.session.get(Milestone, hygiene_data['ms_with_eng_id'])
+            linked.msx_status = 'Completed'
+            db.session.add_all([
+                Engagement(customer_id=engagement.customer_id, title='Paused', status='On Hold'),
+                Milestone(customer_id=engagement.customer_id, title='Closed orphan',
+                          msx_status='Completed', url='https://example.com/closed'),
+                Milestone(title='No account', msx_status='On Track',
+                          url='https://example.com/no-account'),
+            ])
+            db.session.commit()
+        soup = BeautifulSoup(client.get('/reports/hygiene').data, 'html.parser')
+        assert len(soup.select('.engagement-gap-row')) == 1
+        assert len(soup.select('.ms-row')) == 2
+        assert soup.select_one('.engagement-gap-row')['data-engagement-id'] == str(
+            hygiene_data['eng_no_ms_id'])
+
+    def test_seller_scope_and_contextual_help(
+        self, app, client: FlaskClient, hygiene_data: dict,
+    ) -> None:
+        """Seller scoping remains provider-owned and Help describes actual repair/export behavior."""
+        with app.app_context():
+            engagement = db.session.get(Engagement, hygiene_data['eng_no_ms_id'])
+            seller_id = engagement.customer.seller_id
+            other_seller = Seller(name='Another seller')
+            other_customer = Customer(name='Another customer', tpid=67890, seller=other_seller)
+            db.session.add_all([other_seller, other_customer])
+            db.session.flush()
+            db.session.add_all([
+                Engagement(customer_id=other_customer.id, title='Other gap', status='Active'),
+                Milestone(customer_id=other_customer.id, title='Other milestone',
+                          msx_status='Blocked', url='https://example.com/other'),
+            ])
+            db.session.commit()
+        with patch('app.services.seller_mode.get_seller_mode_seller_id', return_value=seller_id):
+            soup = BeautifulSoup(client.get('/reports/hygiene').data, 'html.parser')
+        assert len(soup.select('.engagement-gap-row')) == 1
+        assert len(soup.select('.ms-row')) == 2
+        help_source = client.get('/static/js/page-help.js').get_data(as_text=True)
+        help_text = help_source.split("title: 'Engagement / Milestone Hygiene',", 1)[1].split(
+            '`},', 1)[0]
+        for expected in ['completed milestone', 'Only confirmed notes', 'Retry note',
+                         'both queues', 'not just the selected tab', 'Back restores',
+                         'Grouped exports identify', 'Embedded reports']:
+            assert expected in help_text
+
+    @pytest.mark.parametrize('operation', ['link', 'existing', 'create', 'create-empty'])
+    def test_repairs_refresh_authoritative_queues(
+        self, app, client: FlaskClient, hygiene_data: dict, operation: str,
+    ) -> None:
+        """Real isolated writes resolve both queues or add a legitimate unlinked engagement."""
+        engagement_id = hygiene_data['eng_no_ms_id']
+        milestone_id = hygiene_data['ms_no_eng_id']
+        with app.app_context():
+            customer_id = db.session.get(Engagement, engagement_id).customer_id
+        with patch('app.routes.engagements.track_engagement_on_milestones'):
+            if operation == 'link':
+                response = client.post(f'/api/engagement/{engagement_id}/milestones',
+                                       json={'milestone_ids': [milestone_id]})
+            elif operation == 'existing':
+                response = client.post(
+                    f'/api/engagement/{engagement_id}/milestones/{milestone_id}/add')
+            else:
+                response = client.post(f'/customer/{customer_id}/engagement/create-inline', json={
+                    'title': 'New repair', 'status': 'Active', 'technical_problem': 'SQL move',
+                    'business_impact': 'Reduce costs', 'solution_resources': 'SQL',
+                    'estimated_acr': '2500', 'target_date': '2026-12-31',
+                    'milestone_ids': [] if operation == 'create-empty' else [milestone_id],
+                })
+        assert response.status_code == 200
+        assert response.json['success'] is True
+        soup = BeautifulSoup(client.get('/reports/hygiene?embed=1').data, 'html.parser')
+        engagement_ids = {int(row['data-engagement-id'])
+                          for row in soup.select('.engagement-gap-row')}
+        milestone_ids = {int(row['data-milestone-id']) for row in soup.select('.ms-row')}
+        if operation in ('link', 'existing'):
+            assert engagement_id not in engagement_ids
+        else:
+            assert engagement_id in engagement_ids
+            assert (response.json['id'] in engagement_ids) is (operation == 'create-empty')
+            with app.app_context():
+                created = db.session.get(Engagement, response.json['id'])
+                assert created.estimated_acr == 2500
+                assert created.target_date == date(2026, 12, 31)
+                assert created.technical_problem == 'SQL move'
+        assert (milestone_id in milestone_ids) is (operation == 'create-empty')
+        assert hygiene_data['ms_off_team_id'] in milestone_ids
+        assert hygiene_data['ms_with_eng_id'] not in milestone_ids
 
     def test_shared_picker_keeps_scrollbar_open_and_colors_statuses(self, client):
         """Shared picker should preserve scroll interaction and standard badge colors."""
