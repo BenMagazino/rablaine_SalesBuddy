@@ -6,8 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 33, Revenue sync/import,
+- Current page/surface: checkpoint 34, main Reports directory,
   VERIFY, technically verified and user-approved October 5, 2026.
+  Checkpoint 33 Revenue sync/import is user-approved and committed as `a6b6253`.
   Checkpoint 32 Revenue configuration is user-approved and committed as `350e152`.
   Checkpoint 31 Revenue reports/Synapse is user-approved and committed as `15e8333`.
   Checkpoint 30 seller Products/monthly comparison is user-approved and committed as `e98c879`.
@@ -46,8 +47,15 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `aed2350` (Products browser/shared column sorting, user-approved October 5),
   `e98c879` (seller Products browser/monthly comparison, user-approved October 5),
   `15e8333` (native Revenue reports/Synapse, user-approved October 5),
-  `350e152` (native Revenue configuration, user-approved October 5)
-- Next action: migrate the main Reports hub.
+  `350e152` (native Revenue configuration, user-approved October 5),
+  `a6b6253` (native Revenue sync/import, user-approved October 5)
+- Next action: migrate the Workload report.
+  Fifteen real destinations retain all four groups, menu order, names, icons and
+  descriptions in a compact native directory. Fixed search/status bands surround
+  a readable grouped list, not fifteen cards or an unnecessary navigation pane.
+  Local name/purpose/group filtering has explicit no-match and Clear states.
+  Back restores the query before shared reading-position restoration; embedded
+  directories keep their filter local and do not consume parent history.
   Fixed sync/status bands connect independently scrolling import history,
   stored-month coverage and an inline compensated-bucket editor. Every history/
   month column sorts both directions with exact UTC/calendar/numeric keys.
@@ -61,7 +69,7 @@ Inventory date: October 2, 2026. Baseline product SHA:
   values, native number constraints, POST behavior and next-analysis timing remain.
   Decimal-ratio labels replace misleading percentage suffixes without rescaling.
   Embeds stack section context above ordinary fields and do not own the window.
-  The directory has one real report, not a filler card grid. Synapse retains both
+  The Revenue reports directory has one real report, not a filler card grid. Synapse retains both
   modes, seller grouping, original values and exports in a continuous reading
   area with sticky seller/column headings. Every column sorts both directions;
   first usage uses actual calendar dates. Back restores sorting and reading
@@ -160,7 +168,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 33 sign-off, the rough effort-based estimate is **about 37%**
+As of checkpoint 34 sign-off, the rough effort-based estimate is **about 38%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -288,7 +296,7 @@ have separate rows even when they use one template.
 | SPEC-EDIT | Edit specialty | `/specialties/<int:id>/edit` | `specialty_form.html` | TODO | - |
 | OOO-LIST | 1:1 hub | `/one-on-one/` | `one_on_one_hub.html` | TODO | - |
 | OOO-VIEW | 1:1 workspace | `/one-on-one/<int:workspace_id>` | `one_on_one_workspace.html` | TODO | - |
-| RPT-HUB | Reports hub | `/reports` | `reports_hub.html` | TODO | - |
+| RPT-HUB | Reports hub | `/reports` | `reports_hub.html` | VERIFY | [Checkpoint 34](redesign-pages/HOME-WORKBENCH.md#checkpoint-34-main-reports-directory); native grouped directory, identical registry/menu order, local filter and Back context; user-approved October 5 |
 | RPT-INIT | Initiative Tracker | `/reports/initiative-tracker`; `/reports/manager-one-on-one` | `report_manager_one_on_one.html` | TODO | - |
 | RPT-ACT | Activity coverage | `/reports/activity-coverage` | `report_activity_coverage.html` | TODO | - |
 | RPT-OOO | Seller 1:1 preparation | `/reports/one-on-one` | `report_one_on_one.html` | TODO | - |
@@ -302,7 +310,7 @@ have separate rows even when they use one template.
 | RPT-U2C | U2C | `/reports/u2c` | `report_u2c.html` | TODO | - |
 | RPT-IMPACT | Connect impact | `/reports/connect-impact` | `report_connect_impact.html` | TODO | - |
 | REV-DASH | Revenue dashboard | `/reports/revenue`; `/revenue` redirects | `revenue_dashboard.html` | VERIFY | [Continuous shell pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-24-continuous-workbench-shell-and-revenue-pilot) |
-| REV-IMPORT | Revenue import | `/revenue/import`; `/import/revenue` redirects | `revenue_import.html` | VERIFY | [Checkpoint 33](redesign-pages/HOME-WORKBENCH.md#checkpoint-33-revenue-syncimport); native maintenance panes, sortable unchanged history/months, explicit sync/save recovery and shared inline buckets; user-approved October 5 |
+| REV-IMPORT | Revenue import | `/revenue/import`; `/import/revenue` redirects | `revenue_import.html` | VERIFY | [Checkpoint 33](redesign-pages/HOME-WORKBENCH.md#checkpoint-33-revenue-syncimport); native maintenance panes, sortable unchanged history/months, explicit sync/save recovery and shared inline buckets; user-approved October 5, committed as `a6b6253` |
 | REV-CONFIG | Revenue configuration | `/revenue/config` | `revenue_config.html` | VERIFY | [Checkpoint 32](redesign-pages/HOME-WORKBENCH.md#checkpoint-32-revenue-analysis-configuration); native contextual editor, exact fields/values and save parity; user-approved October 5, committed as `350e152` |
 | REV-SELL | Seller revenue alerts | `/revenue/seller/<seller_name>` | `revenue_seller_alerts.html` | VERIFY | [Queue/detail workbench pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-25-seller-revenue-queue-and-inspector) |
 | REV-SELL-PRODS | Seller products | `/revenue/seller/<seller_name>/products` | `revenue_seller_products.html` | VERIFY | [Checkpoint 30 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-30-seller-products-and-monthly-comparison) |

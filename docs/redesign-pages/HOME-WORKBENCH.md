@@ -1835,6 +1835,7 @@ Committed locally as `350e152` after user approval.
 
 Status: VERIFY, technically verified and user-approved October 5, 2026.
 Approved predecessor: `350e152`; approved effort estimate is about 37%.
+Committed locally as `a6b6253` after user approval.
 
 ### Composition and parity
 
@@ -1907,3 +1908,78 @@ Approved predecessor: `350e152`; approved effort estimate is about 37%.
 - Editor diagnostics and patch whitespace are clean. Protected note drafts
   and production are untouched. No new dependencies, migrations, reports,
   analytical endpoints or SalesIQ tools; no push, merge or deployment.
+
+## Checkpoint 34: Main Reports directory
+
+Status: VERIFY, technically verified and user-approved October 5, 2026.
+Approved predecessor: `a6b6253`; approved effort estimate is about 38%.
+
+### Composition and parity
+
+- A native grouped directory replaces the Bootstrap card grid. The four
+  canonical menu groups stay beside their actual destinations, with report
+  names and original purpose descriptions aligned in readable rows. The
+  internal 1420px reading width is constrained, not the full-window surface.
+  All fifteen reports fit the current desktop view without an invented sidebar.
+- All group titles, report IDs/names/descriptions/icons, URLs and ordering come
+  from the unchanged report registry. The Reports menu remains untouched and
+  its existing parity test still verifies exact grouping and destinations.
+  A whole named row is a real anchor with an accessible name/description;
+  repeated generic View Report buttons are gone, not report destinations.
+- Find a report matches normalized, case-insensitive name, description or group
+  text locally. It hides unmatched original nodes without replacing or reordering
+  links. Matching reports/groups appear in the status rail. No-match, empty
+  registry and Clear/focus states are distinct. Filtering never changes the
+  target report's data, registry, menu or stored preferences.
+- Back restores the query before the existing shared report reading helper
+  restores its offset. History updates merge rather than overwrite reading,
+  sorting, drafts or unrelated feature state. Malformed owned filter state is
+  visible and can be explicitly repaired with Clear; blocked history writes
+  remain visible instead of claiming saved context.
+- Compact embeds use ordinary grouped lists with descriptions beneath names.
+  Their filter stays local, without navigation, frame/status or parent-history
+  access. SE/DSS retain the same actual report registry. No new routes, business
+  queries, reports, models, dependencies or SalesIQ tools.
+- This is a navigation directory, not an analytical data table. Its canonical
+  group/menu order is deliberate; this checkpoint does not implicitly migrate
+  any report body or mark the full Reports family DONE.
+
+### Verification
+
+- 165 scoped Python tests pass across the native directory, report services/
+  registry, breadcrumbs and approved Revenue report hosts. Five new contracts
+  cover full/embed and both roles, exact IDs/order, accessible row names/
+  descriptions, controls, script order, statuses and contextual Help.
+- Sixteen JavaScript tests pass across local filtering and the reused shared
+  report reading helper. Tests cover names/purposes/groups, case/whitespace,
+  literal markup-like text, retained nodes/order, no matches, empty registry,
+  Clear/focus, Back/query restoration, history merging, embed isolation,
+  malformed-state repair and blocked persistence, including local Clear/focus
+  remaining usable when saving navigation context fails.
+- October 5 review correction: row dividers now follow preceding visible rows,
+  not hidden DOM siblings. The live `acr` filter has no top divider above
+  Connect Impact or Milestone Tracker. Computed borders are also verified for
+  Planning, Milestone and unfiltered results: only subsequent visible rows
+  within a group have a divider. A stylesheet regression contract covers the rule.
+- Original/native live registry fingerprint is identical:
+  `0ce0460799e54c6d8446f7e5f49de4d44c3747ac83f82f0ae2e6a2a69b47bcbe`.
+  It covers all four group titles and fifteen names/descriptions/URLs/icons.
+- Live filtering finds Synapse Customers alone and all four Planning & Reviews
+  destinations through the group name. An unmatched query gives an explicit
+  zero-match state; Clear restores all fifteen and returns focus to search.
+  Actual row activation opens the live Current Synapse report. Browser Back
+  restores the Synapse query and its one visible row; the current directory
+  fits the viewport, so its actual reading offset is zero. Nonzero owned reading
+  restoration remains covered by the shared helper tests, not a fabricated
+  live overflow claim. Search and original history state are restored afterward.
+- All eight approved theme pairs retain a 1724px edge-to-edge surface, header
+  at the 78px context boundary, footer at 1174px, all fifteen entries and no
+  horizontal overflow. Theme preferences and the desktop viewport are untouched.
+  The actual F1 handler opens native Reports Help with filtering/Back guidance.
+- Actual embedded rendering has all fifteen rows, stacked group composition,
+  one local Marketing match and complete Clear restoration, without navbar,
+  shell/status or horizontal overflow. Filtering/Clear leave parent history
+  unchanged. The working browser finishes on the normal Reports directory.
+- Editor diagnostics and patch whitespace are clean. No manual live record or
+  preference writes, no production access, and protected note drafts are
+  untouched. Checkpoint 33 alone is committed; no push, merge or deployment.

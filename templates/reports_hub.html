@@ -1,32 +1,72 @@
 {% extends "base.html" %}
+{% set report_count = report_groups|map(attribute='reports')|map('length')|sum %}
 {% block title %}Reports - Sales Buddy{% endblock %}
-
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-reports-hub.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="Reports directory status">
+    <span data-sb-reports-count aria-live="polite">{{ report_count }} reports across {{ report_groups|length }} groups</span>
+    <span>Reports</span>
+</footer>
+{% endif %}
+{% endblock %}
 {% block content %}
-<div class="container-fluid mt-4">
-    <h2><i class="bi bi-clipboard-data"></i> Reports</h2>
-    <p class="text-muted mb-4">Plan your work, track execution, and explore your accounts.</p>
-
-    {% for group in report_groups %}
-    <h5 class="mt-4 mb-3"><i class="bi {{ group.icon }}"></i> {{ group.title }}</h5>
-    <div class="row row-cols-{{ group.reports|length }} g-3 mb-3">
-        {% for report in group.reports %}
-        <div class="col">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h6 class="card-title">
-                        <i class="bi {{ report.icon }} text-primary"></i> {{ report.name }}
-                    </h6>
-                    <p class="card-text text-muted small">{{ report.description }}</p>
-                </div>
-                <div class="card-footer bg-transparent">
-                    <a href="{{ report.url }}" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-arrow-right"></i> View Report
-                    </a>
-                </div>
-            </div>
+<section class="sb-reports-hub" data-sb-page-surface data-sb-reports-hub
+         data-sb-report-key="reports-hub"
+         data-sb-report-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+         aria-labelledby="reportsHubTitle">
+    <header class="sb-reports-header" data-sb-page-band>
+        <div><h1 id="reportsHubTitle">Reports</h1>
+            <p>Plan your work, track execution, and explore your accounts.</p></div>
+        <div class="sb-reports-find">
+            <label for="findReport">Find a report</label>
+            <input type="search" id="findReport" placeholder="Name, purpose or group"
+                   autocomplete="off" aria-controls="reportsDirectory">
+            <button type="button" class="sb-reports-clear" data-sb-reports-clear disabled>Clear</button>
         </div>
-        {% endfor %}
+    </header>
+    {% if request.args.get('embed') %}
+    <p class="sb-reports-embedded-count" data-sb-reports-count aria-live="polite">{{ report_count }} reports across {{ report_groups|length }} groups</p>
+    {% endif %}
+    <p class="sb-reports-notice" data-sb-reports-filter-notice data-sb-page-band role="alert" hidden></p>
+    <p class="sb-reports-notice" data-sb-report-context-notice data-sb-page-band role="alert" hidden></p>
+    <div class="sb-reports-reading" id="reportsDirectory" data-sb-page-body
+         tabindex="0" role="region" aria-label="Available reports">
+        <div class="sb-reports-directory">
+            {% for group in report_groups %}
+            <section class="sb-reports-group" data-sb-report-group="{{ group.title }}"
+                     aria-labelledby="reportGroup{{ loop.index }}">
+                <header class="sb-reports-group-heading">
+                    <h2 id="reportGroup{{ loop.index }}"><i class="bi {{ group.icon }}" aria-hidden="true"></i> {{ group.title }}</h2>
+                </header>
+                <ul class="sb-reports-list">
+                    {% for report in group.reports %}
+                    <li data-sb-report-entry data-report-id="{{ report.id }}">
+                        <a class="sb-reports-entry" href="{{ report.url }}"
+                           aria-labelledby="report-{{ report.id }}-name"
+                           aria-describedby="report-{{ report.id }}-description">
+                            <i class="bi {{ report.icon }}" aria-hidden="true"></i>
+                            <h3 id="report-{{ report.id }}-name">{{ report.name }}</h3>
+                            <p id="report-{{ report.id }}-description">{{ report.description }}</p>
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endfor %}
+            <p class="sb-reports-empty" data-sb-reports-empty role="status" {% if report_count %}hidden{% endif %}>
+                {{ 'No reports match your filter.' if report_count else 'No reports available.' }}
+            </p>
+        </div>
     </div>
-    {% endfor %}
-</div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-reports-hub.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-revenue-reports.js') }}"></script>
 {% endblock %}

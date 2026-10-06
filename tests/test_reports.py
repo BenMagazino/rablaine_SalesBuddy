@@ -69,14 +69,13 @@ class TestReportsHub:
             'Overview', 'Planning and reviews', 'Execution and coverage',
             'Pipeline health', 'Account insights',
         ]
-        headings = soup.select('main .container-fluid > h5')
+        sections = soup.select('main .sb-reports-group')
+        headings = [section.select_one('h2') for section in sections]
         assert [heading.get_text(strip=True) for heading in headings] == [
             'Planning & Reviews', 'Execution & Coverage', 'Pipeline Health', 'Account Insights',
         ]
-        for heading, expected in zip(headings, grouped_links[1:]):
-            row = heading.find_next_sibling('div')
-            assert [link['href'] for link in row.select('.card-footer a')] == expected
-            assert f'row-cols-{len(expected)}' in row['class']
+        for section, expected in zip(sections, grouped_links[1:]):
+            assert [link['href'] for link in section.select('.sb-reports-entry')] == expected
 
 
 class TestOneOnOneReport:

@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-32 committed, checkpoint 33 Revenue sync/import user-approved
+- Status: BUILDING; checkpoints 1-33 committed, checkpoint 34 Reports directory user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -162,8 +162,19 @@
   let this page preserve its original server preference writes without writing
   during hydration. SSE validation, missing terminal results, confirmed dismissal,
   serialized saves, visible Retry, embeds and eight desktop themes are verified.
-  This surface is user-approved October 5, 2026; approved progress is about 37%.
-- Next action: migrate the main Reports hub, then adopt
+  This surface is user-approved October 5, 2026 and committed as `a6b6253`;
+  approved progress is about 37%.
+- Checkpoint 34 replaces the main Reports card grid with a native grouped
+  directory. All fifteen names, purposes, icons and destinations keep their
+  four menu groups and order. It is navigation, not a sortable analytical
+  table or a forced chooser/detail split. Name/purpose/group filtering and
+  Clear remain local; filtered scope is visible in the status rail.
+  Query restoration precedes the existing shared report reading helper.
+  Embedded rows stack descriptions below names without owning parent history.
+  Registry/menu parity, Back, no-match/Clear, Help, SE/DSS contexts, embeds and
+  eight desktop themes are verified. This surface is user-approved October 5, 2026,
+  including the visible-sibling divider correction; approved progress is about 38%.
+- Next action: migrate the Workload report, then adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.

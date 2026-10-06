@@ -382,6 +382,11 @@ const PageHelp = (function () {
       <p>This milestone's tasks, linked engagements, and MSX sync status.</p>
     `},
 
+    { pattern: /^\/reports\/?$/, title: 'Reports', content: `
+      <p>Open reports from the same groups and order used in the Reports menu.</p>
+      <p>Use Find a report to match names, purposes or groups. Clear restores the full directory. The status bar shows how many reports match; filtering does not change report data.</p>
+      <p>Each row opens its named report. Back restores your filter and reading position. Embedded directories keep their filter local and do not change the parent page's history.</p>
+    `},
     // ── Revenue ──
     { pattern: /^\/revenue\/import/, title: 'Revenue Import', content: `
       <p>Pull ACR (Azure Consumed Revenue) straight from MSXI using your Azure sign-in.</p>
