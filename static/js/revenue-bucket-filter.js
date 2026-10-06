@@ -6,7 +6,7 @@ var RevenueBucketFilter = (() => {
     'use strict';
     const STORAGE_KEY = 'salesbuddy_revenue_bucket_filter';
     const VERSION_KEY = 'salesbuddy_revenue_bucket_taxonomy_version';
-    const views = new Map(), callbacks = new Set(), warnings = new Map();
+    const views = new Map(), callbacks = new Set(), selections = new Set(), warnings = new Map();
     let allBuckets = [], selectedBuckets = new Set();
     let loaded = false, usedFallback = true, edits = 0, pending = null;
 
@@ -145,6 +145,7 @@ var RevenueBucketFilter = (() => {
         warnings.delete('fallback');
         saveSelection();
         applyFilter();
+        for (const callback of selections) callback([...selectedBuckets]);
     }
 
     function searchRows(view) {
@@ -204,7 +205,7 @@ var RevenueBucketFilter = (() => {
         searchRows(view);
     }
 
-    function renderFilterUI(containerId) {
+    function renderFilterUI(containerId, inline = false) {
         const container = document.getElementById(containerId);
         if (!container) {
             console.error('Revenue bucket filter container missing:', containerId);
@@ -214,17 +215,20 @@ var RevenueBucketFilter = (() => {
         if (existing) { buildRows(existing); return; }
         const button = element('button', 'sb-bucket-button', 'Buckets');
         button.type = 'button';
+        button.hidden = inline;
         const count = element('span', 'sb-bucket-count');
         count.hidden = true;
         button.appendChild(count);
-        const panel = element('div', 'sb-bucket-popover');
+        const panel = element('div', inline ? 'sb-bucket-inline' : 'sb-bucket-popover');
         panel.id = containerId + '-bucket-popover';
-        panel.setAttribute('popover', 'auto');
-        panel.setAttribute('role', 'dialog');
+        if (!inline) panel.setAttribute('popover', 'auto');
+        panel.setAttribute('role', inline ? 'group' : 'dialog');
         panel.setAttribute('aria-label', 'Revenue bucket filter');
-        button.setAttribute('popovertarget', panel.id);
-        button.setAttribute('aria-controls', panel.id);
-        button.setAttribute('aria-expanded', 'false');
+        if (!inline) {
+            button.setAttribute('popovertarget', panel.id);
+            button.setAttribute('aria-controls', panel.id);
+            button.setAttribute('aria-expanded', 'false');
+        }
         const heading = element('div', 'sb-bucket-heading', 'Revenue buckets');
         const search = element('input', 'sb-bucket-search');
         search.type = 'search';
@@ -255,7 +259,7 @@ var RevenueBucketFilter = (() => {
             selectedBuckets = selectAll.checked ? new Set(allBuckets) : new Set();
             change();
         });
-        panel.addEventListener('toggle', event => {
+        if (!inline) panel.addEventListener('toggle', event => {
             button.setAttribute('aria-expanded', String(event.newState === 'open'));
             if (event.newState === 'open') {
                 view.anchor = null;
@@ -291,15 +295,22 @@ var RevenueBucketFilter = (() => {
     return Object.freeze({
         init(options = {}) {
             options = options || {};
+            if (options.buckets !== undefined && (!Array.isArray(options.buckets) ||
+                options.buckets.some(bucket => typeof bucket !== 'string' || !bucket))) {
+                throw new Error('Invalid explicit revenue bucket list.');
+            }
             if (options.onFilterChange) callbacks.add(options.onFilterChange);
+            if (options.onSelectionChange) selections.add(options.onSelectionChange);
             const previous = allBuckets.join('\0');
-            allBuckets = [...new Set([...document.querySelectorAll('[data-bucket]')]
-                .map(row => row.dataset.bucket).filter(Boolean))].sort();
+            const buckets = options.buckets === undefined ?
+                [...document.querySelectorAll('[data-bucket]')]
+                    .map(row => row.dataset.bucket).filter(Boolean) : options.buckets;
+            allBuckets = [...new Set(buckets)].sort();
             if (previous !== allBuckets.join('\0')) {
                 for (const view of views.values()) buildRows(view);
             }
             if (!loaded) { loadSelection(); loaded = true; }
-            if (options.containerId) renderFilterUI(options.containerId);
+            if (options.containerId) renderFilterUI(options.containerId, options.inline === true);
             applyFilter();
             return refresh();
         },

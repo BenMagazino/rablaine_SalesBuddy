@@ -79,7 +79,8 @@ async function fixture(options = {}) {
     vm.runInContext(source, context);
     const api = context.RevenueBucketFilter;
     const callback = count => visible.push(count);
-    const pending = api.init({containerId: 'bucketFilterContainer', onFilterChange: callback});
+    const pending = api.init({containerId: 'bucketFilterContainer', onFilterChange: callback,
+        ...options.init});
     if (!options.deferred) await pending;
     function view(host = container) {
         const button = host.children[0], panel = host.children[1];
@@ -106,6 +107,40 @@ test('native bucket control preserves the quiet plain label and fraction', async
     assert.equal(v.panel.attributes.role, 'dialog');
     assert.equal(v.search.attributes['aria-label'], 'Search revenue buckets');
     assert.doesNotMatch(source, /bootstrap|innerHTML|data-bs-/);
+});
+
+test('explicit inline buckets reuse rows and only user edits notify persistence', async () => {
+    const changes = [], onSelectionChange = values => changes.push(Array.from(values));
+    const h = await fixture({buckets: [], saved: '["Fabric"]',
+        init: {buckets: ['Fabric', 'Databases', 'Fabric'], inline: true, onSelectionChange}});
+    const v = h.view();
+    assert.equal(v.button.hidden, true);
+    assert.equal(v.panel.className, 'sb-bucket-inline');
+    assert.equal(v.panel.attributes.popover, undefined);
+    assert.equal(v.button.attributes.popovertarget, undefined);
+    assert.equal(v.panel.attributes.role, 'group');
+    assert.deepEqual(Array.from(h.api.getAllBuckets()), ['Databases', 'Fabric']);
+    assert.deepEqual(changes, []);
+    await h.api.init({containerId: 'bucketFilterContainer', buckets: ['Fabric', 'Databases'],
+        inline: true, onSelectionChange});
+    assert.deepEqual(changes, []);
+    h.api.toggle('Databases');
+    assert.deepEqual(changes, [['Fabric', 'Databases']]);
+    assert.equal(h.requests.some(request => request.url.endsWith('/compensated-buckets')), false);
+    h.api.selectNone();
+    assert.deepEqual(changes.at(-1), []);
+});
+
+test('inline server hydration never saves a selection and malformed bucket sources fail', async () => {
+    const changes = [];
+    const h = await fixture({buckets: [], saved: '[]', init: {
+        buckets: ['Fabric'], inline: true, onSelectionChange: values => changes.push(values),
+    }, replies: {'/api/revenue/compensated-buckets': {ok: true, json: async () => ['Fabric']}}});
+    assert.deepEqual(Array.from(h.api.getSelected()), ['Fabric']);
+    assert.deepEqual(changes, []);
+    assert.throws(() => h.api.init({buckets: 'Fabric'}), /Invalid explicit/);
+    assert.throws(() => h.api.init({buckets: ['Fabric', 2]}), /Invalid explicit/);
+    assert.throws(() => h.api.init({buckets: ['']}), /Invalid explicit/);
 });
 
 test('fraction, persistence, row filtering and callback counts retain their contract', async () => {

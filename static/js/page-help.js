@@ -389,7 +389,11 @@ const PageHelp = (function () {
       <ul>
         <li>Requires the corporate VPN - no export or file needed</li>
         <li>Each sync replaces the stored revenue with a fresh two-year pull</li>
-        <li>After syncing, revenue will appear on customer and seller pages</li>
+        <li>The status band distinguishes completed, failed and incomplete attempts. Check status before restarting a disconnected sync.</li>
+        <li>After a completed sync, use Refresh stored-data tables to update history and month coverage. Revenue also appears on customer and seller pages.</li>
+        <li>Every history and month column sorts in both directions; each pane scrolls independently.</li>
+        <li>Select Your Buckets filters revenue views across the app and saves a server fallback. No selection shows every bucket. Failed reads or saves offer Retry.</li>
+        <li>Bucket-change notices remain until the server confirms dismissal.</li>
       </ul>
     `},
     { pattern: /^\/revenue\/config/, title: 'Revenue Configuration', content: `

@@ -6,8 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 32, Revenue analysis configuration,
+- Current page/surface: checkpoint 33, Revenue sync/import,
   VERIFY, technically verified and user-approved October 5, 2026.
+  Checkpoint 32 Revenue configuration is user-approved and committed as `350e152`.
   Checkpoint 31 Revenue reports/Synapse is user-approved and committed as `15e8333`.
   Checkpoint 30 seller Products/monthly comparison is user-approved and committed as `e98c879`.
   Checkpoint 29 Products directory/shared sorting is user-approved and committed as `aed2350`.
@@ -44,8 +45,17 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `e286617` (product Revenue comparison/trend, user-approved October 5),
   `aed2350` (Products browser/shared column sorting, user-approved October 5),
   `e98c879` (seller Products browser/monthly comparison, user-approved October 5),
-  `15e8333` (native Revenue reports/Synapse, user-approved October 5)
-- Next action: migrate the revenue sync/import surface.
+  `15e8333` (native Revenue reports/Synapse, user-approved October 5),
+  `350e152` (native Revenue configuration, user-approved October 5)
+- Next action: migrate the main Reports hub.
+  Fixed sync/status bands connect independently scrolling import history,
+  stored-month coverage and an inline compensated-bucket editor. Every history/
+  month column sorts both directions with exact UTC/calendar/numeric keys.
+  The original MSXI request and plain-array preference writes remain; reads
+  never save a selection. Truncated streams cannot look complete, bucket writes
+  are serialized/latest-wins, and notices hide only after confirmed dismissal.
+  DSS has no bucket region; empty imports omit it until sync completes.
+  Embeds retain ordinary stacked task regions, without the window frame.
   Configuration has a constrained editor inside the full-width shell, contextual
   section explanations and fixed Save/Cancel commands. All nine original fields,
   values, native number constraints, POST behavior and next-analysis timing remain.
@@ -150,7 +160,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 32 sign-off, the rough effort-based estimate is **about 36%**
+As of checkpoint 33 sign-off, the rough effort-based estimate is **about 37%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -292,8 +302,8 @@ have separate rows even when they use one template.
 | RPT-U2C | U2C | `/reports/u2c` | `report_u2c.html` | TODO | - |
 | RPT-IMPACT | Connect impact | `/reports/connect-impact` | `report_connect_impact.html` | TODO | - |
 | REV-DASH | Revenue dashboard | `/reports/revenue`; `/revenue` redirects | `revenue_dashboard.html` | VERIFY | [Continuous shell pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-24-continuous-workbench-shell-and-revenue-pilot) |
-| REV-IMPORT | Revenue import | `/revenue/import`; `/import/revenue` redirects | `revenue_import.html` | TODO | - |
-| REV-CONFIG | Revenue configuration | `/revenue/config` | `revenue_config.html` | VERIFY | [Checkpoint 32](redesign-pages/HOME-WORKBENCH.md#checkpoint-32-revenue-analysis-configuration); native contextual editor, exact fields/values and save parity; user-approved October 5 |
+| REV-IMPORT | Revenue import | `/revenue/import`; `/import/revenue` redirects | `revenue_import.html` | VERIFY | [Checkpoint 33](redesign-pages/HOME-WORKBENCH.md#checkpoint-33-revenue-syncimport); native maintenance panes, sortable unchanged history/months, explicit sync/save recovery and shared inline buckets; user-approved October 5 |
+| REV-CONFIG | Revenue configuration | `/revenue/config` | `revenue_config.html` | VERIFY | [Checkpoint 32](redesign-pages/HOME-WORKBENCH.md#checkpoint-32-revenue-analysis-configuration); native contextual editor, exact fields/values and save parity; user-approved October 5, committed as `350e152` |
 | REV-SELL | Seller revenue alerts | `/revenue/seller/<seller_name>` | `revenue_seller_alerts.html` | VERIFY | [Queue/detail workbench pilot](redesign-pages/HOME-WORKBENCH.md#checkpoint-25-seller-revenue-queue-and-inspector) |
 | REV-SELL-PRODS | Seller products | `/revenue/seller/<seller_name>/products` | `revenue_seller_products.html` | VERIFY | [Checkpoint 30 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-30-seller-products-and-monthly-comparison) |
 | REV-SELL-PROD | Seller product detail | `/revenue/seller/<seller_name>/product/<path:product>` | `revenue_seller_product_view.html` | VERIFY | [Checkpoint 30 evidence](redesign-pages/HOME-WORKBENCH.md#checkpoint-30-seller-products-and-monthly-comparison) |

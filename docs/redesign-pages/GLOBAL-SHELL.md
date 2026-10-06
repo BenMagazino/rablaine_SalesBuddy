@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-31 committed, checkpoint 32 Revenue configuration user-approved
+- Status: BUILDING; checkpoints 1-32 committed, checkpoint 33 Revenue sync/import user-approved
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -151,8 +151,19 @@
   status is not a claim that unsaved edits have been saved. All original fields,
   numeric constraints and analysis timing remain; ratio labels explain the
   existing stored decimals. Compact embeds stack context without owning the
-  application frame. This family is user-approved October 5, 2026.
-- Next action: migrate Revenue sync/import and adopt
+  application frame. This family is user-approved October 5, 2026 and committed as `350e152`.
+- Checkpoint 33 separates Revenue maintenance into import history, stored-month
+  coverage and an inline bucket editor beneath fixed sync/status bands.
+  Independent reading regions suit these actual tasks; they are not an imposed
+  selector/detail browser. DSS/empty contexts omit the unavailable bucket region.
+  All history/month columns sort, with UTC timestamp precision and missing
+  legacy counters kept distinct from zero. The shared bucket engine retains its
+  existing popover defaults; explicit inline buckets and edit-only callbacks
+  let this page preserve its original server preference writes without writing
+  during hydration. SSE validation, missing terminal results, confirmed dismissal,
+  serialized saves, visible Retry, embeds and eight desktop themes are verified.
+  This surface is user-approved October 5, 2026; approved progress is about 37%.
+- Next action: migrate the main Reports hub, then adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.

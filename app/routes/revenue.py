@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 import csv
 import json
 import time
+from datetime import timezone
 from io import StringIO
 
 from app.models import (
@@ -121,11 +122,19 @@ def revenue_import():
     """Revenue page: sync from MSXI, review history, and pick compensated buckets."""
     import_history = get_import_history(limit=10)
     months_data = get_months_in_database()
+    # SQLite timestamps retain UTC values without timezone metadata.
+    import_sort_dates = {
+        imp.id: imp.imported_at.replace(
+            tzinfo=imp.imported_at.tzinfo or timezone.utc,
+        ).timestamp()
+        for imp in import_history
+    }
 
     return render_template(
         'revenue_import.html',
         import_history=import_history,
-        months_data=months_data
+        months_data=months_data,
+        import_sort_dates=import_sort_dates,
     )
 
 

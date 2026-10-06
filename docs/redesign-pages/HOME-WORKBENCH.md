@@ -1769,6 +1769,7 @@ Committed as `15e8333`. Approved predecessor: `e98c879`; approved effort estimat
 
 Status: VERIFY, technically verified and user-approved October 5, 2026.
 Approved predecessor: `15e8333`; approved effort estimate is about 36%.
+Committed locally as `350e152` after user approval.
 
 ### Composition and parity
 
@@ -1829,3 +1830,80 @@ Approved predecessor: `15e8333`; approved effort estimate is about 36%.
   No customer, revenue or configuration records are manually written in live
   development; protected note drafts are untouched. No push, merge or deployment.
   Revenue sync/import remains the next separate surface.
+
+## Checkpoint 33: Revenue sync/import
+
+Status: VERIFY, technically verified and user-approved October 5, 2026.
+Approved predecessor: `350e152`; approved effort estimate is about 37%.
+
+### Composition and parity
+
+- A continuous maintenance surface separates three actual jobs: recent import
+  history, stored-month coverage and compensated-bucket editing. Sync commands,
+  truthful status, streaming progress, results and taxonomy notices stay above
+  the independent reading regions. No invented selector, filler cards or chart.
+- The same ten most recent imports and all stored months retain dates, filenames
+  and counters. Every column sorts both ways through the shared table engine.
+  Imported timestamps use exact numeric seconds, attaching UTC only to SQLite's
+  timezone-less UTC values. Months use ISO calendar dates; counts retain raw
+  integers. Nullable legacy new/updated counters are unavailable, never fake zeroes.
+- The shared bucket engine accepts an explicit list and an inline composition.
+  Its existing popover hosts, local persistence, taxonomy handling, fallback reads,
+  search and selection semantics remain unchanged. A separate edit-only callback
+  performs this import page's existing plain-array compensated-bucket POST.
+  Initial/hydrated reads never write preferences or confirm a fiscal year.
+  Requests are serialized and intermediate queued edits coalesced, so older
+  saves cannot overwrite a newer choice. Unconfirmed saves remain visible with
+  Retry; the local choice is not rolled back or falsely called server-confirmed.
+- The original empty MSXI payload and SSE endpoint remain. HTTP/body/content
+  checks, UTF-8/chunk/CRLF/multiline parsing and strict event/result validation
+  replace silent skips. EOF without a terminal result cannot report success.
+  A disconnected result tells users to check status, not automatically re-run
+  a potentially active sync. All original completion metrics remain.
+- Only actual review/reset notices display a change banner. Unchanged/first
+  imports do not manufacture one. Dismissal waits for server confirmation.
+  Stale status responses cannot erase newer completion or resurrect a notice.
+  A post-completion bucket read failure does not relabel the sync as failed.
+  Users explicitly refresh the stored-data tables after confirmed completion.
+- DSS has no bucket region or bucket reads. Empty stores hide that region until
+  sync completes. Compact embeds stack ordinary task regions and omit navigation,
+  frame and status. The optional brainrot IDs/global bridge remain, with a scoped
+  compatibility wrapper; hydration does not open remote media.
+
+### Verification
+
+- 178 scoped Python tests pass across import rendering, sync/taxonomy services,
+  revenue APIs, configuration and breadcrumbs. Seven new rendering contracts
+  cover full/embed and SE/DSS contexts, exact UTC precision, original values,
+  literal filenames, empty stores, nullable counters and Help.
+  The 26 SQLAlchemy `Query.get()` warnings are pre-existing.
+- 76 JavaScript tests pass across the page controller, shared bucket engine and
+  shared sorting. Coverage includes stream boundaries/UTF-8, malformed events,
+  wrong HTTP/content/body, terminal EOF, missing completion, all status states,
+  invalid metrics, repeated clicks, completion counters, genuine notices,
+  confirmed dismissal, late responses, serialized/coalesced writes, save/read
+  Retry, hydration without writes, DSS/embed boundaries and the brainrot bridge.
+- Original/native live data fingerprints match after normalizing presentation
+  back to the original date/source/counter shape:
+  - Import history: `5712bb794cc09c2a3844c6944c5b136b6fe617af1b8a2396dc79604a4e758de7`.
+  - Stored months: `21ed15d9c46c3bc2c5cd87ccfff5935489bd9f314202a7460067122fe6137f5e`.
+  - Ten history records, 27 stored months and 19 bucket choices remain; Databases
+    and Fabric stay selected in both browser storage and the actual controls.
+- All seven headings are activated in both directions on the live page, with
+  monotonic ordering verified and original sort/history state restored.
+  Bucket search finds Fabric, reports unmatched queries and restores all
+  nineteen rows without changing selection. Month scrolling is independent
+  of history and buckets; the actual F1 handler opens Revenue Import Help.
+- Eight approved theme pairs retain edge-to-edge 1724px geometry, a header
+  beginning at the 78px context boundary, the footer at 1174px and no horizontal
+  overflow. Theme attributes, saved preferences and viewport remain unchanged.
+  The actual embed has all 10/27/19 records in a stacked composition, without
+  navbar, shell/status or horizontal overflow.
+- A controlled live GET-status 503 displays an alert and recovers through the
+  real Check status command after the interception is removed. The truthful
+  live result remains Previous sync incomplete, not a fabricated successful
+  sync inferred from import history. No live sync, preference POST, notice
+  DELETE or media activation is performed; those paths are isolated tests.
+- Editor diagnostics and patch whitespace are clean. Protected note drafts
+  and production are untouched. No new dependencies, migrations, reports,
+  analytical endpoints or SalesIQ tools; no push, merge or deployment.
