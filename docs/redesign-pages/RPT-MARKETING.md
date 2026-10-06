@@ -2,7 +2,7 @@
 
 - Checkpoint: 39; status: VERIFY, user-approved October 6, 2026.
 - Route: `/reports/marketing-insights`, including `embed=1`.
-- Audited baseline: `fe758b9b`; approved implementation ready for checkpoint commit.
+- Audited baseline: `fe758b9b`; approved revision committed as `858b85df`.
 - Files: `report_marketing_insights.html`, `ui-marketing.css`, `ui-marketing.js`.
 - Providers: existing queries in `reports.py`, unchanged.
 - Next action: retain verified behavior during remaining report migrations.

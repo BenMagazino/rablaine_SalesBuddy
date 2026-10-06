@@ -2118,6 +2118,19 @@ def api_u2c_import_official():
     return jsonify(result), status_code
 
 
+def _get_connect_impact_date_presets(reference: date) -> list[dict[str, str]]:
+    """Build current Microsoft fiscal-year start-date shortcuts, without end dates."""
+    from app.services.u2c_snapshot import current_fiscal_quarter, fiscal_quarter_date_range
+
+    fiscal_year = current_fiscal_quarter(reference).split()[0]
+    presets = []
+    for quarter in range(1, 5):
+        start, _ = fiscal_quarter_date_range(f'{fiscal_year} Q{quarter}')
+        label = f'{fiscal_year} start / Q1' if quarter == 1 else f'{fiscal_year} Q{quarter} start'
+        presets.append({'since': start.isoformat(), 'label': f'{label} ({start.isoformat()})'})
+    return presets
+
+
 @bp.route('/reports/connect-impact')
 def report_connect_impact():
     """Connect Impact report.
@@ -2182,6 +2195,7 @@ def report_connect_impact():
     return render_template(
         'report_connect_impact.html',
         since_date=since_date.isoformat(),
+        date_presets=_get_connect_impact_date_presets(date.today()),
         ranked=ranked,
         grand_total=grand_total,
     )

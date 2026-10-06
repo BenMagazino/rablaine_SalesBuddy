@@ -31,6 +31,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Review newly created and updated milestones in native side-by-side lists, with sortable data, saved filters/grouping, audit-aware dates, expanded-row exports and confirmed team changes.
 - Analyze whitespace in native grid, customer lookup and penetration views, with sortable data, working product previews, scoped exports, retryable reads and restored context on Back.
 - Browse Marketing customers beside sortable activity and contact details, with local timestamps, working filtered-summary exports and restored selection/reading context on Back.
+- Review Connect Impact in native customer-ranking and milestone panes, with sortable data, remembered commitment dates and restored customer/date context on Back.
+- Set Connect Impact's committed-since date quickly from the current fiscal-year or quarter start, while keeping custom dates available.
 - Use compact native Revenue Analyzer and seller-alert page commands, with quieter category summaries and persistent export-error feedback.
 - Show consistent under-navbar breadcrumbs throughout the app, with linked Home, real ownership paths and Revenue Analyzer under Reports.
 - Put the Home calendar beside distinct Action Items, Milestones Due and Revenue Alerts panels, with keyboard-operated activity tabs and preview rows.

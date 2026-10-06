@@ -466,6 +466,16 @@ const PageHelp = (function () {
       </ul>
       <p>CSV, Clipboard and Email export only the loaded grid, in its current order and coverage scope, even when another analysis tab is selected. Back restores the analysis view, confirmed bucket scope, draft selection, sorting and reading positions. Failed reads offer Retry.</p>
     `},
+    { pattern: /^\/reports\/connect-impact/, title: 'Connect Impact', content: `
+      <p>Customers rank by total estimated monthly ACR from committed milestones you are on the team for. Committed since uses the commitment date, inclusively, not the due date. All execution statuses qualify, including Completed and Cancelled.</p>
+      <ul>
+        <li>Choose a customer to inspect its milestones; its heading opens the customer page. Click a milestone title for the shared milestone preview.</li>
+        <li>Every data heading sorts both directions using raw amounts and calendar dates. Rank retains the original ACR ranking when you sort another column. Milestone amounts initially sort highest first; unavailable amounts contribute zero.</li>
+        <li>The start date is remembered between visits. An explicit URL date overrides that preference; the initial default is five months ago, with the day capped at 28.</li>
+        <li>Quick dates fills the start date from the current Microsoft fiscal year: Q1 / fiscal-year start is July 1, Q2 October 1, Q3 January 1 and Q4 April 1. These are committed-since shortcuts, not whole-quarter filters. Custom date focuses the date picker.</li>
+        <li>Back retains the original date scope, selected customer, table sorts and both reading positions. Embedded reports do not change the saved date or their parent's history.</li>
+      </ul>
+    `},
     { pattern: /^\/reports\/marketing-insights/, title: 'Marketing Insights', content: `
       <p>Choose a customer in the left list to inspect its account summary, sales-play breakdown and engaged contacts. The report uses cached MSX marketing data; sync and re-sync remain in Admin.</p>
       <ul>
