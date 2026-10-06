@@ -1,74 +1,49 @@
-# Page evidence card template
+# Compact page evidence card
 
-Copy this into `docs/redesign-pages/<PAGE-ID>.md` when starting a page.
-Create cards on demand, not 90 empty files up front. This file is not a checkoff.
+Create `docs/redesign-pages/<PAGE-ID>.md` on demand. Aim for 40-60 lines.
+Record current outcomes and references, not a chronological implementation diary.
 
 ## Identity
 
-- Tracker ID / page:
-- URLs, aliases and entry points:
-- Status:
-- Owner / pre-release reviewer (the user):
-- Product revision audited:
-- Implementation revision tested:
-- Last product reconciliation SHA:
-- Shared templates/components and host pages:
-- Relevant route/service/JS/test files:
+- Tracker ID / checkpoint:
+- Route, aliases and full/embed contexts:
+- Status / audited baseline / implementation SHA:
+- User approval date:
+- Relevant template, controller, service and test files:
 - Next action:
 
-## Original-to-redesign parity matrix
+## Scope
 
-Use one row per control or information surface, including conditional and
-JS-generated UI. Describe outcomes precisely enough that someone else can test.
+- Required migration:
+- Tightly coupled fixes:
+- Deferred work:
+- Shared components reused:
 
-| ID | Original control / information and visibility condition | Input / action | Expected output, defaults and side effects | Redesigned location | Evidence / scoped test | Result |
-| --- | --- | --- | --- | --- | --- | --- |
-| PAGE-01 | | | | | | NOT TESTED |
+## Contract and evidence
 
-Allowed results: NOT TESTED, PASS, FAIL, BLOCKED, APPROVED CHANGE.
-APPROVED CHANGE requires explicit approval in the decisions section.
+Group controls with the same outcome; do not inventory every repeated data row.
+Include conditional/async controls, defaults, information and side effects.
 
-## State and presentation checks
+| Surface / input | Expected behavior / information | Test or focused check | Result |
+| --- | --- | --- | --- |
+| Navigation / links | | | NOT TESTED |
+| Filters / sorting / remembered state | | | NOT TESTED |
+| Counts / values / dates / availability | | | NOT TESTED |
+| Actions / confirmation / drafts | | | NOT TESTED |
+| Loading / empty / errors / Retry | | | NOT TESTED |
+| Exports / full / embedded / Help | | | NOT TESTED |
 
-| Check | Evidence / result |
-| --- | --- |
-| Populated and empty data | |
-| Conditional controls / information | |
-| Loading, background progress and repeat interaction | |
-| Disabled/unavailable state | |
-| Validation, failures and recovery | |
-| Keyboard, focus return, dismissal and unsaved edits | |
-| Persistence, associations, date/time defaults and navigation | |
-| Full-page and injected partial contexts where applicable | |
-| Repeated/nested modal opens, cleanup and no duplicate handlers | |
-| Desktop viewport, resize/maximize, zoom and scrolling | |
-| Graphite dark / light | |
-| Midnight dark / light | |
-| Harbor dark / light | |
-| Carbon dark / light | |
-| Scoped tests using isolated test DB | |
+Results: PASS, FAIL, BLOCKED, APPROVED CHANGE, NOT TESTED.
+Link approved differences with date/rationale; unresolved required failures block sign-off.
 
-## Decisions and exceptions
+## Verification and sign-off
 
-Record approved behavioral differences with approver/date/rationale.
-No implicit approval from visual mockups. Link unresolved bugs here and keep
-status VERIFY or BLOCKED until required parity is resolved.
+- Exact scoped commands and outcomes:
+- Desktop integration checks / theme tokens:
+- Safe write strategy / protected drafts:
+- Known harness limitations or unresolved issues:
+- Approved behavioral differences:
+- User approval / tested commit / next action:
 
-## Changes since the audit
-
-| Product commit / change | Affected parity rows / shared hosts | Disposition and retest evidence |
-| --- | --- | --- |
-
-## Sign-off
-
-- All required rows passed:
-- No unapproved omissions or unresolved parity failures:
-- User validation / approval date:
-- Audited product SHA:
-- Tested implementation SHA:
-- Evidence links / scoped tests:
-- Last reconciliation checkpoint:
-- Approved changes:
-- Next action / handoff:
-
-Mark DONE in the main tracker only after completing this section.
+Detailed proof lives in tests. Link historical evidence rather than copying it.
+Only mark DONE after the workflow's revision-specific reconciliation gate.

@@ -5,12 +5,34 @@ the offline studies already have production feature parity.
 
 ## Start here each day
 
-1. Open the [page tracker](REDESIGN-PAGE-TRACKER.md).
+1. Read only the compact working checkpoint in the [page tracker](REDESIGN-PAGE-TRACKER.md).
 2. Reconcile product changes since the last checkpoint before choosing a page.
 3. Choose one page or one tightly coupled page/partial family.
 4. Create its evidence card from the [parity template](REDESIGN-PARITY-TEMPLATE.md).
-5. Audit the current implementation, redesign it, verify parity, get tester
-   approval, and update the tracker. Leave a next-action note before stopping.
+5. Audit the current implementation, redesign it, verify parity, get user
+   approval, and update its card and tracker once. Leave a short next-action note.
+
+## Execution budget and active context
+
+- Target 20-30 minutes for ordinary presentation migrations, not a guarantee for
+  complex editors. If exceeding that, name the concrete blocker or added scope.
+- Load the design contract, current page card, relevant code and tests only.
+  Historical checkpoint logs are archives, not routine session context.
+- Scope work as required migration, tightly coupled fixes, or deferred improvements.
+  Do not silently turn styling work into a new framework or unrelated hardening.
+- Use existing shared APIs. A new shared abstraction is a separately bounded
+  infrastructure task, not automatic work inside every page.
+- After two unsuccessful probes of one hypothesis, change method or record the
+  specific blocker. Avoid repeating the same browser experiment or speculative chain.
+- Batch independent reads and focused browser assertions. Avoid full snapshots
+  and repeated navigations when a compact DOM/data summary answers the question.
+- Use fresh chats at natural page-family boundaries with a compact handoff;
+  preserve workspace/branch and protected-draft constraints.
+- Keep the current handoff around ten lines and page cards around 40-60 lines.
+  Tests hold detailed executable proof; cards link to tests and genuine exceptions.
+- Update changelog for user-visible work. Update global contracts only when those
+  contracts change. Do not duplicate each checkpoint in Home and global-shell logs.
+- Preserve existing history and anchors when archiving; do not rewrite old proof.
 
 The tracker is the durable source of progress across chats and working days.
 Do not rely on conversation memory or a screenshot to declare a page complete.
@@ -122,16 +144,28 @@ checkoff does not automatically approve every host page.
 
 ### 3. Verify the actual behavior
 
-- Execute every parity row and record PASS, FAIL, BLOCKED or approved change.
+- Cover every parity row with a scoped test or focused manual check and record
+  PASS, FAIL, BLOCKED or approved change. Repeated instances are not separate contracts.
 - Compare information, navigation, prefilled values and persisted outcomes.
 - Test populated, empty, loading, disabled, validation/error and conditional states.
 - Test keyboard access, focus, dismissal and unsaved edits.
-- Test the current desktop Electron viewport, resize/maximize, renderer zoom
-  and usable scrolling. Mobile/tablet work is out of scope.
+- Test the current desktop Electron viewport and usable scrolling. Window/zoom
+  behavior needs fresh checks when affected; never resize a user-shared page.
+  Mobile/tablet work is out of scope.
 - Verify the page in all eight supported theme variants, including overlays and
   meaningful status contrast. Shared token changes reopen affected approvals.
 - Run scoped automated tests on the isolated test database. Never the full suite
   or tests against the live development/production database.
+- Start with page-specific tests. Run shared regressions when shared code changes.
+  Existing sorter/dialog/theme guarantees need representative host integration,
+  not exhaustive rediscovery across every repeated row/table.
+- Use deterministic isolated fixtures for exact semantic comparisons. Live data
+  demonstrates appearance/integration and can change while time or caches advance.
+  If retaining live baselines, keep field-level JSON privately outside git so a
+  changed hash can produce a real diff instead of speculation. Never clone the DB.
+- Browser checks cover meaningful paths: initial/empty/error state, filters,
+  representative sorts, navigation/Back and actual exports. Test writes/failures
+  with isolated fixtures or intercepted requests, never unnecessary live writes.
 - Exercise data mutations only on deliberately chosen development records.
   Avoid unnecessary external writes/sync operations; use isolated tests for
   failure/concurrency scenarios that cannot safely be induced live.
