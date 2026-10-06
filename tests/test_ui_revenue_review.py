@@ -260,7 +260,7 @@ def test_analyzer_commands_and_seller_menu_keep_destinations(
         "exportReportCSV()", "copyReportForEmail()", "downloadReportEmail()",
     ]
     assert all("sb-revenue-command" in button["class"] for button in export.select("button"))
-    assert "const CUSTOM_TITLE = 'Revenue Analyzer';" in response.get_data(as_text=True)
+    assert 'const CUSTOM_TITLE = "Revenue Analyzer";' in response.get_data(as_text=True)
     assert root.select_one("#reportExportNoticeTemplate .sb-notice")
     trigger = root.select_one('[data-sb-menu="revenueSellersMenu"]')
     assert trigger["data-sb-menu-anchor"] == "trigger"

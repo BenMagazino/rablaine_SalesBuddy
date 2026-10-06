@@ -2183,3 +2183,97 @@ Approved predecessor: `70ec157`. Approved overall effort is about 40%.
   evidence above predates this intentional action-column exception.
 - The inherited export separator is removed only in the Hygiene header. There
   are no commands after Email here; Revenue toolbars retain their useful divider.
+- Hygiene is committed locally as `9195a2c8`. Approved effort remains about 40%.
+
+## Checkpoint 37: What's New
+
+- Status: VERIFY, technically verified and awaiting user visual review.
+- Composition: a continuous desktop activity workbench with Created and Updated
+  beside each other, independent reading regions and fixed commands/scope/status.
+  The two lists are comparisons, not a selector/detail pattern or decorative cards.
+- Existing provider, MSX/local timestamp precedence, seller-mode default and DSS
+  presentation are preserved. Incomplete creation metadata can legitimately put a
+  milestone in both lists; counts describe entries rather than deduplicated IDs.
+- Seven lookback presets retain the 1-90 day clamp. A non-preset URL such as five
+  days has an honest selected option. Last 24 hours replaces the misleading Today
+  label without changing the rolling query. Empty text names the actual window.
+- Seller, area and team intersect across both lists. Saved ungrouped and empty
+  change-type selections work. Native seller/customer details retain original
+  collapse keys, filter-match counts and expanded-only export scope.
+- Audit labels still come from all cached history. Subset filtering affects
+  Updated only; its date becomes the latest matching audit, even before the
+  lookback. All types restore the milestone date. Calendar text, tooltip and raw
+  date sort keys change together without local-time date shifts.
+- All five data columns sort in both directions. On Team is boolean membership,
+  not alphabetical action text. Full-precision ACR and calendar keys remain.
+  Explicit source ordinals preserve provider chronology across group rebuilds
+  and pre-mounted historical sorts. The old malformed Updated six-cell row is
+  corrected to five matching cells.
+- Native join/leave dialogs require confirmation. Only confirmed responses
+  update every occurrence, raw membership sort keys, export booleans, filter
+  counts and action labels. Pending writes protect closing/navigation. Explicit
+  rejection can be retried manually; uncertain responses remain blocked with an
+  MSX review link, without automatic duplicate requests.
+- CSV/Clipboard/Email retain both lists and section/seller/customer context.
+  JSON-safe shared export configuration fixes apostrophes and quoted values
+  without changing legacy export scope. No trailing divider follows Email.
+- Storage read/save and history failures are explicit. Failed lookback saves
+  leave the existing window and selected value intact, with Retry lookback.
+  Back merges report state with shared sort state and restores both reading
+  positions. Embedded lists stack without navigation/footer/window ownership.
+
+### Verification
+
+- 218 scoped Python checks, followed by 10 final focused checks, cover native full/embed markup, all five cells/columns,
+  stable source ordinals, raw precision, links/booleans, MSX precedence/local
+  fallback, overlap, all-history/latest audits, actual clamped/custom windows,
+  seller defaults, DSS rendering, Help and shared export consumers.
+- 85 JavaScript checks cover intersecting scopes, Updated-only type semantics,
+  audit fallback/reset, calendar/time validation, legacy preference schemas,
+  lookback range, all-occurrence membership reconciliation, serialized confirmed
+  writes, explicit rejection and uncertain-response suppression. Shared sorter,
+  dialog, picker, Hygiene and native/legacy clipboard regressions remain scoped.
+- The live fourteen-day report retains 296 Created and 180 Updated records.
+  Initial original/native canonical record metadata SHA-256 matches exactly:
+  `11ce3ad38102305ae8f1486a6e3ec49034b325b19384720aa68a1b8779d6e80b`.
+  The final live projection is `14bcb85f2fa54dc22b86da818c19f91b59d6e7fc31db027c143d3402f2de5481`
+  with the same counts. The live source is not frozen across navigation/time
+  checks; source semantics and output fields also have isolated regressions.
+- 1,110 actual heading activations verify both directions of every column across
+  all 109 grouped tables and both ungrouped tables, with zero ordering failures.
+  Eight intersecting filter/type scenarios match expected IDs, counts and audit
+  date keys. On Team yields 0/24; Off Team 296/156; Title 296/142; no types 296/0.
+- Collapsing the five-entry first seller leaves counts 296/180 while exportable
+  rows drop from 476 to 471. Confirmation opening/canceling does not change
+  scope or checkbox state. Actual CSV/EML and clipboard payloads are intercepted:
+  109 tables, 476 data rows and 476 retained MSX links, with proper What's New
+  title and no action/sort instructions. Nothing downloads, sends or replaces
+  the user's clipboard during testing.
+- Browser-intercepted membership responses exercise confirmed success, explicit
+  rejection and network uncertainty. Success removes the source from On Team
+  and changes 24 to 23; the server remains on-team, proving no real write.
+  Rejection remains retryable; uncertainty blocks a second request.
+- Real milestone navigation and Back restore 640px/700px offsets, counts
+  296/142, selected Title, ascending Created ACR, descending Updated date and
+  identical first-five record orders. Native Help opens with the correct page
+  content. Menu Escape events close and restore summary focus; this browser
+  harness's physical key method emits no DOM key event, so that method cannot
+  verify keyboard delivery.
+- Actual lookback navigation changes fourteen-day counts 296/180 to three-day
+  counts 41/32, then Back restores fourteen days and 296/180. Fresh visits restore
+  the saved three-day preference without adding a redirect loop. A retained
+  pending select value initially disagreed with the restored source window;
+  immutable server window metadata and resetting it before navigation/after
+  restoration fix this, with a focused control regression.
+- Deliberately intercepted preference/history failures show explicit notices,
+  valid current scope and successful recovery. Eight approved theme token pairs
+  retain the 1724x1174 desktop frame, 889px reading regions and zero document
+  overflow. Five-day source checks initially return 235 records; the later
+  actual embed renders 231 as the rolling cutoff advances, without window chrome
+  or report-owned history.
+- No provider/model/migration/tool/dependency changes, manual live membership
+  writes, production access or protected-draft navigation. No push, merge or
+  deployment. This checkpoint remains uncommitted pending visual approval.
+  Original fourteen-day local preferences, empty collapse state, unsaved day
+  preference, default source ordering/reading, Graphite Dark and empty test
+  history are restored for review.

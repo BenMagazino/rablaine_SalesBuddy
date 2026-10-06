@@ -50,7 +50,7 @@ def test_workload_native_structure(
     assert acme.select_one("a")["href"] == f"/customer/{sample_data['customer1_id']}"
     assert acme.select_one("td")["data-export-url"] == "https://example.com/acme"
     assert '.sb-workload-table[data-workload-visible=true]' in response.get_data(as_text=True)
-    assert "const CUSTOM_TITLE = 'Workload Report'" in response.get_data(as_text=True)
+    assert 'const CUSTOM_TITLE = "Workload Report"' in response.get_data(as_text=True)
     assert soup.select_one('script[src$="/ui-workload.js"]')
 
 

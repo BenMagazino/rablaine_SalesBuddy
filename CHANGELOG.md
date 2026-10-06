@@ -28,6 +28,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Browse workloads beside sortable customer details, keeping date scope, deduplicated ACR and all-workload exports intact, with saved All and retryable filter persistence.
 - Repair engagement/milestone gaps in native sortable queues, with protected drafts, confirmed reason-note saves, both-queue exports and retryable repair refreshes.
 - Keep Hygiene repair actions under a plain Fix heading while data columns remain sortable.
+- Review newly created and updated milestones in native side-by-side lists, with sortable data, saved filters/grouping, audit-aware dates, expanded-row exports and confirmed team changes.
 - Use compact native Revenue Analyzer and seller-alert page commands, with quieter category summaries and persistent export-error feedback.
 - Show consistent under-navbar breadcrumbs throughout the app, with linked Home, real ownership paths and Revenue Analyzer under Reports.
 - Put the Home calendar beside distinct Action Items, Milestones Due and Revenue Alerts panels, with keyboard-operated activity tabs and preview rows.

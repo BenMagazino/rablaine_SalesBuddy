@@ -442,6 +442,18 @@ const PageHelp = (function () {
       <p>CSV, Clipboard and Email include both queues, not just the selected tab, respecting On Team only. Grouped exports identify each seller in the milestone heading. Exports contain confirmed reasons and story percentages, without save-status or action-button text.</p>
       <p>Back restores the queue, scope, grouping, sorting and reading positions. Embedded reports show both queues stacked and do not change their parent's view history.</p>
     `},
+    { pattern: /^\/reports\/whats-new/, title: "What's New", content: `
+      <p>Created and Updated are independent activity lists. Lookback is a rolling window of 1 to 90 days; Last 24 hours is not calendar midnight. Explicit days in the URL override the saved lookback.</p>
+      <p>MSX creation and modification dates take precedence over local dates. Newly created milestones normally appear under Created; records with incomplete MSX date metadata can appear in both lists. Counts describe list entries, not unique milestones across both panes.</p>
+      <ul>
+        <li>Seller, Area and Team filter both lists. Group by seller / customer and each group's expansion are saved between visits. Counts include collapsed groups.</li>
+        <li>Change types filter Updated only. Select all removes that restriction; Clear all shows no Updated matches. Matching labels come from all cached audits, not just audits inside the lookback.</li>
+        <li>When only some change types are selected, Updated shows the latest matching audit date, which can be older than the lookback. With all types selected, it returns to the milestone modification date. Sorting follows the displayed calendar date.</li>
+        <li>Click any data heading to sort ascending or descending within its group. ACR sorts by full precision, not rounded display amounts. On Team sorts membership, not the action label.</li>
+        <li>Join and leave require confirmation. Only confirmed changes update every occurrence, counts, filters and exports. An uncertain response is not automatically repeated; review the milestone in MSX first.</li>
+      </ul>
+      <p>CSV, Clipboard and Email include both lists' expanded rows in their current order, retaining section, seller and customer context. Collapsed rows are excluded. Back restores scope, grouping, sorts and each pane's reading position. Embedded reports stack the lists without changing their parent's view history.</p>
+    `},
     { pattern: /^\/reports\/revenue-reports/, title: 'Revenue Reports', content: `
       <p>Open Synapse Customers to review adoption grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>
     `},

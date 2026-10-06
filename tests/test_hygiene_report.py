@@ -192,7 +192,7 @@ class TestHygieneReport:
                 assert all(cell.has_attr('data-sb-sort-value') for cell in row.select('td')[:5])
                 assert not row.select('td')[-1].has_attr('data-sb-sort-value')
         assert '.sb-hygiene-table[data-export-visible=true]' in response.get_data(as_text=True)
-        assert "const CUSTOM_TITLE = 'Engagement / Milestone Hygiene'" in response.get_data(
+        assert 'const CUSTOM_TITLE = "Engagement / Milestone Hygiene"' in response.get_data(
             as_text=True)
         assert 'tables.flatMap' in response.get_data(as_text=True)
         assert soup.select_one('input[name="title"][required]')

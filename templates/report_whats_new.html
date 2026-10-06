@@ -1,607 +1,129 @@
 {% extends "base.html" %}
 {% block title %}What's New - Sales Buddy{% endblock %}
-
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-whats-new.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="What's New report status">
+    <span data-sb-whats-new-status>Milestones from the last {{ days }} days</span>
+    <span>Counts include collapsed groups. Exports include expanded rows only.</span>
+</footer>
+{% endif %}
+{% endblock %}
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-            <h2><i class="bi bi-megaphone"></i> What's New</h2>
-            <p class="text-muted mb-0">Milestones created or updated in the last {{ days }} days.</p>
-        </div>
-        <div class="d-flex flex-column align-items-end gap-1">
-            <div class="d-flex gap-2">
-                {% set export_table_id = 'table.table' %}
-                {% set export_filename = 'whats-new-report' %}
-                {% include 'partials/_report_export.html' %}
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <label class="form-label mb-0 text-nowrap"><i class="bi bi-funnel"></i></label>
-                <select class="form-select form-select-sm" id="daysFilter" style="width: auto;" onchange="changeDays(this.value)">
-                    <option value="1" {% if days == 1 %}selected{% endif %}>Today</option>
-                    <option value="3" {% if days == 3 %}selected{% endif %}>3 days</option>
-                    <option value="7" {% if days == 7 %}selected{% endif %}>7 days</option>
-                    <option value="14" {% if days == 14 %}selected{% endif %}>14 days</option>
-                    <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
-                    <option value="60" {% if days == 60 %}selected{% endif %}>60 days</option>
-                    <option value="90" {% if days == 90 %}selected{% endif %}>90 days</option>
-                </select>
-                {% if user_role != 'dss' %}
-                <select class="form-select form-select-sm" id="sellerFilter" style="width: auto;" onchange="applyFilters()">
-                    <option value="">All Sellers</option>
-                    {% for seller in sellers %}
-                    <option value="{{ seller.id }}" {% if seller_mode_sid and seller_mode_sid == seller.id %}selected{% endif %}>{{ seller.name }}</option>
-                    {% endfor %}
-                </select>
+<section class="sb-whats-new" data-sb-whats-new data-sb-page-surface data-days="{{ days }}"
+         data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+         aria-labelledby="whatsNewTitle">
+    <header class="sb-whats-new-header" data-sb-page-band>
+        <div><h1 id="whatsNewTitle">What's New</h1>
+            <p>Recently created milestones and changes to existing work.</p></div>
+        {% set export_table_id = '.sb-whats-new-table[data-export-visible=true]' %}
+        {% set export_filename = 'whats-new-report' %}
+        {% set export_title = "What's New" %}
+        {% set report_export_native = true %}
+        {% include 'partials/_report_export.html' %}
+    </header>
+    <div class="sb-whats-new-filters" data-sb-page-band>
+        <label for="daysFilter">Lookback</label><select id="daysFilter">
+            {% for option in [1, 3, 7, 14, 30, 60, 90] %}
+            <option value="{{ option }}" {% if days == option %}selected{% endif %}>{{ 'Last 24 hours' if option == 1 else option|string ~ ' days' }}</option>
+            {% endfor %}
+            {% if days not in [1, 3, 7, 14, 30, 60, 90] %}<option value="{{ days }}" selected>{{ days }} days</option>{% endif %}
+        </select>
+        {% if user_role != 'dss' %}
+        <label for="sellerFilter">Seller</label><select id="sellerFilter">
+            <option value="">All sellers</option>
+            {% for seller in sellers %}<option value="{{ seller.id }}" {% if seller_mode_sid == seller.id %}selected{% endif %}>{{ seller.name }}</option>{% endfor %}
+        </select>
+        {% endif %}
+        <label for="areaFilter">Area</label><select id="areaFilter">
+            <option value="">All areas</option>
+            {% for area in areas %}<option value="{{ area }}">{{ area }}</option>{% endfor %}
+        </select>
+        <label for="teamFilter">Team</label><select id="teamFilter">
+            <option value="">All teams</option><option value="on">On team</option><option value="off">Off team</option>
+        </select>
+        <button type="button" id="groupByBtn" aria-pressed="true"><i class="bi bi-list-nested" aria-hidden="true"></i> Group by seller / customer</button>
+    </div>
+    <div class="sb-whats-new-notice" data-sb-page-band hidden>
+        <p data-sb-whats-new-error role="alert"></p>
+        <button type="button" data-sb-whats-new-retry hidden>Retry saved preferences</button>
+    </div>
+    <div class="sb-whats-new-workarea" data-sb-page-body>
+        {% for section, milestones in [('created', created_milestones), ('updated', updated_milestones)] %}
+        <section class="sb-whats-new-pane" aria-labelledby="{{ section }}Title" data-section="{{ section }}">
+            <header class="sb-whats-new-pane-header">
+                <h2 id="{{ section }}Title"><i class="bi bi-{{ 'plus-circle' if section == 'created' else 'pencil-square' }}" aria-hidden="true"></i> {{ section|title }}</h2>
+                <span class="sb-whats-new-count" id="{{ section }}Count">{{ milestones|length }}</span>
+                {% if section == 'updated' and change_types %}
+                <details class="sb-whats-new-types">
+                    <summary id="changeTypeBtn">All changes</summary>
+                    <div class="sb-whats-new-type-menu">
+                        <div><button type="button" data-change-types="all">Select all</button><button type="button" data-change-types="none">Clear all</button></div>
+                        {% for change in change_types %}<label><input type="checkbox" class="change-type-cb" value="{{ change }}" checked> {{ change }}</label>{% endfor %}
+                    </div>
+                </details>
                 {% endif %}
-                <select class="form-select form-select-sm" id="areaFilter" style="width: auto;" onchange="applyFilters()">
-                    <option value="">All Areas</option>
-                    {% for area in areas %}
-                    <option value="{{ area }}">{{ area }}</option>
-                    {% endfor %}
-                </select>
-                <select class="form-select form-select-sm" id="teamFilter" style="width: auto;" onchange="applyFilters()">
-                    <option value="">All Team</option>
-                    <option value="on">On Team</option>
-                    <option value="off">Off Team</option>
-                </select>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="groupByBtn" onclick="toggleGroupBy()" title="Group by seller/customer">
-                    <i class="bi bi-list-nested"></i> Group
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mb-4">
-        <!-- Created milestones -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header py-2 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0"><i class="bi bi-plus-circle text-success"></i> Created <span class="badge bg-success ms-1" id="createdCount">{{ created_milestones|length }}</span></h6>
-                </div>
-                <div class="card-body p-0">
-                    {% if created_milestones %}
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0" style="font-size: 0.82em; --bs-table-bg: transparent;">
-                            <thead>
-                                <tr class="text-muted" style="font-size: 0.85em;">
-                                    <th class="ps-3">Milestone</th>
-                                    <th>Seller</th>
-                                    <th class="text-end">Est. ACR</th>
-                                    <th class="text-end pe-3">Created</th>
-                                    <th class="text-nowrap">On Team</th>
-                                </tr>
-                            </thead>
-                            <tbody id="createdBody">
-                                {% for ms in created_milestones %}
-                                {% set wl_area = ms.workload.split(':', 1)[0].strip() if ms.workload and ':' in ms.workload else (ms.workload.strip() if ms.workload else '') %}
-                                <tr data-seller-id="{{ ms.customer.seller.id if ms.customer and ms.customer.seller else '' }}"
-                                    data-seller-name="{{ ms.customer.seller.name if ms.customer and ms.customer.seller else '' }}"
-                                    data-customer-name="{{ ms.customer.name if ms.customer else '' }}"
-                                    data-area="{{ wl_area }}"
-                                    data-on-my-team="{{ 'true' if ms.on_my_team else 'false' }}"
-                                    data-milestone-id="{{ ms.id }}"
-                                    class="data-row">
-                                    <td class="ps-3" data-export-url="{{ ms.url }}">
-                                        <small class="text-muted">{{ ms.customer.name if ms.customer else '' }}</small>
-                                        {% if ms.msx_status %}
-                                        <span class="badge ms-1
-                                            {% if ms.msx_status == 'On Track' %}bg-success
-                                            {% elif ms.msx_status == 'At Risk' %}bg-warning text-dark
-                                            {% elif ms.msx_status == 'Blocked' %}bg-danger
-                                            {% elif ms.msx_status == 'Completed' %}bg-secondary
-                                            {% else %}bg-light text-dark{% endif %}"
-                                            style="font-size: 0.8em;">{{ ms.msx_status }}</span>
-                                        {% endif %}
-                                        <br><a href="{{ url_for('milestones.milestone_view', id=ms.id) }}" class="text-decoration-none">{{ ms.display_text[:50] }}{% if ms.display_text|length > 50 %}...{% endif %}</a>
-                                        {% if ms.workload %}<br><small class="text-muted">{{ ms.workload }}</small>{% endif %}
-                                    </td>
-                                    <td><small>{{ ms.customer.seller.name if ms.customer and ms.customer.seller else '' }}</small></td>
-                                    <td class="text-end">
-                                        {% if ms.monthly_usage %}
-                                        <small class="text-success">${{ '{:,.0f}'.format(ms.monthly_usage) }}/mo</small>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-end pe-3">
-                                        {% set display_date = ms.msx_created_on or ms.created_at %}
-                                        <span class="badge border text-body-secondary d-block" style="font-size: 0.8em; font-weight: normal;">{{ display_date.strftime('%b %d') }}</span>
-                                    </td>
-                                    <td class="text-center" data-export-bool="{{ 'true' if ms.on_my_team else 'false' }}">
-                                        {% if ms.on_my_team %}
-                                        <button class="btn btn-sm btn-success team-toggle on-team" data-id="{{ ms.id }}" data-on-team="1" title="On milestone team (click to leave)" onclick="toggleTeam(this, {{ ms.id }})">
-                                            <i class="bi bi-people-fill icon-default"></i><i class="bi bi-person-dash icon-leave"></i>
-                                        </button>
-                                        {% else %}
-                                        <button class="btn btn-sm btn-outline-success team-toggle" data-id="{{ ms.id }}" data-on-team="0" title="Join milestone team" onclick="toggleTeam(this, {{ ms.id }})">
-                                            <i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i>
-                                        </button>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="p-3 text-center" id="createdEmpty">
-                        <small class="text-muted">No milestones created in the last 2 weeks.</small>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Updated milestones -->
-        <div class="col-md-6">
-            <div class="card" style="overflow: visible;">
-                <div class="card-header py-2 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0"><i class="bi bi-pencil-square text-primary"></i> Updated <span class="badge bg-primary ms-1" id="updatedCount">{{ updated_milestones|length }}</span></h6>
-                    {% if change_types %}
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle py-0" type="button" id="changeTypeBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="font-size: 0.8em;">
-                            All Changes
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" style="min-width: 200px; max-height: 320px; overflow-y: auto; font-size: 0.85em;" id="changeTypeMenu">
-                            <li><a class="dropdown-item py-1" href="#" onclick="toggleAllChangeTypes(event)"><strong>Select / Deselect All</strong></a></li>
-                            <li><hr class="dropdown-divider my-1"></li>
-                            {% for ct in change_types %}
-                            <li>
-                                <label class="dropdown-item py-1 d-flex align-items-center gap-2" style="cursor: pointer;">
-                                    <input type="checkbox" class="form-check-input mt-0 change-type-cb" value="{{ ct }}" checked onchange="applyFilters()">
-                                    {{ ct }}
-                                </label>
-                            </li>
+            </header>
+            <div class="sb-whats-new-reading" tabindex="0" role="region" aria-label="{{ section|title }} milestones">
+                <div data-sb-whats-new-tables>
+                    <table class="sb-whats-new-table" data-sb-sortable data-sb-sort-key="whats-new-{{ section }}" data-export-visible="{{ 'true' if milestones else 'false' }}">
+                        <thead><tr>
+                            {% for label, kind in [('Milestone', 'text'), ('Seller', 'text'), ('Est. ACR', 'number'), (section|title, 'date'), ('On Team', 'number')] %}
+                            <th data-sb-sort-type="{{ kind }}" data-export-label="{{ label }}{{ ' (' ~ section|title ~ ')' if loop.first else '' }}">{{ label }}</th>
                             {% endfor %}
-                        </ul>
-                    </div>
-                    {% endif %}
+                        </tr></thead>
+                        <tbody id="{{ section }}Body">
+                            {% for ms in milestones %}
+                            {% set changes = audit_changes.get(ms.id, []) if section == 'updated' else [] %}
+                            {% set display_date = (ms.msx_created_on or ms.created_at) if section == 'created' else (ms.msx_modified_on or ms.updated_at) %}
+                            {% set ms_seller = ms.customer.seller if ms.customer else none %}
+                            <tr class="data-row" data-milestone-id="{{ ms.id }}" data-source-order="{{ loop.index0 }}"
+                                data-seller-id="{{ ms_seller.id if ms_seller else '' }}"
+                                data-seller-name="{{ ms_seller.name if ms_seller else '' }}"
+                                data-customer-name="{{ ms.customer.name if ms.customer else '' }}"
+                                data-area="{{ ms.workload.split(':', 1)[0].strip() if ms.workload else '' }}"
+                                data-on-my-team="{{ 'true' if ms.on_my_team else 'false' }}"
+                                data-change-types="{{ changes|join('|') }}">
+                                <td data-export-url="{{ ms.url }}" data-sb-sort-value="{{ ms.display_text }}">
+                                    <small class="sb-whats-new-customer">{{ ms.customer.name if ms.customer else '' }}</small>
+                                    {% if section == 'created' and ms.msx_status %}<span class="sb-whats-new-state" data-state="{{ ms.msx_status }}">{{ ms.msx_status }}</span>{% endif %}
+                                    <br><a href="{{ url_for('milestones.milestone_view', id=ms.id) }}" title="{{ ms.display_text }}">{{ ms.display_text[:50] }}{% if ms.display_text|length > 50 %}...{% endif %}</a>
+                                    {% if section == 'updated' and ms.msx_status %}<span class="sb-whats-new-state" data-state="{{ ms.msx_status }}">{{ ms.msx_status }}</span>{% endif %}
+                                    {% if ms.workload %}<br><small class="sb-whats-new-workload">{{ ms.workload }}</small>{% endif %}
+                                    {% if changes %}<br>{% for change in changes %}<span class="sb-whats-new-change">{{ change }}</span>{% endfor %}{% endif %}
+                                </td>
+                                <td data-sb-sort-value="{{ ms_seller.name if ms_seller else '' }}">{% if ms_seller %}<span class="sb-whats-new-seller"><i class="bi bi-person" aria-hidden="true"></i> {{ ms_seller.name }}</span>{% endif %}</td>
+                                <td class="sb-whats-new-money" data-sb-sort-value="{{ ms.monthly_usage if ms.monthly_usage is not none else '' }}">{% if ms.monthly_usage %}${{ '{:,.0f}'.format(ms.monthly_usage) }}/mo{% endif %}</td>
+                                <td class="sb-whats-new-date" data-sb-sort-value="{{ display_date.strftime('%Y-%m-%d') }}"><span data-original-date="{{ display_date.strftime('%b %d') }}" data-original-iso="{{ display_date.strftime('%Y-%m-%d') }}" title="{{ display_date.strftime('%Y-%m-%d') }}">{{ display_date.strftime('%b %d') }}</span></td>
+                                <td data-export-bool="{{ 'true' if ms.on_my_team else 'false' }}" data-sb-sort-value="{{ 1 if ms.on_my_team else 0 }}">
+                                    <button type="button" class="sb-whats-new-team" data-on-team="{{ 'true' if ms.on_my_team else 'false' }}" title="{{ 'Leave milestone team' if ms.on_my_team else 'Join milestone team' }}" aria-label="{{ 'Leave' if ms.on_my_team else 'Join' }} milestone team: {{ ms.display_text }}"><i class="bi bi-{{ 'people-fill' if ms.on_my_team else 'person-plus' }}" aria-hidden="true"></i> <span>{{ 'On team' if ms.on_my_team else 'Join' }}</span></button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="card-body p-0">
-                    {% if updated_milestones %}
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0" style="font-size: 0.82em; --bs-table-bg: transparent;">
-                            <thead>
-                                <tr class="text-muted" style="font-size: 0.85em;">
-                                    <th class="ps-3">Milestone</th>
-                                    <th>Seller</th>
-                                    <th class="text-end">Est. ACR</th>
-                                    <th class="text-end pe-3">Updated</th>
-                                    <th class="text-nowrap">On Team</th>
-                                </tr>
-                            </thead>
-                            <tbody id="updatedBody">
-                                {% for ms in updated_milestones %}
-                                {% set wl_area = ms.workload.split(':', 1)[0].strip() if ms.workload and ':' in ms.workload else (ms.workload.strip() if ms.workload else '') %}
-                                {% set changes = audit_changes.get(ms.id, []) %}
-                                <tr data-seller-id="{{ ms.customer.seller.id if ms.customer and ms.customer.seller else '' }}"
-                                    data-seller-name="{{ ms.customer.seller.name if ms.customer and ms.customer.seller else '' }}"
-                                    data-customer-name="{{ ms.customer.name if ms.customer else '' }}"
-                                    data-area="{{ wl_area }}"
-                                    data-on-my-team="{{ 'true' if ms.on_my_team else 'false' }}"
-                                    data-milestone-id="{{ ms.id }}"
-                                    data-change-types="{{ changes|join('|') }}"
-                                    class="data-row">
-                                    <td class="ps-3">
-                                    <td class="ps-3" data-export-url="{{ ms.url }}">
-                                        <small class="text-muted">{{ ms.customer.name if ms.customer else '' }}</small>
-                                        <br><a href="{{ url_for('milestones.milestone_view', id=ms.id) }}" class="text-decoration-none">{{ ms.display_text[:50] }}{% if ms.display_text|length > 50 %}...{% endif %}</a>
-                                        {% if ms.msx_status %}
-                                        <span class="badge ms-1
-                                            {% if ms.msx_status == 'On Track' %}bg-success
-                                            {% elif ms.msx_status == 'At Risk' %}bg-warning text-dark
-                                            {% elif ms.msx_status == 'Blocked' %}bg-danger
-                                            {% elif ms.msx_status == 'Completed' %}bg-secondary
-                                            {% else %}bg-light text-dark{% endif %}"
-                                            style="font-size: 0.8em;">{{ ms.msx_status }}</span>
-                                        {% endif %}
-                                        {% if ms.workload %}<br><small class="text-muted">{{ ms.workload }}</small>{% endif %}
-                                        {% if changes %}
-                                        <br>{% for ch in changes %}<span class="badge bg-info text-dark me-1" style="font-size: 0.7em;">{{ ch }}</span>{% endfor %}
-                                        {% endif %}
-                                    </td>
-                                    <td><small>{{ ms.customer.seller.name if ms.customer and ms.customer.seller else '' }}</small></td>
-                                    <td class="text-end">
-                                        {% if ms.monthly_usage %}
-                                        <small class="text-success">${{ '{:,.0f}'.format(ms.monthly_usage) }}/mo</small>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-end pe-3 updated-date-cell">
-                                        {% set display_date = ms.msx_modified_on or ms.updated_at %}
-                                        <span class="badge border text-body-secondary d-block" data-original-date="{{ display_date.strftime('%b %d') }}" style="font-size: 0.8em; font-weight: normal;">{{ display_date.strftime('%b %d') }}</span>
-                                    </td>
-                                    <td class="text-center" data-export-bool="{{ 'true' if ms.on_my_team else 'false' }}">
-                                        {% if ms.on_my_team %}
-                                        <button class="btn btn-sm btn-success team-toggle on-team" data-id="{{ ms.id }}" data-on-team="1" title="On milestone team (click to leave)" onclick="toggleTeam(this, {{ ms.id }})">
-                                            <i class="bi bi-people-fill icon-default"></i><i class="bi bi-person-dash icon-leave"></i>
-                                        </button>
-                                        {% else %}
-                                        <button class="btn btn-sm btn-outline-success team-toggle" data-id="{{ ms.id }}" data-on-team="0" title="Join milestone team" onclick="toggleTeam(this, {{ ms.id }})">
-                                            <i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i>
-                                        </button>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="p-3 text-center" id="updatedEmpty">
-                        <small class="text-muted">No milestones updated in the last 2 weeks.</small>
-                    </div>
-                    {% endif %}
-                </div>
+                <p class="sb-whats-new-empty" id="{{ section }}Empty" {% if milestones %}hidden{% endif %}>No {{ section }} milestones in the last {{ days }} days.</p>
             </div>
-        </div>
+        </section>
+        {% endfor %}
     </div>
-</div>
-
-<script>
-var STORAGE_KEY = 'whats_new_filters';
-var COLLAPSE_KEY = 'whats_new_collapsed';
-var grouped = true;
-var collapsedGroups = {};
-var auditDates = {{ audit_dates | tojson }};
-
-function getCheckedChangeTypes() {
-    var cbs = document.querySelectorAll('.change-type-cb');
-    if (!cbs.length) return null;  // no checkboxes = no filter
-    var checked = [];
-    cbs.forEach(function(cb) { if (cb.checked) checked.push(cb.value); });
-    return checked;
-}
-
-function allChangeTypesChecked() {
-    var cbs = document.querySelectorAll('.change-type-cb');
-    if (!cbs.length) return true;
-    return Array.from(cbs).every(function(cb) { return cb.checked; });
-}
-
-function toggleAllChangeTypes(e) {
-    e.preventDefault();
-    var cbs = document.querySelectorAll('.change-type-cb');
-    var allChecked = Array.from(cbs).every(function(cb) { return cb.checked; });
-    cbs.forEach(function(cb) { cb.checked = !allChecked; });
-    applyFilters();
-}
-
-function updateChangeTypeButtonStyle() {
-    var btn = document.getElementById('changeTypeBtn');
-    if (!btn) return;
-    var cbs = document.querySelectorAll('.change-type-cb');
-    var checked = Array.from(cbs).filter(function(cb) { return cb.checked; });
-    if (checked.length === cbs.length) {
-        btn.classList.remove('btn-secondary');
-        btn.classList.add('btn-outline-secondary');
-        btn.textContent = 'All Changes';
-    } else if (checked.length === 1) {
-        btn.classList.remove('btn-outline-secondary');
-        btn.classList.add('btn-secondary');
-        btn.textContent = checked[0].value;
-    } else if (checked.length === 0) {
-        btn.classList.remove('btn-outline-secondary');
-        btn.classList.add('btn-secondary');
-        btn.textContent = 'No Changes';
-    } else {
-        btn.classList.remove('btn-outline-secondary');
-        btn.classList.add('btn-secondary');
-        btn.textContent = checked[0].value + ' +' + (checked.length - 1);
-    }
-}
-
-function saveFilters() {
-    var sellerEl = document.getElementById('sellerFilter');
-    var checkedTypes = getCheckedChangeTypes();
-    var state = {
-        seller: sellerEl ? sellerEl.value : '',
-        area: document.getElementById('areaFilter').value,
-        team: document.getElementById('teamFilter').value,
-        changeTypes: checkedTypes,
-        grouped: grouped,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-function saveCollapsed() {
-    localStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapsedGroups));
-}
-
-function loadFilters() {
-    try {
-        var saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        if (!saved) return;
-        var sellerEl = document.getElementById('sellerFilter');
-        if (saved.seller && sellerEl) sellerEl.value = saved.seller;
-        if (saved.area) document.getElementById('areaFilter').value = saved.area;
-        if (saved.team) document.getElementById('teamFilter').value = saved.team;
-        if (saved.changeTypes && Array.isArray(saved.changeTypes)) {
-            var cbs = document.querySelectorAll('.change-type-cb');
-            cbs.forEach(function(cb) {
-                cb.checked = saved.changeTypes.indexOf(cb.value) !== -1;
-            });
-        }
-        if (saved.grouped) grouped = true;
-    } catch(e) {}
-    try {
-        var c = JSON.parse(localStorage.getItem(COLLAPSE_KEY));
-        if (c) collapsedGroups = c;
-    } catch(e) {}
-}
-
-function toggleGroupBy() {
-    grouped = !grouped;
-    if (!grouped) collapsedGroups = {};
-    applyFilters();
-}
-
-function toggleGroup(key, section) {
-    var fullKey = section + ':' + key;
-    collapsedGroups[fullKey] = !collapsedGroups[fullKey];
-    saveCollapsed();
-    applyGroupVisibility(section);
-}
-
-function applyGroupVisibility(section) {
-    var tbody = document.getElementById(section + 'Body');
-    var sellerEl = document.getElementById('sellerFilter');
-    var inSellerMode = sellerEl ? !!sellerEl.value : true;
-
-    // Build a map: for each seller-group, which customer-groups and data-rows belong to it
-    // For each customer-group, which data-rows belong to it
-    var allRows = Array.from(tbody.children);
-    var currentSeller = null;
-    var currentCustomer = null;
-
-    allRows.forEach(function(row) {
-        if (row.classList.contains('seller-group')) {
-            currentSeller = row;
-            currentCustomer = null;
-            // Update chevron
-            var sk = section + ':' + row.dataset.groupKey;
-            var sCollapsed = !!collapsedGroups[sk];
-            var chevron = row.querySelector('.bi-chevron-down, .bi-chevron-right');
-            if (chevron) chevron.className = sCollapsed ? 'bi bi-chevron-right me-1' : 'bi bi-chevron-down me-1';
-            return;
-        }
-        if (row.classList.contains('customer-group')) {
-            currentCustomer = row;
-            var ck = section + ':' + row.dataset.groupKey;
-            var cCollapsed = !!collapsedGroups[ck];
-            var chevron = row.querySelector('.bi-chevron-down, .bi-chevron-right');
-            if (chevron) chevron.className = cCollapsed ? 'bi bi-chevron-right me-1' : 'bi bi-chevron-down me-1';
-            // Customer header visibility: hidden if parent seller is collapsed
-            if (currentSeller) {
-                var sk = section + ':' + currentSeller.dataset.groupKey;
-                if (collapsedGroups[sk]) { row.style.display = 'none'; return; }
-            }
-            row.style.display = '';
-            return;
-        }
-        if (row.classList.contains('data-row')) {
-            // Data row: hidden if filtered out, or if parent seller/customer is collapsed
-            if (row.dataset._filtered === 'true') return;
-            var hidden = false;
-            if (currentSeller) {
-                var sk = section + ':' + currentSeller.dataset.groupKey;
-                if (collapsedGroups[sk]) hidden = true;
-            }
-            if (!hidden && currentCustomer) {
-                var ck = section + ':' + currentCustomer.dataset.groupKey;
-                if (collapsedGroups[ck]) hidden = true;
-            }
-            row.style.display = hidden ? 'none' : '';
-        }
-    });
-}
-
-function formatShortDate(isoStr) {
-    var d = new Date(isoStr);
-    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return months[d.getMonth()] + ' ' + d.getDate();
-}
-
-function updateAuditDates(dataRows, checkedTypes, filterByChangeType) {
-    dataRows.forEach(function(row) {
-        var dateSpan = row.querySelector('.updated-date-cell span[data-original-date]');
-        if (!dateSpan) return;
-        var originalDate = dateSpan.dataset.originalDate;
-        if (!filterByChangeType) {
-            dateSpan.textContent = originalDate;
-            return;
-        }
-        var msId = row.dataset.milestoneId;
-        var msDates = auditDates[msId];
-        if (!msDates) {
-            dateSpan.textContent = originalDate;
-            return;
-        }
-        // Find the most recent ISO date among the selected change types
-        var bestIso = null;
-        checkedTypes.forEach(function(ct) {
-            if (msDates[ct] && (!bestIso || msDates[ct] > bestIso)) {
-                bestIso = msDates[ct];
-            }
-        });
-        dateSpan.textContent = bestIso ? formatShortDate(bestIso) : originalDate;
-    });
-}
-
-function changeDays(value) {
-    localStorage.setItem('whats_new_days', value);
-    var url = new URL(window.location.href);
-    url.searchParams.set('days', value);
-    window.location.href = url.toString();
-}
-
-function applyFilters() {
-    var sellerEl = document.getElementById('sellerFilter');
-    var sellerId = sellerEl ? sellerEl.value : '';
-    var area = document.getElementById('areaFilter').value;
-    var team = document.getElementById('teamFilter').value;
-    var checkedTypes = getCheckedChangeTypes();
-    var filterByChangeType = checkedTypes !== null && !allChangeTypesChecked();
-
-    updateChangeTypeButtonStyle();
-
-    // Update group button style
-    var btn = document.getElementById('groupByBtn');
-    if (grouped) {
-        btn.classList.remove('btn-outline-secondary');
-        btn.classList.add('btn-secondary');
-    } else {
-        btn.classList.remove('btn-secondary');
-        btn.classList.add('btn-outline-secondary');
-    }
-
-    ['created', 'updated'].forEach(function(section) {
-        var tbody = document.getElementById(section + 'Body');
-        if (!tbody) return;
-        var dataRows = Array.from(tbody.querySelectorAll('tr.data-row'));
-
-        // Remove old group headers
-        tbody.querySelectorAll('tr.group-header').forEach(function(h) { h.remove(); });
-
-        // Filter
-        var visible = 0;
-        dataRows.forEach(function(row) {
-            var show = true;
-            if (sellerId && row.dataset.sellerId !== sellerId) show = false;
-            if (area && row.dataset.area !== area) show = false;
-            if (team === 'on' && row.dataset.onMyTeam !== 'true') show = false;
-            if (team === 'off' && row.dataset.onMyTeam !== 'false') show = false;
-            if (filterByChangeType && section === 'updated') {
-                var types = (row.dataset.changeTypes || '').split('|').filter(Boolean);
-                var hasMatch = types.some(function(t) { return checkedTypes.indexOf(t) !== -1; });
-                if (!hasMatch) show = false;
-            }
-            row.style.display = show ? '' : 'none';
-            row.dataset._filtered = show ? 'false' : 'true';
-            if (show) visible++;
-        });
-        document.getElementById(section + 'Count').textContent = visible;
-
-        // Update the Updated column dates based on selected change types
-        if (section === 'updated') {
-            updateAuditDates(dataRows, checkedTypes, filterByChangeType);
-        }
-
-        if (grouped) {
-            // Get visible rows
-            var visibleRows = dataRows.filter(function(r) { return r.style.display !== 'none'; });
-
-            // Sort: seller name then customer name
-            visibleRows.sort(function(a, b) {
-                var sa = (a.dataset.sellerName || '').toLowerCase();
-                var sb = (b.dataset.sellerName || '').toLowerCase();
-                if (sa !== sb) return sa < sb ? -1 : 1;
-                var ca = (a.dataset.customerName || '').toLowerCase();
-                var cb = (b.dataset.customerName || '').toLowerCase();
-                if (ca !== cb) return ca < cb ? -1 : 1;
-                return 0;
-            });
-
-            // Re-append sorted rows (moves them in DOM order)
-            visibleRows.forEach(function(r) { tbody.appendChild(r); });
-
-            // Insert group headers
-            var lastSeller = null;
-            var lastCustomer = null;
-            var inSellerMode = !!sellerId;
-
-            visibleRows.forEach(function(row) {
-                var sName = row.dataset.sellerName || 'No Seller';
-                var cName = row.dataset.customerName || 'No Customer';
-
-                if (!inSellerMode && sName !== lastSeller) {
-                    var sellerKey = 'seller:' + sName;
-                    var sCollapsed = !!collapsedGroups[section + ':' + sellerKey];
-                    var sellerHeader = document.createElement('tr');
-                    sellerHeader.className = 'group-header seller-group';
-                    sellerHeader.dataset.groupKey = sellerKey;
-                    sellerHeader.style.cursor = 'pointer';
-                    sellerHeader.onclick = (function(k, s) { return function() { toggleGroup(k, s); }; })(sellerKey, section);
-                    sellerHeader.innerHTML = '<td colspan="5" class="ps-2 py-1 fw-bold" style="background: var(--bs-tertiary-bg); font-size: 0.85em;"><i class="bi ' + (sCollapsed ? 'bi-chevron-right' : 'bi-chevron-down') + ' me-1"></i><i class="bi bi-person text-primary me-1"></i>' + escapeHtml(sName) + '</td>';
-                    tbody.insertBefore(sellerHeader, row);
-                    lastSeller = sName;
-                    lastCustomer = null;
-                }
-
-                if (cName !== lastCustomer) {
-                    var custKey = (inSellerMode ? '' : 'seller:' + sName + '/') + 'cust:' + cName;
-                    var cCollapsed = !!collapsedGroups[section + ':' + custKey];
-                    var custHeader = document.createElement('tr');
-                    custHeader.className = 'group-header customer-group';
-                    custHeader.dataset.groupKey = custKey;
-                    custHeader.style.cursor = 'pointer';
-                    custHeader.onclick = (function(k, s) { return function() { toggleGroup(k, s); }; })(custKey, section);
-                    var indent = inSellerMode ? 'ps-2' : 'ps-4';
-                    custHeader.innerHTML = '<td colspan="5" class="' + indent + ' py-1" style="background: var(--bs-tertiary-bg); font-size: 0.8em; opacity: 0.85;"><i class="bi ' + (cCollapsed ? 'bi-chevron-right' : 'bi-chevron-down') + ' me-1"></i><i class="bi bi-building me-1"></i>' + escapeHtml(cName) + '</td>';
-                    tbody.insertBefore(custHeader, row);
-                    lastCustomer = cName;
-                }
-            });
-
-            // Apply collapsed state
-            applyGroupVisibility(section);
-        }
-    });
-    saveFilters();
-}
-
-function toggleTeam(btn, milestoneId) {
-    var onTeam = btn.dataset.onTeam === '1';
-    if (onTeam && !confirm('Leave this milestone team?')) return;
-    if (!onTeam && !confirm('Join this milestone team in MSX?')) return;
-    var origHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-    var url = onTeam ? '/api/msx/leave-milestone-team' : '/api/msx/join-milestone-team';
-    fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({milestone_id: milestoneId})
-    })
-    .then(function(resp) { return resp.json(); })
-    .then(function(data) {
-        if (data.success) {
-            var newOnTeam = !onTeam;
-            var cell = btn.closest('td');
-            btn.closest('tr').dataset.onMyTeam = newOnTeam ? 'true' : 'false';
-            if (newOnTeam) {
-                cell.innerHTML = '<button class="btn btn-sm btn-success team-toggle on-team" data-id="' + milestoneId + '" data-on-team="1" title="On milestone team (click to leave)" onclick="toggleTeam(this, ' + milestoneId + ')"><i class="bi bi-people-fill icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>';
-            } else {
-                cell.innerHTML = '<button class="btn btn-sm btn-outline-success team-toggle" data-id="' + milestoneId + '" data-on-team="0" title="Join milestone team" onclick="toggleTeam(this, ' + milestoneId + ')"><i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>';
-            }
-        } else {
-            alert(data.error || 'Failed');
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-        }
-    })
-    .catch(function(err) {
-        alert('Error: ' + err.message);
-        btn.disabled = false;
-        btn.innerHTML = origHtml;
-    });
-}
-
-function escapeHtml(str) {
-    var div = document.createElement('div');
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Redirect to saved days preference if no explicit ?days= in URL
-    var urlParams = new URLSearchParams(window.location.search);
-    if (!urlParams.has('days')) {
-        var savedDays = localStorage.getItem('whats_new_days');
-        if (savedDays && savedDays !== '14') {
-            changeDays(savedDays);
-            return;
-        }
-    }
-    loadFilters();
-    applyFilters();
-});
-</script>
+    <script type="application/json" data-sb-whats-new-audits>{{ audit_dates|tojson }}</script>
+    <dialog class="sb-dialog sb-dialog-compact" id="whatsNewTeamDialog" aria-labelledby="whatsNewTeamTitle">
+        <header class="sb-dialog-header"><h2 id="whatsNewTeamTitle">Change milestone team</h2>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
+        <div class="sb-dialog-body"><p data-sb-team-context></p>
+            <p data-sb-team-error role="alert" hidden></p>
+            <a data-sb-team-review hidden>Review milestone</a></div>
+        <footer class="sb-dialog-footer"><button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+            <button type="button" class="sb-dialog-button primary" data-sb-team-confirm>Confirm</button></footer>
+    </dialog>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-whats-new.js') }}"></script>
 {% endblock %}

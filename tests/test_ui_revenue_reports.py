@@ -111,7 +111,7 @@ def test_synapse_native_contract_and_exact_values(
         assert literal.select("td")[1]["data-sb-sort-value"] == "3.75"
         assert root.select_one("table")["data-sb-sort-default-direction"] == "descending"
     assert ("synapse-customers-" + mode).encode() in response.data
-    assert b"const TABLE_SELECTOR = '.sb-synapse-table'" in response.data
+    assert b'const TABLE_SELECTOR = ".sb-synapse-table"' in response.data
     assert soup.select_one('script[src$="/js/ui-synapse-mode.js"]')["data-mode"] == mode
     if embedded:
         assert all("embed=1" in a["href"] for a in root.select(".sb-synapse-modes a"))

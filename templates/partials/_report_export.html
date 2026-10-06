@@ -39,9 +39,9 @@
 <script>
 (function() {
     const NATIVE_EXPORT = {{ report_export_native|default(false)|tojson }};
-    const TABLE_SELECTOR = '{{ export_table_id }}';
-    const FILENAME = '{{ export_filename | default("report", true) }}';
-    const CUSTOM_TITLE = '{{ export_title | default("", true) }}';
+    const TABLE_SELECTOR = {{ export_table_id|tojson }};
+    const FILENAME = {{ export_filename|default("report", true)|tojson }};
+    const CUSTOM_TITLE = {{ export_title|default("", true)|tojson }};
 
     /**
      * Find all target tables. Excludes tables inside modals or popovers

@@ -6,8 +6,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
-- Current page/surface: checkpoint 36, Engagement / Milestone Hygiene,
-  VERIFY, technically verified and user-approved October 6, 2026.
+- Current page/surface: checkpoint 37, What's New,
+  VERIFY, technically verified and awaiting visual approval.
+  Checkpoint 36 Hygiene is user-approved and committed as `9195a2c8`.
   Checkpoint 35 Workload Report is user-approved and committed as `70ec157`.
   Checkpoint 34 main Reports directory is user-approved and committed as `da43a54`.
   Checkpoint 33 Revenue sync/import is user-approved and committed as `a6b6253`.
@@ -52,8 +53,16 @@ Inventory date: October 2, 2026. Baseline product SHA:
   `350e152` (native Revenue configuration, user-approved October 5),
   `a6b6253` (native Revenue sync/import, user-approved October 5),
   `da43a54` (native grouped Reports directory, user-approved October 5),
-  `70ec157` (native Workload Report, user-approved October 6)
-- Next action: migrate What's New after committing approved Hygiene.
+  `70ec157` (native Workload Report, user-approved October 6),
+  `9195a2c8` (native Hygiene repair workbench, user-approved October 6)
+- Next action: visually review What's New before committing it.
+  Created/Updated have independently scrolling native lists, sortable data,
+  persistent filters and accessible seller/customer grouping. Original provider
+  and all-history audit semantics remain unchanged. Selected audit types affect
+  Updated only and its displayed/sort dates. Confirmed membership reconciles
+  every occurrence and scope/export state; ambiguous responses cannot repeat.
+  Exports retain both lists and expanded group context. Back restores both
+  reading positions, scope, grouping and sorts. Embeds use ordinary stacked lists.
   Two native repair queues with sortable data columns share fixed commands and meaningful counts,
   without forcing a split-pane layout. Original query semantics, record/action
   metadata and seller scope are unchanged. Reasons serialize saves, protect the
@@ -320,8 +329,8 @@ have separate rows even when they use one template.
 | RPT-ACT | Activity coverage | `/reports/activity-coverage` | `report_activity_coverage.html` | TODO | - |
 | RPT-OOO | Seller 1:1 preparation | `/reports/one-on-one` | `report_one_on_one.html` | TODO | - |
 | RPT-WORK | Workload | `/reports/workload` | `report_workload.html` | VERIFY | [Checkpoint 35](redesign-pages/HOME-WORKBENCH.md#checkpoint-35-workload-report); native topic/customer browser, preserved scope/totals/exports, sorting, Back and compact embeds; user-approved October 6 |
-| RPT-HYG | Hygiene | `/reports/hygiene` | `report_hygiene.html` | VERIFY | [Checkpoint 36](redesign-pages/HOME-WORKBENCH.md#checkpoint-36-engagement--milestone-hygiene); native sortable data columns, plain Fix headings, confirmed annotations, protected dialogs, authoritative refresh, both-queue exports and Back; user-approved October 6 |
-| RPT-NEW | What's New | `/reports/whats-new` | `report_whats_new.html` | TODO | - |
+| RPT-HYG | Hygiene | `/reports/hygiene` | `report_hygiene.html` | VERIFY | [Checkpoint 36](redesign-pages/HOME-WORKBENCH.md#checkpoint-36-engagement--milestone-hygiene); native sortable data columns, plain Fix headings, confirmed annotations, protected dialogs, authoritative refresh, both-queue exports and Back; user-approved October 6, committed `9195a2c8` |
+| RPT-NEW | What's New | `/reports/whats-new` | `report_whats_new.html` | VERIFY | [Checkpoint 37](redesign-pages/HOME-WORKBENCH.md#checkpoint-37-whats-new); native Created/Updated lists, sortable raw data, saved scope/grouping, audit-aware dates, confirmed membership, expanded-row exports and exact Back; awaiting visual approval |
 | RPT-WHITE | Whitespace | `/reports/whitespace` | `report_whitespace.html` | TODO | - |
 | RPT-MSX | MSX workspace | `/reports/msx-workspace` | `report_msx_workspace.html` | TODO | - |
 | RPT-MKT | Marketing insights | `/reports/marketing-insights` | `report_marketing_insights.html` | TODO | - |

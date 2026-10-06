@@ -1,6 +1,6 @@
 # GLOBAL-SHELL: shared frame and theme foundation
 
-- Status: BUILDING; checkpoints 1-35 committed, checkpoint 36 Hygiene user-approved
+- Status: BUILDING; checkpoints 1-36 committed, checkpoint 37 What's New awaiting approval
 - Owner: user and coding assistant
 - Pre-release reviewer: the user; external tester/users review after release
 - Product revision audited: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -189,8 +189,16 @@
   exposing read/write failures without repeating uncertain creations.
   Full/embed composition, exact data parity, exports, Back and all eight desktop
   themes are technically verified. User-approved October 6, including plain Fix
-  headings and removal of the trailing export divider; approved progress is about 40%.
-- Next action: commit Hygiene and migrate What's New, then adopt
+  headings and removal of the trailing export divider; committed as `9195a2c8`.
+  Approved progress is about 40%.
+- Checkpoint 37 gives What's New independently scrolling Created/Updated lists
+  with fixed scope/export bands, native expandable groups and sortable data.
+  Original creation/update and all-history audit meanings are retained.
+  Confirmed membership updates both occurrences, filters and exports; unknown
+  results cannot automatically resubmit. Back restores both exact reading
+  offsets, scope and sorts. Embedded lists stack without owning window history.
+  It is technically verified and awaiting user visual approval.
+- Next action: visually review What's New before committing it, then adopt
   the contract as each page is migrated. The wider interim table is not approval
   of the final Revenue layout. The remaining global surfaces stay BUILDING;
   this checkpoint does not approve other page bodies or global overlays.
