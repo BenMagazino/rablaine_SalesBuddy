@@ -10,6 +10,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/2/2026
 
+- Review U2C in the native app frame with persistent filters, theme-aware trends, sortable milestone queues and restored reading position and unsaved 1:1 drafts on Back.
 - Review meetings, fiscal-year HVA and CAIP coverage in the native app frame, with persistent controls, visible record counts and restored audit context on Back.
 - Connect Revenue Analyzer and seller alerts to the app shell, keeping commands visible while tables scroll and showing filtered alert counts in a compact status rail.
 - Add a seller Revenue alert queue with side-by-side details, retaining Table view for comparison and sharing bucket filters across both views.

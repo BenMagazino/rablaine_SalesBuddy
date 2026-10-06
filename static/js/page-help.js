@@ -302,6 +302,25 @@ const PageHelp = (function () {
       <h6>Whitespace wins</h6>
       <p><strong>Goal: one Databases win and one Fabric win per fiscal half.</strong> After three complete zero-ACR months, an activation appears as ramping until the same customer and bucket remain above $0 for three consecutive months. Consumption must remain positive through the latest available month, so a customer that later returns to $0 no longer counts. Any positive ACR qualifies; there is no minimum spend threshold.</p>
     `},
+    { pattern: /^\/reports\/u2c/, title: 'U2C Attainment', content: `
+      <p>Track uncommitted-to-committed milestones against an official MSXi quarterly snapshot.</p>
+      <h6>Reading the measures</h6>
+      <ul>
+        <li><strong>Total Pipeline ACR</strong> is the snapshot ACR for all in-scope milestones.</li>
+        <li><strong>Committed ACR</strong> uses snapshot ACR for milestones now committed.</li>
+        <li><strong>U2C %</strong> divides committed snapshot ACR by total pipeline ACR, with a 40% goal.</li>
+        <li><strong>Attainment %</strong> uses live ACR at commitment instead of snapshot ACR. It can differ from U2C %.</li>
+        <li><strong>Remaining ACR</strong> is the snapshot ACR still uncommitted.</li>
+      </ul>
+      <h6>Scope and trend</h6>
+      <p>Quarter selects a saved snapshot. Workload filters the summary, queues and chart. Seller and customer filters affect summary totals and queues only; the chart remains workload-wide. Clear seller and customer does not clear workload.</p>
+      <p>The chart retains weekly MSXi history and, for a current non-final quarter, a labeled live endpoint. Weekly values can fall when MSXi restates conversions. The dashed goal line follows the weekly snapshot pipeline, not live ACR.</p>
+      <h6>Milestone queues</h6>
+      <p>Sort the six data columns with a click, Enter or Space. Engagement and 1:1 columns are actions, not sorts. Customer and milestone links open existing records; Back restores reading position and an unsubmitted 1:1 draft.</p>
+      <p><strong>Add</strong> opens a discussion-note editor. Only <strong>Add to 1:1</strong> saves it to the seller workspace. Existing items show <strong>On 1:1</strong>.</p>
+      <h6>Refresh</h6>
+      <p><strong>Refresh from MSXi</strong> refreshes the current quarter using your configured territories, even when viewing an older snapshot. It does not commit milestones. A failed refresh leaves the last saved data available.</p>
+    `},
     { pattern: /^\/reports\/activity-coverage/, title: 'Activity Coverage', content: `
       <p>Review every stored fiscal-year meeting, find activities already logged in MSX, and prepare missing activities without leaving Sales Buddy.</p>
 

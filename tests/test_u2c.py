@@ -1464,8 +1464,9 @@ class TestAttainmentTrend:
         assert b'Attainment Over the Quarter' in response.data
         assert b"type: 'linear'" in response.data
         assert b'Date.parse(p.date)' in response.data
-        assert b'"start": "2026-07-01"' in response.data
-        assert b'"end": "2026-09-30"' in response.data
+        start, end = fiscal_quarter_date_range(current_fiscal_quarter())
+        assert f'"start": "{start.isoformat()}"'.encode() in response.data
+        assert f'"end": "{end.isoformat()}"'.encode() in response.data
         assert b'min: Date.parse(TREND_BOUNDS.start)' in response.data
 
     def test_salesiq_trend_tool(self, app, monkeypatch):
@@ -1498,8 +1499,7 @@ class TestLiveAttainmentTrend:
         other_ms.monthly_usage = 8000.0
         make_snapshot()
         snapshot = U2CSnapshot.query.first()
-        start, _ = fiscal_quarter_date_range(snapshot.fiscal_quarter)
-        reference = start + timedelta(days=50)
+        reference = date.today()
         rows = [
             _msxi_row(milestone_number='DATA-COMMIT', starting_acr=7378.0,
                       workload='Data: Fabric'),
@@ -1657,8 +1657,66 @@ class TestU2cGoalColors:
             committed.customer_commitment = 'Committed'
             db.session.commit()
         soup = BeautifulSoup(client.get('/reports/u2c').data, 'html.parser')
-        assert f'text-{tone}' in soup.select_one('#cardU2cPct')['class']
-        assert f'bg-{tone}' in soup.select_one('#cardU2cPctBar')['class']
+        assert f'is-{tone}' in soup.select_one('#cardU2cPct')['class']
+        assert f'is-{tone}' in soup.select_one('#cardU2cPctBar')['class']
+
+
+@pytest.mark.parametrize('populated', [False, True])
+def test_native_u2c_frame_and_empty_state(client, app, u2c_data, populated):
+    """Ready and empty reports own only their native frame, controls and reading area."""
+    if populated:
+        with app.app_context():
+            make_snapshot()
+    response = client.get('/reports/u2c')
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, 'html.parser')
+    surface = soup.select_one('.sb-u2c[data-sb-page-surface]')
+    assert surface['data-embedded'] == 'false'
+    assert 'sb-page-frame' in soup.body['class']
+    assert surface.select_one('h1#u2cTitle').text == 'U2C Attainment'
+    reading = surface.select_one('#u2cReading[data-sb-page-body]')
+    assert reading.parent == surface
+    assert surface.select_one('.u2c-header[data-sb-page-band]')
+    assert surface.select_one('.u2c-controls[data-sb-page-band]')
+    assert soup.select_one('body > footer.sb-page-status #u2cRowStatus')
+    assert soup.select_one('script[src$="js/ui-u2c.js"]')
+    assert not surface.select('.card, .btn, .badge, .form-select, .form-control')
+    if populated:
+        assert len(reading.select('#summaryCards > .u2c-metric')) == 5
+        assert surface.select_one('#u2cFilterBar').parent == surface
+        assert surface.select_one('#quarterFilter')['name'] == 'fq'
+        assert all(header.get('data-sort') for header in
+                   reading.select('#remainingTable th')[:6])
+        assert not reading.select('#remainingTable th')[6].get('data-sort')
+    else:
+        assert reading.select_one('#importOfficialBtnEmpty')
+
+
+@pytest.mark.parametrize('populated', [False, True])
+def test_native_u2c_embed_retains_host_ownership(client, app, u2c_data, populated):
+    """Embedded reports keep quarter selection without claiming a window footer."""
+    if populated:
+        with app.app_context():
+            make_snapshot()
+    response = client.get('/reports/u2c?embed=1')
+    soup = BeautifulSoup(response.data, 'html.parser')
+    assert 'sb-page-frame' not in soup.body.get('class', [])
+    assert soup.select_one('.sb-u2c')['data-embedded'] == 'true'
+    assert not soup.select_one('footer.sb-page-status')
+    assert soup.select_one('form input[name="embed"]')['value'] == '1'
+
+
+def test_committed_queue_retains_all_data_sort_columns(client, app, u2c_data):
+    """Committed rows use the same sortable fields while action columns stay untouched."""
+    with app.app_context():
+        make_snapshot()
+        committed = db.session.get(Milestone, u2c_data['ms1_id'])
+        committed.customer_commitment = 'Committed'
+        db.session.commit()
+    soup = BeautifulSoup(client.get('/reports/u2c').data, 'html.parser')
+    assert [header['data-sort'] for header in soup.select('#committedTable th')] == [
+        'customer', 'milestone', 'workload', 'due_date', 'acr', 'status',
+    ]
 
 
 class TestTrendWorkloadFiltering:

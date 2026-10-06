@@ -3,6 +3,7 @@
 - Checkpoint: 42, `feature/ui-redesign`.
 - Audited revision: `706cf6ae`.
 - Status: VERIFY, technically checked and user-approved October 6, 2026.
+- Approved implementation committed locally as `55c4bc9c`.
 - Approved overall effort is about 47%; final whole-app reconciliation remains separate.
 
 ## Contract
@@ -57,4 +58,4 @@
 
 - Discord accepted the generic review-ready DM, message `1557157050558058559`.
   No customer data or images were sent.
-- User sign-off received; local commit authorized. No push, merge or deployment authorized.
+- User sign-off received and local commit completed. No push, merge or deployment authorized.

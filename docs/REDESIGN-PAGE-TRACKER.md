@@ -7,15 +7,15 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: Activity Coverage, checkpoint 42; local commit authorized.
-- Current task: commit Activity Coverage and begin U2C, checkpoint 43.
-- Active card: [RPT-ACT](redesign-pages/RPT-ACTIVITY-COVERAGE.md); user-approved October 6.
-- Approved effort estimate: about 47%; strict DONE counters below are separate.
+- Last approved implementation: U2C Attainment, checkpoint 43; local commit authorized.
+- Current task: commit U2C, then constrain the Connect Goals chart to this fiscal quarter.
+- Active card: [RPT-U2C](redesign-pages/RPT-U2C.md).
+- Approved effort estimate: about 48%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: capture the live U2C baseline, migrate and verify it for review.
+- Next action: verify the Connect Goals quarter-only chart with before/after screenshots.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -43,7 +43,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 42 sign-off, the rough effort-based estimate is **about 47%**
+As of checkpoint 43 sign-off, the rough effort-based estimate is **about 48%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -182,7 +182,7 @@ have separate rows even when they use one template.
 | RPT-MSX | MSX workspace | `/reports/msx-workspace` | `report_msx_workspace.html` | TODO | - |
 | RPT-MKT | Marketing insights | `/reports/marketing-insights` | `report_marketing_insights.html` | VERIFY | [Page card](redesign-pages/RPT-MARKETING.md); user-approved October 6 |
 | RPT-GOALS | Connect goals | `/reports/connect-goals` | `report_connect_goals.html` | VERIFY | [Card](redesign-pages/RPT-CONNECT-GOALS.md); native dashboard/frame, user-approved October 6 |
-| RPT-U2C | U2C | `/reports/u2c` | `report_u2c.html` | TODO | - |
+| RPT-U2C | U2C | `/reports/u2c` | `report_u2c.html` | VERIFY | [RPT-U2C](redesign-pages/RPT-U2C.md) |
 | RPT-IMPACT | Connect impact | `/reports/connect-impact` | `report_connect_impact.html` | VERIFY | [Page card](redesign-pages/RPT-CONNECT-IMPACT.md); user-approved October 6 |
 | REV-DASH | Revenue dashboard | `/reports/revenue`; `/revenue` redirects | `revenue_dashboard.html` | VERIFY | [Continuous shell pilot](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-24-continuous-workbench-shell-and-revenue-pilot) |
 | REV-IMPORT | Revenue import | `/revenue/import`; `/import/revenue` redirects | `revenue_import.html` | VERIFY | [Checkpoint 33](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-33-revenue-syncimport); native maintenance panes, sortable unchanged history/months, explicit sync/save recovery and shared inline buckets; user-approved October 5, committed as `a6b6253` |
