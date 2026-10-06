@@ -7,15 +7,15 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: Connect Goals, checkpoint 41; local commit authorized.
-- Current task: commit the approved dashboard and begin Activity Coverage, checkpoint 42.
-- Active card: [RPT-GOALS](redesign-pages/RPT-CONNECT-GOALS.md); user-approved October 6.
-- Approved effort estimate: about 45%; strict DONE counters below are separate.
+- Last approved implementation: Activity Coverage, checkpoint 42; local commit authorized.
+- Current task: commit Activity Coverage and begin U2C, checkpoint 43.
+- Active card: [RPT-ACT](redesign-pages/RPT-ACTIVITY-COVERAGE.md); user-approved October 6.
+- Approved effort estimate: about 47%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: capture the live Activity Coverage baseline, migrate and verify it for review.
+- Next action: capture the live U2C baseline, migrate and verify it for review.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -43,7 +43,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 41 sign-off, the rough effort-based estimate is **about 45%**
+As of checkpoint 42 sign-off, the rough effort-based estimate is **about 47%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -173,7 +173,7 @@ have separate rows even when they use one template.
 | OOO-VIEW | 1:1 workspace | `/one-on-one/<int:workspace_id>` | `one_on_one_workspace.html` | TODO | - |
 | RPT-HUB | Reports hub | `/reports` | `reports_hub.html` | VERIFY | [Checkpoint 34](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-34-main-reports-directory); native grouped directory, identical registry/menu order, local filter and Back context; user-approved October 5 |
 | RPT-INIT | Initiative Tracker | `/reports/initiative-tracker`; `/reports/manager-one-on-one` | `report_manager_one_on_one.html` | TODO | - |
-| RPT-ACT | Activity coverage | `/reports/activity-coverage` | `report_activity_coverage.html` | TODO | - |
+| RPT-ACT | Activity coverage | `/reports/activity-coverage` | `report_activity_coverage.html` | VERIFY | [Card](redesign-pages/RPT-ACTIVITY-COVERAGE.md) |
 | RPT-OOO | Seller 1:1 preparation | `/reports/one-on-one` | `report_one_on_one.html` | TODO | - |
 | RPT-WORK | Workload | `/reports/workload` | `report_workload.html` | VERIFY | [Checkpoint 35](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-35-workload-report); native topic/customer browser, preserved scope/totals/exports, sorting, Back and compact embeds; user-approved October 6 |
 | RPT-HYG | Hygiene | `/reports/hygiene` | `report_hygiene.html` | VERIFY | [Checkpoint 36](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-36-engagement--milestone-hygiene); native sortable data columns, plain Fix headings, confirmed annotations, protected dialogs, authoritative refresh, both-queue exports and Back; user-approved October 6, committed `9195a2c8` |

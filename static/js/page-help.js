@@ -324,6 +324,8 @@ const PageHelp = (function () {
 
       <h6>Weekly and Full FY views</h6>
       <p><strong>Weekly</strong> keeps review batches small and provides week-by-week navigation. <strong>Full FY</strong> shows every fiscal-year meeting in one continuous list. Matching and calendar import operate across the fiscal year in either view; the toggle only changes what is displayed.</p>
+      <p>The audit list scrolls independently, keeping lens controls and the status footer visible. The footer counts displayed records, not the fiscal-year coverage denominator. Back restores your reading position and expanded audit rows.</p>
+      <p><strong>CAIP Coverage</strong> uses its own denominator: every on-team POC/Pilot and Production milestone. Its HVA evidence requires completed, due-dated tasks completed in the current fiscal year. It is not interchangeable with FY HVA Coverage.</p>
 
       <h6>Toolbar actions</h6>
       <table class="sb-help-table">
@@ -339,8 +341,7 @@ const PageHelp = (function () {
         <li><strong>Customer</strong> searches name, nickname, and TPID.</li>
         <li><strong>Milestone</strong> searches milestone name/number, opportunity, and workload. <span class="sb-help-indicator" data-tone="info">On Team</span> identifies milestones where you are on the team.</li>
         <li>A <strong>★</strong> beside an activity type means it qualifies for HVA credit. Preparation prefers a matching HVA type, then falls back to a more accurate non-HVA type when needed.</li>
-        <li><strong>Save</strong> stores your edits without creating anything in MSX.</li>
-        <li><strong>Enrich</strong> refreshes draft text for one meeting. Use <strong>Re-run Matching</strong> when you need to replace preparation across the fiscal year.</li>
+        <li>Meeting draft edits save automatically; the inline save status confirms persistence without creating anything in MSX. Standalone HVA and prepared-meeting forms retain their explicit <strong>Save Draft</strong> commands.</li>
         <li><strong>Dismiss</strong> removes a meeting from coverage. Recurring meetings can be dismissed once or as a series.</li>
       </ul>
 

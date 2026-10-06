@@ -3,6 +3,7 @@
 - Checkpoint: 41, `feature/ui-redesign`.
 - Audited product revision: `eb588a08`.
 - Status: VERIFY, technically checked and user-approved October 6, 2026.
+- Approved implementation committed locally as `706cf6ae`.
 - Layout decision: keep the admired dashboard, not a navigator/detail workbench.
 - Approved effort is about 45%; final whole-app reconciliation remains separate.
 
