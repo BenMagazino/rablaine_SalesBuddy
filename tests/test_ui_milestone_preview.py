@@ -111,12 +111,14 @@ def test_customerless_local_milestone_has_no_manufactured_creation_controls(clie
     ("seller_view.html", "openStandaloneMilestoneDetail"),
     (r"partials\milestone_tracker_content.html", "openMilestoneDetail"),
     ("report_msx_workspace.html", "openMsxMilestoneDetail"),
-    ("report_connect_impact.html", "openMilestoneModal"),
+    ("report_connect_impact.html", "data-impact-preview"),
 ])
 def test_launcher_contracts_are_retained_without_duplicated_partial_loaders(filename, launcher) -> None:
     """Original launcher signatures remain while one controller owns fragment loading."""
     template = Path(__file__).parents[1] / "templates" / filename
     text = template.read_text(encoding="utf-8")
     assert launcher in text
+    if filename == "report_connect_impact.html":
+        text += (Path(__file__).parents[1] / "static" / "js" / "ui-impact.js").read_text()
     assert "SBMilestonePreview.open" in text
     assert not re.search(r"fetch\([^)]*/api/milestone/[^)]*/detail", text)

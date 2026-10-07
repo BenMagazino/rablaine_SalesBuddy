@@ -454,6 +454,20 @@ const PageHelp = (function () {
       <p>Save Configuration stores the settings and returns to Revenue Analyzer. Saving does not re-run analysis. Use Re-analyze there to apply changes immediately, or wait for the next analysis run.</p>
       <p>Cancel returns to Revenue Analyzer without submitting the form. The command band remains available while the editor scrolls.</p>
     `},
+    { pattern: /^\/reports\/msx-workspace/, title: 'MSX Workspace', content: `
+      <p>Browse the existing local MSX cache in Opportunities, Milestones and Tasks.
+      Milestone Sync opens the existing sync workspace; opening this browser does not run a sync.</p>
+      <ul>
+        <li>Choose seller or customer and enter a keyword, then Apply. Clear restores Open opportunities and the three active milestone statuses.</li>
+        <li>Opportunity search matches name, number and owner. Milestone search matches title, number, workload and owner. Task search matches subject and category.</li>
+        <li>Each tab retains its team/status controls. Selecting no milestone statuses keeps the original unrestricted status scope.</li>
+        <li>Click a data heading to sort in either direction. Dates and ACR use full raw values; team headings sort membership, not button labels. The untouched default order is preserved.</li>
+        <li>Expand an opportunity for cached description, customer need and compete threat. View Details retains the existing fresh MSX details and forecast-comment editor.</li>
+        <li>A milestone title opens the shared details/HoK workflow. Its task icon narrows Tasks to that milestone and enables Create Task. Back to Milestones keeps your reading position.</li>
+        <li>Unsubmitted task drafts stay in their dialog, including after a failed creation. Finish or clear a draft before changing milestone scope. Pending writes block dismissal.</li>
+      </ul>
+      <p>Back restores filters, unsubmitted search text, the selected tab, sorting and independent reading positions. The workspace has no table export command.</p>
+    `},
     { pattern: /^\/reports\/workload/, title: 'Workload Report', content: `
       <p>Customers grouped by workload topic. Use this to find accounts working on a specific technology for workshop targeting or account team questions.</p>
       <h6>How it works</h6>

@@ -10,6 +10,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/2/2026
 
+- Browse the MSX cache in native opportunity, milestone and task tabs with sortable data columns, preserved defaults, protected task drafts and restored filters/reading positions on Back.
 - Track initiatives in the native desktop workbench with seller-preserving column sorting, native points/details dialogs, U2C selection and restored reading/filter context on Back.
 
 - Work in native 1:1 notes and agenda panes with page-height standing notes, scoped agenda search, engagement editing, retryable autosaves and pending-edit protection, including inline workspaces.

@@ -7,16 +7,16 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: Initiative Tracker, checkpoint 48,
+- Last approved implementation: MSX workspace, checkpoint 49,
   user-approved October 6; local commit authorized.
-- Current task: commit checkpoint 48, then migrate MSX workspace, checkpoint 49.
-- Active card: [RPT-INIT](redesign-pages/RPT-INIT.md).
-- Approved effort estimate: about 54%; strict DONE counters below are separate.
+- Current task: commit checkpoint 49, then migrate Milestone Tracker, checkpoint 50.
+- Active card: [RPT-MSX](redesign-pages/RPT-MSX.md).
+- Approved effort estimate: about 56%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: capture and migrate MSX workspace with before/after screenshots
+- Next action: capture and migrate Milestone Tracker with before/after screenshots
   and one Discord review-ready notification.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
@@ -45,7 +45,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 48 sign-off, the rough effort-based estimate is **about 54%**
+As of checkpoint 49 sign-off, the rough effort-based estimate is **about 56%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -181,7 +181,7 @@ have separate rows even when they use one template.
 | RPT-HYG | Hygiene | `/reports/hygiene` | `report_hygiene.html` | VERIFY | [Checkpoint 36](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-36-engagement--milestone-hygiene); native sortable data columns, plain Fix headings, confirmed annotations, protected dialogs, authoritative refresh, both-queue exports and Back; user-approved October 6, committed `9195a2c8` |
 | RPT-NEW | What's New | `/reports/whats-new` | `report_whats_new.html` | VERIFY | [Page card](redesign-pages/RPT-WHATS-NEW.md); user-approved October 6, committed `175a0b0b` |
 | RPT-WHITE | Whitespace | `/reports/whitespace` | `report_whitespace.html` | VERIFY | [Page card](redesign-pages/RPT-WHITESPACE.md); user-approved October 6, committed `fe758b9b` |
-| RPT-MSX | MSX workspace | `/reports/msx-workspace` | `report_msx_workspace.html` | TODO | - |
+| RPT-MSX | MSX workspace | `/reports/msx-workspace` | `report_msx_workspace.html` | VERIFY | [MSX workspace](redesign-pages/RPT-MSX.md); user-approved October 6 |
 | RPT-MKT | Marketing insights | `/reports/marketing-insights` | `report_marketing_insights.html` | VERIFY | [Page card](redesign-pages/RPT-MARKETING.md); user-approved October 6 |
 | RPT-GOALS | Connect goals | `/reports/connect-goals` | `report_connect_goals.html` | VERIFY | [Card](redesign-pages/RPT-CONNECT-GOALS.md); native dashboard/frame, user-approved October 6 |
 | RPT-U2C | U2C | `/reports/u2c` | `report_u2c.html` | VERIFY | [RPT-U2C](redesign-pages/RPT-U2C.md) |

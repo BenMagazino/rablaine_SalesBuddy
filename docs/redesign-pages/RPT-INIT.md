@@ -2,7 +2,7 @@
 
 - ID: RPT-INIT. Routes: `/reports/initiative-tracker`, `/reports/manager-one-on-one`.
 - Template: `report_manager_one_on_one.html`; baseline `6ee2af6d`.
-- Status: VERIFY, user-approved October 6; local commit authorized.
+- Status: VERIFY, user-approved October 6; approved local commit `42c552c7`.
 - Approved effort estimate: about 54%; strict DONE counters are unchanged.
 - Scope: existing tracker plus required workspace/project/editor host integration.
 
