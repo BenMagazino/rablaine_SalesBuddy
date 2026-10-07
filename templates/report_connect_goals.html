@@ -140,7 +140,7 @@
                             aria-label="Data U2C progression for {{ u2c.fiscal_quarter }}, weekly history and latest synced milestones"></canvas>
                 </div>
                 <div class="sb-goals-caption sb-goals-muted">
-                    Weekly MSXi history{% if u2c.trend and u2c.trend[-1].get('source') == 'live' %} + latest synced milestones (live){% endif %}
+                    {{ u2c.fiscal_quarter }} published snapshots{% if u2c.trend and u2c.trend[-1].get('source') == 'live' %} + Today (live commitment status, snapshot ACR){% endif %}
                 </div>
                 <p class="sb-goals-sr-only" id="u2cChartSummary">
                     Data U2C is {{ u2c.value }} percent against a 40 percent quarter target.

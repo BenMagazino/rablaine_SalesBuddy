@@ -47,15 +47,33 @@ const context = vm.createContext({
 scripts.forEach(script => vm.runInContext(script, context));
 elements.workloadFilter.value = 'Data';
 vm.runInContext("renderU2cTrend('Data')", context);
-assert.equal(chart.data.datasets.length, 3);
+assert.equal(chart.data.datasets.length, 4);
 assert.equal(chart.data.datasets[1].label, 'Total pipeline (starting uncommitted)');
 assert.equal(chart.data.datasets[2].label, '40% goal');
 assert.equal(chart.data.datasets[2].data.at(-1).y, 6151.2);
-assert.ok(chart.data.datasets[0].data.at(-1).y > chart.data.datasets[2].data.at(-1).y);
+assert.ok(chart.data.datasets[3].data.at(-1).y > chart.data.datasets[2].data.at(-1).y);
+assert.ok(chart.data.datasets[0].data.every(point => point.source !== 'live'));
+assert.equal(chart.data.datasets[3].data.length, 1);
+assert.equal(chart.data.datasets[3].data[0].source, 'live');
+assert.equal(chart.data.datasets[3].showLine, false);
+assert.equal(chart.data.datasets[3].pointStyle, 'rectRot');
+assert.equal(chart.data.datasets[0].data.at(-1).x, chart.data.datasets[3].data[0].x);
+assert.equal(chart.data.datasets[0].data.at(-1).y, 0);
+const legendFilter = chart.options.plugins.legend.labels.filter;
+assert.equal(legendFilter({datasetIndex: 3}, chart.data), true);
+assert.equal(legendFilter({datasetIndex: 3}, {
+    datasets: [{}, {}, {}, {data: []}]
+}), false);
 const tooltip = chart.options.plugins.tooltip.callbacks.label;
-const lastIndex = chart.data.datasets[0].data.length - 1;
-assert.equal(tooltip({datasetIndex: 1, dataIndex: lastIndex}), ' Total pipeline $15,378');
-assert.equal(tooltip({datasetIndex: 2, dataIndex: lastIndex}), ' 40% goal $6,151');
+assert.equal(tooltip({datasetIndex: 1, raw: chart.data.datasets[1].data.at(-1)}),
+    ' Total pipeline $15,378');
+assert.equal(tooltip({datasetIndex: 2, raw: chart.data.datasets[2].data.at(-1)}),
+    ' 40% goal $6,151');
+assert.equal(tooltip({datasetIndex: 3, raw: chart.data.datasets[3].data[0]}),
+    ' Committed $7,378 (48% U2C)');
+assert.match(chart.options.plugins.tooltip.callbacks.title([{
+    raw: chart.data.datasets[3].data[0],
+}]), /Today/);
 for (const prefix of ['Infra', '']) {
     elements.workloadFilter.value = prefix;
     vm.runInContext(`renderU2cTrend('${prefix}')`, context);

@@ -7,15 +7,17 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: U2C Attainment, checkpoint 43; local commit authorized.
-- Current task: commit U2C, then constrain the Connect Goals chart to this fiscal quarter.
-- Active card: [RPT-U2C](redesign-pages/RPT-U2C.md).
+- Last approved implementation: U2C Attainment, checkpoint 43, committed as `deac029f`.
+- Current task: commit approved graph follow-up, checkpoint 44, then migrate
+  Seller 1:1 preparation, checkpoint 45.
+- Active cards: [RPT-GOALS](redesign-pages/RPT-CONNECT-GOALS.md) and
+  [RPT-U2C](redesign-pages/RPT-U2C.md), graph follow-up.
 - Approved effort estimate: about 48%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: verify the Connect Goals quarter-only chart with before/after screenshots.
+- Next action: capture and migrate Seller 1:1 preparation with before/after screenshots.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`

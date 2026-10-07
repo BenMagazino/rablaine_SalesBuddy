@@ -3,6 +3,7 @@
 - Checkpoint: 43, `feature/ui-redesign`.
 - Audited revision: `55c4bc9c`.
 - Status: VERIFY, technically checked and user-approved October 6, 2026.
+- Approved implementation committed locally as `deac029f`.
 - Approved overall effort is about 48%; final inventory reconciliation is separate.
 
 ## Contract
@@ -57,6 +58,25 @@
 
 ## Review gate
 
-- User sign-off received; local commit authorized. No push, merge or deployment authorized.
+- User sign-off received and local commit completed. No push, merge or deployment authorized.
 - Discord accepted the generic review-ready DM, message `1557161478539317410`.
   No customer data, screenshots, source or private URLs were sent.
+
+## Snapshot and Today follow-up, checkpoint 44
+
+- Keep every published point unchanged, including one dated today. The prior
+  returned-series same-day replacement is removed; stored history was never changed.
+- Plot a separate Today diamond using current synced commitment status and
+  milestone dollars from the most recent imported snapshot, not local milestone ACR.
+- Preserve the published series independently from Today, with raw-point tooltip
+  provenance so same-date points cannot be confused by array indexes.
+- A single publish or Today-only series remains visible. Historical/final quarters
+  keep their published points without a Today marker or Today legend item.
+- Live validation across all eight workload scopes confirms unchanged published
+  values and one correctly dated Today point. Overall Today is $42,000 and 8.4%;
+  its actual hover tooltip identifies both the dollars and Today label.
+- Regression checks cover retained same-day snapshots on both rendered charts,
+  latest-snapshot dollar basis versus changed local ACR, single-point rendering,
+  quarter bounds, filtering and historical/final-quarter exclusions.
+- Before/after images: `u2c-live-point-before.png`, `u2c-live-point-after.png`.
+- User-approved October 6; local commit authorized. No push, merge or deployment authorized.

@@ -3,7 +3,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
-const {missingRequiredBuckets, confirmBuckets, coverageFilter, validateReadingView} =
+const {missingRequiredBuckets, confirmBuckets, coverageFilter, validateReadingView,
+    quarterChartSeries} =
     require('../../static/js/ui-connect-goals.js');
 const source = fs.readFileSync(
     path.join(__dirname, '../../static/js/ui-connect-goals.js'), 'utf8');
@@ -69,6 +70,108 @@ test('coverage drill-down preserves the complete off-team scope without mutating
     assert.equal(scope.allQuarters, undefined);
 });
 
+test('quarter chart uses actual dates and spans the complete fiscal quarter without fake history',
+    () => {
+        const widget = {
+            period_start: '2026-10-01', period_end: '2026-12-31', target: 40,
+            trend: [
+                {date: '2026-10-06', label: 'Oct 06', u2c_pct: 8.0},
+                {date: '2026-10-06', label: 'Today (Oct 06, live)', u2c_pct: 8.4,
+                    committed_acr: 840, source: 'live'},
+            ],
+        };
+        const series = quarterChartSeries(widget);
+        assert.equal(series.start, Date.parse('2026-10-01'));
+        assert.equal(series.end, Date.parse('2026-12-31'));
+        assert.deepEqual(series.committed, [{
+            ...widget.trend[0], x: Date.parse('2026-10-06'), y: 8.0,
+        }]);
+        assert.deepEqual(series.live, [{
+            ...widget.trend[1], x: Date.parse('2026-10-06'), y: 8.4,
+        }]);
+        assert.deepEqual(series.goal, [
+            {x: series.start, y: 40}, {x: series.end, y: 40},
+        ]);
+        assert.equal(widget.trend.length, 2);
+    });
+
+test('rendered chart binds quarter dates to a linear axis and retains the live tooltip', () => {
+    const widget = {
+        period_start: '2026-10-01', period_end: '2026-12-31', target: 40, value: 8.4,
+        trend: [
+            {date: '2026-10-06', label: 'Oct 06', u2c_pct: 8.0},
+            {date: '2026-10-06', label: 'Today (Oct 06, live)', u2c_pct: 8.4,
+                committed_acr: 840, source: 'live'},
+        ],
+    };
+    const canvas = {};
+    let chart;
+    let pointColorsAtCreation;
+    const document = {
+        readyState: 'complete', documentElement: {},
+        querySelector: () => ({dataset: {embedded: 'true'}}),
+        getElementById: id => ({
+            connectGoalsData: {textContent: JSON.stringify({teamFilter: scope, u2c: widget})},
+            connectU2cChart: canvas,
+        })[id] || null,
+        createElement: () => ({getContext: () => ({
+            clearRect() {}, fillRect() {}, getImageData: () => ({data: [1, 2, 3, 255]}),
+        })}),
+    };
+    const window = {
+        document,
+        Chart: class {
+            constructor(element, config) {
+                assert.equal(element, canvas);
+                this.data = config.data;
+                this.options = config.options;
+                chart = this;
+                pointColorsAtCreation = config.data.datasets.map(d => d.pointBackgroundColor);
+            }
+            update() {}
+        },
+        MutationObserver: class { observe() {} },
+        getComputedStyle: () => ({getPropertyValue: () => 'rgb(1, 2, 3)'}),
+    };
+    vm.runInNewContext(source, {window, document});
+    assert.equal(chart.options.scales.x.type, 'linear');
+    assert.equal(chart.options.scales.x.min, Date.parse('2026-10-01'));
+    assert.equal(chart.options.scales.x.max, Date.parse('2026-12-31'));
+    assert.equal(chart.data.datasets[0].data.length, 1);
+    assert.equal(chart.data.datasets[0].data[0].x, Date.parse('2026-10-06'));
+    assert.equal(chart.data.datasets[0].data[0].y, 8.0);
+    assert.equal(chart.data.datasets[1].data[0].x, chart.options.scales.x.min);
+    assert.equal(chart.data.datasets[1].data[1].x, chart.options.scales.x.max);
+    assert.equal(chart.data.datasets[2].data.length, 1);
+    assert.equal(chart.data.datasets[2].data[0].x, chart.data.datasets[0].data[0].x);
+    assert.equal(chart.data.datasets[2].data[0].y, 8.4);
+    assert.equal(chart.data.datasets[2].showLine, false);
+    assert.equal(chart.data.datasets[2].pointStyle, 'rectRot');
+    assert.equal(pointColorsAtCreation[0], 'rgb(1, 2, 3)');
+    assert.equal(pointColorsAtCreation[2], 'rgb(1, 2, 3)');
+    const liveContext = {
+        dataset: chart.data.datasets[2], datasetIndex: 2,
+        raw: chart.data.datasets[2].data[0],
+        parsed: {x: Date.parse('2026-10-06'), y: 8.4},
+    };
+    assert.equal(chart.options.plugins.tooltip.callbacks.title([liveContext]),
+        'Today (Oct 06, live)');
+    assert.match(chart.options.plugins.tooltip.callbacks.label(liveContext), /840.*committed/);
+    const legendFilter = chart.options.plugins.legend.labels.filter;
+    assert.equal(legendFilter({datasetIndex: 2}, chart.data), true);
+    assert.equal(legendFilter({datasetIndex: 2}, {datasets: [{}, {}, {data: []}]}), false);
+});
+
+test('Today can be shown without inventing a published snapshot series', () => {
+    const series = quarterChartSeries({
+        period_start: '2026-10-01', period_end: '2026-12-31', target: 40,
+        trend: [{date: '2026-10-06', label: 'Today (Oct 06, live)',
+            source: 'live', committed_acr: 840, u2c_pct: 8.4}],
+    });
+    assert.deepEqual(series.committed, []);
+    assert.equal(series.live.length, 1);
+    assert.equal(series.live[0].y, 8.4);
+});
 function controller({selected = ['Databases', 'Fabric'], setup = false,
     storageFailure = false, reloadFailure = false, withReading = false,
     savedView, embedded = false, historyFailure = false, fetcher} = {}) {

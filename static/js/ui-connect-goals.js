@@ -26,6 +26,27 @@
         return {...destination, allQuarters: destination.quarters.slice()};
     }
 
+    function quarterChartSeries(u2c) {
+        const start = Date.parse(u2c.period_start);
+        const end = Date.parse(u2c.period_end);
+        return {
+            start, end,
+            committed: u2c.trend.filter(point => point.source !== 'live').map(point => ({
+                ...point, x: Date.parse(point.date), y: point.u2c_pct,
+            })),
+            live: u2c.trend.filter(point => point.source === 'live').map(point => ({
+                ...point, x: Date.parse(point.date), y: point.u2c_pct,
+            })),
+            goal: [{x: start, y: u2c.target}, {x: end, y: u2c.target}],
+        };
+    }
+
+    function trendDate(value) {
+        return new Date(value).toLocaleDateString(undefined, {
+            month: 'short', day: '2-digit', timeZone: 'UTC',
+        });
+    }
+
     function validateReadingView(view) {
         if (!view || !Number.isFinite(view.scroll) || view.scroll < 0
             || !Array.isArray(view.expanded)
@@ -39,6 +60,7 @@
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = {
             missingRequiredBuckets, confirmBuckets, coverageFilter, validateReadingView,
+            quarterChartSeries,
         };
     }
     if (!global.document) return;
@@ -179,24 +201,32 @@
 
         const canvas = document.getElementById('connectU2cChart');
         if (!canvas || !config.u2c.trend.length) return;
-        const points = config.u2c.trend;
-        const chart = new global.Chart(canvas, {
+        const series = quarterChartSeries(config.u2c);
+        let chart;
+        const chartConfig = {
             type: 'line',
             data: {
-                labels: points.map(point => point.label),
                 datasets: [{
-                    label: 'Committed ACR %', data: points.map(point => point.u2c_pct),
+                    label: 'Snapshot committed ACR %', data: series.committed,
                     fill: true, pointRadius: 3, pointHoverRadius: 5, tension: .18,
                 }, {
                     label: config.u2c.target + '% goal',
-                    data: points.map(() => config.u2c.target),
+                    data: series.goal,
                     borderDash: [6, 5], pointRadius: 0, fill: false,
+                }, {
+                    label: 'Today (live)', data: series.live,
+                    showLine: false, fill: false, pointStyle: 'rectRot',
+                    pointRadius: 5, pointHoverRadius: 7,
                 }],
             },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: false,
                 scales: {
-                    x: {grid: {display: false}, ticks: {}},
+                    x: {
+                        type: 'linear', min: series.start, max: series.end,
+                        grid: {display: false},
+                        ticks: {callback: trendDate, maxTicksLimit: 7},
+                    },
                     y: {
                         beginAtZero: true, suggestedMax: Math.max(50, config.u2c.value + 10),
                         ticks: {callback: value => value + '%'}, grid: {},
@@ -204,10 +234,26 @@
                 },
                 plugins: {
                     colors: {enabled: false},
-                    legend: {position: 'bottom', align: 'start', labels: {}},
+                    legend: {position: 'bottom', align: 'start', labels: {
+                        filter: (item, data) => item.datasetIndex !== 2
+                            || data.datasets[2].data.length > 0,
+                    }},
+                    tooltip: {
+                        callbacks: {
+                            title: items => items[0].raw.label || trendDate(items[0].parsed.x),
+                            label: context => {
+                                const value = context.dataset.label + ': '
+                                    + context.parsed.y + '%';
+                                if (context.datasetIndex !== 2) return value;
+                                return value + ' (' + context.raw.committed_acr.toLocaleString(
+                                    undefined, {style: 'currency', currency: 'USD',
+                                        maximumFractionDigits: 0}) + ' committed)';
+                            },
+                        },
+                    },
                 },
             },
-        });
+        };
 
         function applyChartTheme() {
             const styles = global.getComputedStyle(document.documentElement);
@@ -225,19 +271,30 @@
             const line = color('--sb-ui-milestone-rail');
             const ink = color('--sb-ui-muted');
             const grid = color('--sb-ui-grid-line');
-            chart.data.datasets[0].borderColor = line;
-            chart.data.datasets[0].pointBackgroundColor = line;
-            chart.data.datasets[0].pointBorderColor = line;
-            chart.data.datasets[0].backgroundColor =
+            chartConfig.data.datasets[0].borderColor = line;
+            chartConfig.data.datasets[0].pointBackgroundColor = line;
+            chartConfig.data.datasets[0].pointBorderColor = line;
+            chartConfig.data.datasets[0].backgroundColor =
                 line.replace('rgb(', 'rgba(').replace(')', ', .10)');
-            chart.data.datasets[1].borderColor = ink;
-            chart.data.datasets[1].backgroundColor = 'transparent';
-            chart.options.plugins.legend.labels.color = ink;
+            chartConfig.data.datasets[1].borderColor = ink;
+            chartConfig.data.datasets[1].backgroundColor = 'transparent';
+            const live = color('--sb-ui-accent');
+            chartConfig.data.datasets[2].borderColor = live;
+            chartConfig.data.datasets[2].pointBackgroundColor = live;
+            chartConfig.data.datasets[2].pointBorderColor = live;
+            chartConfig.options.plugins.legend.labels.color = ink;
             for (const axis of ['x', 'y']) {
-                chart.options.scales[axis].ticks.color = ink;
-                chart.options.scales[axis].grid.color = grid;
+                chartConfig.options.scales[axis].ticks.color = ink;
+                chartConfig.options.scales[axis].grid.color = grid;
             }
-            chart.update('none');
+            if (chart) {
+                const visible = chart.data.datasets.map((_, index) => chart.isDatasetVisible(index));
+                chart.destroy();
+                visible.forEach((shown, index) => {
+                    chartConfig.data.datasets[index].hidden = !shown;
+                });
+            }
+            chart = new global.Chart(canvas, chartConfig);
         }
         applyChartTheme();
         new global.MutationObserver(applyChartTheme).observe(document.documentElement, {

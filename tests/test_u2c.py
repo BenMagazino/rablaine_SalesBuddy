@@ -1441,19 +1441,23 @@ class TestAttainmentTrend:
             snapshot = U2CSnapshot.query.first()
             assert get_attainment_trend(snapshot.id) == []
 
-    def test_chart_is_hidden_with_a_single_final_point(self, client, app, monkeypatch):
-        """One point isn't a trend - don't render an empty-looking chart."""
-        from app.services.u2c_snapshot import refresh_official_snapshot
+    def test_chart_preserves_a_single_final_snapshot(self, client, app, monkeypatch):
+        """Show every published snapshot without adding Today to a final quarter."""
+        from app.services.u2c_snapshot import record_version_totals, refresh_official_snapshot
 
         fq = current_fiscal_quarter()
-        FakeMsxi(fq, {'20260915': 4000.0}).install(monkeypatch)
+        start, _ = fiscal_quarter_date_range(fq)
+        fake = FakeMsxi(fq, {start.strftime('%Y%m%d'): 4000.0}).install(monkeypatch)
         with app.app_context():
             refresh_official_snapshot()
-            U2CSnapshot.query.first().is_final = True
+            snapshot = U2CSnapshot.query.first()
+            record_version_totals(snapshot, start.strftime('%Y%m%d'), fake(fq))
+            snapshot.is_final = True
             db.session.commit()
 
         response = client.get('/reports/u2c')
-        assert b'u2cTrendChart' not in response.data
+        assert b'id="u2cTrendChart"' in response.data
+        assert b'"source": "live"' not in response.data
 
     def test_chart_renders_with_multiple_points(self, client, app, monkeypatch):
         with app.app_context():
@@ -1530,7 +1534,7 @@ class TestLiveAttainmentTrend:
             assert weekly[-1]['u2c_pct'] == 0
             assert points[-1] == {
                 'date': reference.isoformat(),
-                'label': f"{reference.strftime('%b %d')} (live)",
+                'label': f"Today ({reference.strftime('%b %d')}, live)",
                 'source': 'live',
                 'items': 2,
                 'starting_acr': 15378.0,
@@ -1543,8 +1547,8 @@ class TestLiveAttainmentTrend:
             assert get_attainment_trend(snapshot.id, 'Data') == weekly
             assert snapshot.versions.count() == 1
 
-    def test_same_day_week_is_only_replaced_in_returned_series(self, app, u2c_data):
-        """Avoid two x-axis points on the same date without changing storage."""
+    def test_same_day_snapshot_and_today_are_both_preserved(self, app, u2c_data):
+        """A Today point must not replace a publish, even on the same date."""
         from app.services.u2c_snapshot import (
             get_attainment_trend, record_version_totals,
         )
@@ -1553,13 +1557,39 @@ class TestLiveAttainmentTrend:
             snapshot, reference, rows = self._seed(u2c_data)
             record_version_totals(snapshot, reference.strftime('%Y%m%d'), rows)
             db.session.commit()
+            weekly = get_attainment_trend(snapshot.id, 'Data')
             points = get_attainment_trend(
                 snapshot.id, 'Data', include_live=True, reference=reference)
-            assert len(points) == 2
+            assert len(points) == 3
+            assert points[:-1] == weekly
+            assert points[-2]['date'] == points[-1]['date'] == reference.isoformat()
+            assert points[-2]['u2c_pct'] == 0.0
             assert points[-1]['u2c_pct'] == 48.0
             assert points[-1]['source'] == 'live'
             assert snapshot.versions.count() == 2
             assert get_attainment_trend(snapshot.id, 'Data')[-1]['u2c_pct'] == 0
+
+    def test_today_uses_latest_imported_snapshot_dollars_not_local_acr(self, app, u2c_data):
+        """Current commitment applies to dollars last imported into the snapshot."""
+        from app.services.u2c_snapshot import get_attainment_trend
+
+        with app.app_context():
+            snapshot, reference, _ = self._seed(u2c_data)
+            item = U2CSnapshotItem.query.filter_by(
+                snapshot_id=snapshot.id, milestone_id=u2c_data['ms1_id'],
+            ).one()
+            item.monthly_acr = 9000.0
+            db.session.get(Milestone, u2c_data['ms1_id']).monthly_usage = 20000.0
+            db.session.commit()
+
+            points = get_attainment_trend(
+                snapshot.id, 'Data', include_live=True, reference=reference)
+
+            assert points[-1]['committed_acr'] == 9000.0
+            assert points[-1]['starting_acr'] == 17000.0
+            assert points[-1]['u2c_pct'] == 52.9
+            assert points[0]['starting_acr'] == 15378.0
+            assert points[0]['committed_acr'] == 0.0
 
     @pytest.mark.parametrize('finalized', [False, True])
     def test_closed_or_historical_quarters_have_no_live_point(
@@ -1616,13 +1646,29 @@ class TestLiveAttainmentTrend:
         assert response.status_code == 200
         assert b'"u2c_pct": 48.0' in response.data
         assert b'"source": "live"' in response.data
-        assert b'latest synced milestones (live)' in response.data
+        assert b'Today (live commitment status, snapshot ACR)' in response.data
+
+    def test_report_shows_today_before_weekly_history_arrives(self, client, app, u2c_data):
+        """Today is visible even when no published history is available yet."""
+        with app.app_context():
+            make_snapshot()
+
+        response = client.get('/reports/u2c')
+
+        assert response.status_code == 200
+        assert b'id="u2cTrendChart"' in response.data
+        assert b'const TREND_SERIES' in response.data
+        assert b'"source": "live"' in response.data
 
     @pytest.mark.skipif(shutil.which('node') is None, reason='Node.js is required for JS tests')
     def test_goal_chart_and_filtered_colors(self, client, app, u2c_data):
         """Execute the rendered chart and filtering code, including goal boundaries."""
+        from app.services.u2c_snapshot import record_version_totals
+
         with app.app_context():
-            self._seed(u2c_data)
+            snapshot, reference, rows = self._seed(u2c_data)
+            record_version_totals(snapshot, reference.strftime('%Y%m%d'), rows)
+            db.session.commit()
         response = client.get('/reports/u2c')
         soup = BeautifulSoup(response.data, 'html.parser')
         scripts = [

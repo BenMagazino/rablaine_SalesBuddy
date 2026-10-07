@@ -157,7 +157,7 @@
 </div>
 
 <!-- Weekly attainment trend -->
-{% if trend.get('', [])|length > 1 %}
+{% if trend.get('', []) %}
 <div class="u2c-section" id="trendCard">
     <div class="u2c-section-heading u2c-inline is-spread">
         <h2>
@@ -165,7 +165,7 @@
             <span id="trendScope" class="u2c-tag u2c-muted is-hidden"></span>
         </h2>
         <small class="u2c-muted">
-            Weekly MSXi history{% if trend.get('', []) and trend[''][-1].get('source') == 'live' %} + latest synced milestones (live){% endif %}
+            Published MSXi snapshots{% if trend.get('', []) and trend[''][-1].get('source') == 'live' %} + Today (live commitment status, snapshot ACR){% endif %}
         </small>
     </div>
     <div class="u2c-section-body">
@@ -173,7 +173,7 @@
             <canvas id="u2cTrendChart"></canvas>
         </div>
         <div id="trendEmpty" class="u2c-muted u2c-caption is-hidden">
-            Not enough weekly history for this workload yet.
+            No published snapshots or Today point are available for this workload.
         </div>
     </div>
 </div>
@@ -453,7 +453,7 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/ui-u2c.js') }}"></script>
-{% if trend.get('', [])|length > 1 %}
+{% if trend.get('', []) %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
 <script>
 // Attainment trend. One series per workload prefix plus '' for the whole
@@ -477,12 +477,12 @@ function u2cMoney(v) {
 }
 
 function u2cTrendPoints(points, field) {
-    return points.map(p => ({ x: Date.parse(p.date), y: p[field] }));
+    return points.map(p => ({ ...p, x: Date.parse(p.date), y: p[field] }));
 }
 
 function u2cGoalPoints(points) {
     return points.map(p => ({
-        x: Date.parse(p.date), y: p.starting_acr * U2C_GOAL / 100,
+        ...p, x: Date.parse(p.date), y: p.starting_acr * U2C_GOAL / 100,
     }));
 }
 
@@ -499,6 +499,8 @@ function renderU2cTrend(prefix) {
     if (!canvas) return;
 
     const points = TREND_SERIES[prefix || ''] || [];
+    const published = points.filter(p => p.source !== 'live');
+    const live = points.filter(p => p.source === 'live');
     const empty = document.getElementById('trendEmpty');
     const scope = document.getElementById('trendScope');
 
@@ -507,11 +509,9 @@ function renderU2cTrend(prefix) {
         scope.classList.toggle('is-hidden', !prefix);
     }
 
-    // One point isn't a trend, and a workload can legitimately have fewer
-    // weeks of history than the territory as a whole.
-    const enough = points.length > 1;
+    const enough = points.length > 0;
     canvas.style.display = enough ? '' : 'none';
-    if (empty) empty.classList.toggle('d-none', enough);
+    if (empty) empty.classList.toggle('is-hidden', enough);
     if (!enough) {
         if (u2cTrendChart) { u2cTrendChart.destroy(); u2cTrendChart = null; }
         return;
@@ -521,10 +521,11 @@ function renderU2cTrend(prefix) {
 
     if (u2cTrendChart) {
         u2cTrendChart.data.datasets[0].data = u2cTrendPoints(
-            points, 'committed_acr');
+            published, 'committed_acr');
         u2cTrendChart.data.datasets[1].data = u2cTrendPoints(
             points, 'starting_acr');
         u2cTrendChart.data.datasets[2].data = u2cGoalPoints(points);
+        u2cTrendChart.data.datasets[3].data = u2cTrendPoints(live, 'committed_acr');
         u2cTrendChart.update();
         return;
     }
@@ -534,8 +535,8 @@ function renderU2cTrend(prefix) {
         data: {
             datasets: [
                 {
-                    label: 'Committed ACR',
-                    data: u2cTrendPoints(points, 'committed_acr'),
+                    label: 'Snapshot committed ACR',
+                    data: u2cTrendPoints(published, 'committed_acr'),
                     borderColor: colors.committed,
                     pointBackgroundColor: colors.committed,
                     pointBorderColor: colors.committed,
@@ -563,34 +564,44 @@ function renderU2cTrend(prefix) {
                     pointRadius: 0,
                     fill: false,
                 },
+                {
+                    label: 'Today (live)',
+                    data: u2cTrendPoints(live, 'committed_acr'),
+                    borderColor: colors.goal,
+                    pointBackgroundColor: colors.goal,
+                    pointBorderColor: colors.goal,
+                    showLine: false,
+                    fill: false,
+                    pointStyle: 'rectRot',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                },
             ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
+            interaction: { mode: 'nearest', intersect: false },
             plugins: {
                 colors: {enabled: false},
                 legend: {
                     position: 'bottom',
-                    labels: { color: colors.text, boxWidth: 12, boxHeight: 3 },
+                    labels: {
+                        color: colors.text, boxWidth: 12, boxHeight: 3,
+                        filter: (item, data) => item.datasetIndex !== 3
+                            || data.datasets[3].data.length > 0,
+                    },
                 },
                 tooltip: {
                     callbacks: {
                         title: items => {
                             if (!items.length) return '';
-                            const series = TREND_SERIES[
-                                (document.getElementById('workloadFilter') || {}).value || ''
-                            ] || [];
-                            return (series[items[0].dataIndex] || {}).label || '';
+                            return items[0].raw.label || '';
                         },
                         label: ctx => {
-                            const series = TREND_SERIES[
-                                (document.getElementById('workloadFilter') || {}).value || ''
-                            ] || [];
-                            const p = series[ctx.dataIndex];
+                            const p = ctx.raw;
                             if (!p) return '';
-                            if (ctx.datasetIndex === 0) {
+                            if (ctx.datasetIndex === 0 || ctx.datasetIndex === 3) {
                                 // Same basis as the "Committed ACR" and "U2C %"
                                 // summary: how much of the frozen baseline has
                                 // committed.

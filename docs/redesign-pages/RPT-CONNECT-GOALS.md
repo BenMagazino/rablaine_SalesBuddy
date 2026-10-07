@@ -58,3 +58,41 @@
 - Workflow now requires comparable before/after screenshots for every redesign.
 - User authorized a local checkpoint commit and continuation to the next report.
   No push, merge or deployment authorized.
+
+## Quarter-chart follow-up, checkpoint 44
+
+- User requested the graph contain only this fiscal quarter, rather than showing
+  earlier-quarter weekly publishes attached to the current snapshot.
+- Filter the widget's trend to inclusive quarter boundaries without changing
+  its attainment, pace, milestone population or stored snapshot history.
+- Use an actual date axis across the full quarter and a 40% target spanning
+  those boundaries. Preserve the live point label and do not invent earlier values.
+- Regression checks: 16 scoped Python tests and 21 native controller tests passed.
+- Live FY27 Q2 axis is October 1 through December 31; only the October 6 live
+  point remains. Its tooltip label is preserved. All other U2C widget fields
+  and the three primary metric values match the before state.
+- Private before/after comparison: `connect-goals-quarter-before.png` and
+  `connect-goals-quarter-after.png`. Included in the approved graph follow-up.
+- Discord accepted the generic review-ready DM, message `1557171484005498881`.
+
+### Published snapshots and separate Today marker
+
+- The shared provider now appends Today instead of replacing a same-day publish.
+  The snapshot line and Today diamond are separate datasets with date-based tooltips.
+- Today uses current synced commitment status and the latest imported snapshot
+  dollars; it does not use current milestone ACR or rewrite past snapshot values.
+- Live FY27 Q2 validation retains October 1 through December 31 bounds. There
+  are no published points dated in this quarter yet, so only Today is plotted
+  alongside the target, without inventing snapshot history.
+- All other U2C widget fields and headline metrics remain unchanged. Actual
+  Today hover reads 0% and $0 committed for the Data scope.
+- Resolve point colors before Chart.js construction so the Today diamond is
+  actually visible, not merely colored in the legend. Theme changes rebuild
+  resolved point styles while preserving legend visibility; dark/light checked live.
+- Scoped verification: 222 Python tests and 29 native JavaScript tests passed,
+  covering U2C, Connect Goals and the shared SalesIQ tool contracts.
+- Before/after images: `connect-goals-live-point-before.png`,
+  `connect-goals-live-point-after.png`. Images remain private session artifacts.
+- The combined quarter-only and Today-marker follow-up is user-approved October 6;
+  local commit authorized. No push, merge or deployment authorized.
+- Discord accepted the generic review-ready DM, message `1557177228838572114`.

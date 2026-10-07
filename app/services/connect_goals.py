@@ -166,6 +166,10 @@ def get_u2c_widget(reference: date | None = None) -> dict[str, Any]:
         snapshot.id, FY27_DATA_SCOPE['workload_area'],
         include_live=True, reference=reference)
     quarter_start, quarter_end = fiscal_quarter_date_range(fiscal_quarter)
+    trend = [
+        point for point in trend
+        if quarter_start.isoformat() <= point['date'] <= quarter_end.isoformat()
+    ]
     elapsed_days = max(0, min((reference - quarter_start).days + 1,
                               (quarter_end - quarter_start).days + 1))
     total_days = (quarter_end - quarter_start).days + 1

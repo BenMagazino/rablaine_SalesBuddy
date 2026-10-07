@@ -292,6 +292,7 @@ const PageHelp = (function () {
 
       <h6>Quarterly U2C progression</h6>
       <p><strong>Goal: 40% by quarter end.</strong> Committed Data milestone ACR is divided by the official quarter-start snapshot ACR. The status color compares actual progress with a linear expected pace for today.</p>
+      <p>The graph spans the current fiscal quarter from its first day to its last day. The snapshot series shows each publish unchanged. A separate <strong>Today (live)</strong> diamond uses current synced commitment status and dollars from the latest imported snapshot, not current milestone ACR. A same-day snapshot and Today are both kept; Today does not imply values before that date.</p>
 
       <h6>Milestone team coverage</h6>
       <p><strong>Goal: 50%.</strong> Active Data milestones due this or next fiscal year are weighted by estimated monthly ACR. The metric compares ACR on milestones where you are on the team with all in-scope milestone ACR.</p>
@@ -314,7 +315,7 @@ const PageHelp = (function () {
       </ul>
       <h6>Scope and trend</h6>
       <p>Quarter selects a saved snapshot. Workload filters the summary, queues and chart. Seller and customer filters affect summary totals and queues only; the chart remains workload-wide. Clear seller and customer does not clear workload.</p>
-      <p>The chart retains weekly MSXi history and, for a current non-final quarter, a labeled live endpoint. Weekly values can fall when MSXi restates conversions. The dashed goal line follows the weekly snapshot pipeline, not live ACR.</p>
+      <p>The chart retains every published MSXi snapshot unchanged. For a current non-final quarter, a separate <strong>Today (live)</strong> diamond uses current synced commitment status and milestone dollars from the latest imported snapshot, not current milestone ACR. A publish on today's date is not replaced. Weekly values can fall when MSXi restates conversions. The dashed goal line follows the snapshot pipeline, not live ACR.</p>
       <h6>Milestone queues</h6>
       <p>Sort the six data columns with a click, Enter or Space. Engagement and 1:1 columns are actions, not sorts. Customer and milestone links open existing records; Back restores reading position and an unsubmitted 1:1 draft.</p>
       <p><strong>Add</strong> opens a discussion-note editor. Only <strong>Add to 1:1</strong> saves it to the seller workspace. Existing items show <strong>On 1:1</strong>.</p>

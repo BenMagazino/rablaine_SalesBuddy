@@ -532,6 +532,14 @@ def test_u2c_widget_uses_data_snapshot(app):
             commitment='Uncommitted',
             status='On Track',
         ))
+        from app.services.u2c_snapshot import record_version_totals
+        record_version_totals(snapshot, '20260815', [{
+            'milestone_number': milestone.milestone_number,
+            'workload': milestone.workload,
+            'starting_acr': 100,
+            'current_commitment': 'Uncommitted',
+            'current_status': 'On Track',
+        }])
         db.session.commit()
 
         widget = connect_goals.get_u2c_widget(date(2026, 8, 15))
@@ -539,9 +547,43 @@ def test_u2c_widget_uses_data_snapshot(app):
         assert widget['available'] is True
         assert widget['value'] == 100.0
         assert widget['starting_acr'] == 100
+        assert len(widget['trend']) == 3
         assert widget['trend'][0]['u2c_pct'] == 0.0
+        assert widget['trend'][-2]['date'] == '2026-08-15'
+        assert widget['trend'][-2]['u2c_pct'] == 0.0
         assert widget['trend'][-1]['u2c_pct'] == widget['value'] == 100.0
         assert widget['trend'][-1]['date'] == '2026-08-15'
         assert widget['trend'][-1]['source'] == 'live'
-        assert widget['trend'][-1]['label'] == 'Aug 15 (live)'
+        assert widget['trend'][-1]['label'] == 'Today (Aug 15, live)'
         assert version.total_committed_acr == 0
+
+
+def test_u2c_widget_limits_history_to_current_quarter(app, monkeypatch):
+    """Exclude other-quarter publishes without dropping either quarter boundary."""
+    with app.app_context():
+        snapshot = U2CSnapshot(
+            fiscal_quarter='FY27 Q2',
+            snapshot_date=datetime(2026, 10, 1, tzinfo=timezone.utc),
+            total_items=0,
+            total_monthly_acr=0,
+        )
+        db.session.add(snapshot)
+        db.session.commit()
+        points = [
+            {'date': '2026-08-04', 'label': 'Aug 04', 'u2c_pct': 10.0},
+            {'date': '2026-09-30', 'label': 'Sep 30', 'u2c_pct': 20.0},
+            {'date': '2026-10-01', 'label': 'Oct 01', 'u2c_pct': 0.0},
+            {'date': '2026-10-06', 'label': 'Oct 06 (live)', 'u2c_pct': 0.0,
+             'source': 'live'},
+            {'date': '2026-12-31', 'label': 'Dec 31', 'u2c_pct': 40.0},
+            {'date': '2027-01-01', 'label': 'Jan 01', 'u2c_pct': 50.0},
+        ]
+        monkeypatch.setattr(connect_goals, 'get_attainment_trend', lambda *a, **kw: points)
+
+        widget = connect_goals.get_u2c_widget(date(2026, 10, 6))
+
+        assert widget['period_start'] == '2026-10-01'
+        assert widget['period_end'] == '2026-12-31'
+        assert widget['trend'] == points[2:5]
+        assert widget['value'] == 0.0
+        assert len(points) == 6
