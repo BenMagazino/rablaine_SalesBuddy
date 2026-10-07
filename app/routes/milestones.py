@@ -55,7 +55,13 @@ def milestone_create():
             title=title,
         )
         db.session.add(milestone)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            logger.exception("Could not create manual milestone")
+            flash('Could not save the milestone. Your fields are preserved. Please retry.', 'danger')
+            return render_template('milestone_form.html', milestone=None), 500
         
         flash('Milestone created successfully', 'success')
         return redirect(url_for('milestones.milestone_view', id=milestone.id))
@@ -292,7 +298,13 @@ def milestone_edit(id):
         
         milestone.url = url
         milestone.title = title
-        db.session.commit()
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            logger.exception("Could not update manual milestone %s", id)
+            flash('Could not save the milestone. Your fields are preserved. Please retry.', 'danger')
+            return render_template('milestone_form.html', milestone=milestone), 500
         
         flash('Milestone updated successfully', 'success')
         return redirect(url_for('milestones.milestone_view', id=milestone.id))

@@ -279,6 +279,23 @@ const PageHelp = (function () {
     `},
 
     // ── Milestones ──
+    { pattern: /^\/milestone\/new\/?$/, title: 'New Milestone', content: `
+      <p>Add an MSX URL and an optional friendly title to your local milestones.</p>
+      <p><strong>Create Milestone</strong> saves explicitly and opens the existing detail page.
+      Cancel returns to Milestones. Leaving unsubmitted changes asks before discarding;
+      Back preserves the form in its own history entry. Nothing autosaves to MSX.</p>
+      <p>The MSX URL is required. Duplicate URLs and failed saves show an error and keep
+      your fields available to correct or retry.</p>
+    `},
+    { pattern: /^\/milestone\/\d+\/edit\/?$/, title: 'Edit Milestone', content: `
+      <p>Update the existing MSX URL or optional friendly title. Other milestone fields
+      and relationships are unchanged.</p>
+      <p><strong>Update Milestone</strong> saves explicitly. Cancel returns to this
+      milestone's details. Unsubmitted changes are protected when leaving, and Back
+      preserves the form in its own history entry. Nothing autosaves to MSX.</p>
+      <p>The MSX URL is required. Duplicate URLs and failed saves show an error and keep
+      your fields available to correct or retry.</p>
+    `},
     { pattern: /^\/milestones\/?$/, title: 'Milestones', content: `
       <p>Browse customer-linked milestones from the local cache and open their linked calls and tasks.</p>
       <h6>Tips</h6>

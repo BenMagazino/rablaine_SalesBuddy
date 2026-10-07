@@ -2,7 +2,7 @@
 
 - ID: MS-LIST; existing `/milestones`, actual template `milestones_list.html`.
 - Audited baseline: `a9682c55`, approved Tracker and one-row filter follow-up.
-- Status: VERIFY, user-approved October 7; local commit authorized.
+- Status: VERIFY, user-approved October 7; committed locally as `c7fb7b19`.
 - Approved effort estimate: about 59%; strict DONE counters are unchanged.
 
 ## Actual surface and preserved population

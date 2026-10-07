@@ -1,43 +1,74 @@
 {% extends "base.html" %}
 
 {% block title %}{{ 'Edit' if milestone else 'New' }} Milestone - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestone-form.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Milestone form status">
+    <span id="milestoneFormState">{{ 'Existing milestone' if milestone else 'New local milestone' }}</span>
+    <span>Manual save · MSX URL required · Title optional</span>
+</footer>
+{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>{{ 'Edit' if milestone else 'New' }} Milestone</h1>
-</div>
-
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="url" class="form-label">MSX URL *</label>
-                        <input type="url" class="form-control" id="url" name="url" 
-                               value="{{ milestone.url if milestone else '' }}" 
-                               placeholder="https://msxsalesplatform.dynamics.com/..." required>
-                        <div class="form-text">The URL from your MSX sales platform</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="title" class="form-label">Title (optional)</label>
-                        <input type="text" class="form-control" id="title" name="title" 
-                               value="{{ milestone.title if milestone and milestone.title else '' }}"
-                               placeholder="e.g., Q2 Deployment Milestone">
-                        <div class="form-text">A friendly name to display instead of the URL</div>
-                    </div>
-                    
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg"></i> {{ 'Update' if milestone else 'Create' }} Milestone
-                        </button>
-                        <a href="{{ url_for('milestones.milestone_view', id=milestone.id) if milestone else url_for('milestones.milestones_list') }}" 
-                           class="btn btn-outline-secondary">Cancel</a>
-                    </div>
-                </form>
+<form method="POST" id="milestoneForm" class="sb-milestone-form" data-sb-page-surface
+      data-form-key="{{ 'edit-' ~ milestone.id if milestone else 'new' }}"
+      data-posted="{{ 'true' if request.method == 'POST' else 'false' }}"
+      data-original-url="{{ milestone.url if milestone else '' }}"
+      data-original-title="{{ milestone.title if milestone and milestone.title else '' }}"
+      aria-labelledby="milestoneFormTitle">
+    <header class="mf-heading" data-sb-page-band>
+        <div>
+            <h1 id="milestoneFormTitle">{{ 'Edit' if milestone else 'New' }} Milestone</h1>
+            <p>{{ 'Update the source link or its display name.' if milestone else 'Add an MSX source link to your local milestones.' }}</p>
+        </div>
+        <div class="mf-commands">
+            <a href="{{ url_for('milestones.milestone_view', id=milestone.id) if milestone else url_for('milestones.milestones_list') }}"
+               class="sb-dialog-button" id="milestoneFormCancel">Cancel</a>
+            <button type="submit" class="sb-dialog-button mf-save" id="milestoneFormSave">
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                {{ 'Update' if milestone else 'Create' }} Milestone
+            </button>
+        </div>
+    </header>
+    <p id="milestoneFormNotice" class="mf-notice" data-sb-page-band role="alert" hidden></p>
+    <div class="mf-reading" data-sb-page-body>
+        <div class="mf-fields">
+            <h2>Milestone link</h2>
+            <div class="mf-field">
+                <label for="url">MSX URL <span aria-hidden="true">*</span></label>
+                <input type="url" id="url" name="url"
+                       value="{{ request.form.get('url', '') if request.method == 'POST' else milestone.url if milestone else '' }}"
+                       placeholder="https://msxsalesplatform.dynamics.com/..." required
+                       aria-describedby="milestoneUrlHelp">
+                <p id="milestoneUrlHelp">The URL from your MSX sales platform</p>
             </div>
+            <div class="mf-field">
+                <label for="title">Title <span>(optional)</span></label>
+                <input type="text" id="title" name="title"
+                       value="{{ request.form.get('title', '') if request.method == 'POST' else milestone.title if milestone and milestone.title else '' }}"
+                       placeholder="e.g., Q2 Deployment Milestone"
+                       aria-describedby="milestoneTitleHelp">
+                <p id="milestoneTitleHelp">A friendly name to display instead of the URL</p>
+            </div>
+            <p class="mf-save-help">Changes stay in this form until you {{ 'update' if milestone else 'create' }} the milestone.</p>
         </div>
     </div>
-</div>
+</form>
+<dialog class="sb-dialog sb-dialog-compact" id="milestoneFormDiscard"
+        aria-labelledby="milestoneFormDiscardTitle" aria-describedby="milestoneFormDiscardText">
+    <header class="sb-dialog-header"><h2 id="milestoneFormDiscardTitle">Discard milestone changes?</h2></header>
+    <div class="sb-dialog-body">
+        <p id="milestoneFormDiscardText">These changes have not been saved. Keep editing, or discard them to continue.</p>
+    </div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="milestoneFormDiscardConfirm">Discard changes</button>
+    </footer>
+</dialog>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-milestone-form.js') }}"></script>
 {% endblock %}

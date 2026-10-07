@@ -30,6 +30,7 @@ standalone UI iterations using entirely fictional data. See the
 - **Revenue Analyzer** - automatic MSXI sync, trend charts, growth alerts, seller/customer/product drill-downs
 - **Milestone Tracker** - native desktop queue and calendar with MSX sync, task management, and AI matching from call notes. Search all saved milestone fields (including cached forecast comments) and use the searchable customer dropdown alongside the existing filters. Data headings sort both ways with raw values; CSV, Clipboard and Email preserve the filtered list. Back restores filters, view, calendar month, sorting and reading position.
 - **Milestones directory** - browse customer-linked records in the native desktop frame, preserving newest-added order, source URLs and linked-call counts. Sort each data heading both ways; Back restores sorting and reading position. Open the existing details, New Milestone or Milestone Tracker without changing the cached data.
+- **Manual milestone forms** - create or edit an MSX URL and optional display title in the native desktop frame. Persistent Save/Cancel commands, visible validation/save errors and guarded unsubmitted changes preserve your work without autosaving or changing MSX.
 - **MSX Workspace** - browse cached opportunities, milestones and open tasks in native
   tabs with independent reading regions, raw-value column sorting and restored scope
   on Back. Existing MSX details, forecast comments, team actions and task workflows

@@ -7,17 +7,18 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: Milestones directory, checkpoint 51,
+- Last approved implementation: New/Edit Milestone forms, checkpoint 52,
   user-approved October 7; local commit authorized.
-- Current task: commit checkpoint 51, then migrate New/Edit Milestone forms, checkpoint 52.
-- Active card: [MS-LIST](redesign-pages/MS-LIST.md), VERIFY.
-- Approved effort estimate: about 59%; strict DONE counters below are separate.
+- Current task: overnight checkpoints 53-62, user-authorized implementation batch.
+- Active card: [MS-FORM](redesign-pages/MS-FORM.md), approved.
+- Approved effort estimate: about 61%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: capture and migrate milestone forms with before/after screenshots
-  and one Discord review-ready notification.
+- Next action: commit approved checkpoint 52, then implement ten bounded checkpoints
+  with before/after screenshots for morning review. Leave the new batch uncommitted;
+  no push, merge or deployment authorized.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -45,7 +46,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 51 sign-off, the rough effort-based estimate is **about 59%**
+As of checkpoint 52 sign-off, the rough effort-based estimate is **about 61%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -155,9 +156,9 @@ have separate rows even when they use one template.
 | ENG-VIEW | Engagement detail | `/engagement/<int:id>` | `engagement_view.html` | TODO | - |
 | ENG-EDIT | Edit engagement | `/engagement/<int:id>/edit` | `engagement_form.html` | TODO | - |
 | MS-LIST | Milestones | `/milestones` | `milestones_list.html` | VERIFY | [Milestones directory](redesign-pages/MS-LIST.md); user-approved October 7 |
-| MS-NEW | Create milestone | `/milestone/new` | `milestone_form.html` | TODO | - |
+| MS-NEW | Create milestone | `/milestone/new` | `milestone_form.html` | VERIFY | [Manual milestone forms](redesign-pages/MS-FORM.md); checkpoint 52, pending sign-off |
 | MS-VIEW | Milestone detail | `/milestone/<int:id>` | `milestone_view.html` | BUILDING | [Shared body/commands](redesign-pages/MILESTONE-BODY.md) |
-| MS-EDIT | Edit milestone | `/milestone/<int:id>/edit` | `milestone_form.html` | TODO | - |
+| MS-EDIT | Edit milestone | `/milestone/<int:id>/edit` | `milestone_form.html` | VERIFY | [Manual milestone forms](redesign-pages/MS-FORM.md); checkpoint 52, pending sign-off |
 | MS-TRACK | Milestone tracker | `/reports/milestone-tracker`; `/milestone-tracker` redirects | `milestone_tracker.html` | VERIFY | [Milestone tracker](redesign-pages/MS-TRACK.md); user-approved October 6 |
 | OPP-VIEW | Opportunity detail | `/opportunity/<int:id>` | `opportunity_view.html` | TODO | - |
 | PROJ-NEW | Create project | `/project/new` | `project_form.html` | TODO | - |
