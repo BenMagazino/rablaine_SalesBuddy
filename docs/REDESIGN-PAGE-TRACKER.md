@@ -7,16 +7,17 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: graph follow-up, checkpoint 44, committed as `b1574e84`.
-- Current task: commit approved Seller 1:1 preparation, checkpoint 45,
-  then migrate the 1:1 hub, checkpoint 46.
-- Active card: [RPT-OOO](redesign-pages/RPT-OOO.md).
-- Approved effort estimate: about 49%; strict DONE counters below are separate.
+- Last approved implementation: Seller 1:1 preparation, checkpoint 45,
+  committed as `acb97fb3`.
+- Current task: commit approved 1:1 hub, checkpoint 46, then migrate the
+  persistent 1:1 workspace, checkpoint 47.
+- Active card: [OOO-LIST](redesign-pages/OOO-LIST.md).
+- Approved effort estimate: about 50%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: capture and migrate the 1:1 hub with before/after screenshots.
+- Next action: capture and migrate the persistent 1:1 workspace with before/after screenshots.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -44,7 +45,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 45 sign-off, the rough effort-based estimate is **about 49%**
+As of checkpoint 46 sign-off, the rough effort-based estimate is **about 50%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -170,7 +171,7 @@ have separate rows even when they use one template.
 | SPEC-NEW | Create specialty | `/specialties/new` | `specialty_form.html` | TODO | - |
 | SPEC-VIEW | Specialty detail | `/specialties/<int:id>` | `specialty_view.html` | TODO | - |
 | SPEC-EDIT | Edit specialty | `/specialties/<int:id>/edit` | `specialty_form.html` | TODO | - |
-| OOO-LIST | 1:1 hub | `/one-on-one/` | `one_on_one_hub.html` | TODO | - |
+| OOO-LIST | 1:1 hub | `/one-on-one/` | `one_on_one_hub.html` | VERIFY | [Card](redesign-pages/OOO-LIST.md) |
 | OOO-VIEW | 1:1 workspace | `/one-on-one/<int:workspace_id>` | `one_on_one_workspace.html` | TODO | - |
 | RPT-HUB | Reports hub | `/reports` | `reports_hub.html` | VERIFY | [Checkpoint 34](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-34-main-reports-directory); native grouped directory, identical registry/menu order, local filter and Back context; user-approved October 5 |
 | RPT-INIT | Initiative Tracker | `/reports/initiative-tracker`; `/reports/manager-one-on-one` | `report_manager_one_on_one.html` | TODO | - |

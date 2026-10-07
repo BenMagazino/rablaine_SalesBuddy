@@ -400,6 +400,13 @@ const PageHelp = (function () {
       <p>This milestone's tasks, linked engagements, and MSX sync status.</p>
     `},
 
+    { pattern: /^\/one-on-one\/?$/, title: '1:1 Workspaces', content: `
+      <p>Your existing standing notes, next-conversation queues and discussion history, grouped by person.</p>
+      <p>The default order is most recently updated first. Sort any of the six directory columns with a click, Enter or Space. Updated sorts by the displayed calendar date. Queue and discussion counts keep their existing definitions, including zero counts.</p>
+      <p>Click any cell to open the same workspace. The person link is the keyboard entry point for each row. Standing context previews remain plain text, limited to 180 characters; open the workspace for the complete notes.</p>
+      <p>Filter sellers in <strong>Start another workspace</strong>. This only narrows available seller quick starts, not the existing workspace directory. Opening a seller quick start creates or reuses that seller's scoped workspace. The Manager/Other form creates a workspace only when you click <strong>Create</strong>.</p>
+      <p>Back restores seller filtering, table order, reading positions and an unsubmitted name/type draft. Embedded hubs keep their state local without changing the parent history.</p>
+    `},
     { pattern: /^\/reports\/one-on-one\/?$/, title: '1:1 Preparation', content: `
       <p>Prepare for a seller or manager conversation using recent activity and all open engagements.</p>
       <p><strong>Last 2 Weeks</strong> groups customers by recent note call dates. <strong>All Open Engagements</strong> shows Active engagements, including work without recent notes. The six totals and highlight tables keep their existing scopes in both views.</p>

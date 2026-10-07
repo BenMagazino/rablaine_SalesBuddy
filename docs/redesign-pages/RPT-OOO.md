@@ -2,7 +2,7 @@
 
 - Route: `/reports/one-on-one`, including its embed.
 - Baseline: approved product `b1574e84`; before captured before this page changed.
-- Status: VERIFY, user-approved October 6; local commit authorized.
+- Status: VERIFY, user-approved October 6 and committed locally as `acb97fb3`.
 - Scope: preparation report only, not persistent workspaces or Initiative Tracker.
 
 ## Preserved contracts

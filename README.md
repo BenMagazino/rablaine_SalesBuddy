@@ -53,6 +53,10 @@ standalone UI iterations using entirely fictional data. See the
   Open 1:1 Notes keeps existing workspaces and explicit Manager/Other creation.
   CSV, clipboard and email exports include all highlight rows, including offscreen
   rows and original milestone URLs; customer activity lists remain separate.
+- **1:1 Workspaces** - the existing hub uses a native directory with sortable person,
+  type, standing context, queue/history counts and update dates. Seller quick starts
+  retain their customer-book scope. Back restores the seller filter, table order,
+  reading positions and an unsubmitted Manager/Other name. Creation remains explicit.
 - **Initiative Tracker** - create named initiatives, select engagements and milestones,
   grouped by their current seller, with live status, commitment, dates, and ACR.
   When user-facing internal projects exist, **Add work** also offers **Projects**, with
