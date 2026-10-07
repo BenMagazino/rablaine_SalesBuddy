@@ -79,4 +79,5 @@
   latest-snapshot dollar basis versus changed local ACR, single-point rendering,
   quarter bounds, filtering and historical/final-quarter exclusions.
 - Before/after images: `u2c-live-point-before.png`, `u2c-live-point-after.png`.
-- User-approved October 6; local commit authorized. No push, merge or deployment authorized.
+- User-approved October 6 and committed locally as `b1574e84`.
+  No push, merge or deployment authorized.

@@ -400,6 +400,14 @@ const PageHelp = (function () {
       <p>This milestone's tasks, linked engagements, and MSX sync status.</p>
     `},
 
+    { pattern: /^\/reports\/one-on-one\/?$/, title: '1:1 Preparation', content: `
+      <p>Prepare for a seller or manager conversation using recent activity and all open engagements.</p>
+      <p><strong>Last 2 Weeks</strong> groups customers by recent note call dates. <strong>All Open Engagements</strong> shows Active engagements, including work without recent notes. The six totals and highlight tables keep their existing scopes in both views.</p>
+      <p><strong>Commitments</strong> lists on-team milestones committed in the last two weeks. <strong>Due This Quarter</strong> also includes older overdue active milestones. Reviewed revenue alerts use the last two weeks; topic sparklines use fiscal-year monthly counts.</p>
+      <p>Sort any highlight column with a click, Enter or Space. Trend sorts by the fiscal-year note total. Long tables scroll independently. Expand customer groups or Notes to read the first five notes and follow existing records. Back restores the chosen view, disclosures, reading positions and table sorts.</p>
+      <p><strong>Open 1:1 Notes</strong> opens existing workspaces, seller notes, or the explicit Manager/Other creation form. Opening this report never creates a workspace. <strong>Initiative Tracker</strong> opens your separate curated priorities.</p>
+      <p>CSV, Copy to Clipboard and Email export every highlight table, including its offscreen rows and original milestone URLs. Customer activity lists are not included in these table exports.</p>
+    `},
     { pattern: /^\/reports\/?$/, title: 'Reports', content: `
       <p>Open reports from the same groups and order used in the Reports menu.</p>
       <p>Use Find a report to match names, purposes or groups. Clear restores the full directory. The status bar shows how many reports match; filtering does not change report data.</p>

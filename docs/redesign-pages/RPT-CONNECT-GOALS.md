@@ -93,6 +93,6 @@
   covering U2C, Connect Goals and the shared SalesIQ tool contracts.
 - Before/after images: `connect-goals-live-point-before.png`,
   `connect-goals-live-point-after.png`. Images remain private session artifacts.
-- The combined quarter-only and Today-marker follow-up is user-approved October 6;
-  local commit authorized. No push, merge or deployment authorized.
+- The combined quarter-only and Today-marker follow-up is user-approved October 6
+  and committed locally as `b1574e84`. No push, merge or deployment authorized.
 - Discord accepted the generic review-ready DM, message `1557177228838572114`.

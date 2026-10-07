@@ -47,6 +47,12 @@ standalone UI iterations using entirely fictional data. See the
   The U2C Attainment graph distinguishes total pipeline from the 40% goal,
   and its U2C percentage turns green at that goal. Historical and finalized
   quarters keep their stored weekly points.
+- **1:1 Preparation** - review recent activity and all open engagements in the native
+  report frame. Sort highlight columns, scroll long milestone tables independently,
+  and open existing records without losing your view or reading position on Back.
+  Open 1:1 Notes keeps existing workspaces and explicit Manager/Other creation.
+  CSV, clipboard and email exports include all highlight rows, including offscreen
+  rows and original milestone URLs; customer activity lists remain separate.
 - **Initiative Tracker** - create named initiatives, select engagements and milestones,
   grouped by their current seller, with live status, commitment, dates, and ACR.
   When user-facing internal projects exist, **Add work** also offers **Projects**, with

@@ -10,6 +10,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/2/2026
 
+- Prepare for 1:1s in the native report frame with sortable highlights, compact customer activity, existing workspace access and restored reading context on Back.
 - Preserve every U2C snapshot point and show Today as a separate live marker on both graphs, using current commitment status and dollars from the latest snapshot.
 - Limit the Connect Goals U2C graph to the current fiscal quarter, with a date axis spanning the quarter start and end.
 - Review U2C in the native app frame with persistent filters, theme-aware trends, sortable milestone queues and restored reading position and unsaved 1:1 drafts on Back.

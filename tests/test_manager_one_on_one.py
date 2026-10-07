@@ -69,8 +69,8 @@ def test_empty_report_and_navigation(client, page_url):
     assert tracker_nav.get_text(strip=True) == 'Initiative Tracker'
     meeting = BeautifulSoup(client.get('/reports/one-on-one').data, 'html.parser')
     assert meeting.title.get_text(strip=True) == '1:1 Report - Sales Buddy'
-    assert meeting.select_one('h2').get_text(strip=True) == '1:1 Report'
-    link = meeting.select_one('main a.btn[href="/reports/initiative-tracker"]')
+    assert meeting.select_one('#oneOnOneTitle').get_text(strip=True) == '1:1 Report'
+    link = meeting.select_one('main a[href="/reports/initiative-tracker"]')
     assert link is not None
     assert link.get_text(strip=True) == 'Initiative Tracker'
 
