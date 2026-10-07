@@ -28,7 +28,7 @@ standalone UI iterations using entirely fictional data. See the
 - **Unified Customer View** - notes, engagements, milestones, opportunities, revenue, and partners on one page
 - **Call Notes** - rich text editor with topic/seller/customer tagging, templates, and meeting import
 - **Revenue Analyzer** - automatic MSXI sync, trend charts, growth alerts, seller/customer/product drill-downs
-- **Milestone Tracker** - visual board with MSX sync, task management, and AI matching from call notes. Search all saved milestone fields (including cached forecast comments) and use the searchable customer dropdown alongside the existing filters in List and Calendar views.
+- **Milestone Tracker** - native desktop queue and calendar with MSX sync, task management, and AI matching from call notes. Search all saved milestone fields (including cached forecast comments) and use the searchable customer dropdown alongside the existing filters. Data headings sort both ways with raw values; CSV, Clipboard and Email preserve the filtered list. Back restores filters, view, calendar month, sorting and reading position.
 - **MSX Workspace** - browse cached opportunities, milestones and open tasks in native
   tabs with independent reading regions, raw-value column sorting and restored scope
   on Back. Existing MSX details, forecast comments, team actions and task workflows

@@ -374,7 +374,13 @@ const PageHelp = (function () {
       </ul>
     `},
     { pattern: /^\/reports\/milestone-tracker/, title: 'Milestone Tracker', content: `
-      <p>Board view of all milestones across your customers, pulled from MSX.</p>
+      <p>Review the existing local milestone cache in a sortable list or due-date calendar. Commands and scope stay visible while the reading region scrolls.</p>
+      <ul>
+        <li>Data headings sort both directions using raw dates, amounts and membership. The initial order stays exactly as supplied by the cache. Favorite and MSX action headings do not sort.</li>
+        <li>CSV, Clipboard and Email export the filtered list in its current order, including original MSX source links. Calendar days are not sortable data columns.</li>
+        <li>Back restores the filter scope, list/calendar selection, calendar month, sorting and reading position. Milestone previews reuse the shared detail, comment and nested task editors.</li>
+        <li>Customer selection supports searchable choices, Enter to select and Escape to close without changing scope. Reset clears the existing filters, not your cached data.</li>
+      </ul>
       <h6>Manual Sync</h6>
       <ul>
         <li>Click <strong>Sync from MSX</strong> to pull the latest data on demand</li>

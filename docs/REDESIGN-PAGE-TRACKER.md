@@ -7,16 +7,16 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: MSX workspace, checkpoint 49,
+- Last approved implementation: Milestone Tracker, checkpoint 50,
   user-approved October 6; local commit authorized.
-- Current task: commit checkpoint 49, then migrate Milestone Tracker, checkpoint 50.
-- Active card: [RPT-MSX](redesign-pages/RPT-MSX.md).
-- Approved effort estimate: about 56%; strict DONE counters below are separate.
+- Current task: commit checkpoint 50, then migrate Milestones directory, checkpoint 51.
+- Active card: [MS-TRACK](redesign-pages/MS-TRACK.md), VERIFY.
+- Approved effort estimate: about 58%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: capture and migrate Milestone Tracker with before/after screenshots
+- Next action: capture and migrate Milestones directory with before/after screenshots
   and one Discord review-ready notification.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
@@ -45,7 +45,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 49 sign-off, the rough effort-based estimate is **about 56%**
+As of checkpoint 50 sign-off, the rough effort-based estimate is **about 58%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -158,7 +158,7 @@ have separate rows even when they use one template.
 | MS-NEW | Create milestone | `/milestone/new` | `milestone_form.html` | TODO | - |
 | MS-VIEW | Milestone detail | `/milestone/<int:id>` | `milestone_view.html` | BUILDING | [Shared body/commands](redesign-pages/MILESTONE-BODY.md) |
 | MS-EDIT | Edit milestone | `/milestone/<int:id>/edit` | `milestone_form.html` | TODO | - |
-| MS-TRACK | Milestone tracker | `/reports/milestone-tracker`; `/milestone-tracker` redirects | `milestone_tracker.html` | TODO | - |
+| MS-TRACK | Milestone tracker | `/reports/milestone-tracker`; `/milestone-tracker` redirects | `milestone_tracker.html` | VERIFY | [Milestone tracker](redesign-pages/MS-TRACK.md); user-approved October 6 |
 | OPP-VIEW | Opportunity detail | `/opportunity/<int:id>` | `opportunity_view.html` | TODO | - |
 | PROJ-NEW | Create project | `/project/new` | `project_form.html` | TODO | - |
 | PROJ-VIEW | Project detail | `/project/<int:id>` | `project_view.html` | TODO | - |
@@ -228,7 +228,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | INC-ACT-MS | `partials/activity_coverage_milestones.html` | Activity coverage | TODO | - |
 | INC-CUST-ICON | `partials/customer_favicon.html` | Customer favicon macro, multiple hosts | TODO | - |
 | INC-ENG-PANEL | `partials/engagements_panel.html` | Home, engagements hub, seller | TODO | - |
-| INC-MS-TRACK | `partials/milestone_tracker_content.html` | Milestone tracker and seller | TODO | - |
+| INC-MS-TRACK | `partials/milestone_tracker_content.html` | Milestone tracker and seller | VERIFY | [Milestone tracker](redesign-pages/MS-TRACK.md); native shared scope/list, no seller page overhaul |
 | INC-PART-ICON | `partials/partner_favicon.html` | Partner/specialty surfaces | TODO | - |
 | INC-REV-ALERTS | `partials/revenue_alerts_content.html`, `static/js/ui-revenue-alerts.js` | Revenue Analyzer, seller alerts and Seller Full View | DONE | [Checkpoint 22 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-REV-PREVIEW | `partials/revenue_alert_preview.html`, `static/js/ui-revenue-preview.js` | Home, Revenue Analyzer, seller alerts and native Seller Full View drilldown | DONE | [Checkpoints 21-22 evidence](redesign-pages/HOME-WORKBENCH.md) |

@@ -1339,12 +1339,11 @@ class TestMilestoneTrackerRoutes:
 
         response = client.get('/reports/milestone-tracker')
         assert response.status_code == 200
-        assert b'sortTable' in response.data
-        assert b'data-sort="customer"' in response.data
-        assert b'data-sort="seller"' in response.data
-        assert b'data-sort="status"' in response.data
-        assert b'data-sort="due-date"' in response.data
-        assert b'data-sort="monthly"' in response.data
+        assert b'data-sb-sortable' in response.data
+        for label in (b'Customer', b'Seller', b'Status', b'Due Date', b'$ACR/mo'):
+            assert b'data-export-label="' + label + b'"' in response.data
+        assert b'data-sb-sort-type="date"' in response.data
+        assert b'data-sb-sort-type="number"' in response.data
 
         with app.app_context():
             from app.models import db, Milestone

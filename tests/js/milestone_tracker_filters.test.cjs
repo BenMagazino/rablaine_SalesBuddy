@@ -29,14 +29,14 @@ function element(value = '') {
     };
 }
 
-function tracker(saved = null, locked = false) {
+function tracker(saved = null, locked = false, entry = null) {
     const controls = {};
     for (const role of [
         'sellerFilter', 'customerFilter', 'searchFilter', 'statusDropdownBtn', 'areaDropdownBtn',
         'urgencyFilter', 'myTeamFilter', 'commitmentFilter', 'filteredCount', 'resetFiltersBtn',
         'quarterDropdown', 'quarterSelectAll', 'quarterSelectNone', 'favoritesOnlyBtn',
         'totalCount', 'totalValue', 'pastDueCount', 'thisWeekCount',
-        'customerDropdownBtn', 'customerSearch', 'customerAll', 'customerNoMatches',
+        'customerDropdownBtn', 'customerSearch', 'customerAll', 'customerNoMatches', 'noResults',
     ]) controls[role] = element();
     controls.customerFilter.options = [
         {value: '', textContent: 'All Customers'},
@@ -53,6 +53,13 @@ function tracker(saved = null, locked = false) {
         return button;
     });
     let dropdownCloses = 0;
+    const customerPicker = element();
+    customerPicker.open = true;
+    Object.defineProperty(customerPicker, 'open', {
+        get() { return this.isOpen ?? true; },
+        set(value) { this.isOpen = value; if (!value) dropdownCloses++; },
+    });
+    controls.customerDropdownBtn.closest = () => customerPicker;
     if (locked) controls.sellerFilter = null;
     const rows = [
         {dataset: {
@@ -75,6 +82,7 @@ function tracker(saved = null, locked = false) {
         dataset: {total: '2', lockedSeller: '11'},
         classList: {contains: () => true},
         hasAttribute: () => locked,
+        closest: () => entry ? {} : null,
         querySelector: selector => controls[selector.match(/"([^"]+)"/)[1]] || null,
         querySelectorAll(selector) {
             if (selector === '.milestone-row') return rows;
@@ -87,13 +95,19 @@ function tracker(saved = null, locked = false) {
         dispatchEvent(event) { lastEvent = event.detail; },
     };
     vm.runInNewContext(script, {
-        document: {querySelectorAll: () => [{previousElementSibling: container}]},
-        window: {location: {search: ''}},
+        document: {
+            querySelectorAll: () => [{previousElementSibling: container}],
+            getElementById: () => null,
+        },
+        window: {
+            location: {search: ''},
+            history: {
+                get state() { return entry; },
+                replaceState(next) { entry = next; },
+            },
+        },
         URLSearchParams,
         CustomEvent: class {constructor(_type, options) { this.detail = options.detail; }},
-        bootstrap: {
-            Dropdown: {getOrCreateInstance: () => ({hide() { dropdownCloses++; }})},
-        },
         localStorage: {
             getItem: () => storage,
             setItem(_key, value) { storage = value; },
@@ -101,8 +115,9 @@ function tracker(saved = null, locked = false) {
         },
     });
     return {
-        controls, rows, status, area, customerButtons,
+        controls, rows, status, area, customerButtons, customerPicker,
         closes: () => dropdownCloses,
+        history: () => entry,
         saved: () => JSON.parse(storage),
         event: () => lastEvent,
         visible: () => rows.filter(row => row.style.display !== 'none'),
@@ -133,11 +148,27 @@ test('search is literal and no-match results can be reset', () => {
     t.controls.searchFilter.listeners.input();
     assert.equal(t.visible().length, 0);
     assert.equal(t.controls.totalValue.textContent, '$0');
+    assert.equal(t.controls.noResults.hidden, false);
     t.controls.resetFiltersBtn.listeners.click();
     assert.equal(t.visible().length, 2);
     assert.equal(t.controls.searchFilter.value, '');
     assert.equal(t.controls.customerFilter.value, '');
     assert.equal(t.controls.resetFiltersBtn.style.display, 'none');
+    assert.equal(t.controls.noResults.hidden, true);
+});
+
+test('Back restores entry filters instead of newer global preferences, preserving sorter state', () => {
+    const sort = {'milestone-tracker-all': {column: 6, direction: 'ascending'}};
+    const t = tracker({customer: '2', search: 'another'}, false, {
+        sbTableSort: sort, milestoneTracker: {filters: {customer: '1', search: 'pilot'},
+            view: 'calendar', month: 12, year: 2026, scrollTop: 487},
+    });
+    assert.equal(t.visible()[0].dataset.customerId, '1');
+    assert.equal(t.history().sbTableSort, sort);
+    assert.equal(t.history().milestoneTracker.scrollTop, 487);
+    t.controls.resetFiltersBtn.listeners.click();
+    assert.equal(t.history().milestoneTracker.filters.search, '');
+    assert.equal(t.history().milestoneTracker.view, 'calendar');
 });
 
 test('new filters persist and old saved settings still load', () => {
@@ -177,7 +208,7 @@ test('seller-locked tracker supports the new filters without a seller control', 
 test('customer dropdown narrows case-insensitively without changing the selected filter', () => {
     const t = tracker({customer: '1'});
     assert.equal(t.controls.customerDropdownBtn.textContent, 'Acme Corp');
-    t.controls.customerDropdownBtn.listeners['shown.bs.dropdown']();
+    t.customerPicker.listeners.toggle.call(t.customerPicker);
     assert.equal(t.controls.customerSearch.focused, true);
     t.controls.customerSearch.value = '  gLoB  ';
     t.controls.customerSearch.listeners.input();
@@ -245,7 +276,8 @@ test('All Customers and Reset clear selection and reopening restores the full op
     assert.equal(t.controls.customerDropdownBtn.textContent, 'All Customers');
     t.controls.customerSearch.value = 'glob';
     t.controls.customerSearch.listeners.input();
-    t.controls.customerDropdownBtn.listeners['shown.bs.dropdown']();
+    t.customerPicker.open = true;
+    t.customerPicker.listeners.toggle.call(t.customerPicker);
     assert.equal(t.controls.customerSearch.value, '');
     assert.equal(t.customerButtons.every(button => !button.classList.contains('d-none')), true);
     t.customerButtons[0].listeners.click();

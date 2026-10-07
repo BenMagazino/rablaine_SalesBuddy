@@ -2,7 +2,7 @@
 
 - ID: RPT-MSX. Route: `/reports/msx-workspace`, including all three tab URLs.
 - Template: `report_msx_workspace.html`; audited baseline `42c552c7`.
-- Status: VERIFY, user-approved October 6; local commit authorized.
+- Status: VERIFY, user-approved October 6; committed locally as `3e6244eb`.
 - No push, merge or deployment authorized.
 - Approved effort estimate: about 56%; all strict DONE counters are unchanged.
 

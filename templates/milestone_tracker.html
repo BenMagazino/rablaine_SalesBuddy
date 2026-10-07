@@ -1,9 +1,19 @@
 {% extends "base.html" %}
 
 {% block title %}Milestone Tracker - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Milestone tracker status">
+    <span>Local milestone cache · Sync from MSX for fresh data</span>
+    <span id="trackerStatus" role="status" aria-live="polite">{{ milestones|length }} milestones</span>
+</footer>
+{% endblock %}
 
 {% block content %}
-
+<div class="sb-milestone-tracker" data-sb-page-surface>
 {% if sync_status and sync_status.state == 'in_progress' %}
 <div class="alert alert-info d-flex align-items-center mb-3" role="alert">
     <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -38,27 +48,28 @@
     </div>
 </div>
 {% endif %}
-<div class="d-flex justify-content-between align-items-start mb-3">
+<header class="mt-heading" data-sb-page-band>
     <div>
-        <h2><i class="bi bi-flag-fill text-success"></i> Milestone Tracker</h2>
-        <p class="text-muted mb-0">
+        <h2>Milestone Tracker</h2>
+        <p>
             Active milestones across all customers
             {% if last_sync %}
                 &middot; Last synced <span class="local-datetime" data-utc="{{ last_sync.isoformat() }}"></span> <span class="timezone-label"></span>
             {% endif %}
         </p>
     </div>
-    <div class="d-flex flex-column align-items-end gap-1">
-        <div class="d-flex gap-2">
+    <div class="mt-commands">
+        <div>
             {% set export_table_id = '#msListTable' %}
             {% set export_filename = 'milestone-tracker' %}
+            {% set report_export_native = true %}
             {% include 'partials/_report_export.html' %}
         </div>
-        <button id="syncBtn" class="btn btn-sm btn-primary" onclick="syncMilestones()">
+        <button id="syncBtn" class="mt-command is-primary" onclick="syncMilestones()">
             <i class="bi bi-arrow-repeat"></i> Sync from MSX
         </button>
     </div>
-</div>
+</header>
 
 <!-- Sync Progress Alert (hidden by default) -->
 <div id="syncAlert" class="alert d-none mb-4" role="alert" style="position: relative;">
@@ -82,23 +93,23 @@
 
 <!-- Calendar View (positioned by JS after the filter bar) -->
 <div id="msCalendarWrap" style="display: none;">
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <button class="btn btn-outline-secondary btn-sm" id="msPrevMonthBtn">
+<section class="mt-calendar">
+    <div class="mt-calendar-heading">
+        <button class="mt-command" id="msPrevMonthBtn" aria-label="Previous month">
             <i class="bi bi-chevron-left"></i>
         </button>
-        <h5 class="mb-0" id="msCalendarTitle">Loading...</h5>
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-outline-secondary btn-sm" id="msTodayBtn">
+        <h3 id="msCalendarTitle">Loading...</h3>
+        <div class="mt-commands">
+            <button class="mt-command" id="msTodayBtn">
                 <i class="bi bi-calendar-day"></i> Today
             </button>
-            <button class="btn btn-outline-secondary btn-sm" id="msNextMonthBtn">
+            <button class="mt-command" id="msNextMonthBtn" aria-label="Next month">
                 <i class="bi bi-chevron-right"></i>
             </button>
         </div>
     </div>
-    <div class="card-body p-0">
-        <table class="table table-bordered mb-0" id="msCalendarTable">
+    <div>
+        <table id="msCalendarTable">
             <thead>
                 <tr class="text-center">
                     <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
@@ -107,9 +118,9 @@
             <tbody id="msCalendarBody"></tbody>
         </table>
     </div>
+</section>
 </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -119,9 +130,9 @@
     #msCalendarTable td { transition: background-color 0.15s; }
     .ms-cal-entry { font-size: 0.72rem; line-height: 1.3; cursor: pointer; transition: all 0.15s; }
     .ms-cal-entry:hover { opacity: 0.85; }
-    .ms-status-ontrack { border-left: 3px solid var(--bs-success); }
-    .ms-status-atrisk  { border-left: 3px solid var(--bs-warning); }
-    .ms-status-blocked  { border-left: 3px solid var(--bs-danger); }
+    .ms-status-ontrack { border-left: 3px solid var(--sb-ui-milestone-rail); }
+    .ms-status-atrisk  { border-left: 3px solid var(--sb-ui-warning); }
+    .ms-status-blocked  { border-left: 3px solid var(--sb-ui-danger); }
     .calendar-entries::-webkit-scrollbar { width: 4px; }
     .calendar-entries::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 2px; }
     html[data-bs-theme="dark"] .calendar-entries::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
@@ -134,9 +145,10 @@
     const MS_MONTH_KEY = 'salesbuddy_ms_cal_month';
     const MS_YEAR_KEY = 'salesbuddy_ms_cal_year';
     const MS_VIEW_KEY = 'salesbuddy_ms_view';
-    let year = parseInt(localStorage.getItem(MS_YEAR_KEY)) || new Date().getFullYear();
-    let month = parseInt(localStorage.getItem(MS_MONTH_KEY)) || (new Date().getMonth() + 1);
-    let calendarIsActive = localStorage.getItem(MS_VIEW_KEY) === 'calendar';
+    const savedView = window.history.state?.milestoneTracker || {};
+    let year = savedView.year ?? (parseInt(localStorage.getItem(MS_YEAR_KEY)) || new Date().getFullYear());
+    let month = savedView.month ?? (parseInt(localStorage.getItem(MS_MONTH_KEY)) || (new Date().getMonth() + 1));
+    let calendarIsActive = (savedView.view ?? localStorage.getItem(MS_VIEW_KEY)) === 'calendar';
     let calendarRequestId = 0;
     let calendarFilterTimer;
 
@@ -145,21 +157,34 @@
 
     const filterCard = instance.querySelector('[data-role="filterCard"]');
     const calWrap = document.getElementById('msCalendarWrap');
+    const reading = instance.querySelector('.mt-reading');
+    function saveReading() {
+        const entry = window.history.state || {};
+        window.history.replaceState({...entry, milestoneTracker: {
+            ...entry.milestoneTracker, year, month,
+            view: calendarIsActive ? 'calendar' : 'list',
+            scrollTop: reading.scrollTop, scrollLeft: reading.scrollLeft
+        }}, '');
+    }
+    reading.addEventListener('scroll', saveReading, {passive: true});
     // Grab the list content element (table or empty state) before inserting tabs
-    const listContentEl = filterCard ? filterCard.nextElementSibling : null;
+    const listContentEl = instance.querySelector('.mt-list');
 
     // Create tab nav and insert between filter bar and content
     const tabNav = document.createElement('div');
-    tabNav.className = 'mb-3';
+    tabNav.className = 'mt-tabs';
+    tabNav.setAttribute('role', 'tablist');
+    tabNav.setAttribute('aria-label', 'Milestone views');
+    tabNav.setAttribute('data-sb-page-band', '');
     tabNav.innerHTML =
-        '<ul class="nav nav-pills nav-sm mb-0">' +
-            '<li class="nav-item">' +
-                '<button class="nav-link' + (!calendarIsActive ? ' active' : '') + '" data-ms-view="list">' +
+        '<ul>' +
+            '<li>' +
+                '<button role="tab" class="mt-tab' + (!calendarIsActive ? ' active' : '') + '" data-ms-view="list">' +
                     '<i class="bi bi-list-ul"></i> List' +
                 '</button>' +
             '</li>' +
-            '<li class="nav-item">' +
-                '<button class="nav-link' + (calendarIsActive ? ' active' : '') + '" data-ms-view="calendar">' +
+            '<li>' +
+                '<button role="tab" class="mt-tab' + (calendarIsActive ? ' active' : '') + '" data-ms-view="calendar">' +
                     '<i class="bi bi-calendar3"></i> Calendar' +
                 '</button>' +
             '</li>' +
@@ -167,15 +192,18 @@
 
     if (filterCard) {
         filterCard.after(tabNav);
-        tabNav.after(calWrap);
+        instance.querySelector('.mt-reading').append(calWrap);
     }
 
     function setView(view) {
         calendarIsActive = (view === 'calendar');
         localStorage.setItem(MS_VIEW_KEY, view);
+        saveReading();
 
-        tabNav.querySelectorAll('.nav-link').forEach(function(btn) {
+        tabNav.querySelectorAll('.mt-tab').forEach(function(btn) {
             btn.classList.toggle('active', btn.dataset.msView === view);
+            btn.setAttribute('aria-selected', String(btn.dataset.msView === view));
+            btn.tabIndex = btn.dataset.msView === view ? 0 : -1;
         });
 
         if (calendarIsActive) {
@@ -188,14 +216,23 @@
         }
     }
 
-    tabNav.querySelectorAll('.nav-link').forEach(function(btn) {
+    tabNav.querySelectorAll('.mt-tab').forEach(function(btn) {
         btn.addEventListener('click', function() { setView(btn.dataset.msView); });
+        btn.addEventListener('keydown', function(event) {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const view = event.key === 'Home' ? 'list' : event.key === 'End' ? 'calendar'
+                : calendarIsActive ? 'list' : 'calendar';
+            setView(view);
+            tabNav.querySelector('[data-ms-view="' + view + '"]').focus();
+        });
     });
 
     // Calendar month navigation
     function savePos() {
         localStorage.setItem(MS_YEAR_KEY, year);
         localStorage.setItem(MS_MONTH_KEY, month);
+        saveReading();
     }
 
     document.getElementById('msPrevMonthBtn').addEventListener('click', function() {
@@ -292,33 +329,44 @@
             var row = document.createElement('tr');
             for (var col = 0; col < 7; col++) {
                 var cell = document.createElement('td');
-                cell.className = 'p-1'; cell.style.verticalAlign = 'top'; cell.style.height = '100px';
+                cell.className = 'mt-calendar-day'; cell.style.verticalAlign = 'top'; cell.style.height = '100px';
 
                 if ((!started && col < firstDow) || dayNum > daysInMonth) {
-                    cell.classList.add('bg-light');
+                    cell.classList.add('mt-calendar-outside');
                 } else {
                     started = true;
                     var d = dayNum;
                     var header = document.createElement('div');
-                    header.className = 'd-flex justify-content-between align-items-center mb-1';
+                    header.className = 'mt-calendar-day-heading';
                     var numEl = document.createElement('span');
-                    numEl.className = 'fw-bold small';
-                    if (d === todayDay) { numEl.innerHTML = '<span class="badge bg-primary rounded-circle">' + d + '</span>'; }
+                    numEl.className = 'mt-calendar-day-number';
+                    if (d === todayDay) { numEl.innerHTML = '<span class="mt-calendar-today">' + d + '</span>'; }
                     else { numEl.textContent = d; }
                     header.appendChild(numEl);
 
                     var msForDay = days[d] || [];
                     if (msForDay.length > 0) {
                         var badge = document.createElement('span');
-                        badge.className = 'badge bg-success rounded-pill'; badge.style.fontSize = '0.65rem';
+                        badge.className = 'mt-calendar-count'; badge.style.fontSize = '0.65rem';
                         badge.textContent = msForDay.length; header.appendChild(badge);
                     }
                     cell.appendChild(header);
 
                     if (msForDay.length > 0) {
-                        var container = document.createElement('div');
+                        const container = document.createElement('div');
                         container.style.maxHeight = '72px'; container.style.overflowY = 'auto';
                         container.className = 'calendar-entries';
+                        const dayKey = data.year + '-' + data.month + '-' + d;
+                        container.dataset.calendarDay = dayKey;
+                        container.addEventListener('scroll', function() {
+                            const entry = window.history.state || {};
+                            const state = entry.milestoneTracker || {};
+                            window.history.replaceState({...entry, milestoneTracker: {
+                                ...state, calendarScroll: {
+                                    ...state.calendarScroll, [dayKey]: container.scrollTop
+                                }
+                            }}, '');
+                        }, {passive: true});
 
                         msForDay.forEach(function(ms) {
                             var entry = document.createElement('div');
@@ -329,7 +377,7 @@
                             var statusClass = ms.status === 'On Track' ? 'ms-status-ontrack'
                                 : ms.status === 'At Risk' ? 'ms-status-atrisk' : 'ms-status-blocked';
                             var colorIdx = colorMap[ms.customer_id] || 1;
-                            entry.className = 'd-block text-decoration-none text-truncate mb-1 px-1 rounded ms-cal-entry ' + statusClass + ' cal-customer-' + colorIdx;
+                            entry.className = 'ms-cal-entry ' + statusClass + ' cal-customer-' + colorIdx;
                             entry.style.color = 'inherit';
 
                             var label = '';
@@ -356,6 +404,10 @@
                             container.appendChild(entry);
                         });
                         cell.appendChild(container);
+                        requestAnimationFrame(function() {
+                            const positions = window.history.state?.milestoneTracker?.calendarScroll;
+                            container.scrollTop = positions?.[dayKey] || 0;
+                        });
                     }
                     dayNum++;
                 }
@@ -375,58 +427,14 @@
 
     // Initialize view
     setView(calendarIsActive ? 'calendar' : 'list');
+    requestAnimationFrame(function() {
+        reading.scrollTop = savedView.scrollTop || 0;
+        reading.scrollLeft = savedView.scrollLeft || 0;
+    });
 })();
 </script>
 
 <script>
-// =============================================================================
-// Join Milestone Team (inline tracker)
-// =============================================================================
-
-async function toggleTrackerTeam(btn, milestoneId) {
-    // Pre-flight VPN check
-    if (window.isVpnBlocked && window.isVpnBlocked()) {
-        window.showVpnBanner();
-        return;
-    }
-    const onTeam = btn.dataset.onTeam === '1';
-    if (onTeam && !confirm('Leave this milestone team?')) return;
-    if (!onTeam && !confirm('Join the milestone team in MSX? This will add you to the access team for this milestone.')) return;
-    const origHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-    const url = onTeam ? '/api/msx/leave-milestone-team' : '/api/msx/join-milestone-team';
-    try {
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({milestone_id: milestoneId})
-        });
-        const data = await resp.json();
-
-        if (data.success) {
-            const newOnTeam = !onTeam;
-            const cell = btn.closest('td');
-            const row = cell.closest('tr');
-            if (row) row.setAttribute('data-on-my-team', newOnTeam ? 'true' : 'false');
-            if (newOnTeam) {
-                cell.innerHTML = `<button class="btn btn-sm btn-success team-toggle on-team" data-id="${milestoneId}" data-on-team="1" title="On milestone team (click to leave)" onclick="toggleTrackerTeam(this, ${milestoneId})"><i class="bi bi-people-fill icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
-            } else {
-                cell.innerHTML = `<button class="btn btn-sm btn-outline-success team-toggle" data-id="${milestoneId}" data-on-team="0" title="Join milestone team" onclick="toggleTrackerTeam(this, ${milestoneId})"><i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
-            }
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-            alert(data.error || 'Failed');
-        }
-    } catch (err) {
-        btn.disabled = false;
-        btn.innerHTML = origHtml;
-        alert('Network error: ' + err.message);
-    }
-}
-
 // =============================================================================
 // Sync from MSX
 // =============================================================================
