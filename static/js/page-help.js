@@ -280,11 +280,12 @@ const PageHelp = (function () {
 
     // ── Milestones ──
     { pattern: /^\/milestones\/?$/, title: 'Milestones', content: `
-      <p>Track MSX milestones and their linked engagements.</p>
+      <p>Browse customer-linked milestones from the local cache and open their linked calls and tasks.</p>
       <h6>Tips</h6>
       <ul>
-        <li>Milestones sync with MSX via AI-generated engagement stories</li>
-        <li>Use the <strong>Milestone Tracker</strong> for a board view</li>
+        <li>The directory starts with the newest added records. Click Milestone, Source URL or Calls to sort either way; Back restores sorting and reading position.</li>
+        <li>Open a record through its title, URL or call count. Source URLs remain visible in full on hover.</li>
+        <li>Use <strong>Milestone Tracker</strong> for filters, calendar, exports and MSX sync, or <strong>New Milestone</strong> to create one manually.</li>
       </ul>
     `},
     { pattern: /^\/reports\/connect-goals/, title: 'Connect Goals', content: `

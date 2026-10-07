@@ -3,7 +3,8 @@
 - ID: MS-TRACK; `/reports/milestone-tracker`, existing `/milestone-tracker` redirect.
 - Template: `milestone_tracker.html`; shared `partials/milestone_tracker_content.html`.
 - Audited baseline and preceding approved MSX workspace commit: `3e6244eb`.
-- Status: VERIFY, user-approved October 6; local commit authorized. No push/merge/deploy.
+- Status: VERIFY, user-approved October 6; local commit `a9682c55`, including the
+  one-row filter follow-up. No push/merge/deploy.
 - Approved effort estimate: about 58%; strict DONE counters are unchanged.
 
 ## Original inventory and preserved contracts

@@ -10,6 +10,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/2/2026
 
+- Browse Milestones in a native sortable directory with unchanged customer-linked records, source URLs, call counts and detail links, plus persistent New Milestone and Tracker commands and restored reading position on Back.
 - Review Milestone Tracker in a native desktop list/calendar with fixed scope and commands, sortable data columns, preserved exports and restored filters, view, month and reading position on Back.
 - Browse the MSX cache in native opportunity, milestone and task tabs with sortable data columns, preserved defaults, protected task drafts and restored filters/reading positions on Back.
 - Track initiatives in the native desktop workbench with seller-preserving column sorting, native points/details dialogs, U2C selection and restored reading/filter context on Back.
