@@ -37,6 +37,7 @@
     }
 
     function showError(error, pointsFailure = false, focus = true) {
+        console.error('Initiative Tracker:', error);
         errorMessage.textContent = error.message;
         errorBox.dataset.pointsFailure = String(pointsFailure);
         retryPoints.classList.toggle('d-none', !pointsFailure);
@@ -51,12 +52,12 @@
     function updatePointsState() {
         const failed = root.querySelector('.talking-points.is-invalid');
         const pending = root.querySelector('.talking-points-field[data-dirty="true"]');
-        pointsState.textContent = failed ? 'Points not saved' : pending ? 'Saving...' : '';
-        pointsState.classList.toggle('text-danger', Boolean(failed));
-        pointsState.classList.toggle('text-muted', !failed);
+        pointsState.textContent = failed ? 'Points not saved' : pending ? 'Saving...' : 'Points save automatically';
+        pointsState.classList.toggle('is-danger', Boolean(failed));
+        pointsState.classList.toggle('it-muted', !failed);
         const modalState = document.getElementById('pointsModalState');
-        modalState.textContent = pointsState.textContent;
-        modalState.classList.toggle('text-danger', Boolean(failed));
+        modalState.textContent = failed || pending ? pointsState.textContent : '';
+        modalState.classList.toggle('is-danger', Boolean(failed));
         document.getElementById('discussPoints').disabled = pointsBusy
             || !document.getElementById('managerPointsText').value.trim();
         if (!failed && !pending && errorBox.dataset.pointsFailure === 'true') {
@@ -131,8 +132,8 @@
     function updatePointsButton(item) {
         const button = root.querySelector(`.points-button[data-item-id="${item.id}"]`);
         const active = Boolean(item.talking_points.trim());
-        button.classList.toggle('text-primary', active);
-        button.classList.toggle('text-secondary', !active);
+        button.classList.toggle('is-accent', active);
+        button.classList.toggle('it-muted', !active);
         button.querySelector('i').className = active
             ? 'bi bi-chat-left-text-fill' : 'bi bi-chat-left-text';
         button.querySelector('.points-count')?.remove();
@@ -140,7 +141,7 @@
         button.title = `${active ? 'Current points' : 'Add points'}${count ? `; ${count} discussed` : ''}`;
         if (count) {
             const badge = document.createElement('span');
-            badge.className = 'small points-count ms-1';
+            badge.className = 'points-count';
             badge.textContent = count;
             button.append(badge);
         }
@@ -162,14 +163,13 @@
         document.getElementById('pointsHistoryCount').textContent = item.discussed_points.length || '';
         for (const point of item.discussed_points) {
             const entry = document.createElement('article');
-            entry.className = 'border-top pt-3 mb-3';
+            entry.className = 'it-history-entry';
             const dates = document.createElement('div');
-            dates.className = 'small text-muted mb-2';
+            dates.className = 'it-history-dates';
             for (const [label, value] of [
                 ['Created', point.created_at], ['Discussed', point.discussed_at],
             ]) {
                 const part = document.createElement('span');
-                part.className = 'me-3';
                 part.append(`${label}: `);
                 const time = document.createElement('time');
                 if (value) time.dateTime = value;
@@ -178,7 +178,7 @@
                 dates.append(part);
             }
             const text = document.createElement('p');
-            text.className = 'mb-0 text-break';
+            text.className = 'it-history-text';
             text.style.whiteSpace = 'pre-wrap';
             text.textContent = point.text;
             entry.append(dates, text);
@@ -186,9 +186,9 @@
         }
         if (!item.discussed_points.length) {
             history.textContent = 'Nothing discussed yet. Mark your current points discussed to keep a dated record here.';
-            history.classList.add('text-muted', 'small');
+            history.classList.add('it-muted');
         } else {
-            history.classList.remove('text-muted', 'small');
+            history.classList.remove('it-muted');
         }
         updatePointsButton(item);
         updatePointsState();
@@ -204,7 +204,7 @@
             errorBox.classList.add('d-none');
             document.getElementById('pointsModalError').classList.add('d-none');
             renderPoints(payload.item);
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('managerPointsModal')).show();
+            SBDialog.open(document.getElementById('managerPointsModal'));
         } catch (error) {
             showError(error, Boolean(root.querySelector('.talking-points.is-invalid')));
         } finally {
@@ -240,6 +240,23 @@
     }
 
     async function activateDetailScripts(body, signal) {
+        // Unmigrated entity editors still need Bootstrap's body-level modal layer.
+        const parent = document.getElementById('managerWorkModal');
+        for (const modal of body.querySelectorAll('.modal')) {
+            modal.dataset.workspaceParentModal = parent.id;
+            document.body.appendChild(modal);
+            let restoreParent = false;
+            modal.addEventListener('show.bs.modal', event => {
+                if (event.target !== modal) return;
+                restoreParent = parent.open;
+                if (restoreParent) SBDialog.close(parent, 'nested-editor');
+            });
+            modal.addEventListener('hidden.bs.modal', event => {
+                if (event.target !== modal || !restoreParent || !parent.isConnected) return;
+                restoreParent = false;
+                SBDialog.open(parent);
+            });
+        }
         // Match the home detail modal's scoped script activation, retaining inline handlers.
         const handlers = [
             'toggleEngagementFavorite', 'recommendPartners', 'generateStory', 'applySelectedFields',
@@ -308,8 +325,8 @@
         const body = document.getElementById('managerWorkBody');
         document.getElementById('managerWorkTitle').textContent = title;
         document.getElementById('managerWorkFullLink').href = fullUrl;
-        body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('managerWorkModal')).show();
+        body.innerHTML = '<p class="it-muted" role="status">Loading work details...</p>';
+        SBDialog.open(document.getElementById('managerWorkModal'));
         try {
             const response = await fetch(fragmentUrl, {
                 signal: controller.signal,
@@ -324,7 +341,8 @@
             if (error.name === 'AbortError' || controller.signal.aborted) return;
             body.replaceChildren();
             const message = document.createElement('div');
-            message.className = 'alert alert-danger';
+            console.error('Initiative Tracker detail:', error);
+            message.className = 'it-error';
             message.setAttribute('role', 'alert');
             message.textContent = error.message;
             body.append(message);
@@ -341,10 +359,17 @@
         button.disabled = true;
         errorBox.classList.add('d-none');
         try {
+            const submittedForm = button.closest('.section-form');
+            if ([...formDrafts].some(form => form !== submittedForm)) {
+                throw new Error('Save your other initiative edits before changing report work.');
+            }
             await flushTalkingPoints();
+            const workspace = window.SBOneOnOneWorkspace;
+            if (workspace?.root?.isConnected) await workspace.flush();
             await action();
+            if (submittedForm) formDrafts.delete(submittedForm);
             const section = button.closest('section');
-            if (section) history.replaceState(null, '', `#${section.id}`);
+            if (section) history.replaceState(history.state, '', `#${section.id}`);
             location.reload();
         } catch (error) {
             showError(error, Boolean(root.querySelector('.talking-points.is-invalid')));
@@ -367,6 +392,7 @@
         picker.querySelector('.selected-count').textContent = count > 75
             ? `${count} selected. Add up to 75 at a time.` : `${count} selected`;
         picker.querySelector('[data-action="add-items"]').disabled = count === 0 || count > 75;
+        saveReading();
     }
 
     function updatePickerSource(picker, type, source) {
@@ -405,6 +431,8 @@
     }
 
     async function search(picker) {
+        const restored = picker.restoredReading;
+        delete picker.restoredReading;
         searches.get(picker)?.abort();
         const controller = new AbortController();
         searches.set(picker, controller);
@@ -413,11 +441,12 @@
         const results = picker.querySelector('.candidate-results');
         const type = form.elements.type.value;
         const source = type === 'milestone' && picker.dataset.source === 'u2c' ? 'u2c' : 'search';
+        picker.dataset.appliedQuery = form.elements.q.value.trim();
         updatePickerSource(picker, type, source);
         results.replaceChildren();
         updateSelection(picker);
         status.textContent = 'Loading work...';
-        status.classList.remove('text-danger');
+        status.classList.remove('is-danger');
         try {
             const params = new URLSearchParams({type, source, q: form.elements.q.value.trim()});
             if (source === 'u2c') {
@@ -432,15 +461,20 @@
             status.textContent = candidateStatus(payload, source);
             if (!payload.results.length) return;
             const table = document.createElement('table');
-            table.className = 'table table-sm align-middle mb-0';
+            table.className = 'it-table';
+            table.setAttribute('data-sb-sortable', '');
+            table.setAttribute('data-sb-sort-key', `initiative-candidates-${picker.dataset.sectionId}`);
             const caption = table.createCaption();
-            caption.className = 'visually-hidden';
+            caption.className = 'it-sr-only';
             caption.textContent = `Available ${type}s`;
             const head = table.createTHead().insertRow();
             for (const name of ['Select', 'Work', 'Customer', 'Status', 'Due', 'ACR']) {
                 const th = document.createElement('th');
                 th.scope = 'col';
-                th.className = 'text-nowrap';
+                if (name !== 'Select') {
+                    th.setAttribute('data-sb-sort-type',
+                        name === 'Due' ? 'date' : name === 'ACR' ? 'number' : 'text');
+                }
                 th.textContent = name;
                 head.append(th);
             }
@@ -449,7 +483,7 @@
                 const row = body.insertRow();
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
-                checkbox.className = 'form-check-input';
+                checkbox.className = 'it-checkbox';
                 checkbox.value = item.id;
                 checkbox.disabled = item.selectable === false;
                 checkbox.setAttribute('aria-label', `Select ${item.title} for ${item.customer_name}`);
@@ -458,31 +492,44 @@
                 if (item.reason) {
                     checkbox.setAttribute('title', item.reason);
                     const reason = document.createElement('span');
-                    reason.className = 'small text-muted d-block text-nowrap mt-1';
+                    reason.className = 'it-muted';
                     reason.textContent = item.reason;
                     selection.append(reason);
                 }
                 const work = cell(row, '');
+                work.setAttribute('data-sb-sort-value', item.title);
                 const title = document.createElement('div');
-                title.className = 'fw-semibold text-break';
+                title.className = 'it-candidate-title';
                 title.textContent = item.title;
                 const context = document.createElement('div');
-                context.className = 'small text-muted';
+                context.className = 'it-muted';
                 context.textContent = [item.detail, item.on_my_team ? 'On my team' : '']
                     .filter(Boolean).join(' · ');
                 work.append(title, context);
-                cell(row, item.customer_name, 'small');
-                cell(row, [item.status, item.commitment].filter(Boolean).join(' / '), 'small');
-                cell(row, item.due_date || 'Not set', 'small text-nowrap');
+                cell(row, item.customer_name);
+                cell(row, [item.status, item.commitment].filter(Boolean).join(' / '));
+                cell(row, item.due_date || 'Not set', 'it-date')
+                    .setAttribute('data-sb-sort-value', item.due_date || '');
                 cell(row, item.acr === null ? (type === 'project' ? '-' : 'Not set') : new Intl.NumberFormat(
                     'en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0},
-                ).format(item.acr), 'text-end text-nowrap');
+                ).format(item.acr), 'it-right')
+                    .setAttribute('data-sb-sort-value', item.acr === null ? '' : String(item.acr));
             }
             results.append(table);
+            window.SBTableSort.mount(results);
+            if (restored) {
+                for (const checkbox of results.querySelectorAll('input[type="checkbox"]')) {
+                    checkbox.checked = !checkbox.disabled && restored.selected.includes(checkbox.value);
+                }
+                results.scrollTop = restored.top;
+                updateSelection(picker);
+                if (reading) reading.scrollTop = restored.readingTop;
+            }
         } catch (error) {
             if (error.name === 'AbortError') return;
+            console.error('Initiative Tracker candidates:', error);
             status.textContent = error.message;
-            status.classList.add('text-danger');
+            status.classList.add('is-danger');
         }
     }
 
@@ -495,12 +542,12 @@
         pointsTimers.set(field, setTimeout(() => autosavePoints(field), AUTOSAVE_DELAY));
     });
 
-    document.getElementById('managerWorkModal').addEventListener('hidden.bs.modal', event => {
+    document.getElementById('managerWorkModal').addEventListener('sb:dialog-closed', event => {
         if (event.target.id !== 'managerWorkModal') return;
         detailRequest?.abort();
         window.copilotContext = contextBeforeWork;
     });
-    document.getElementById('managerWorkModal').addEventListener('shown.bs.modal', event => {
+    document.getElementById('managerWorkModal').addEventListener('sb:dialog-opened', event => {
         if (event.target.id !== 'managerWorkModal') return;
         if (workContext) window.copilotContext = workContext;
     });
@@ -562,6 +609,17 @@
         const picker = button.closest('.work-picker');
         const sectionId = button.dataset.sectionId;
         switch (button.dataset.action) {
+        case 'toggle-editor': {
+            const target = document.getElementById(button.dataset.target);
+            const opening = target.classList.contains('d-none');
+            target.classList.toggle('d-none', !opening);
+            for (const control of root.querySelectorAll(`[data-target="${target.id}"]`)) {
+                control.setAttribute('aria-expanded', String(opening));
+            }
+            if (opening) target.querySelector('input').focus();
+            saveReading();
+            break;
+        }
         case 'picker-source':
             picker.dataset.source = button.dataset.source;
             search(picker);
@@ -599,6 +657,7 @@
             picker.classList.add('d-none');
             root.querySelector(`[data-action="open-picker"][data-section-id="${picker.dataset.sectionId}"]`)
                 .setAttribute('aria-expanded', 'false');
+            saveReading();
             break;
         case 'delete-section':
             if (confirm('Delete this initiative and its report links? The engagements and milestones will not be deleted.')) {
@@ -620,7 +679,7 @@
         }
     });
 
-    document.getElementById('managerPointsModal').addEventListener('hide.bs.modal', event => {
+    document.getElementById('managerPointsModal').addEventListener('sb:dialog-before-close', event => {
         if (pointsBusy) {
             event.preventDefault();
             return;
@@ -628,12 +687,13 @@
         if (!root.querySelector('.talking-points-field[data-dirty="true"]')) return;
         event.preventDefault();
         flushTalkingPoints()
-            .then(() => bootstrap.Modal.getOrCreateInstance(event.target).hide())
+            .then(() => SBDialog.close(event.target, 'saved'))
             .catch(error => showError(error, true, false));
     });
 
     window.addEventListener('beforeunload', event => {
-        if (!root.querySelector('.talking-points-field[data-dirty="true"]')) return;
+        if (!root.querySelector('.talking-points-field[data-dirty="true"]')
+                && !formDrafts.size && !window.SBOneOnOneWorkspace?.hasPendingEdits()) return;
         event.preventDefault();
         event.returnValue = '';
     });
@@ -644,4 +704,92 @@
             if (picker.dataset.source === 'u2c') search(picker);
         }
     });
+
+    const formDrafts = new Set();
+    root.addEventListener('input', event => {
+        const form = event.target.closest('.section-form');
+        if (form) formDrafts.add(form);
+    });
+    document.getElementById('managerWorkFullLink').addEventListener('click', async event => {
+        const workspace = window.SBOneOnOneWorkspace;
+        if (!workspace?.root?.isConnected || !workspace.hasPendingEdits()) return;
+        event.preventDefault();
+        const href = event.currentTarget.href;
+        try {
+            await workspace.flush();
+            window.location.assign(href);
+        } catch (error) { showError(error); }
+    });
+
+    const reading = document.getElementById('initiativeReading');
+    let restoringReading = false;
+    let readingVersion = 0;
+    function saveReading() {
+        if (!reading || restoringReading) return;
+        try {
+            history.replaceState({...history.state, sbInitiatives: {
+                top: reading.scrollTop,
+                editors: [...root.querySelectorAll('.it-editor:not(.d-none)')].map(el => el.id),
+                pickers: [...root.querySelectorAll('.work-picker')].map(picker => ({
+                    id: picker.id, source: picker.dataset.source || 'search',
+                    type: picker.querySelector('select[name="type"]').value,
+                    q: picker.querySelector('input[name="q"]').value,
+                    appliedQ: picker.dataset.appliedQuery || '',
+                    selected: [...picker.querySelectorAll('input[type="checkbox"]:checked:not(:disabled)')]
+                        .map(input => input.value),
+                    top: picker.querySelector('.candidate-results').scrollTop,
+                })),
+            }}, '');
+        } catch (error) { showError(error, false, false); }
+    }
+    async function restoreReading() {
+        if (!reading) return;
+        const saved = history.state?.sbInitiatives;
+        if (!saved) return;
+        const version = ++readingVersion;
+        restoringReading = true;
+        try {
+            if (!Number.isFinite(saved.top) || saved.top < 0 || !Array.isArray(saved.editors)) {
+                throw new Error('Could not restore your Initiative Tracker reading position.');
+            }
+            for (const id of saved.editors) {
+                const target = document.getElementById(id);
+                if (!target?.matches('.it-editor')) continue;
+                target.classList.remove('d-none');
+                for (const control of root.querySelectorAll(`[aria-controls="${id}"]`)) {
+                    control.setAttribute('aria-expanded', 'true');
+                }
+            }
+            const searchesToRestore = [];
+            for (const state of saved.pickers || []) {
+                const picker = document.getElementById(state.id);
+                if (!picker?.matches('.work-picker')) continue;
+                if (!['engagement', 'milestone', 'project'].includes(state.type)
+                        || !['search', 'u2c'].includes(state.source)
+                        || typeof state.q !== 'string' || !Array.isArray(state.selected)
+                        || (state.appliedQ !== undefined && typeof state.appliedQ !== 'string')
+                        || !Number.isFinite(state.top) || state.top < 0) {
+                    throw new Error('Could not restore the saved work-picker filters.');
+                }
+                picker.dataset.source = state.source;
+                picker.querySelector('select[name="type"]').value = state.type;
+                picker.querySelector('input[name="q"]').value = state.q;
+                if (!picker.classList.contains('d-none')) {
+                    picker.restoredReading = {...state, readingTop: saved.top};
+                    picker.querySelector('input[name="q"]').value = state.appliedQ ?? state.q;
+                    searchesToRestore.push(search(picker));
+                    picker.querySelector('input[name="q"]').value = state.q;
+                }
+            }
+            await Promise.all(searchesToRestore);
+            if (version === readingVersion) reading.scrollTop = saved.top;
+        } catch (error) { showError(error, false, false); }
+        finally {
+            if (version === readingVersion) restoringReading = false;
+        }
+    }
+    reading?.addEventListener('scroll', saveReading, {passive: true});
+    window.addEventListener('pagehide', saveReading);
+    window.addEventListener('pageshow', restoreReading);
+    restoreReading();
 })();

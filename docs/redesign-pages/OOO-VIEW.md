@@ -2,7 +2,7 @@
 
 - Routes: `/one-on-one/<workspace_id>`, embed and the existing seller detail fragment.
 - Baseline: last approved hub `dead47b9`; Before captured before implementation.
-- Status: VERIFY, user-approved October 6; local commit authorized.
+- Status: VERIFY, user-approved October 6; committed locally as `6ee2af6d`.
 - Approved effort estimate: about 52%; strict DONE counters are unchanged.
 - Scope: persistent editor/dialogs and inline-host contracts, not the hub/prep report.
 
@@ -24,7 +24,8 @@
 - Shared desktop frame/footer; standing context beside the conversation agenda,
   divided by lines with independent reading, not a directory/detail browser.
 - Native search/edit dialogs, details menus/history, app tokens and controls.
-  Initiative Tracker retains its Bootstrap lifecycle, with workspace-scoped integration.
+  Checkpoint 48 adds native Initiative Tracker host events while preserving the
+  workspace-scoped save/close/dispose integration and legacy-host compatibility.
 - Serialize in-flight autosaves, expose explicit retries and retain failed drafts.
   Clean blur/initial rich-content normalization do not write to the database.
 - Flush edits before mutations/navigation or inline-host replacement/close;

@@ -413,6 +413,14 @@ const PageHelp = (function () {
       <p><strong>Add to Agenda</strong> searches engagements or milestones. Seller workspaces stay scoped to that seller's customers; Manager/Other workspaces use the full book. Existing active items are excluded. Choosing a result adds it to this workspace.</p>
       <p>Use an item's actions menu to mark it discussed or remove it. <strong>Discussion history</strong> retains earlier talking points and dates, with Restore and Delete controls. Milestones can become linked engagements without losing their talking points. Engagements retain their inline details editor and discussion-note history; <strong>Save to engagement</strong> creates the linked note.</p>
     `},
+    { pattern: /^\/reports\/(?:initiative-tracker|manager-one-on-one)\/?$/, title: 'Initiative Tracker', content: `
+      <p>Curate named initiatives with context and selected engagements, milestones or internal projects. The initiative index jumps within the reading region; commands and save status stay visible.</p>
+      <p>Work keeps its current seller grouping, status, commitment, due date and estimated monthly ACR. Sort Work, Customer, Status, Due or ACR in either direction without moving work between sellers. Points and removal are actions, not sorting columns.</p>
+      <p><strong>Add work</strong> searches existing records and excludes work already added. Milestones also support <strong>From U2C</strong>, using this quarter's snapshot and the existing U2C workload filter. Already-added and not-yet-synced records cannot be selected. Add up to 75 results at a time.</p>
+      <p>Open a work row for inline details or use <strong>Full Page</strong> for its source. Seller <strong>1:1 notes</strong> opens the existing workspace inline. Pending workspace edits must save before closing, replacing or leaving the detail.</p>
+      <p><strong>Points</strong> saves current text automatically. <strong>Mark discussed</strong> retains a dated history with created and discussed timestamps. Failed saves keep drafts and expose Retry saving. Initiative forms stay in place on failure; leaving with unsaved forms warns you. Removing report links does not delete source work.</p>
+      <p>Back restores the reading position, open editors, picker filters/selections and work-table sorts. Closing an initiative form keeps its unsaved fields; save the form before changing other report work. No export is offered on this curated tracker.</p>
+    `},
     { pattern: /^\/reports\/one-on-one\/?$/, title: '1:1 Preparation', content: `
       <p>Prepare for a seller or manager conversation using recent activity and all open engagements.</p>
       <p><strong>Last 2 Weeks</strong> groups customers by recent note call dates. <strong>All Open Engagements</strong> shows Active engagements, including work without recent notes. The six totals and highlight tables keep their existing scopes in both views.</p>

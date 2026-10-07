@@ -306,6 +306,9 @@
 (function() {
     {% if parent_modal_id is defined %}
     const parentModal = document.getElementById({{ parent_modal_id|tojson }});
+    const nativeParent = parentModal instanceof HTMLDialogElement;
+    const parentClosingEvent = nativeParent ? 'sb:dialog-before-close' : 'hide.bs.modal';
+    const parentClosedEvent = nativeParent ? 'sb:dialog-closed' : 'hidden.bs.modal';
     for (const id of ['addAgendaModal', 'editEngagementModal']) {
         const modal = document.getElementById(id);
         modal.dataset.workspaceParentModal = parentModal.id;
@@ -511,8 +514,8 @@
             document.removeEventListener('click', closeTablePicker);
             clearTimeout(searchTimer);
             {% if parent_modal_id is defined %}
-            parentModal.removeEventListener('hide.bs.modal', protectHostClose);
-            parentModal.removeEventListener('hidden.bs.modal', cleanupWorkspace);
+            parentModal.removeEventListener(parentClosingEvent, protectHostClose);
+            parentModal.removeEventListener(parentClosedEvent, cleanupWorkspace);
             {% endif %}
         },
     };
@@ -531,7 +534,8 @@
         event.preventDefault();
         flushEdits().then(function() {
             closingWorkspace = true;
-            bootstrap.Modal.getOrCreateInstance(parentModal).hide();
+            if (nativeParent) SBDialog.close(parentModal, 'saved');
+            else bootstrap.Modal.getOrCreateInstance(parentModal).hide();
         }).catch(function() {
             alert('Save or retry your pending changes before closing.');
         });
@@ -540,8 +544,8 @@
         if (event.target !== parentModal) return;
         workspaceController.dispose();
     }
-    parentModal.addEventListener('hide.bs.modal', protectHostClose);
-    parentModal.addEventListener('hidden.bs.modal', cleanupWorkspace);
+    parentModal.addEventListener(parentClosingEvent, protectHostClose);
+    parentModal.addEventListener(parentClosedEvent, cleanupWorkspace);
     {% endif %}
     workspaceRoot.addEventListener('click', function(event) {
         const link = event.target.closest('a[href]');

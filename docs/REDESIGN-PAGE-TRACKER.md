@@ -7,16 +7,16 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: persistent 1:1 workspace, checkpoint 47,
+- Last approved implementation: Initiative Tracker, checkpoint 48,
   user-approved October 6; local commit authorized.
-- Current task: commit checkpoint 47, then migrate Initiative Tracker, checkpoint 48.
-- Active card: [OOO-VIEW](redesign-pages/OOO-VIEW.md).
-- Approved effort estimate: about 52%; strict DONE counters below are separate.
+- Current task: commit checkpoint 48, then migrate MSX workspace, checkpoint 49.
+- Active card: [RPT-INIT](redesign-pages/RPT-INIT.md).
+- Approved effort estimate: about 54%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: capture and migrate Initiative Tracker with before/after screenshots
+- Next action: capture and migrate MSX workspace with before/after screenshots
   and one Discord review-ready notification.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
@@ -45,7 +45,7 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 46 sign-off, the rough effort-based estimate is **about 50%**
+As of checkpoint 48 sign-off, the rough effort-based estimate is **about 54%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved. Most entity pages, forms, reports, preferences,
@@ -172,9 +172,9 @@ have separate rows even when they use one template.
 | SPEC-VIEW | Specialty detail | `/specialties/<int:id>` | `specialty_view.html` | TODO | - |
 | SPEC-EDIT | Edit specialty | `/specialties/<int:id>/edit` | `specialty_form.html` | TODO | - |
 | OOO-LIST | 1:1 hub | `/one-on-one/` | `one_on_one_hub.html` | VERIFY | [Card](redesign-pages/OOO-LIST.md) |
-| OOO-VIEW | 1:1 workspace | `/one-on-one/<int:workspace_id>` | `one_on_one_workspace.html` | VERIFY | [Checkpoint 47](redesign-pages/OOO-VIEW.md); pending sign-off |
+| OOO-VIEW | 1:1 workspace | `/one-on-one/<int:workspace_id>` | `one_on_one_workspace.html` | VERIFY | [Checkpoint 47](redesign-pages/OOO-VIEW.md); user-approved `6ee2af6d`, final reconciliation pending |
 | RPT-HUB | Reports hub | `/reports` | `reports_hub.html` | VERIFY | [Checkpoint 34](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-34-main-reports-directory); native grouped directory, identical registry/menu order, local filter and Back context; user-approved October 5 |
-| RPT-INIT | Initiative Tracker | `/reports/initiative-tracker`; `/reports/manager-one-on-one` | `report_manager_one_on_one.html` | TODO | - |
+| RPT-INIT | Initiative Tracker | `/reports/initiative-tracker`; `/reports/manager-one-on-one` | `report_manager_one_on_one.html` | VERIFY | [Checkpoint 48](redesign-pages/RPT-INIT.md); user-approved October 6 |
 | RPT-ACT | Activity coverage | `/reports/activity-coverage` | `report_activity_coverage.html` | VERIFY | [Card](redesign-pages/RPT-ACTIVITY-COVERAGE.md) |
 | RPT-OOO | Seller 1:1 preparation | `/reports/one-on-one` | `report_one_on_one.html` | VERIFY | [card](redesign-pages/RPT-OOO.md) |
 | RPT-WORK | Workload | `/reports/workload` | `report_workload.html` | VERIFY | [Checkpoint 35](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-35-workload-report); native topic/customer browser, preserved scope/totals/exports, sorting, Back and compact embeds; user-approved October 6 |

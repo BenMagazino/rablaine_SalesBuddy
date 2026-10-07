@@ -124,6 +124,7 @@ document.body.appendChild(taskDiscard);
 let taskParentHiding = false;
 let taskParentRestore = false;
 taskModal.addEventListener('sb:dialog-opening', function() {
+    if (parentModal instanceof HTMLDialogElement) return;
     if (!parentModal.classList.contains('show')) return;
     taskParentHiding = true;
     taskParentRestore = false;
@@ -141,6 +142,7 @@ taskModal.addEventListener('sb:dialog-opening', function() {
     hideParent();
 });
 taskModal.addEventListener('sb:dialog-closed', function() {
+    if (parentModal instanceof HTMLDialogElement) return;
     if (!parentModal.isConnected) return;
     if (taskParentHiding) taskParentRestore = true;
     else bootstrap.Modal.getOrCreateInstance(parentModal).show();

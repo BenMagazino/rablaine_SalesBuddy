@@ -10,6 +10,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/2/2026
 
+- Track initiatives in the native desktop workbench with seller-preserving column sorting, native points/details dialogs, U2C selection and restored reading/filter context on Back.
+
 - Work in native 1:1 notes and agenda panes with page-height standing notes, scoped agenda search, engagement editing, retryable autosaves and pending-edit protection, including inline workspaces.
 - Browse 1:1 workspaces in a native sortable directory with inline quick starts, clear seller-filter feedback and restored filters, drafts and reading context on Back.
 - Prepare for 1:1s in the native report frame with sortable highlights, compact customer activity, existing workspace access and restored reading context on Back.

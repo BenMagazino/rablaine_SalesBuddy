@@ -64,6 +64,9 @@ function harness(workloadFilter = null) {
     const activePickers = [];
     const timers = new Map();
     const requests = [];
+    const dialogs = [];
+    const navigations = [];
+    const sortMounts = [];
     let nextTimer = 0;
     const field = {dataset: {itemId: '7'}};
     const input = {
@@ -73,7 +76,7 @@ function harness(workloadFilter = null) {
         attributes: {},
         setAttribute(name, value) { this.attributes[name] = value; },
         removeAttribute(name) { delete this.attributes[name]; },
-        closest: () => field,
+        closest: selector => selector === '.talking-points-field' ? field : null,
         focus() {},
     };
     field.querySelector = () => input;
@@ -115,7 +118,10 @@ function harness(workloadFilter = null) {
         return button;
     }
     const root = {
-        addEventListener: (name, callback) => { events[name] = callback; },
+        addEventListener: (name, callback) => {
+            const previous = events[name];
+            events[name] = previous ? event => { previous(event); callback(event); } : callback;
+        },
         querySelector(selector) {
             if (selector === '.talking-points.is-invalid') {
                 return input.classList.contains('is-invalid') ? input : null;
@@ -136,11 +142,17 @@ function harness(workloadFilter = null) {
                 return node(tag);
             },
         },
-        bootstrap: {Modal: {getOrCreateInstance: () => ({show() {}, hide() {}})}},
+        SBDialog: {
+            open(dialog) { dialogs.push({action: 'open', dialog}); },
+            close(dialog) { dialogs.push({action: 'close', dialog}); },
+        },
+        console: {error() {}},
         AbortController,
         URLSearchParams,
         Intl,
         window: {
+            SBTableSort: {mount(root) { sortMounts.push(root); }},
+            location: {assign(href) { navigations.push(href); }},
             addEventListener(name, callback) { windowEvents[name] = callback; },
             getSelection: () => ({toString: () => ''}),
         },
@@ -173,7 +185,15 @@ function harness(workloadFilter = null) {
         __dirname, '..', '..', 'static', 'js', 'manager_one_on_one.js',
     ), 'utf8'), context);
     return {
-        field, input, requests, elements,
+        field, input, requests, elements, dialogs, navigations, sortMounts,
+        fullPage() {
+            const event = {
+                currentTarget: {href: '/one-on-one/42'}, prevented: false,
+                preventDefault() { this.prevented = true; },
+            };
+            const pending = elements.managerWorkFullLink.click(event);
+            return {event, pending};
+        },
         edit(value) { input.value = value; events.input({target: input}); },
         blur() { events.focusout({target: input}); },
         fireTimers() {
@@ -201,7 +221,7 @@ function harness(workloadFilter = null) {
                 target: elements.managerPointsModal, prevented: false,
                 preventDefault() { this.prevented = true; },
             };
-            elements.managerPointsModal['hide.bs.modal'](event);
+            elements.managerPointsModal['sb:dialog-before-close'](event);
             return event;
         },
         window: context.window,
@@ -277,6 +297,188 @@ async function settle() {
     for (let count = 0; count < 20; count++) await Promise.resolve();
 }
 
+test('native Points close waits for the pending save before closing', async () => {
+    const ui = harness();
+    ui.edit('Pending conversation');
+    assert.equal(ui.closePoints().prevented, true);
+    assert.equal(ui.dialogs.length, 0);
+    ui.requests[0].finish();
+    await settle();
+    assert.equal(ui.dialogs.at(-1).action, 'close');
+    assert.equal(ui.dialogs.at(-1).dialog, ui.elements.managerPointsModal);
+    assert.equal(ui.field.dataset.dirty, 'false');
+});
+
+test('Full Page waits for workspace edits and preserves the inline workspace on failure', async () => {
+    const ui = harness();
+    ui.window.SBOneOnOneWorkspace = {
+        root: {isConnected: true}, hasPendingEdits: () => true,
+        async flush() { throw Error('Save failed'); },
+    };
+    const failed = ui.fullPage();
+    await failed.pending;
+    assert.equal(failed.event.prevented, true);
+    assert.equal(ui.navigations.length, 0);
+    assert.equal(ui.elements.reportError.classList.contains('d-none'), false);
+    ui.window.SBOneOnOneWorkspace.flush = async () => {};
+    await ui.fullPage().pending;
+    assert.deepEqual(ui.navigations, ['/one-on-one/42']);
+});
+
+test('initiative writes protect unrelated form drafts and retain failed submitted edits', async () => {
+    const full = fs.readFileSync(path.join(
+        __dirname, '..', '..', 'static', 'js', 'manager_one_on_one.js',
+    ), 'utf8');
+    const source = 'async function mutate(button, action) {' +
+        full.split('async function mutate(button, action) {')[1].split('function cell(')[0];
+    const form = {};
+    const control = {disabled: false};
+    const drafts = new Set([form]);
+    const errors = [];
+    let reloads = 0, actions = 0;
+    const history = {state: {sbTableSort: {keep: true}}, replaceState(state) {
+        assert.equal(state, this.state);
+    }};
+    const context = {
+        saving: false, formDrafts: drafts, history,
+        root: {querySelectorAll: () => [control], querySelector: () => null},
+        errorBox: {classList: classes()}, flushTalkingPoints: async () => {},
+        window: {}, showError(error) { errors.push(error.message); },
+        location: {reload() { reloads++; }},
+    };
+    vm.runInNewContext(source, context);
+    const button = {disabled: false, closest: selector => selector === '.section-form'
+        ? form : {id: 'section-1'}};
+    const unrelated = {};
+    drafts.add(unrelated);
+    await context.mutate(button, async () => { actions++; });
+    assert.equal(actions, 0);
+    assert.match(errors.at(-1), /other initiative edits/);
+    assert.equal(control.disabled, false);
+    drafts.delete(unrelated);
+    await context.mutate(button, async () => { throw Error('Database unavailable'); });
+    assert.equal(drafts.has(form), true);
+    assert.equal(reloads, 0);
+    await context.mutate(button, async () => { actions++; });
+    assert.equal(drafts.has(form), false);
+    assert.equal(reloads, 1);
+    assert.equal(control.disabled, false);
+});
+
+test('native work close restores the parent context and aborts a pending detail read', () => {
+    const ui = harness();
+    const original = {page: 'initiative_tracker'};
+    ui.window.copilotContext = original;
+    ui.projectRow();
+    ui.window.copilotContext = {page: 'project'};
+    ui.workModalEvent('sb:dialog-closed', 'managerWorkModal');
+    assert.equal(ui.window.copilotContext, original);
+    assert.equal(ui.requests[0].options.signal.aborted, true);
+});
+
+test('candidate sorters exclude selection and use raw ISO dates and unrounded ACR', async () => {
+    const ui = harness();
+    const picker = ui.picker();
+    picker.type('milestone');
+    ui.requests[0].finish(true, undefined, {results: [{
+        id: 8, title: 'Quarter work', customer_name: 'Customer', status: 'On Track',
+        commitment: 'Uncommitted', due_date: '2026-12-15', acr: 1234.56,
+    }]});
+    await settle();
+    const table = picker.parts['.candidate-results'].children[0];
+    assert.equal(ui.sortMounts.length, 1);
+    assert.equal(table.attributes['data-sb-sort-key'], 'initiative-candidates-2');
+    const headers = table.children[1].children[0].children;
+    assert.deepEqual(headers.map(th => th.attributes['data-sb-sort-type']),
+        [undefined, 'text', 'text', 'text', 'date', 'number']);
+    const cells = table.children[2].children[0].children;
+    assert.equal(cells[4].attributes['data-sb-sort-value'], '2026-12-15');
+    assert.equal(cells[5].attributes['data-sb-sort-value'], '1234.56');
+});
+
+test('embedded workspace native host waits for saves and retains drafts on failure', async () => {
+    const source = fs.readFileSync(path.join(
+        __dirname, '..', '..', 'templates', 'partials', 'one_on_one_workspace_content.html',
+    ), 'utf8').split('let closingWorkspace = false;')[1].split('{% endif %}')[0];
+    function host(failure) {
+        const listeners = {};
+        const parent = {addEventListener: (name, callback) => { listeners[name] = callback; }};
+        const calls = [];
+        vm.runInNewContext(`let closingWorkspace = false;${source}`, {
+            parentModal: parent, nativeParent: true,
+            parentClosingEvent: 'sb:dialog-before-close', parentClosedEvent: 'sb:dialog-closed',
+            workspaceRoot: {isConnected: true}, hasPendingEdits: () => true,
+            workspaceController: {dispose() { calls.push('dispose'); }},
+            flushEdits: async () => { calls.push('flush'); if (failure) throw Error('Offline'); },
+            SBDialog: {close(dialog, reason) {
+                assert.equal(dialog, parent); assert.equal(reason, 'saved'); calls.push('close');
+            }},
+            alert() { calls.push('notice'); },
+        });
+        const event = {target: parent, preventDefault() { calls.push('prevent'); }};
+        listeners['sb:dialog-before-close'](event);
+        return {calls, closed() { listeners['sb:dialog-closed'](event); }};
+    }
+    const success = host(false);
+    const failed = host(true);
+    await settle();
+    assert.deepEqual(success.calls, ['prevent', 'flush', 'close']);
+    success.closed();
+    assert.equal(success.calls.at(-1), 'dispose');
+    assert.deepEqual(failed.calls, ['prevent', 'flush', 'notice']);
+});
+
+test('Back waits for picker results before restoring scroll and never overwrites saved context', async () => {
+    const full = fs.readFileSync(path.join(
+        __dirname, '..', '..', 'static', 'js', 'manager_one_on_one.js',
+    ), 'utf8');
+    const source = 'const reading = document.getElementById(\'initiativeReading\');' +
+        full.split("const reading = document.getElementById('initiativeReading');")[1]
+            .split('})();')[0];
+    const events = {};
+    const pending = [];
+    const reading = {scrollTop: 0, addEventListener() {}};
+    const type = {value: ''}, query = {value: ''};
+    const picker = {
+        id: 'picker-1', dataset: {}, classList: classes(['d-none']),
+        matches: selector => ['.it-editor', '.work-picker'].includes(selector),
+        querySelector: selector => selector.startsWith('select') ? type
+            : selector.startsWith('input') ? query : {scrollTop: 0},
+        querySelectorAll: () => [],
+    };
+    const history = {state: {sbInitiatives: {
+        top: 120, editors: ['picker-1'], pickers: [{
+            id: 'picker-1', source: 'u2c', type: 'milestone', q: 'SQL', selected: [], top: 0,
+        }],
+    }}, replaceState(value) { this.state = value; }};
+    const context = {
+        document: {getElementById: id => id === 'initiativeReading' ? reading : picker},
+        root: {querySelectorAll: selector => selector.startsWith('[aria-controls')
+            ? [{setAttribute() {}}] : [picker]},
+        history, window: {addEventListener(name, callback) { events[name] = callback; }},
+        showError(error) { throw error; },
+        search() {
+            context.saveReading();
+            return new Promise(resolve => pending.push(resolve));
+        },
+    };
+    vm.runInNewContext(source, context);
+    events.pageshow();
+    assert.equal(history.state.sbInitiatives.top, 120);
+    assert.equal(query.value, 'SQL');
+    assert.equal(type.value, 'milestone');
+    assert.equal(picker.dataset.source, 'u2c');
+    assert.equal(pending.length, 2);
+    pending[1]();
+    await settle();
+    assert.equal(reading.scrollTop, 120);
+    pending[0]();
+    await settle();
+    assert.equal(reading.scrollTop, 120);
+    context.saveReading();
+    assert.equal(history.state.sbInitiatives.top, 120);
+});
+
 test('typing is debounced and a successful autosave clears pending state', async () => {
     const ui = harness();
     ui.edit('Progress');
@@ -288,7 +490,7 @@ test('typing is debounced and a successful autosave clears pending state', async
     ui.requests[0].finish();
     await settle();
     assert.equal(ui.field.dataset.dirty, 'false');
-    assert.equal(ui.elements.talkingPointsState.textContent, '');
+    assert.equal(ui.elements.talkingPointsState.textContent, 'Points save automatically');
 });
 
 test('edits during an in-flight save are serialized and the latest value wins', async () => {
@@ -429,7 +631,7 @@ test('closing with unsaved points flushes immediately and stays open on failure'
 test('a nested work modal closing does not reset the visible detail context', () => {
     const ui = harness();
     ui.window.copilotContext = {page: 'engagement_view'};
-    ui.workModalEvent('hidden.bs.modal', 'taskEditModal');
+    ui.workModalEvent('sb:dialog-closed', 'taskEditModal');
     assert.equal(ui.window.copilotContext.page, 'engagement_view');
 });
 
@@ -503,6 +705,7 @@ test('native project task dialogs restore the parent, including close during its
             getElementById: id => id === parent.id ? parent : task,
             body: {appendChild(element) { appended.push(element); }},
         },
+        HTMLDialogElement: class {},
         bootstrap: {Modal: {
             getOrCreateInstance: element => {
                 assert.equal(element, parent);
@@ -513,6 +716,7 @@ test('native project task dialogs restore the parent, including close during its
             },
         }},
     });
+
     assert.deepEqual(appended, [task, discard]);
     assert.equal(discard.dataset.workspaceParentModal, parent.id);
     task.emit('sb:dialog-opening');
@@ -532,6 +736,32 @@ test('native project task dialogs restore the parent, including close during its
     task.emit('sb:dialog-closed');
     assert.equal(parentShowCount, 2);
     assert.equal(parent.classList.contains('show'), true);
+});
+
+test('native project task dialogs keep the native parent open without invoking Bootstrap', () => {
+    const listeners = {};
+    const task = {dataset: {}, addEventListener(name, callback) { listeners[name] = callback; }};
+    const discard = {dataset: {}};
+    class NativeParent {
+        constructor() { this.id = 'managerWorkModal'; this.isConnected = true; this.open = true; }
+        querySelector(selector) { return selector === '#actionItemDetailModal' ? task : discard; }
+    }
+    const parent = new NativeParent();
+    const source = fs.readFileSync(path.join(
+        __dirname, '..', '..', 'templates', 'partials', 'project_view_content.html',
+    ), 'utf8').split('{% if parent_modal_id is defined %}')[1].split('{% endif %}')[0]
+        .replace('{{ parent_modal_id|tojson }}', '"managerWorkModal"');
+    const appended = [];
+    vm.runInNewContext(source, {
+        HTMLDialogElement: NativeParent,
+        document: {getElementById: () => parent, body: {appendChild(el) { appended.push(el); }}},
+        bootstrap: {Modal: {getOrCreateInstance() { throw Error('Native parent used Bootstrap'); }}},
+    });
+    listeners['sb:dialog-opening']();
+    listeners['sb:dialog-closed']();
+    assert.equal(parent.open, true);
+    assert.deepEqual(appended, [task, discard]);
+    assert.equal(task.dataset.workspaceParentModal, parent.id);
 });
 
 test('project selection resets U2C source and displays projects without customer or ACR', async () => {

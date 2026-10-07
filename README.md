@@ -64,6 +64,11 @@ standalone UI iterations using entirely fictional data. See the
   Back restores the agenda, standing-note reading regions and discussion-history disclosure.
 - **Initiative Tracker** - create named initiatives, select engagements and milestones,
   grouped by their current seller, with live status, commitment, dates, and ACR.
+  A native desktop workbench keeps commands and save status visible while initiatives
+  scroll. Work and picker columns sort both ways without crossing seller groups;
+  raw due dates and ACR retain their original values. Back restores reading position,
+  open editors, picker filters/selections and table sorting. Failed saves retain edits
+  with retry feedback; unsaved initiative forms warn before leaving.
   When user-facing internal projects exist, **Add work** also offers **Projects**, with
   all statuses available. The system-only Copilot Saved Tasks type is excluded from the
   picker and does not enable this option. Projects have no customer or seller and open

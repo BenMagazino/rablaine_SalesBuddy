@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 from bs4 import BeautifulSoup
+from flask.testing import FlaskClient
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import (
@@ -15,6 +16,39 @@ from app.models import (
 from app.services.salesiq_tools import execute_tool
 
 API = '/api/reports/manager-one-on-one'
+
+
+@pytest.mark.parametrize('url', [
+    '/reports/initiative-tracker', '/reports/manager-one-on-one',
+])
+def test_native_tracker_frame_sort_and_raw_values(
+    client: FlaskClient, initiative_data: dict, url: str,
+) -> None:
+    """Native aliases preserve raw values, seller boundaries and action-only columns."""
+    section = create_section(client)
+    for item_type, entity_id in initiative_data.items():
+        add_work(client, section['id'], item_type, [entity_id])
+    soup = BeautifulSoup(client.get(url).data, 'html.parser')
+    root = soup.select_one('#managerReport[data-sb-page-surface]')
+    assert 'sb-page-frame' in soup.body['class']
+    assert soup.select_one('body > footer.sb-page-status #talkingPointsState')
+    assert root.select_one('#initiativeReading[aria-label]')
+    assert not root.select(
+        '.card, .btn, .badge, .form-control, [data-bs-toggle], [data-bs-dismiss]',
+    )
+    assert len(root.select('dialog.sb-dialog')) == 2
+    assert len(root.select('[data-sb-dialog-close]')) == 3
+    table = root.select_one('table[data-sb-sortable]')
+    assert [th['data-sb-sort-type'] for th in table.select('thead th[data-sb-sort-type]')] == [
+        'text', 'text', 'text', 'date', 'number',
+    ]
+    assert table.select_one('.seller-group[data-sb-sort-fixed]')
+    assert not table.select_one('thead th:nth-child(6)').has_attr('data-sb-sort-type')
+    row = table.select('tr.manager-work-row')[1]
+    assert row.select_one('td:nth-child(4)')['data-sb-sort-value'] == '2026-12-15'
+    assert float(row.select_one('td:nth-child(5)')['data-sb-sort-value']) == 15000
+    assert len(soup.select('script[src$="ui-table-sort.js"]')) == 1
+    assert not root.select('table:not([data-sb-sortable])')
 
 
 @pytest.fixture
@@ -238,7 +272,7 @@ def test_each_section_groups_mixed_work_by_current_seller(client, app, initiativ
         heading_link = body.select_one('th[scope="rowgroup"] a.seller-group-link')
         assert heading_link['href'] == f'/seller/{seller_id}'
         assert heading_link.select_one('i.bi-person') is not None
-        assert 'fw-semibold' in heading_link['class']
+        assert 'it-seller' in heading_link['class']
         assert 'badge' not in heading_link['class']
         assert body.select_one('th[scope="rowgroup"]').get_text(strip=True) == (
             heading_link.get_text(strip=True) + '(1:1 notes)'
@@ -800,9 +834,8 @@ def test_section_forms_are_unfilled_and_u2c_controls_are_milestone_specific(
     for panel in soup.select('.section-form, .work-picker'):
         assert 'bg-body-tertiary' not in panel['class']
         assert 'rounded' not in panel['class']
-        assert 'border' in panel['class']
-        assert 'p-3' in panel['class']
-    assert soup.select_one('#newSection .col-5 [name="name"]') is not None
+        assert not {'border', 'p-3', 'card'}.intersection(panel['class'])
+    assert soup.select_one('#newSection .it-fields [name="name"]') is not None
     source = soup.select_one('.work-picker .milestone-source')
     assert 'd-none' in source['class']
     assert source.select_one('[data-source="u2c"]').get_text(strip=True) == 'From U2C'
@@ -810,26 +843,26 @@ def test_section_forms_are_unfilled_and_u2c_controls_are_milestone_specific(
 
 
 def test_section_panels_have_consistent_header_close_controls(client):
-    """Use a labelled non-submit close button in each panel header, not footer Cancel."""
+    """Use a labelled native non-submit close command in each panel header."""
     section = create_section(client)
     soup = BeautifulSoup(client.get('/reports/manager-one-on-one').data, 'html.parser')
     panels = soup.select('.section-form, .work-picker')
     assert len(panels) == 3
     for panel in panels:
         header = panel.select_one('div')
-        assert header.select_one('h6') is not None
-        close = header.select_one('button.btn-close')
+        assert header.select_one('h3') is not None
+        close = header.select_one('button[aria-label]')
         assert close is not None
         assert close['type'] == 'button'
         assert close['aria-label'].startswith('Close ')
-        assert len(panel.select('.btn-close')) == 1
-        assert all(button.get_text(strip=True) != 'Cancel' for button in panel.select('button'))
+        assert close.get_text(strip=True) in {'Close', 'Cancel'}
+        assert len(panel.select('button[aria-label]')) == 1
     for target in ('newSection', f"edit-{section['id']}"):
-        close = soup.select_one(f'#{target} .btn-close')
-        assert close['data-bs-toggle'] == 'collapse'
-        assert close['data-bs-target'] == f'#{target}'
+        close = soup.select_one(f'#{target} button[aria-label]')
+        assert close['data-action'] == 'toggle-editor'
+        assert close['data-target'] == target
         assert close['aria-controls'] == target
-    assert soup.select_one('.work-picker .btn-close')['data-action'] == 'close-picker'
+    assert soup.select_one('.work-picker button[aria-label]')['data-action'] == 'close-picker'
 
 
 def test_u2c_source_is_not_truncated_by_normal_search_limit(client, app, manager_u2c_data):
