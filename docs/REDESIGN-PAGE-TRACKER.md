@@ -8,16 +8,17 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
 - Last approved implementation: overnight checkpoints 53-62, including morning
-  Action Items refinements, user-approved October 7.
-- Current task: committing the approved batch and recording its implementation SHA.
+  Action Items refinements, user-approved October 7, committed as `e5bde8c3`.
+- Current task: approved batch committed; awaiting the next segment.
 - Active card: [CUST-VIEW](redesign-pages/CUST-VIEW.md), user-approved, final reconciliation pending.
 - Approved effort estimate: about 75%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: record the approved batch commit. Previous checkpoint 52 is
-  `4e57b1a6`; checkpoints 53-62 and morning refinements are approved for local commit.
+- Next action: select the next bounded remaining surface when requested.
+  Checkpoints 53-62 and morning refinements share approved implementation `e5bde8c3`;
+  previous checkpoint 52 is `4e57b1a6`.
   Push, merge and deployment remain unauthorized; strict DONE counters are unchanged.
 - Final approved-batch checks: 137 scoped pytest and 178 JavaScript tests pass,
   including the morning Action Items refinements.
