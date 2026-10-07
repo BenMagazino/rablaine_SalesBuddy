@@ -28,11 +28,15 @@ function harness() {
             return !event.defaultPrevented;
         }
         matches() { return !!this.child; }
+        hasAttribute(name) { return name === 'data-sb-milestone-page' && !!this.standalone; }
     }
     const discard = new Element(), confirm = new Element(), description = new Element();
-    const document = {getElementById: id =>
+    const pageState = new Element();
+    const document = new Element();
+    Object.assign(document, {getElementById: id =>
         ({recordDiscardDialog: discard, recordDiscardConfirm: confirm,
-            recordDiscardDescription: description})[id], createElement: () => new Element()};
+            recordDiscardDescription: description, milestonePageState: pageState})[id],
+        createElement: () => new Element()});
     const SBDialog = {
         open(element) { element.open = true; },
         close(element, reason = 'escape') {
@@ -48,9 +52,16 @@ function harness() {
         },
     };
     const window = {
-        addEventListener: (type, handler) => windowEvents.set(type, handler),
+        addEventListener: (type, handler) => {
+            const handlers = windowEvents.get(type) || [];
+            handlers.push(handler); windowEvents.set(type, handlers);
+        },
         setTimeout: callback => { timers.set(++nextTimer, callback); return nextTimer; },
-        clearTimeout: id => timers.delete(id), location: {reload: () => reloads++},
+        clearTimeout: id => timers.delete(id),
+        location: {reload: () => reloads++, assign: url => { window.destination = url; }},
+        history: {state: {unrelated: 'retained'}, replaceState: state => {
+            window.history.state = state;
+        }},
         fetch: async (url, options) => {
             requests.push({url, options});
             return window.response;
@@ -58,28 +69,36 @@ function harness() {
     };
     vm.runInNewContext(source, {window, document, SBDialog, AbortController, DOMException,
         CustomEvent: Event, console: {error: (...args) => errors.push(args), warn() {}}});
-    function root() {
+    function root(standalone = false) {
         const root = new Element(), child = new Element(), field = new Element();
         const comment = new Element(), status = new Element(), form = new Element();
+        const notice = new Element(), context = new Element(), forecast = new Element();
+        root.standalone = standalone; root.dataset.sbMilestoneId = '880';
+        context.dataset.sbMsReading = 'context'; forecast.dataset.sbMsReading = 'forecast';
+        context.scrollTop = forecast.scrollTop = 0;
         child.child = true; child.root = root;
         form.reset = () => { field.value = field.defaultValue; };
         child.querySelectorAll = () => [field];
         child.querySelector = selector => ({form, '[data-sb-child-status]': status})[selector] || null;
-        root.querySelectorAll = selector => selector.startsWith('dialog') ? [child] : [comment];
+        root.querySelectorAll = selector => selector === '[data-sb-ms-reading]'
+            ? [context, forecast] : selector.startsWith('dialog') ? [child] : [comment];
         root.querySelector = selector => ({'#child': child, '#field': field,
-            '#newTaskModal': child})[selector] || null;
+            '#newTaskModal': child, '[data-sb-ms-page-notice]': notice})[selector] || null;
         root.contains = () => true;
         let scope;
         const api = window.SBMilestoneWorkflow.attach(root, value => {
             scope = value;
             return {};
         });
-        return {root, child, field, comment, status, api, scope};
+        return {root, child, field, comment, status, api, scope, context, forecast, notice};
     }
     return {root, window, requests, errors, discard, confirm, description, SBDialog, Event,
+        document, pageState,
+        emit(type) { for (const handler of windowEvents.get(type) || []) handler(new Event(type)); },
         flush() { for (const [id, callback] of [...timers]) { timers.delete(id); callback(); } },
         unload() { const event = new Event('beforeunload');
-            windowEvents.get('beforeunload')(event); return event.defaultPrevented || false; },
+            for (const handler of windowEvents.get('beforeunload')) handler(event);
+            return event.defaultPrevented || false; },
         get reloads() { return reloads; },
         response(data, type = 'application/json') {
             window.response = {ok: true, status: 200, headers: {get: () => type},
@@ -99,6 +118,72 @@ test('scoped document isolates duplicate fragment IDs and disposal aborts reads/
     assert.equal(h.requests[0].options.signal.aborted, true);
     h.flush();
     assert.equal(h.unload(), false);
+});
+
+test('standalone restores both reading regions without changing unrelated history', () => {
+    const h = harness(), view = h.root(true);
+    view.context.scrollTop = 240; view.forecast.scrollTop = 640;
+    view.context.dispatchEvent(new h.Event('scroll'));
+    assert.equal(h.window.history.state.unrelated, 'retained');
+    assert.equal(h.window.history.state.sbMilestoneReading['880'].forecast, 640);
+    view.context.scrollTop = view.forecast.scrollTop = 0;
+    h.emit('pageshow'); h.flush();
+    assert.equal(view.context.scrollTop, 240);
+    assert.equal(view.forecast.scrollTop, 640);
+});
+
+test('standalone Keep editing preserves comment and confirmed leave clears only its draft', () => {
+    const h = harness(), view = h.root(true);
+    view.comment.value = 'Draft';
+    view.root.dispatchEvent(new h.Event('input'));
+    assert.equal(h.pageState.textContent, 'Unsaved milestone draft');
+    const link = {href: '/milestone/880/edit', getAttribute: () => '/milestone/880/edit',
+        hasAttribute: () => false};
+    const click = () => {
+        const event = new h.Event('click', {button: 0, target: {closest: () => link}});
+        h.document.dispatchEvent(event);
+        return event;
+    };
+    assert.equal(click().defaultPrevented, true);
+    assert.equal(h.discard.open, true);
+    h.SBDialog.close(h.discard);
+    assert.equal(view.comment.value, 'Draft');
+    assert.equal(h.window.destination, undefined);
+    click();
+    h.confirm.dispatchEvent(new h.Event('click'));
+    assert.equal(h.window.destination, '/milestone/880/edit');
+    assert.equal(view.comment.value, '');
+    assert.equal(view.api.isDirty(), false);
+    assert.equal(h.window.history.state.unrelated, 'retained');
+    h.emit('pageshow'); h.flush();
+    view.comment.value = 'New draft after Back';
+    view.root.dispatchEvent(new h.Event('input'));
+    assert.equal(view.api.isDirty(), true);
+    assert.equal(h.unload(), true);
+});
+
+test('standalone pending save blocks navigation without opening discard', async () => {
+    const h = harness(), view = h.root(true);
+    h.response({success: true});
+    const response = await view.scope.fetch('/write', {method: 'POST'});
+    const link = {href: '/customer/1', getAttribute: () => '/customer/1',
+        hasAttribute: () => false};
+    const event = new h.Event('click', {button: 0, target: {closest: () => link}});
+    h.document.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(h.discard.open, false);
+    assert.match(view.notice.textContent, /Wait before leaving/);
+    assert.equal(h.window.destination, undefined);
+    await response.json(); h.flush();
+});
+
+test('invalid standalone history is visible and never hides content', () => {
+    const h = harness();
+    h.window.history.state.sbMilestoneReading = {'880': {context: -1, forecast: 0}};
+    const view = h.root(true);
+    assert.equal(view.notice.hidden, false);
+    assert.match(view.notice.textContent, /All content is available/);
+    assert.equal(h.errors.length, 1);
 });
 
 test('writes stay busy through JSON handling, deduplicate and are never aborted on disposal', async () => {

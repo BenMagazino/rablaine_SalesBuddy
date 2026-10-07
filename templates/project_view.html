@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ project.title }} - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Project status">
+    <span>{{ project.action_items|length }} action items · {{ project.notes|length }} linked notes</span>
+    <span>{{ project.status }} · Internal project · Tasks save when submitted</span>
+</footer>
+{% endblock %}
 
 {% block content %}
 {% include 'partials/project_view_content.html' %}

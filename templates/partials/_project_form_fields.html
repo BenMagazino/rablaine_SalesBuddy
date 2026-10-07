@@ -7,6 +7,63 @@
        unattached_notes - General notes not linked to any project (optional)
 -->
 
+{% if native_project_form|default(false) %}
+{% set posted = request.method == 'POST' %}
+<div class="pf-fields">
+    <h2>Project details</h2>
+    <div class="mf-field">
+        <label for="title">Title <span aria-hidden="true">*</span></label>
+        <input type="text" id="title" name="title" required
+               placeholder="e.g. AZ-104 Cert Prep, Fabric Workshop"
+               value="{{ request.form.get('title', '') if posted else project.title if project else '' }}">
+    </div>
+    <div class="mf-field">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="3"
+                  placeholder="What is this project about?">{{ request.form.get('description', '') if posted else project.description or '' if project else '' }}</textarea>
+    </div>
+    <div class="pf-row">
+        <div class="mf-field">
+            <label for="project_type">Type</label>
+            <select id="project_type" name="project_type">
+                {% for t in project_types if t != 'copilot_saved' %}
+                <option value="{{ t }}" {{ 'selected' if (request.form.get('project_type', 'general') == t if posted else project and project.project_type == t) }}>{{ t|replace('_', ' ')|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mf-field">
+            <label for="due_date">Due Date</label>
+            <input type="date" id="due_date" name="due_date"
+                   value="{{ request.form.get('due_date', '') if posted else project.due_date.strftime('%Y-%m-%d') if project and project.due_date else '' }}">
+        </div>
+        {% if project %}
+        <div class="mf-field">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                {% for s in ['Active', 'On Hold', 'Completed'] %}
+                <option value="{{ s }}" {{ 'selected' if (request.form.get('status', project.status) == s if posted else project.status == s) }}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+    </div>
+    {% if unattached_notes %}
+    <fieldset class="pf-notes">
+        <legend>Attach General Notes <span>{{ unattached_notes|length }}</span></legend>
+        <p id="projectNotesHelp">Only general notes not already attached to another project are shown.</p>
+        <div class="pf-choices" aria-describedby="projectNotesHelp">
+            {% for n in unattached_notes %}
+            <label class="pf-choice" for="note_{{ n.id }}">
+                <input type="checkbox" name="note_ids" value="{{ n.id }}" id="note_{{ n.id }}"
+                       {% if (n.id|string in request.form.getlist('note_ids') if posted else project and n in project.notes) %}checked{% endif %}>
+                <span>{{ n.call_date.strftime('%b %d, %Y') }} - {{ n.content|striptags|truncate(80) }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </fieldset>
+    {% endif %}
+</div>
+{% else %}
 <div class="mb-3">
     <label for="{{ 'flyout_project_title' if flyout_mode else 'title' }}" class="form-label">Title <span class="text-danger">*</span></label>
     <input type="text" class="form-control" id="{{ 'flyout_project_title' if flyout_mode else 'title' }}" name="title"
@@ -82,4 +139,5 @@
     </div>
     <small class="text-muted">Only general notes not already attached to another project are shown.</small>
 </div>
+{% endif %}
 {% endif %}

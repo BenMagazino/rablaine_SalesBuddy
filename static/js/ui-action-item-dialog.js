@@ -1,10 +1,29 @@
-/* Shared native JSON preview, immediate writes and guarded plain-text editing. */
+/* Shared native JSON preview, immediate writes and guarded rich-description editing. */
 (() => {
     'use strict';
     if (window.SBActionItemDialog) return;
     const controllers = new WeakMap();
+    let quillLoading = null;
 
-    function create(dialog) {
+    function loadQuill() {
+        if (window.Quill) return Promise.resolve(window.Quill);
+        if (!quillLoading) {
+            quillLoading = new Promise((resolve, reject) => {
+                const style = document.createElement('link');
+                style.rel = 'stylesheet';
+                style.href = 'https://cdn.quilljs.com/1.3.6/quill.snow.css';
+                const script = document.createElement('script');
+                script.src = 'https://cdn.quilljs.com/1.3.6/quill.min.js';
+                script.onload = () => window.Quill ? resolve(window.Quill) :
+                    reject(new Error('The rich editor is unavailable.'));
+                script.onerror = () => reject(new Error('Could not load the rich editor.'));
+                document.head.append(style, script);
+            }).catch(error => { quillLoading = null; throw error; });
+        }
+        return quillLoading;
+    }
+
+    function create(dialog, options = {}) {
         const find = id => {
             const element = dialog.querySelector('#' + id);
             if (!element) throw new Error('Missing action item control: ' + id);
@@ -16,12 +35,13 @@
         const viewFooter = find('aiDetailViewFooter'), editFooter = find('aiDetailEditFooter');
         const completed = find('aiDetailCompleted'), edit = find('aiDetailEditBtn');
         const close = dialog.querySelector('[data-sb-dialog-close]');
-        const discard = document.getElementById('aiDiscardDialog');
+        const discard = options.discard || document.getElementById('aiDiscardDialog');
         const confirm = discard.querySelector('#aiDiscardConfirm');
         const fields = ['aiEditTitle', 'aiEditDue', 'aiEditPriority', 'aiEditContact', 'aiEditDesc']
             .map(find);
         let selection = null, task = null, request = null, generation = 0;
         let busy = false, changed = false, baseline = '', transition = null, bypass = false;
+        let rich = null;
 
         function report(text, state = 'status') {
             result.textContent = text;
@@ -98,6 +118,9 @@
                 }
             }
             if (task.note_id) meta.appendChild(tag('Linked Note', 'accent', '/note/' + task.note_id));
+            if (selection.opts.showProjectLink && task.project_id) {
+                meta.appendChild(tag('Go to Project', 'accent', '/project/' + task.project_id));
+            }
             meta.hidden = !meta.childElementCount;
             const description = find('aiDetailDesc');
             if (task.description?.trim()) description.innerHTML = task.description;
@@ -163,6 +186,7 @@
             const controls = [...dialog.querySelectorAll('input, select, textarea, button')]
                 .filter(control => !control.disabled);
             controls.forEach(control => { control.disabled = true; });
+            rich?.enable(false);
             report('Saving action item...');
             try {
                 const options = {method: suffix === '' ? 'PUT' : 'POST'};
@@ -189,6 +213,7 @@
             } finally {
                 busy = false;
                 controls.forEach(control => { control.disabled = false; });
+                rich?.enable(true);
                 if (dialog.open && dialog.contains(document.activeElement) &&
                     document.activeElement.closest('[hidden]')) {
                     close.focus({preventScroll: true});
@@ -208,15 +233,42 @@
             fields[1].value = task.due_date || '';
             fields[2].value = task.priority || 'normal';
             fields[3].value = task.contact || '';
-            const text = document.createElement('div');
-            text.innerHTML = task.description || '';
-            fields[4].value = text.textContent || '';
+            fields[4].value = task.description || '';
+            if (rich) {
+                rich.root.innerHTML = fields[4].value;
+                rich.update?.('silent');
+            }
             baseline = JSON.stringify(fields.map(field => field.value));
             view.hidden = viewFooter.hidden = true;
             form.hidden = editFooter.hidden = false;
             title.textContent = 'Edit Action Item';
             report('');
             fields[0].focus();
+            if (document.head && !rich) {
+                const snapshot = selection;
+                loadQuill().then(Quill => {
+                    if (selection !== snapshot || form.hidden || !dialog.open) return;
+                    const container = document.createElement('div');
+                    fields[4].insertAdjacentElement('afterend', container);
+                    rich = new Quill(container, {theme: 'snow', modules: {toolbar: [
+                        [{header: [1, 2, 3, false]}], ['bold', 'italic', 'underline', 'strike'],
+                        [{list: 'ordered'}, {list: 'bullet'}], ['link', 'image', 'clean'],
+                    ]}});
+                    rich.root.innerHTML = fields[4].value;
+                    rich.update?.('silent');
+                    rich.root.setAttribute('role', 'textbox');
+                    rich.root.setAttribute('aria-label', 'Description');
+                    rich.root.setAttribute('aria-multiline', 'true');
+                    fields[4].hidden = true;
+                    rich.on('text-change', () => {
+                        fields[4].value = rich.getText().trim() ||
+                            rich.root.querySelector('img, table, video') ? rich.root.innerHTML : '';
+                    });
+                }).catch(error => {
+                    console.error('Unable to initialize action item rich editor.', error);
+                    report(error.message + ' The original HTML remains editable below.', 'error');
+                });
+            }
         });
         find('aiDetailCancelEdit').addEventListener('click', () => {
             const cancel = () => { render(task); report(''); edit.focus(); };
@@ -260,7 +312,8 @@
             view.hidden = viewFooter.hidden = form.hidden = editFooter.hidden = true;
             if (changed) {
                 changed = false;
-                location.reload();
+                if (options.onChanged) options.onChanged();
+                else location.reload();
             }
         });
         discard.addEventListener('sb:dialog-closed', () => { transition = null; });
@@ -278,18 +331,33 @@
                 link.getAttribute('href').startsWith('#')) return;
             if (!guard(() => location.assign(link.href))) event.preventDefault();
         });
-        window.addEventListener('pagehide', invalidate);
-        window.addEventListener('pageshow', event => {
+        const unload = event => {
+            if (!dialog.open || (!dirty() && !busy)) return;
+            event.preventDefault();
+            event.returnValue = '';
+        };
+        const restore = event => {
             if (event.persisted && dialog.open && selection && !loading.hidden) load();
-        });
-        return {open(id, opts = {}) {
+        };
+        window.addEventListener('pagehide', invalidate);
+        window.addEventListener('beforeunload', unload);
+        window.addEventListener('pageshow', restore);
+        return {isDirty: dirty, isBusy: () => busy, dispose() {
+            invalidate();
+            window.removeEventListener('pagehide', invalidate);
+            window.removeEventListener('beforeunload', unload);
+            window.removeEventListener('pageshow', restore);
+        }, open(id, opts = {}) {
             if (!Number.isSafeInteger(id) || id < 1) throw new Error('Invalid action item ID.');
             if (dialog.open && selection?.id === id) return;
             if (guard(() => replace(id, opts))) return replace(id, opts);
         }};
     }
 
-    window.SBActionItemDialog = Object.freeze({open(id, opts) {
+    window.SBActionItemDialog = Object.freeze({mount(dialog, options) {
+        if (!controllers.has(dialog)) controllers.set(dialog, create(dialog, options));
+        return controllers.get(dialog);
+    }, open(id, opts) {
         const dialog = document.getElementById('actionItemDetailModal');
         if (!dialog) throw new Error('Action item dialog is missing.');
         if (!controllers.has(dialog)) controllers.set(dialog, create(dialog));

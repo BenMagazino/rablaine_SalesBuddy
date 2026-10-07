@@ -7,18 +7,23 @@ Inventory date: October 2, 2026. Baseline product SHA:
 ## Working checkpoint
 
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
-- Last approved implementation: New/Edit Milestone forms, checkpoint 52,
-  user-approved October 7; local commit authorized.
-- Current task: overnight checkpoints 53-62, user-authorized implementation batch.
-- Active card: [MS-FORM](redesign-pages/MS-FORM.md), approved.
-- Approved effort estimate: about 61%; strict DONE counters below are separate.
+- Last approved implementation: overnight checkpoints 53-62, including morning
+  Action Items refinements, user-approved October 7.
+- Current task: committing the approved batch and recording its implementation SHA.
+- Active card: [CUST-VIEW](redesign-pages/CUST-VIEW.md), user-approved, final reconciliation pending.
+- Approved effort estimate: about 75%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: commit approved checkpoint 52, then implement ten bounded checkpoints
-  with before/after screenshots for morning review. Leave the new batch uncommitted;
-  no push, merge or deployment authorized.
+- Next action: record the approved batch commit. Previous checkpoint 52 is
+  `4e57b1a6`; checkpoints 53-62 and morning refinements are approved for local commit.
+  Push, merge and deployment remain unauthorized; strict DONE counters are unchanged.
+- Final approved-batch checks: 137 scoped pytest and 178 JavaScript tests pass,
+  including the morning Action Items refinements.
+  Customer-directory role cases explicitly cover both no-note visibility preferences.
+  Private morning gallery: `overnight-review-53-62.html`, 26 verified screenshot files
+  covering all ten checkpoints and both modes of each paired form.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -46,11 +51,14 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoint 52 sign-off, the rough effort-based estimate is **about 61%**
+As of checkpoints 53-62 sign-off, the rough effort-based estimate is **about 75%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
-milestone slices are approved. Most entity pages, forms, reports, preferences,
-admin and final reconciliation still remain.
+milestone slices are approved, alongside the engagement, project and customer
+families and most report workbenches. Remaining work includes seller/territory/
+POD/SE/contact/topic/partner/specialty surfaces, note/search utilities, preferences,
+admin/setup and final cross-page reconciliation. This moves the prior checkpoint
+52 estimate of 61% forward by roughly fourteen percentage points.
 
 Report an updated effort-based estimate whenever a checkpoint is completed and
 committed. Keep estimates approximate; small checkpoints may not move the rounded
@@ -110,7 +118,7 @@ have separate rows even when they use one template.
 | ID | Page | URL(s) | Template | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | HOME | Dashboard/calendar | `/` | `index.html` | BUILDING | [Workbench frame](redesign-pages/HOME-WORKBENCH.md), [note-preview slice](redesign-pages/HOME-NOTE-PREVIEW.md) |
-| ACTIONS | Action items | `/action-items` | `action_items_hub.html` | TODO | - |
+| ACTIONS | Action items | `/action-items` | `action_items_hub.html` | VERIFY | [ACTIONS](redesign-pages/ACTIONS.md); user-approved October 7, including dashboard/row refinements |
 | SEARCH | Search | `/search` | `search.html` | TODO | - |
 | PREFS | Preferences | `/preferences` | `settings.html` | TODO | - |
 | NT-NEW | Create note template | `/templates/new` | `note_template_form.html` | TODO | - |
@@ -121,10 +129,10 @@ have separate rows even when they use one template.
 | ADMIN-ICONS | Favicon gallery | `/admin/favicons` | `admin_favicons.html` | TODO | - |
 | METRICS | Metrics | `/metrics` | `metrics.html` | TODO | - |
 | CONNECT | Connect export workspace | `/connect-export` | `connect_export.html` | TODO | - |
-| CUST-LIST | Customers | `/customers` | `customers_list.html` | TODO | - |
-| CUST-NEW | Create customer | `/customer/new` | `customer_form.html` | TODO | - |
-| CUST-VIEW | Customer detail | `/customer/<int:id>` | `customer_view.html` | TODO | - |
-| CUST-EDIT | Edit customer | `/customer/<int:id>/edit` | `customer_form.html` | TODO | - |
+| CUST-LIST | Customers | `/customers` | `customers_list.html` | VERIFY | [CUST-LIST](redesign-pages/CUST-LIST.md); user-approved October 7 |
+| CUST-NEW | Create customer | `/customer/new` | `customer_form.html` | VERIFY | [CUST-FORM](redesign-pages/CUST-FORM.md); user-approved October 7 |
+| CUST-VIEW | Customer detail | `/customer/<int:id>` | `customer_view.html`; `partials/customer_view_content.html` | VERIFY | [CUST-VIEW](redesign-pages/CUST-VIEW.md); user-approved October 7 |
+| CUST-EDIT | Edit customer | `/customer/<int:id>/edit` | `customer_form.html` | VERIFY | [CUST-FORM](redesign-pages/CUST-FORM.md); user-approved October 7 |
 | SELL-LIST | Sellers | `/sellers` | `sellers_list.html` | TODO | - |
 | SELL-NEW | Create seller | `/seller/new` | `seller_form.html` | TODO | - |
 | SELL-VIEW | Seller detail | `/seller/<int:id>` | `seller_view.html` | TODO | - |
@@ -151,19 +159,19 @@ have separate rows even when they use one template.
 | NOTE-VIEW | Note detail | `/note/<int:id>` | `note_view.html` | BUILDING | [Shared body slice](redesign-pages/NOTE-BODY.md) |
 | NOTE-EDIT | Edit note | `/note/<int:id>/edit` | `note_form.html` | TODO | - |
 | FILL-DAY | Fill My Day | `/fill-my-day` | `fill_my_day.html` | TODO | - |
-| ENG-LIST | Engagements | `/engagements` | `engagements_hub.html` | TODO | - |
-| ENG-NEW | Create engagement | `/customer/<int:customer_id>/engagement/new` | `engagement_form.html` | TODO | - |
-| ENG-VIEW | Engagement detail | `/engagement/<int:id>` | `engagement_view.html` | TODO | - |
-| ENG-EDIT | Edit engagement | `/engagement/<int:id>/edit` | `engagement_form.html` | TODO | - |
+| ENG-LIST | Engagements | `/engagements` | `engagements_hub.html` | VERIFY | [ENG-LIST](redesign-pages/ENG-LIST.md); user-approved October 7 |
+| ENG-NEW | Create engagement | `/customer/<int:customer_id>/engagement/new` | `engagement_form.html` | VERIFY | [ENG-FORM](redesign-pages/ENG-FORM.md); checkpoint 56, user-approved October 7 |
+| ENG-VIEW | Engagement detail | `/engagement/<int:id>` | `engagement_view.html` | VERIFY | [ENG-VIEW](redesign-pages/ENG-VIEW.md); checkpoint 57, user-approved October 7 |
+| ENG-EDIT | Edit engagement | `/engagement/<int:id>/edit` | `engagement_form.html` | VERIFY | [ENG-FORM](redesign-pages/ENG-FORM.md); checkpoint 56, user-approved October 7 |
 | MS-LIST | Milestones | `/milestones` | `milestones_list.html` | VERIFY | [Milestones directory](redesign-pages/MS-LIST.md); user-approved October 7 |
-| MS-NEW | Create milestone | `/milestone/new` | `milestone_form.html` | VERIFY | [Manual milestone forms](redesign-pages/MS-FORM.md); checkpoint 52, pending sign-off |
-| MS-VIEW | Milestone detail | `/milestone/<int:id>` | `milestone_view.html` | BUILDING | [Shared body/commands](redesign-pages/MILESTONE-BODY.md) |
-| MS-EDIT | Edit milestone | `/milestone/<int:id>/edit` | `milestone_form.html` | VERIFY | [Manual milestone forms](redesign-pages/MS-FORM.md); checkpoint 52, pending sign-off |
+| MS-NEW | Create milestone | `/milestone/new` | `milestone_form.html` | VERIFY | [Manual milestone forms](redesign-pages/MS-FORM.md); checkpoint 52, user-approved October 7 |
+| MS-VIEW | Milestone detail | `/milestone/<int:id>` | `milestone_view.html` | VERIFY | [Standalone frame](redesign-pages/MS-VIEW.md), [approved body](redesign-pages/MILESTONE-BODY.md); user-approved October 7 |
+| MS-EDIT | Edit milestone | `/milestone/<int:id>/edit` | `milestone_form.html` | VERIFY | [Manual milestone forms](redesign-pages/MS-FORM.md); checkpoint 52, user-approved October 7 |
 | MS-TRACK | Milestone tracker | `/reports/milestone-tracker`; `/milestone-tracker` redirects | `milestone_tracker.html` | VERIFY | [Milestone tracker](redesign-pages/MS-TRACK.md); user-approved October 6 |
 | OPP-VIEW | Opportunity detail | `/opportunity/<int:id>` | `opportunity_view.html` | TODO | - |
-| PROJ-NEW | Create project | `/project/new` | `project_form.html` | TODO | - |
-| PROJ-VIEW | Project detail | `/project/<int:id>` | `project_view.html` | TODO | - |
-| PROJ-EDIT | Edit project | `/project/<int:id>/edit` | `project_form.html` | TODO | - |
+| PROJ-NEW | Create project | `/project/new` | `project_form.html` | VERIFY | [PROJ-FORM](redesign-pages/PROJ-FORM.md); checkpoint 58, user-approved October 7 |
+| PROJ-VIEW | Project detail | `/project/<int:id>` | `project_view.html` | VERIFY | [PROJ-VIEW](redesign-pages/PROJ-VIEW.md); checkpoint 59, user-approved October 7 |
+| PROJ-EDIT | Edit project | `/project/<int:id>/edit` | `project_form.html` | VERIFY | [PROJ-FORM](redesign-pages/PROJ-FORM.md); checkpoint 58, user-approved October 7 |
 | PART-LIST | Partners | `/partners` | `partners_list.html` | TODO | - |
 | PART-NEW | Create partner | `/partners/new` | `partner_form.html` | TODO | - |
 | PART-VIEW | Partner detail | `/partners/<int:id>` | `partner_view.html` | TODO | - |
@@ -175,7 +183,7 @@ have separate rows even when they use one template.
 | OOO-LIST | 1:1 hub | `/one-on-one/` | `one_on_one_hub.html` | VERIFY | [Card](redesign-pages/OOO-LIST.md) |
 | OOO-VIEW | 1:1 workspace | `/one-on-one/<int:workspace_id>` | `one_on_one_workspace.html` | VERIFY | [Checkpoint 47](redesign-pages/OOO-VIEW.md); user-approved `6ee2af6d`, final reconciliation pending |
 | RPT-HUB | Reports hub | `/reports` | `reports_hub.html` | VERIFY | [Checkpoint 34](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-34-main-reports-directory); native grouped directory, identical registry/menu order, local filter and Back context; user-approved October 5 |
-| RPT-INIT | Initiative Tracker | `/reports/initiative-tracker`; `/reports/manager-one-on-one` | `report_manager_one_on_one.html` | VERIFY | [Checkpoint 48](redesign-pages/RPT-INIT.md); user-approved October 6 |
+| RPT-INIT | Initiative Tracker | `/reports/initiative-tracker`; `/reports/manager-one-on-one` | `report_manager_one_on_one.html` | VERIFY | [Checkpoint 48](redesign-pages/RPT-INIT.md); user-approved October 6; [project nesting 59](redesign-pages/PROJ-VIEW.md) user-approved October 7 |
 | RPT-ACT | Activity coverage | `/reports/activity-coverage` | `report_activity_coverage.html` | VERIFY | [Card](redesign-pages/RPT-ACTIVITY-COVERAGE.md) |
 | RPT-OOO | Seller 1:1 preparation | `/reports/one-on-one` | `report_one_on_one.html` | VERIFY | [card](redesign-pages/RPT-OOO.md) |
 | RPT-WORK | Workload | `/reports/workload` | `report_workload.html` | VERIFY | [Checkpoint 35](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-35-workload-report); native topic/customer browser, preserved scope/totals/exports, sorting, Back and compact embeds; user-approved October 6 |
@@ -207,28 +215,28 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 
 | ID | Surface / template | Route or host | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| FR-ACTIONS | `partials/_action_items_hub.html` | `/api/action-items-hub` | TODO | - |
-| FR-CUST-OPPS | `partials/_customer_opportunities.html` | `/api/customer/<int:customer_id>/opportunities-html` | TODO | - |
-| FR-ENG | `partials/_engagement_view_content.html` | `/api/engagement/<int:id>/detail` | TODO | - |
-| FR-MS | `partials/milestone_view_content.html` | `/api/milestone/<int:id>/detail` | BUILDING | [Lifecycle/editors](redesign-pages/MILESTONE-PREVIEW.md), [shared body](redesign-pages/MILESTONE-BODY.md) |
+| FR-ACTIONS | `partials/_action_items_hub.html` | `/api/action-items-hub` | VERIFY | [ACTIONS](redesign-pages/ACTIONS.md) |
+| FR-CUST-OPPS | `partials/_customer_opportunities.html` | Customer dossier; `/api/customer/<int:customer_id>/opportunities-html`; note-editor information flyout | VERIFY | [CUST-VIEW](redesign-pages/CUST-VIEW.md) |
+| FR-ENG | `partials/_engagement_view_content.html` | `/api/engagement/<int:id>/detail` | VERIFY | [ENG-VIEW](redesign-pages/ENG-VIEW.md); checkpoint 57, complete shared body and controllers |
+| FR-MS | `partials/milestone_view_content.html` | `/api/milestone/<int:id>/detail` | VERIFY | [Standalone/fragment parity](redesign-pages/MS-VIEW.md), [lifecycle/editors](redesign-pages/MILESTONE-PREVIEW.md), [approved body](redesign-pages/MILESTONE-BODY.md) |
 | FR-NOTE | `partials/note_view_content.html` | `/api/note/<int:id>/detail` | BUILDING | [Lifecycle/editor](redesign-pages/HOME-NOTE-PREVIEW.md), [shared body](redesign-pages/NOTE-BODY.md) |
 | FR-OOO | `partials/one_on_one_workspace_content.html` | `/api/seller/<int:seller_id>/one-on-one/detail` | TODO | - |
 | FR-OPP | `partials/opportunity_view_content.html` | `/api/opportunity/<int:id>/detail` | TODO | - |
-| FR-PROJ | `partials/project_view_content.html` | `/api/project/<int:id>/detail` | TODO | - |
+| FR-PROJ | `partials/project_view_content.html` | `/api/project/<int:id>/detail` | VERIFY | [PROJ-VIEW](redesign-pages/PROJ-VIEW.md); complete native body and nested tasks |
 | FR-REV | `partials/revenue_alert_detail.html` | `/api/revenue/analysis/<int:analysis_id>/detail`, all four preview hosts | DONE | [Checkpoint 20 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | FR-REV-HISTORY | `partials/_revenue_monthly_history.html` | Customer bucket Full History and product customer history | DONE | [Checkpoint 28 evidence](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-28-product-revenue-comparison-and-history) |
 | FR-PRODUCT-COMPARE | `partials/_revenue_product_customers.html`, `partials/_revenue_product_summary.html`, `get_product_comparison` | Products inspector and Product Revenue; existing product aliases with `comparison=1` | DONE | [Checkpoint 29 evidence](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-29-products-directory) |
 | JS-TABLE-SORT | `static/js/ui-table-sort.js`, `static/css/ui-table-sort.css` | Products, Product/Customer/Bucket Revenue, Analyzer, seller alerts and shared inspectors/previews | DONE | [Sorting evidence](redesign-pages/HOME-WORKBENCH-HISTORY.md#shared-sortable-columns-october-5-follow-up) |
-| INC-ACTION | `partials/_action_item_detail_modal.html` | Home, action hub, engagement/project details | DONE | [Evidence](redesign-pages/HOME-WORKBENCH.md) |
+| INC-ACTION | `partials/_action_item_detail_modal.html` | Home, action hub, engagement/project details | DONE | [Approved evidence](redesign-pages/HOME-WORKBENCH.md); [scoped project lifecycle extension 59](redesign-pages/PROJ-VIEW.md) VERIFY, counters unchanged |
 | JS-REV-BUCKET | `static/js/revenue-bucket-filter.js` | Home, revenue dashboard/customer/seller views, seller summary and preview | DONE | [Checkpoint 18 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-DASH | `partials/_dashboard_settings.html` | Home and preferences | TODO | - |
 | INC-FY | `partials/_fy_management_card.html` | Admin | TODO | - |
-| INC-PROJ-FORM | `partials/_project_form_fields.html` | Project/note forms | TODO | - |
+| INC-PROJ-FORM | `partials/_project_form_fields.html` | Project/note forms | VERIFY | [PROJ-FORM](redesign-pages/PROJ-FORM.md); standalone native fields, note flyout unchanged |
 | INC-EXPORT | `partials/_report_export.html` | Reports, revenue dashboard, milestone tracker | BUILDING | [Native Analyzer opt-in; other hosts remain legacy](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-23-revenue-analyzer-and-seller-alert-pages) |
 | INC-ACT-CAIP | `partials/activity_coverage_caip.html` | Activity coverage | TODO | - |
 | INC-ACT-MS | `partials/activity_coverage_milestones.html` | Activity coverage | TODO | - |
 | INC-CUST-ICON | `partials/customer_favicon.html` | Customer favicon macro, multiple hosts | TODO | - |
-| INC-ENG-PANEL | `partials/engagements_panel.html` | Home, engagements hub, seller | TODO | - |
+| INC-ENG-PANEL | `partials/engagements_panel.html` | Home, engagements hub, seller | BUILDING | [Hub opt-in; embeds retained](redesign-pages/ENG-LIST.md) |
 | INC-MS-TRACK | `partials/milestone_tracker_content.html` | Milestone tracker and seller | VERIFY | [Milestone tracker](redesign-pages/MS-TRACK.md); native shared scope/list, no seller page overhaul |
 | INC-PART-ICON | `partials/partner_favicon.html` | Partner/specialty surfaces | TODO | - |
 | INC-REV-ALERTS | `partials/revenue_alerts_content.html`, `static/js/ui-revenue-alerts.js` | Revenue Analyzer, seller alerts and Seller Full View | DONE | [Checkpoint 22 evidence](redesign-pages/HOME-WORKBENCH.md) |

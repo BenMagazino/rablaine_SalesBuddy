@@ -10,6 +10,17 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/2/2026
 
+- Read customers in native dossier tabs with full notes, linked pipeline and sortable revenue, persistent commands, restored Back context and protected manual context/contact edits.
+- Create and edit customers in native identity and ownership forms with persistent Save/Cancel, original seller and CSAM choices, protected drafts and retained entries when validation or saving fails.
+- Browse Customers in the native desktop directory with preserved seller scope, note filters, grouping, identity and ordering, sortable data headings, restored reading context and explicit guarded TPID imports.
+- Read internal projects in a native dossier with persistent commands and task entry, linked notes, restored reading context and guarded nested task editors in Initiative Tracker.
+- Create and edit internal projects in the native desktop frame with persistent Save/Cancel, unchanged general-note selections, guarded drafts and retained entries when saves fail.
+- Read complete engagement stories and linked work in native dossier panes and inline previews, with guarded rich action-item editors and retained entries when saves fail.
+- Create and edit engagements in the native desktop frame with persistent Save/Cancel, preserved story and customer associations, guarded drafts and retained entries when validation or saving fails.
+- Browse engagements in the native desktop directory with preserved seller/customer grouping, status and favorite filters, sortable raw values, persistent creation commands and restored reading context on Back.
+- Review local action items in a divider-separated dashboard with independently scrolling task and maintenance cells, preserved workflows and restored seller filter and reading positions on Back.
+- Open project tasks by clicking their rows, keep project links separate, and show only relevant sorting controls in Project Tasks and Hygiene.
+- Read milestone details in the native desktop frame with persistent commands, independently scrolling linked work and forecasts, protected drafts and restored reading positions on Back.
 - Create and edit manual milestones in the native desktop frame with persistent Save/Cancel, protected unsubmitted changes and fields preserved when validation or saving fails.
 - Browse Milestones in a native sortable directory with unchanged customer-linked records, source URLs, call counts and detail links, plus persistent New Milestone and Tracker commands and restored reading position on Back.
 - Review Milestone Tracker in a native desktop list/calendar with fixed scope and commands, sortable data columns, preserved exports and restored filters, view, month and reading position on Back.

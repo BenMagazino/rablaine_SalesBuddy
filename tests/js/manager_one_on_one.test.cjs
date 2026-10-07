@@ -4,6 +4,41 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
+test('project pending writes and rejected drafts prevent inline detail replacement', async () => {
+    const h = harness();
+    let disposed = 0;
+    const project = {_projectDetail: {
+        isBusy: () => true, isDirty: () => true, dispose: () => disposed++,
+    }};
+    h.elements.managerWorkBody.project = project;
+    h.sellerNotes();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests.length, 0);
+    assert.equal(disposed, 0);
+    project._projectDetail.isBusy = () => false;
+    h.sellerNotes();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests.length, 0);
+    assert.equal(disposed, 0);
+    project._projectDetail.isDirty = () => false;
+    h.sellerNotes();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests.length, 1);
+    assert.equal(disposed, 1);
+});
+
+test('project parent close disposes scoped guards and clears only its loaded content', () => {
+    const h = harness();
+    let disposed = 0;
+    h.elements.managerWorkBody.project = {
+        _projectDetail: {dispose: () => disposed++}, querySelectorAll: () => [],
+    };
+    h.elements.managerWorkBody.children.push({id: 'old'});
+    h.elements.managerWorkModal['sb:dialog-closed']({target: {id: 'managerWorkModal'}});
+    assert.equal(disposed, 1);
+    assert.deepEqual(h.elements.managerWorkBody.children, []);
+});
+
 test('a failed workspace flush protects the existing detail from replacement', async () => {
     const h = harness();
     let disposed = false;
@@ -137,6 +172,7 @@ function harness(workloadFilter = null) {
     const context = {
         document: {
             getElementById: name => name === 'managerReport' ? root : elements[name],
+            querySelector: () => elements.managerWorkBody.project || null,
             querySelectorAll: () => [],
             createElement(tag) {
                 return node(tag);
@@ -147,6 +183,7 @@ function harness(workloadFilter = null) {
             close(dialog) { dialogs.push({action: 'close', dialog}); },
         },
         console: {error() {}},
+        confirm: () => false,
         AbortController,
         URLSearchParams,
         Intl,
@@ -665,103 +702,14 @@ test('project rows open the shared work modal using the project fragment', async
     assert.equal(ui.elements.managerWorkBody.innerHTML, '<div>Complete seller workspace</div>');
 });
 
-test('native project task dialogs restore the parent, including close during its transition', () => {
-    function modal(initialClasses) {
-        const listeners = new Map();
-        return {
-            classList: classes(initialClasses), isConnected: true, dataset: {},
-            addEventListener(name, callback, options = {}) {
-                const entries = listeners.get(name) || [];
-                listeners.set(name, [...entries, {callback, once: options.once}]);
-            },
-            removeEventListener(name, callback) {
-                listeners.set(name, (listeners.get(name) || []).filter(
-                    entry => entry.callback !== callback,
-                ));
-            },
-            emit(name, event = {}) {
-                for (const entry of [...(listeners.get(name) || [])]) {
-                    if (entry.once) this.removeEventListener(name, entry.callback);
-                    entry.callback(event);
-                }
-            },
-        };
-    }
-    const parent = modal(['show']);
-    parent.id = 'managerWorkModal';
-    const task = modal([]);
-    const discard = modal([]);
-    const appended = [];
-    parent.querySelector = selector => selector === '#actionItemDetailModal' ? task : discard;
-    let transitioning = true;
-    let hideCount = 0;
-    let parentShowCount = 0;
-    const source = fs.readFileSync(path.join(
+test('project fragments mount the scoped native task controller without a legacy parent transition', () => {
+    const fragment = fs.readFileSync(path.join(
         __dirname, '..', '..', 'templates', 'partials', 'project_view_content.html',
-    ), 'utf8').split('{% if parent_modal_id is defined %}')[1].split('{% endif %}')[0]
-        .replace('{{ parent_modal_id|tojson }}', '"managerWorkModal"');
-    vm.runInNewContext(source, {
-        document: {
-            getElementById: id => id === parent.id ? parent : task,
-            body: {appendChild(element) { appended.push(element); }},
-        },
-        HTMLDialogElement: class {},
-        bootstrap: {Modal: {
-            getOrCreateInstance: element => {
-                assert.equal(element, parent);
-                return {
-                hide() { hideCount++; if (!transitioning) parent.classList.remove('show'); },
-                show() { parentShowCount++; parent.classList.add('show'); },
-                };
-            },
-        }},
-    });
-
-    assert.deepEqual(appended, [task, discard]);
-    assert.equal(discard.dataset.workspaceParentModal, parent.id);
-    task.emit('sb:dialog-opening');
-    task.emit('sb:dialog-closed');
-    assert.equal(parentShowCount, 0);
-    transitioning = false;
-    parent.emit('shown.bs.modal');
-    assert.equal(hideCount, 2);
-    assert.equal(parent.classList.contains('show'), false);
-    parent.emit('hidden.bs.modal');
-    assert.equal(parentShowCount, 1);
-    assert.equal(parent.classList.contains('show'), true);
-    parent.emit('shown.bs.modal');
-    assert.equal(hideCount, 2);
-    task.emit('sb:dialog-opening');
-    parent.emit('hidden.bs.modal');
-    task.emit('sb:dialog-closed');
-    assert.equal(parentShowCount, 2);
-    assert.equal(parent.classList.contains('show'), true);
-});
-
-test('native project task dialogs keep the native parent open without invoking Bootstrap', () => {
-    const listeners = {};
-    const task = {dataset: {}, addEventListener(name, callback) { listeners[name] = callback; }};
-    const discard = {dataset: {}};
-    class NativeParent {
-        constructor() { this.id = 'managerWorkModal'; this.isConnected = true; this.open = true; }
-        querySelector(selector) { return selector === '#actionItemDetailModal' ? task : discard; }
-    }
-    const parent = new NativeParent();
-    const source = fs.readFileSync(path.join(
-        __dirname, '..', '..', 'templates', 'partials', 'project_view_content.html',
-    ), 'utf8').split('{% if parent_modal_id is defined %}')[1].split('{% endif %}')[0]
-        .replace('{{ parent_modal_id|tojson }}', '"managerWorkModal"');
-    const appended = [];
-    vm.runInNewContext(source, {
-        HTMLDialogElement: NativeParent,
-        document: {getElementById: () => parent, body: {appendChild(el) { appended.push(el); }}},
-        bootstrap: {Modal: {getOrCreateInstance() { throw Error('Native parent used Bootstrap'); }}},
-    });
-    listeners['sb:dialog-opening']();
-    listeners['sb:dialog-closed']();
-    assert.equal(parent.open, true);
-    assert.deepEqual(appended, [task, discard]);
-    assert.equal(task.dataset.workspaceParentModal, parent.id);
+    ), 'utf8');
+    assert.match(fragment, /data-project-parent="{{ parent_modal_id }}"/);
+    assert.match(fragment, /SBProjectDetail.mount\(document.currentScript.closest/);
+    assert.match(fragment, /partials\/_action_item_detail_modal.html/);
+    assert.doesNotMatch(fragment, /bootstrap|shown.bs.modal|appendChild\(taskModal\)/);
 });
 
 test('project selection resets U2C source and displays projects without customer or ACR', async () => {

@@ -1,4 +1,5 @@
 {# Shared Action Item preview. Existing callers keep viewActionItem(id, options). #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-task-editor.css') }}">
 <dialog class="sb-dialog sb-action-item-dialog" id="actionItemDetailModal"
         aria-labelledby="aiDetailTitle" data-sb-backdrop-close="true">
     <div class="sb-dialog-shell">
@@ -53,7 +54,7 @@
                         <input type="text" class="sb-record-field" id="aiEditContact" maxlength="200">
                     </div>
                 </div>
-                <div>
+                <div class="sb-task-rich">
                     <label class="sb-record-field-label" for="aiEditDesc">Description</label>
                     <textarea class="sb-record-field" id="aiEditDesc" rows="6"></textarea>
                 </div>

@@ -115,6 +115,39 @@ def test_shared_body_keeps_metadata_links_counts_and_native_structure(
 
 
 @pytest.mark.parametrize("preview", [False, True])
+def test_standalone_frame_keeps_embed_shell_free(
+    client: FlaskClient, body_milestone: dict[str, int], preview: bool,
+) -> None:
+    """Only full details own the native frame, persistent commands and reading history."""
+    milestone_id = body_milestone["milestone"]
+    path = f"/api/milestone/{milestone_id}/detail" if preview else f"/milestone/{milestone_id}"
+    soup = BeautifulSoup(client.get(path).data, "html.parser")
+    root = soup.select_one("[data-sb-milestone-detail]")
+    if preview:
+        assert not root.has_attr("data-sb-page-surface")
+        assert not root.select("[data-sb-ms-reading], [data-sb-ms-page-notice]")
+        assert not soup.select(".sb-page-status, .sb-ms-page-header")
+        return
+    assert "sb-page-frame" in soup.body["class"]
+    assert root.has_attr("data-sb-page-surface")
+    assert root.has_attr("data-sb-milestone-page")
+    assert root.select_one(".sb-ms-page-header").has_attr("data-sb-page-band")
+    assert root.select_one(".sb-ms-layout").has_attr("data-sb-page-body")
+    assert [pane["data-sb-ms-reading"] for pane in root.select("[data-sb-ms-reading]")] == [
+        "context", "forecast",
+    ]
+    assert all(pane["tabindex"] == "0" for pane in root.select("[data-sb-ms-reading]"))
+    assert root.select_one('nav[aria-label="Milestone commands"]')
+    assert root.select_one(f'a[href="/milestone/{milestone_id}/edit"]')
+    assert root.select_one('a[href="https://example.com/milestone"]')
+    footer = soup.select_one('footer[aria-label="Milestone detail status"]')
+    assert "2 linked notes" in footer.get_text()
+    assert "1 task" in footer.get_text()
+    assert soup.select_one("#milestonePageState")["role"] == "status"
+    assert len(soup.select('script[src="/static/js/ui-table-sort.js"]')) == 1
+
+
+@pytest.mark.parametrize("preview", [False, True])
 def test_native_delete_is_full_page_only_and_keeps_normal_post(
     client: FlaskClient, body_milestone: dict[str, int], preview: bool,
 ) -> None:

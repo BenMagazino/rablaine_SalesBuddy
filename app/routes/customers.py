@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
 from sqlalchemy import func, or_
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.models import (db, Customer, CustomerCSAM, CustomerContact, Seller,
                         Territory, Note, UserPreference)
@@ -17,6 +18,17 @@ logger = logging.getLogger(__name__)
 
 # Create blueprint
 customers_bp = Blueprint('customers', __name__)
+
+
+def _customer_form_error(customer: Customer | None, message: str, status: int):
+    """Render failed manual saves with the raw submitted fields and original choices."""
+    flash(message, 'danger')
+    return render_template(
+        'customer_form.html', customer=customer,
+        sellers=Seller.query.order_by(Seller.name).all(),
+        territories=Territory.query.order_by(Territory.name).all(),
+        referrer=request.form.get('referrer', ''),
+    ), status
 
 
 @customers_bp.route('/customers')
@@ -133,29 +145,34 @@ def customer_create():
         referrer = request.form.get('referrer', '')
         
         if not name:
-            flash('Customer name is required.', 'danger')
-            return redirect(url_for('customers.customer_create'))
+            return _customer_form_error(None, 'Customer name is required.', 400)
         
         if not tpid:
-            flash('TPID is required.', 'danger')
-            return redirect(url_for('customers.customer_create'))
+            return _customer_form_error(None, 'TPID is required.', 400)
         
         try:
             tpid_value = int(tpid)
         except ValueError:
-            flash('TPID must be a valid number.', 'danger')
-            return redirect(url_for('customers.customer_create'))
+            return _customer_form_error(None, 'TPID must be a valid number.', 400)
         
-        customer = Customer(
-            name=name,
-            nickname=nickname if nickname else None,
-            tpid=tpid_value,
-            tpid_url=tpid_url if tpid_url else None,
-            website=request.form.get('website', '').strip() or None,
-            seller_id=int(seller_id) if seller_id else None,
-            territory_id=int(territory_id) if territory_id else None)
-        db.session.add(customer)
-        db.session.commit()
+        try:
+            customer = Customer(
+                name=name,
+                nickname=nickname if nickname else None,
+                tpid=tpid_value,
+                tpid_url=tpid_url if tpid_url else None,
+                website=request.form.get('website', '').strip() or None,
+                seller_id=int(seller_id) if seller_id else None,
+                territory_id=int(territory_id) if territory_id else None)
+            db.session.add(customer)
+            db.session.commit()
+        except (SQLAlchemyError, ValueError) as error:
+            db.session.rollback()
+            logger.exception('Could not create customer from manual form')
+            message = ('This TPID is already in use.' if isinstance(error, IntegrityError)
+                       else 'Could not save the customer.')
+            return _customer_form_error(None, message + ' Your entries are still here.',
+                                        400 if isinstance(error, IntegrityError) else 500)
         
         flash(f'Customer "{name}" created successfully!', 'success')
         
@@ -282,50 +299,54 @@ def customer_edit(id):
         territory_id = request.form.get('territory_id')
         
         if not name:
-            flash('Customer name is required.', 'danger')
-            return redirect(url_for('customers.customer_edit', id=id))
+            return _customer_form_error(customer, 'Customer name is required.', 400)
         
         if not tpid:
-            flash('TPID is required.', 'danger')
-            return redirect(url_for('customers.customer_edit', id=id))
+            return _customer_form_error(customer, 'TPID is required.', 400)
         
         try:
             tpid_value = int(tpid)
         except ValueError:
-            flash('TPID must be a valid number.', 'danger')
-            return redirect(url_for('customers.customer_edit', id=id))
+            return _customer_form_error(customer, 'TPID must be a valid number.', 400)
         
-        customer.name = name
-        customer.nickname = nickname if nickname else None
-        customer.tpid = tpid_value
-        customer.tpid_url = tpid_url if tpid_url else None
-        website = request.form.get('website', '').strip()
-        old_website = customer.website
-        customer.website = website if website else None
-        # Fetch favicon if website changed
-        if website and website != old_website:
-            try:
-                from app.routes.admin import fetch_favicon_for_domain
-                favicon = fetch_favicon_for_domain(website)
-                if favicon:
-                    customer.favicon_b64 = favicon
-            except Exception:
-                pass  # Favicon fetch failure should not block edit
-        elif not website:
-            customer.favicon_b64 = None
-        customer.seller_id = int(seller_id) if seller_id else None
-        customer.territory_id = int(territory_id) if territory_id else None
+        try:
+            customer.name = name
+            customer.nickname = nickname if nickname else None
+            customer.tpid = tpid_value
+            customer.tpid_url = tpid_url if tpid_url else None
+            website = request.form.get('website', '').strip()
+            old_website = customer.website
+            customer.website = website if website else None
+            # Keep the existing edit-only, non-blocking favicon enrichment.
+            if website and website != old_website:
+                try:
+                    from app.routes.admin import fetch_favicon_for_domain
+                    favicon = fetch_favicon_for_domain(website)
+                    if favicon:
+                        customer.favicon_b64 = favicon
+                except Exception:
+                    pass
+            elif not website:
+                customer.favicon_b64 = None
+            customer.seller_id = int(seller_id) if seller_id else None
+            customer.territory_id = int(territory_id) if territory_id else None
 
-        csam_id = request.form.get('csam_id', '').strip()
-        if csam_id:
-            csam_id_int = int(csam_id)
-            available_ids = {c.id for c in customer.available_csams}
-            if csam_id_int in available_ids:
-                customer.csam_id = csam_id_int
-        else:
-            customer.csam_id = None
-
-        db.session.commit()
+            csam_id = request.form.get('csam_id', '').strip()
+            if csam_id:
+                csam_id_int = int(csam_id)
+                available_ids = {c.id for c in customer.available_csams}
+                if csam_id_int in available_ids:
+                    customer.csam_id = csam_id_int
+            else:
+                customer.csam_id = None
+            db.session.commit()
+        except (SQLAlchemyError, ValueError) as error:
+            db.session.rollback()
+            logger.exception('Could not update customer %s from manual form', id)
+            message = ('This TPID is already in use.' if isinstance(error, IntegrityError)
+                       else 'Could not save the customer.')
+            return _customer_form_error(customer, message + ' Your entries are still here.',
+                                        400 if isinstance(error, IntegrityError) else 500)
 
         # Trigger backup to include updated customer data in OneDrive JSON (async)
         _schedule_customer_backup(customer.id)
@@ -403,8 +424,15 @@ def customer_update_overview(id):
     
     account_context = request.form.get('account_context', '').strip()
     customer.account_context = account_context if account_context else None
-    
-    db.session.commit()
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Unable to save account context for customer %s', id)
+        return jsonify({
+            'success': False,
+            'error': 'Account context could not be saved. Your entries are still available.',
+        }), 500
 
     # Trigger backup to include updated context in OneDrive JSON (async)
     _schedule_customer_backup(customer.id)

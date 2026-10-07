@@ -238,7 +238,11 @@ test('fresh milestone status is literal DOM data, not an interpolated HTML attri
     const row = {style: {}}, value = {replaceChildren: child => { value.child = child; }};
     const elements = {statusRow: row, statusValue: value,
         detailsError: {style: {}}, commentsError: {style: {}}};
-    const context = vm.createContext({document: {
+    const events = [];
+    const context = vm.createContext({
+        root: {dispatchEvent: event => events.push(event)},
+        CustomEvent: class { constructor(type) { this.type = type; } },
+        document: {
         getElementById: id => elements[id] || null,
         createElement: () => ({dataset: {}}),
     }});
@@ -249,4 +253,5 @@ test('fresh milestone status is literal DOM data, not an interpolated HTML attri
     assert.equal(value.child.dataset.status, status);
     assert.equal(value.child.className, 'sb-record-tag');
     assert.equal(row.style.display, '');
+    assert.equal(events[0].type, 'sb:record-state');
 });

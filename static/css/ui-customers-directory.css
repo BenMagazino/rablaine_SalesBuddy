@@ -1,0 +1,70 @@
+.sb-cust-directory { color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); }
+.sb-cust-directory *, .sb-cust-import * { box-sizing: border-box; }
+.sb-cust-directory [hidden], .sb-cust-import [hidden] { display: none !important; }
+.sb-cust-heading, .sb-cust-controls { display: flex; align-items: center; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-cust-heading { justify-content: space-between; }
+.sb-cust-heading h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.sb-cust-heading > div, .sb-cust-controls > div { display: flex; gap: 4px; }
+.sb-cust-controls { padding-block: 8px; background: var(--sb-ui-context); }
+.sb-cust-expand { margin-left: auto; }
+.sb-cust-command { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--sb-ui-control-line); background: transparent; color: var(--sb-ui-ink); font: 12px/1.5 var(--sb-ui-font); text-decoration: none; cursor: pointer; white-space: nowrap; }
+.sb-cust-command:hover { background: var(--sb-ui-raised); color: var(--sb-ui-accent); }
+.sb-cust-command[aria-pressed="true"] { background: var(--sb-ui-selection); border-color: var(--sb-ui-accent); }
+.sb-cust-directory .sb-cust-reading { overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+.sb-cust-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+.sb-cust-table :is(th,td) { padding: 10px 16px; border-bottom: 1px solid var(--sb-ui-grid-line); text-align: left; vertical-align: middle; overflow-wrap: anywhere; }
+.sb-cust-table th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); color: var(--sb-ui-muted); font-weight: 500; }
+.sb-cust-table th:first-child { width: 29%; }
+.sb-cust-table th:nth-child(2) { width: 11%; }
+.sb-cust-table th:last-child { width: 112px; }
+.sb-cust-table th:nth-last-child(2) { width: 94px; }
+.sb-cust-table :is(th,td):first-child { padding-left: 24px; }
+.sb-cust-table tr[data-customer-id]:hover { background: var(--sb-ui-raised); cursor: pointer; }
+.sb-cust-table td { font-variant-numeric: tabular-nums; }
+.sb-cust-table a, .sb-cust-empty a { color: var(--sb-ui-accent); text-decoration: none; }
+.sb-cust-name { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
+.sb-cust-name img { flex-shrink: 0; }
+.sb-cust-tag { display: inline-block; padding: 1px 5px; font-size: 11px; border: 1px solid var(--sb-ui-control-line); }
+.sb-cust-tag.draft-indicator { margin-left: 6px; color: var(--sb-ui-warning); }
+.sb-cust-table .sb-cust-seller, .sb-cust-seller { color: var(--sb-ui-accent); background: var(--sb-ui-selection); }
+.sb-cust-territory { color: oklch(78% .09 210); background: var(--sb-ui-context); }
+[data-bs-theme="light"] .sb-cust-territory { color: oklch(42% .08 210); }
+.sb-cust-tag[data-type="Growth"] { color: var(--sb-ui-milestone-rail); }
+.sb-cust-tag[data-type="Acquisition"] { color: var(--sb-ui-accent); }
+.sb-cust-tag.seller-color-1 { background: #8b5cf6; color: #fff; }
+.sb-cust-tag.seller-color-2 { background: #06b6d4; color: #fff; }
+.sb-cust-tag.seller-color-3 { background: #ef4444; color: #fff; }
+.sb-cust-tag.seller-color-4 { background: #ec4899; color: #fff; }
+.sb-cust-tag.seller-color-5 { background: #3b82f6; color: #fff; }
+.sb-cust-tag.seller-color-6 { background: #10b981; color: #fff; }
+.sb-cust-tag.seller-color-7 { background: #eab308; color: #fff; }
+.sb-cust-tag.seller-color-8 { background: #f97316; color: #fff; }
+.sb-cust-tag.seller-color-9 { background: #94a3b8; color: #fff; }
+.sb-cust-tag.seller-color-10 { background: #a16207; color: #fff; }
+[data-bs-theme="light"] .sb-cust-tag.seller-color-1 { background: #EDE9FE; color: #5B21B6; }
+[data-bs-theme="light"] .sb-cust-tag.seller-color-2 { background: #CCFBF1; color: #0E7490; }
+[data-bs-theme="light"] .sb-cust-tag.seller-color-3 { background: #FEE2E2; color: #991B1B; }
+[data-bs-theme="light"] .sb-cust-tag.seller-color-4 { background: #FCE7F3; color: #9D174D; }
+[data-bs-theme="light"] .sb-cust-tag.seller-color-5 { background: #DBEAFE; color: #1E40AF; }
+[data-bs-theme="light"] .sb-cust-tag.seller-color-6 { background: #D1FAE5; color: #065F46; }
+[data-bs-theme="light"] .sb-cust-tag.seller-color-7 { background: #FEF3C7; color: #92400E; }
+[data-bs-theme="light"] .sb-cust-tag.seller-color-8 { background: #FFEDD5; color: #9A3412; }
+[data-bs-theme="light"] .sb-cust-tag.seller-color-9 { background: #F1F5F9; color: #475569; }
+[data-bs-theme="light"] .sb-cust-tag.seller-color-10 { background: #FEF3C7; color: #78350F; }
+.sb-cust-group summary { display: flex; align-items: center; gap: 8px; padding: 10px 24px; border-bottom: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); cursor: pointer; }
+.sb-cust-group summary::before { content: "›"; color: var(--sb-ui-muted); width: 12px; }
+.sb-cust-group[open] summary::before { transform: rotate(90deg); }
+.sb-cust-group-context { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--sb-ui-muted); font-size: 12px; }
+.sb-cust-empty, .sb-cust-notice { margin: 0; padding: 20px 24px; color: var(--sb-ui-muted); }
+.sb-cust-notice, .sb-cust-import [role="alert"] { color: var(--sb-ui-danger); }
+.sb-cust-import { width: 560px; color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); }
+.sb-cust-import .sb-dialog-header h2 { flex: 1; margin: 0; font-size: 16px; }
+.sb-cust-import h3 { font-size: 15px; }
+.sb-cust-lookup { display: flex; gap: 8px; margin-top: 8px; }
+.sb-cust-lookup input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--sb-ui-control-line); background: var(--sb-ui-surface); color: var(--sb-ui-ink); font: inherit; }
+.sb-cust-help { font-size: 12px; color: var(--sb-ui-muted); }
+.sb-cust-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sb-cust-preview dt { color: var(--sb-ui-muted); font-weight: 400; }
+.sb-cust-preview dd { margin: 0; overflow-wrap: anywhere; }
+.sb-cust-directory :focus-visible, .sb-cust-import :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.sb-cust-command:disabled { opacity: .5; cursor: wait; }

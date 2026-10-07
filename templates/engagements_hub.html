@@ -1,139 +1,55 @@
 {% extends "base.html" %}
-
 {% block title %}Engagements - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-engagements-directory.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status"><span>{{ stats.total }} engagements · Existing {{ 'seller' if seller_mode else 'SE' }} scope</span><span>Story health includes Active and On Hold · Internal projects retain their own scope</span></footer>
+{% endblock %}
 {% block content %}
-<style>
-    .stat-card {
-        text-align: center;
-        padding: 1rem;
-    }
-    .stat-card .stat-number {
-        font-size: 2rem;
-        font-weight: 700;
-        line-height: 1.1;
-    }
-    .stat-card .stat-label {
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .story-bar {
-        height: 6px;
-        border-radius: 3px;
-    }
-</style>
-
-<!-- Header -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0"><i class="bi bi-kanban"></i> Engagements</h1>
-    <button class="btn btn-primary" type="button" data-sb-dialog="quickEngagementModal" aria-haspopup="dialog" aria-controls="quickEngagementModal">
-        <i class="bi bi-plus-lg"></i> New Engagement
-    </button>
-</div>
-
-<!-- Summary Stats -->
-<div class="row g-3 mb-4">
-    <div class="col">
-        <div class="card stat-card h-100">
-            <div class="stat-number text-success">{{ stats.active }}</div>
-            <div class="stat-label text-muted">Active</div>
-        </div>
+<section class="sb-eng-directory" data-sb-page-surface aria-labelledby="engDirectoryTitle">
+    <header class="sb-eng-heading" data-sb-page-band>
+        <h1 id="engDirectoryTitle">Engagements</h1>
+        <button type="button" class="sb-eng-command" data-sb-dialog="quickEngagementModal" aria-haspopup="dialog" aria-controls="quickEngagementModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> New Engagement</button>
+    </header>
+    <div class="sb-eng-summary" data-sb-page-band aria-label="Engagement summary">
+        <span data-tone="success">Active <strong>{{ stats.active }}</strong></span>
+        <span data-tone="warning">On Hold <strong>{{ stats.on_hold }}</strong></span>
+        <span data-tone="accent">Won <strong>{{ stats.won }}</strong></span>
+        <span>Lost <strong>{{ stats.lost }}</strong></span>
+        <span class="sb-eng-story-summary">Story Health (Active): <span data-tone="danger">{{ stats.story_empty }} empty</span> · <span data-tone="warning">{{ stats.story_partial }} partial</span> · <span data-tone="success">{{ stats.story_complete }} complete</span></span>
+        {% set story_total = stats.story_empty + stats.story_partial + stats.story_complete %}
+        {% if story_total %}
+        <span class="sb-eng-story-bar" aria-hidden="true"><span data-tone="danger" style="width:{{ (stats.story_empty / story_total * 100)|round }}%"></span><span data-tone="warning" style="width:{{ (stats.story_partial / story_total * 100)|round }}%"></span><span data-tone="success" style="width:{{ (stats.story_complete / story_total * 100)|round }}%"></span></span>
+        {% endif %}
     </div>
-    <div class="col">
-        <div class="card stat-card h-100">
-            <div class="stat-number text-warning">{{ stats.on_hold }}</div>
-            <div class="stat-label text-muted">On Hold</div>
-        </div>
+    {% set eng_native = true %}
+    {% set eng_api_url = '/api/engagements/all' %}
+    {% set eng_show_seller = not seller_mode %}
+    {% set eng_show_closed = true %}
+    {% set eng_body_id = 'engHubBody' %}
+    {% set eng_count_id = 'engHubCount' %}
+    {% set eng_empty_msg = 'No engagements match the current filter.' %}
+    {% include 'partials/engagements_panel.html' %}
+    <div class="sb-eng-reading" data-sb-page-body tabindex="0" aria-label="Engagement directory and internal projects">
+        <div id="engHubBody" aria-live="polite"><p class="sb-eng-empty" role="status">Loading engagements...</p></div>
+        <section class="sb-eng-projects" aria-labelledby="engProjectsTitle">
+            <header><h2 id="engProjectsTitle">Internal Projects <span>{{ projects|length }}</span></h2><a class="sb-eng-command" href="{{ url_for('projects.project_create') }}">New Project</a></header>
+            {% for p in projects %}
+            <a class="sb-eng-project" href="{{ url_for('projects.project_view', id=p.id) }}">
+                <span><strong>{{ p.title }}</strong> <span class="sb-eng-tag">{{ p.project_type|replace('_', ' ')|title }}</span>
+                {% if p.status == 'On Hold' %}<span class="sb-eng-tag" data-tone="warning">On Hold</span>{% endif %}
+                {% if p.status == 'Completed' %}<span class="sb-eng-tag" data-tone="success">Completed</span>{% endif %}
+                {% if p.description %}<small>{{ p.description[:100] }}{% if p.description|length > 100 %}...{% endif %}</small>{% endif %}</span>
+                <span>{% if p.open_task_count %}<span class="sb-eng-tag" data-tone="accent">{{ p.open_task_count }} task{{ 's' if p.open_task_count != 1 }}</span>{% endif %}
+                {% if p.due_date %}<small{% if p.is_overdue %} data-tone="danger"{% endif %}>{{ p.due_date.strftime('%b %d') }}{% if p.is_overdue %} <i class="bi bi-exclamation-triangle-fill" aria-label="Overdue"></i>{% endif %}</small>{% endif %}</span>
+            </a>
+            {% else %}
+            <p class="sb-eng-empty">No internal projects yet.<br>Track training, internal initiatives, and saved tasks here.</p>
+            {% endfor %}
+        </section>
     </div>
-    <div class="col">
-        <div class="card stat-card h-100">
-            <div class="stat-number text-primary">{{ stats.won }}</div>
-            <div class="stat-label text-muted">Won</div>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card stat-card h-100">
-            <div class="stat-number text-secondary">{{ stats.lost }}</div>
-            <div class="stat-label text-muted">Lost</div>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card stat-card h-100">
-            <div class="stat-label text-muted mb-2">Story Health (Active)</div>
-            <div class="d-flex justify-content-center gap-3" style="font-size: 0.85rem;">
-                <span class="text-danger"><i class="bi bi-circle-fill"></i> {{ stats.story_empty }} empty</span>
-                <span class="text-warning"><i class="bi bi-circle-fill"></i> {{ stats.story_partial }} partial</span>
-                <span class="text-success"><i class="bi bi-circle-fill"></i> {{ stats.story_complete }} complete</span>
-            </div>
-            {% set story_total = stats.story_empty + stats.story_partial + stats.story_complete %}
-            {% if story_total > 0 %}
-            <div class="progress story-bar mt-2 mx-auto" style="max-width: 200px;">
-                <div class="progress-bar bg-danger" style="width: {{ (stats.story_empty / story_total * 100)|round }}%"></div>
-                <div class="progress-bar bg-warning" style="width: {{ (stats.story_partial / story_total * 100)|round }}%"></div>
-                <div class="progress-bar bg-success" style="width: {{ (stats.story_complete / story_total * 100)|round }}%"></div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<!-- Engagements Panel (reusable partial) -->
-{% set eng_api_url = '/api/engagements/all' %}
-{% set eng_auto_load = true %}
-{% set eng_show_seller = not seller_mode %}
-{% set eng_show_closed = true %}
-{% set eng_body_id = 'engHubBody' %}
-{% set eng_count_id = 'engHubCount' %}
-{% set eng_empty_msg = 'No engagements match the current filter.' %}
-{% include 'partials/engagements_panel.html' %}
-
-<!-- Internal Projects -->
-{% if projects %}
-<div class="card mt-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-folder"></i> Internal Projects</h5>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-secondary">{{ projects|length }}</span>
-            <a href="{{ url_for('projects.project_create') }}" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle"></i> New Project</a>
-        </div>
-    </div>
-    <div class="list-group list-group-flush">
-        {% for p in projects %}
-        <a href="{{ url_for('projects.project_view', id=p.id) }}" class="list-group-item list-group-item-action py-2 px-3">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="fw-semibold">
-                        {{ p.title }}
-                        <span class="badge bg-info ms-1" style="font-size: 0.65rem;">{{ p.project_type|replace('_', ' ')|title }}</span>
-                        {% if p.status == 'On Hold' %}<span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">On Hold</span>{% endif %}
-                        {% if p.status == 'Completed' %}<span class="badge bg-success ms-1" style="font-size: 0.65rem;">Completed</span>{% endif %}
-                    </div>
-                    {% if p.description %}<small class="text-muted">{{ p.description[:100] }}{% if p.description|length > 100 %}...{% endif %}</small>{% endif %}
-                </div>
-                <div class="text-end flex-shrink-0">
-                    {% if p.open_task_count %}<span class="badge bg-primary">{{ p.open_task_count }} task{{ 's' if p.open_task_count != 1 }}</span>{% endif %}
-                    {% if p.due_date %}
-                    <div><small class="{% if p.is_overdue %}text-danger fw-bold{% else %}text-muted{% endif %}">{{ p.due_date.strftime('%b %d') }}{% if p.is_overdue %} <i class="bi bi-exclamation-triangle-fill"></i>{% endif %}</small></div>
-                    {% endif %}
-                </div>
-            </div>
-        </a>
-        {% endfor %}
-    </div>
-</div>
-{% else %}
-<div class="card mt-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-folder"></i> Internal Projects</h5>
-        <a href="{{ url_for('projects.project_create') }}" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle"></i> New Project</a>
-    </div>
-    <div class="card-body text-center text-muted py-4">
-        <i class="bi bi-folder" style="font-size: 2rem;"></i>
-        <p class="mb-0 mt-2">No internal projects yet.</p>
-        <p class="small">Track training, internal initiatives, and saved tasks here.</p>
-    </div>
-</div>
-{% endif %}
-
+</section>
 {% endblock %}

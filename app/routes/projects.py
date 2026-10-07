@@ -13,55 +13,71 @@ logger = logging.getLogger(__name__)
 projects_bp = Blueprint('projects', __name__)
 
 
+def _render_project_form(project: Project | None, status_code: int = 200) -> tuple[str, int]:
+    """Render eligible general notes, retaining the submitted form after failures."""
+    eligibility = ~Note.projects.any()
+    if project:
+        eligibility = db.or_(eligibility, Note.projects.any(Project.id == project.id))
+    notes = (Note.query.filter(Note.customer_id.is_(None)).filter(eligibility)
+             .order_by(Note.call_date.desc()).all())
+    return render_template(
+        'project_form.html', project=project,
+        project_types=Project.BUILT_IN_TYPES, unattached_notes=notes,
+    ), status_code
+
+
+def _save_project_form(project: Project, creating: bool) -> None:
+    """Apply the existing manual POST contract and selected-note replacement."""
+    project.title = request.form.get('title', '').strip() or project.title
+    project.description = request.form.get('description', '').strip() or None
+    project_type = request.form.get(
+        'project_type', 'general' if creating else project.project_type,
+    )
+    project.project_type = project_type.strip() if creating else project_type
+    if not creating:
+        project.status = request.form.get('status', project.status)
+    due_date_str = request.form.get('due_date', '').strip()
+    if due_date_str:
+        try:
+            project.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    elif not creating:
+        project.due_date = None
+    if creating:
+        db.session.add(project)
+        db.session.flush()
+    note_ids = request.form.getlist('note_ids')
+    selected_ids = {int(nid) for nid in note_ids}
+    current_ids = {note.id for note in project.notes}
+    to_add = selected_ids - current_ids
+    if to_add:
+        project.notes.extend(Note.query.filter(Note.id.in_(to_add)).all())
+    project.notes = [note for note in project.notes if note.id in selected_ids]
+    db.session.commit()
+
+
 @projects_bp.route('/project/new', methods=['GET', 'POST'])
 def project_create():
     """Create a new internal project."""
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
-        description = request.form.get('description', '').strip()
-        project_type = request.form.get('project_type', 'general').strip()
-        due_date_str = request.form.get('due_date', '').strip()
-
         if not title:
             flash('Project title is required.', 'danger')
-            return redirect(url_for('projects.project_create'))
-
-        project = Project(
-            title=title,
-            description=description or None,
-            project_type=project_type,
-        )
-        if due_date_str:
-            try:
-                project.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-            except ValueError:
-                pass
-
-        db.session.add(project)
-        db.session.flush()
-
-        # Attach selected notes
-        note_ids = request.form.getlist('note_ids')
-        if note_ids:
-            notes = Note.query.filter(Note.id.in_([int(nid) for nid in note_ids])).all()
-            project.notes.extend(notes)
-
-        db.session.commit()
+            return _render_project_form(None, 400)
+        project = Project(title=title)
+        try:
+            _save_project_form(project, creating=True)
+        except Exception:
+            db.session.rollback()
+            logger.exception('Could not create project from the manual form')
+            flash('Could not create the project. Your entries are still here. Please try again.',
+                  'danger')
+            return _render_project_form(None, 500)
         flash(f'Project "{title}" created!', 'success')
         return redirect(url_for('projects.project_view', id=project.id))
 
-    # Get unattached general notes (no customer, not linked to any project)
-    unattached_notes = (
-        Note.query
-        .filter(Note.customer_id.is_(None))
-        .filter(~Note.projects.any())
-        .order_by(Note.call_date.desc())
-        .all()
-    )
-
-    return render_template('project_form.html', project=None,
-                         project_types=Project.BUILT_IN_TYPES,
-                         unattached_notes=unattached_notes)
+    return _render_project_form(None)
 
 
 @projects_bp.route('/project/<int:id>')
@@ -87,52 +103,18 @@ def project_edit(id):
     project = Project.query.get_or_404(id)
 
     if request.method == 'POST':
-        project.title = request.form.get('title', '').strip() or project.title
-        project.description = request.form.get('description', '').strip() or None
-        project.status = request.form.get('status', project.status)
-        project.project_type = request.form.get('project_type', project.project_type)
-        due_date_str = request.form.get('due_date', '').strip()
-        if due_date_str:
-            try:
-                project.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-            except ValueError:
-                pass
-        else:
-            project.due_date = None
-
-        # Update attached notes
-        note_ids = request.form.getlist('note_ids')
-        current_note_ids = {n.id for n in project.notes}
-        selected_ids = {int(nid) for nid in note_ids} if note_ids else set()
-        # Add newly selected
-        to_add = selected_ids - current_note_ids
-        if to_add:
-            new_notes = Note.query.filter(Note.id.in_(to_add)).all()
-            project.notes.extend(new_notes)
-        # Remove deselected
-        to_remove = current_note_ids - selected_ids
-        if to_remove:
-            project.notes = [n for n in project.notes if n.id not in to_remove]
-
-        db.session.commit()
+        try:
+            _save_project_form(project, creating=False)
+        except Exception:
+            db.session.rollback()
+            logger.exception('Could not update project %s from the manual form', id)
+            flash('Could not save the project. Your entries are still here. Please try again.',
+                  'danger')
+            return _render_project_form(project, 500)
         flash('Project updated.', 'success')
         return redirect(url_for('projects.project_view', id=project.id))
 
-    # Get unattached general notes + notes already on this project
-    unattached_notes = (
-        Note.query
-        .filter(Note.customer_id.is_(None))
-        .filter(db.or_(
-            ~Note.projects.any(),
-            Note.projects.any(Project.id == project.id),
-        ))
-        .order_by(Note.call_date.desc())
-        .all()
-    )
-
-    return render_template('project_form.html', project=project,
-                         project_types=Project.BUILT_IN_TYPES,
-                         unattached_notes=unattached_notes)
+    return _render_project_form(project)
 
 
 @projects_bp.route('/project/<int:id>/delete', methods=['POST'])
@@ -170,8 +152,13 @@ def project_add_action_item(id):
         except ValueError:
             pass
 
-    db.session.add(item)
-    db.session.commit()
+    try:
+        db.session.add(item)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception('Could not add action item to project %s', id)
+        return jsonify(success=False, error='Could not add the action item. Please try again.'), 500
     return jsonify(success=True, id=item.id)
 
 

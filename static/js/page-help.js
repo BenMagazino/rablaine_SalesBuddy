@@ -11,6 +11,63 @@ const PageHelp = (function () {
   // Use {id} as a placeholder for numeric path segments.
 
   const helpMap = [
+    { pattern: /^\/project\/\d+$/, title: 'Project Details', content: `
+      <p>Read internal work, its description and dates, action items and linked notes.
+      Edit, Delete and Back remain visible while the dossier scrolls.</p>
+      <ul>
+        <li>Add an action item with a title and optional due date. It saves only
+        when you submit Add; failed saves keep your input for retry.</li>
+        <li>Open a task for its rich description, source and related note, then
+        edit or complete it using the existing task controls.</li>
+        <li>Linked notes remain newest first. New note links to this project.</li>
+        <li>Back returns to your reading context. Unsubmitted task changes and
+        pending saves are protected, including Initiative Tracker's nested dialogs.</li>
+      </ul>` },
+    { pattern: /^\/project\/(?:new|\d+\/edit)$/, title: 'Project Form', content: `
+      <p>Track internal work, learning and achievements. Title is required;
+      description, type and due date retain their original optional behavior.
+      Description is plain text, not a rich-text editor.</p>
+      <ul>
+        <li>Save and Cancel stay visible while the fields and general notes scroll.
+        Cancel returns to Engagements for a new project, or to the project when editing.</li>
+        <li>Status is available only when editing. General notes appear newest first;
+        notes already attached to this project remain selected.</li>
+        <li>There is no autosave. Leaving with changes opens a discard guard;
+        Back restores this entry's fields, selections and reading position.</li>
+        <li>Failed saves keep your entries visible for correction and retry.</li>
+      </ul>
+    `},
+    { pattern: /^\/(?:customer\/\d+\/engagement\/new|engagement\/\d+\/edit)$/, title: 'Engagement Form', content: `
+      <p>Write the engagement story alongside this customer's existing notes,
+      opportunities and milestones. Title is required; the other fields remain optional.</p>
+      <ul>
+        <li>Save and Cancel stay visible while the story and linked work scroll.
+        Cancel returns to the customer, including when editing an engagement.</li>
+        <li>Existing people and checked associations stay in the unsubmitted form.
+        Adding a new customer or internal contact saves that person immediately.</li>
+        <li>Unsaved changes are guarded when leaving. Back restores this entry's
+        fields, people, selections and reading positions. There is no autosave.</li>
+        <li>Validation and failed saves keep your entries visible for correction.
+        Deleting an engagement removes the thread, not its linked records.</li>
+      </ul>
+    `},
+    { pattern: /^\/action-items$/, title: 'Action Items', content: `
+      <p>Local follow-ups are separate from MSX HoK tasks. Engagement, project and
+      saved/generated Copilot queues retain their existing open-task scope.</p>
+      <ul>
+        <li>Five divider-separated dashboard cells scroll independently.
+        Data headings sort both ways.</li>
+        <li>Click a project task row to view or edit it; the project link opens the
+        project directly. Project sort controls follow the fields shown in the summary.
+        Other task queues retain View / Edit. Completion, Copilot Save, Dismiss and
+        Not Useful keep their original behavior.</li>
+        <li>Open the linked engagement or project for creation, rich editing,
+        reopening and deletion. Source and linked-note links stay in the preview.</li>
+        <li>Hygiene and stale milestones are maintenance records, not local tasks.
+        Hygiene sorts by Name or Customer, not the diagnostic gap.
+        The stale seller filter and each cell's reading position return with Back.</li>
+      </ul>
+    `},
     // ── Home ──
     { pattern: /^\/$/, title: 'Dashboard', content: `
       <p>Your home base — calendar of notes &amp; meetings, plus quick access to drafts and engagements.</p>
@@ -124,7 +181,9 @@ const PageHelp = (function () {
       <p>Your customer directory. Each customer can have notes, engagements, opportunities, and revenue data linked to them.</p>
       <h6>Tips</h6>
       <ul>
-        <li>Use the search bar to filter by name</li>
+        <li>A-Z, Grouped and By Notes retain the saved directory order. Show/Hide No Notes changes the saved note filter.</li>
+        <li>Click a data heading to sort both ways within the current seller group or list. Back restores sorting, expanded groups and reading position.</li>
+        <li>Manual opens customer entry. Import by TPID looks up an account only when you click Look Up; Import Customer saves the previewed account.</li>
         <li>Click a customer to see all their linked notes, engagements, and revenue</li>
         <li><span class="kbd">/</span> opens quick customer lookup from any page</li>
       </ul>
@@ -133,12 +192,18 @@ const PageHelp = (function () {
       <p>Add a new customer to track. You'll be able to attach notes, engagements, and revenue data to them.</p>
       <h6>Tips</h6>
       <ul>
-        <li>The <strong>name</strong> is the only required field</li>
+        <li><strong>Name and TPID</strong> are required. TPID is a whole number, zero or greater, and must be unique.</li>
         <li>Adding a territory helps with filtering and reporting later</li>
+        <li>Save Customer is manual. Cancel returns to Customers; leaving with unsaved entries offers a discard guard. Back restores this entry's draft.</li>
+        <li>Create Seller saves a seller immediately and returns here. Use Back to recover unsaved customer entries. Create Territory opens a separate tab.</li>
       </ul>
     `},
     { pattern: /^\/customer\/\d+\/edit/, title: 'Edit Customer', content: `
-      <p>Update this customer's information — name, territory, sellers, and other details.</p>
+      <p>Update the original name, nickname, TPID, MSX account URL, website, seller,
+      territory and available primary CSAM. Name and TPID remain required.</p>
+      <p>Save Customer returns to the customer; Cancel returns to Customers.
+      Changes are not autosaved. Failed saves retain your entries for retry.
+      Website changes keep the existing favicon lookup; clearing the website clears its favicon.</p>
     `},
     { pattern: /^\/(?:revenue\/customer\/\d+\/bucket\/[^/]+|customer\/\d+\/revenue\/bucket\/[^/]+)\/?$/, title: 'Bucket Product History', content: `
       <p>Product revenue for one customer and bucket, with analysis alongside the history.</p>
@@ -160,26 +225,39 @@ const PageHelp = (function () {
       </ul>
     `},
     { pattern: /^\/customer\/\d+/, title: 'Customer Details', content: `
-      <p>Everything about this customer — notes, engagements, opportunities, and revenue all in one place.</p>
+      <p>Read the account dossier in Engagements, Notes, Opportunities and Revenue tabs.
+      Identity, ownership and contacts remain alongside the selected work.</p>
       <h6>Actions</h6>
       <ul>
-        <li><strong>New Note</strong> — add a call note linked to this customer</li>
-        <li><strong>New Engagement</strong> — create a tracked engagement</li>
-        <li>Scroll down to see revenue data and engagement history</li>
+        <li>New Note, New Engagement and Edit Customer retain their original destinations.</li>
+        <li>Find in pipeline searches opportunity, milestone and workload text without changing the account scope.</li>
+        <li>Revenue headings sort both ways using raw values. Details opens the original full revenue history and graphs.</li>
+        <li>Back restores the selected tab, pipeline search and reading position. Account context Save and contact Done are manual; leaving with unsaved entries offers a discard guard.</li>
+        <li>Contact photo paste saves immediately. Auto-fill scans only when requested; saving a domain and applying selected contacts are explicit writes.</li>
       </ul>
     `},
 
     // ── Engagements ──
+    { pattern: /^\/engagements\/?$/, title: 'Engagements', content: `
+      <p>Browse the complete engagement directory in your existing seller or SE scope.</p>
+      <p>Status, Favorites only and Group by seller/customer retain their saved selections. Last Updated uses the provider's exact update order with favorites first; story and target ordering work both ways. Table headings sort raw values within the original customer groups, or across the flat list.</p>
+      <p>New Engagement opens the customer picker. Engagement and customer links keep their original destinations; Internal Projects keep their separate scope and New Project action. Back restores filters, header sorting and reading position. Favorite saves must finish before leaving.</p>
+    `},
     { pattern: /^\/engagement\/\d+\/edit/, title: 'Edit Engagement', content: `
       <p>Update this engagement's details, status, and linked milestones.</p>
     `},
     { pattern: /^\/engagement\/\d+/, title: 'Engagement Details', content: `
-      <p>Track a specific customer engagement — its status, linked notes, milestones, and AI-generated story.</p>
+      <p>Read the engagement story and relationships alongside its follow-ups and linked notes.
+      Each side scrolls independently; Back restores reading position and completed-task disclosure.</p>
       <h6>Actions</h6>
       <ul>
         <li><strong>Generate Story</strong> — AI creates a summary from linked call notes</li>
         <li><strong>Link Notes</strong> — attach relevant call notes to this engagement</li>
         <li><strong>Milestones</strong> — track this engagement against MSX milestones</li>
+        <li><strong>Action items</strong> keep rich descriptions, contacts, priority and due dates.
+        Add, edit, completion, reopening, deletion and drag ordering retain their existing APIs.</li>
+        <li>Unsaved editors and pending saves protect navigation. Failed writes retain entries
+        and show an error so you can retry. The inline Action Items view uses the same complete body.</li>
       </ul>
     `},
 
@@ -421,7 +499,9 @@ const PageHelp = (function () {
       </ul>
     `},
     { pattern: /^\/milestone\/\d+/, title: 'Milestone Details', content: `
-      <p>This milestone's tasks, linked engagements, and MSX sync status.</p>
+      <p>Review details, linked engagements, notes and tasks beside the forecast comments. Both reading regions scroll independently; Back restores each position while Open in MSX, Edit and Delete stay available.</p>
+      <p>Opening an MSX-linked milestone reads fresh details and comments into the local cache. The status rail distinguishes loading, cached read failures, unsaved drafts and pending saves. Refresh details and comments remains a separate, explicit action.</p>
+      <p>Comments and tasks save only when submitted. Leaving with a draft offers Keep editing or Discard; pending saves must finish first. Linked notes, team actions and task/engagement editors retain their original workflows. Deleting a milestone requires confirmation and defaults to Cancel.</p>
     `},
 
     { pattern: /^\/one-on-one\/?$/, title: '1:1 Workspaces', content: `

@@ -5,12 +5,13 @@
 {% set forecast_workbench = true %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 <div class="sb-milestone-view{% if show_edit_delete %} sb-ms-page{% endif %}"
+     {% if show_edit_delete %}data-sb-page-surface data-sb-milestone-page{% endif %}
      data-sb-milestone-detail data-sb-milestone-id="{{ milestone.id }}">
 
 {% if show_edit_delete %}
-<header class="sb-ms-page-header">
+<header class="sb-ms-page-header" data-sb-page-band>
     <h1><i class="bi bi-flag" aria-hidden="true"></i> {{ milestone.title or 'Untitled Milestone' }}</h1>
-    <div class="sb-ms-actions">
+    <nav class="sb-ms-actions" aria-label="Milestone commands">
         <a href="{{ milestone.url }}" target="_blank" rel="noopener" class="sb-dialog-button">
             <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Open in MSX
         </a>
@@ -20,12 +21,13 @@
         <button type="button" class="sb-dialog-button sb-ms-danger" data-sb-dialog="milestoneDeleteDialog">
             <i class="bi bi-trash" aria-hidden="true"></i> Delete
         </button>
-    </div>
+    </nav>
 </header>
+<p class="sb-ms-page-notice" data-sb-ms-page-notice data-sb-page-band role="alert" hidden></p>
 {% endif %}
 
-<div class="sb-ms-layout">
-    <aside class="sb-ms-context" aria-label="Milestone details and linked work">
+<div class="sb-ms-layout"{% if show_edit_delete %} data-sb-page-body{% endif %}>
+    <aside class="sb-ms-context" aria-label="Milestone details and linked work"{% if show_edit_delete %} tabindex="0" data-sb-ms-reading="context"{% endif %}>
         <h2 class="sb-ms-heading">Details</h2>
         <div class="sb-ms-section">
             <div class="sb-ms-navigation" id="milestoneNavigationLinks">
@@ -273,7 +275,7 @@
         </section>
     </aside>
 
-    <section class="sb-ms-main" aria-label="Forecast comments">
+    <section class="sb-ms-main" aria-label="Forecast comments"{% if show_edit_delete %} tabindex="0" data-sb-ms-reading="forecast"{% endif %}>
         {% set comment_form_action = url_for('milestones.milestone_add_comment', id=milestone.id) %}
         {% set entity_label = "milestone" %}
         {% set show_comments = milestone.msx_milestone_id is not none %}
@@ -579,6 +581,7 @@ function renderDetails(ms) {
         commitRow.style.display = '';
     }
     // Cached details stay visible - DB is updated server-side by the API call
+    root.dispatchEvent(new CustomEvent('sb:record-state', {bubbles: true}));
 }
 
 function renderError(errorMsg, vpnBlocked) {
@@ -603,6 +606,7 @@ function renderError(errorMsg, vpnBlocked) {
     }
 
     renderCommentsError(errorMsg, vpnBlocked);
+    root.dispatchEvent(new CustomEvent('sb:record-state', {bubbles: true}));
 }
 {% endif %}
 

@@ -138,3 +138,35 @@
 .sb-comment-text th { background: var(--sb-ui-context); }
 .sb-comment-edit { margin-bottom: 8px; }
 .sb-milestone-view :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: -3px; }
+
+/* Standalone frame owns scrolling; embedded bodies keep their approved geometry. */
+.sb-page-frame .sb-ms-page { border: 0; }
+.sb-ms-page[data-sb-milestone-page] .sb-ms-page-header {
+    margin: 0;
+    padding: 16px 24px;
+}
+.sb-ms-page[data-sb-milestone-page] .sb-ms-page-header h1 { font-size: 20px; }
+.sb-ms-page[data-sb-milestone-page] .sb-ms-page-header > .sb-ms-actions {
+    flex-shrink: 0;
+}
+.sb-ms-page[data-sb-milestone-page] .sb-ms-layout {
+    display: grid;
+    grid-template-columns: 304px minmax(0, 1fr);
+    gap: 0;
+}
+.sb-ms-page[data-sb-milestone-page] [data-sb-ms-reading] {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding: 24px;
+}
+.sb-ms-page[data-sb-milestone-page] .sb-ms-main > .sb-ms-comments {
+    max-width: 1100px;
+}
+.sb-ms-page-notice {
+    margin: 0;
+    padding: 8px 24px;
+    border-bottom: 1px solid var(--sb-ui-line);
+    color: var(--sb-ui-danger);
+}

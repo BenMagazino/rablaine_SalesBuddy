@@ -3,7 +3,7 @@
 - IDs: MS-NEW `/milestone/new`, MS-EDIT `/milestone/<int:id>/edit`.
 - Shared template: `milestone_form.html`; only full-page consumers exist.
 - Audited baseline: `c7fb7b19`, approved Milestones directory checkpoint 51.
-- Status: VERIFY, user-approved October 7; local commit authorized.
+- Status: VERIFY, user-approved October 7; committed as `4e57b1a6`.
 - Approved effort: about 61%; strict DONE counters are unchanged.
 
 ## Original contract and boundaries

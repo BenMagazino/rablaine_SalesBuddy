@@ -264,7 +264,6 @@
             'toggleTask', 'viewTask', 'editTask', 'saveEditedTask', 'deleteTask',
             'toggleMilestoneEdit', 'saveMilestoneLinks', 'joinMilestoneTeam', 'leaveMilestoneTeam',
             'viewActionItem',
-            'addProjectTask',
         ];
         const exports = handlers.map(name =>
             `if (typeof ${name} === 'function') window.${name} = ${name};`,
@@ -303,6 +302,12 @@
     }
 
     async function openDetail(title, fullUrl, fragmentUrl) {
+        const previousProject = document.querySelector(
+            '#managerWorkBody [data-sb-project-detail]')?._projectDetail;
+        if (previousProject?.isBusy()) return;
+        if (previousProject?.isDirty() &&
+                !confirm('Discard the unsaved action item changes?')) return;
+        previousProject?.dispose();
         const workspace = window.SBOneOnOneWorkspace;
         if (workspace?.root?.isConnected) {
             try {
@@ -545,6 +550,14 @@
     document.getElementById('managerWorkModal').addEventListener('sb:dialog-closed', event => {
         if (event.target.id !== 'managerWorkModal') return;
         detailRequest?.abort();
+        const project = document.querySelector('#managerWorkBody [data-sb-project-detail]');
+        project?._projectDetail?.dispose();
+        if (project) {
+            for (const child of project.querySelectorAll('dialog[open]')) {
+                SBDialog.close(child, 'parent-closed');
+            }
+            document.getElementById('managerWorkBody').replaceChildren();
+        }
         window.copilotContext = contextBeforeWork;
     });
     document.getElementById('managerWorkModal').addEventListener('sb:dialog-opened', event => {

@@ -72,27 +72,42 @@ def _resolve(context, endpoint):
 
 
 def _rendered_page_templates():
-    """Discover literal base-inheriting render calls rather than maintain a second registry."""
+    """Discover full-page route renders, including shared renderer helper calls."""
     result = {}
     for module in _ROUTE_MODULES:
         tree = ast.parse((_ROOT / "app" / "routes" / f"{module}.py").read_text("utf-8"))
-        for function in tree.body:
-            if not isinstance(function, ast.FunctionDef):
-                continue
-            for call in ast.walk(function):
-                if not (
-                    isinstance(call, ast.Call)
-                    and isinstance(call.func, ast.Name)
-                    and call.func.id == "render_template"
-                    and call.args
-                    and isinstance(call.args[0], ast.Constant)
-                    and isinstance(call.args[0].value, str)
-                ):
+        functions = {function.name: function for function in tree.body
+                     if isinstance(function, ast.FunctionDef)}
+        routes = [function for function in functions.values() if any(
+            isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Attribute)
+            and decorator.func.attr == "route" for decorator in function.decorator_list
+        )]
+        for function in routes:
+            pending = [function]
+            visited = set()
+            while pending:
+                renderer = pending.pop()
+                if renderer.name in visited:
                     continue
-                template = call.args[0].value
-                source = (_ROOT / "templates" / template).read_text("utf-8")
-                if re.search(r"""\{%\s*extends\s+['"]base\.html['"]\s*%\}""", source):
-                    result[f"{module}.{function.name}"] = template
+                visited.add(renderer.name)
+                for call in ast.walk(renderer):
+                    if isinstance(call, ast.Call) and isinstance(call.func, ast.Name):
+                        helper = functions.get(call.func.id)
+                        if helper:
+                            pending.append(helper)
+                    if not (
+                        isinstance(call, ast.Call)
+                        and isinstance(call.func, ast.Name)
+                        and call.func.id == "render_template"
+                        and call.args
+                        and isinstance(call.args[0], ast.Constant)
+                        and isinstance(call.args[0].value, str)
+                    ):
+                        continue
+                    template = call.args[0].value
+                    source = (_ROOT / "templates" / template).read_text("utf-8")
+                    if re.search(r"""\{%\s*extends\s+['"]base\.html['"]\s*%\}""", source):
+                        result[f"{module}.{function.name}"] = template
     return result
 
 

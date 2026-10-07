@@ -3,8 +3,12 @@ Engagement routes for Sales Buddy.
 Handles CRUD operations for customer engagement threads.
 """
 import logging
+from collections.abc import Callable
+from functools import wraps
 from datetime import date, datetime, timezone
+from typing import Any
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import (
     db, Engagement, EngagementContact, ActionItem, Customer, Note, Opportunity,
@@ -286,7 +290,63 @@ def engagement_detail_fragment(id: int):
     )
 
 
+def _render_engagement_form(customer: Customer, engagement: Engagement | None) -> str:
+    """Render original choices and retain submitted fields after an unsuccessful save."""
+    contacts = [contact.to_dict() | {
+        'external_name': contact.external_name, 'external_email': contact.external_email,
+    } for contact in engagement.contacts] if engagement else []
+    if request.method == 'POST':
+        contacts = []
+        models = {'customer_contact': CustomerContact, 'partner_contact': PartnerContact,
+                  'se': SolutionEngineer, 'seller': Seller, 'internal_contact': InternalContact}
+        names = iter(request.form.getlist('contact_ext_names'))
+        emails = iter(request.form.getlist('contact_ext_emails'))
+        for kind, ref_id in zip(request.form.getlist('contact_types'),
+                                request.form.getlist('contact_ref_ids')):
+            name, email = next(names, '') if kind == 'external' else '', (
+                next(emails, '') if kind == 'external' else ''
+            )
+            person = db.session.get(models[kind], int(ref_id)) if (
+                kind in models and ref_id.isdigit()
+            ) else None
+            contacts.append({
+                'person_type': kind, 'ref_id': ref_id,
+                'display_name': person.name if person else name or 'Unknown',
+                'external_name': name, 'external_email': email,
+            })
+    return render_template(
+        'engagement_form.html', customer=customer, engagement=engagement,
+        form_contacts=contacts,
+        customer_notes=sorted(customer.notes, key=lambda n: n.call_date, reverse=True),
+        opportunities=customer.opportunities.order_by(Opportunity.name).all(),
+        milestones=customer.milestones.order_by(Milestone.title).all(),
+    )
+
+
+def _retain_engagement_form_errors(view: Callable[..., Any]) -> Callable[..., Any]:
+    """Rollback failed native POSTs and show their intact payload without claiming success."""
+    @wraps(view)
+    def wrapped(*args: Any, **kwargs: Any) -> Any:
+        """Run the original save and recover only form parsing or database failures."""
+        try:
+            return view(*args, **kwargs)
+        except (ValueError, SQLAlchemyError):
+            if request.method != 'POST':
+                raise
+            db.session.rollback()
+            logger.exception('Could not save engagement form at %s', request.path)
+            engagement = db.session.get(Engagement, kwargs['id']) if 'id' in kwargs else None
+            customer = engagement.customer if engagement else Customer.query.get_or_404(
+                kwargs['customer_id']
+            )
+            flash('Could not save the engagement. Your entries are retained. Please try again.',
+                  'danger')
+            return _render_engagement_form(customer, engagement), 500
+    return wrapped
+
+
 @engagements_bp.route('/customer/<int:customer_id>/engagement/new', methods=['GET', 'POST'])
+@_retain_engagement_form_errors
 def engagement_create(customer_id: int):
     """Create a new engagement for a customer."""
     customer = Customer.query.get_or_404(customer_id)
@@ -303,8 +363,7 @@ def engagement_create(customer_id: int):
 
         if not title:
             flash('Engagement title is required.', 'danger')
-            return redirect(url_for('engagements.engagement_create',
-                                    customer_id=customer_id))
+            return _render_engagement_form(customer, None)
 
         target_date = None
         if target_date_str:
@@ -312,8 +371,7 @@ def engagement_create(customer_id: int):
                 target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
             except ValueError:
                 flash('Invalid target date format.', 'danger')
-                return redirect(url_for('engagements.engagement_create',
-                                        customer_id=customer_id))
+                return _render_engagement_form(customer, None)
 
         engagement = Engagement(
             customer_id=customer_id,
@@ -362,22 +420,11 @@ def engagement_create(customer_id: int):
         flash(f'Engagement "{title}" created.', 'success')
         return redirect(url_for('customers.customer_view', id=customer_id))
 
-    # GET: load form data
-    customer_notes = sorted(customer.notes, key=lambda n: n.call_date, reverse=True)
-    opportunities = customer.opportunities.order_by(Opportunity.name).all()
-    milestones = customer.milestones.order_by(Milestone.title).all()
-
-    return render_template(
-        'engagement_form.html',
-        customer=customer,
-        engagement=None,
-        customer_notes=customer_notes,
-        opportunities=opportunities,
-        milestones=milestones,
-    )
+    return _render_engagement_form(customer, None)
 
 
 @engagements_bp.route('/engagement/<int:id>/edit', methods=['GET', 'POST'])
+@_retain_engagement_form_errors
 def engagement_edit(id: int):
     """Edit an existing engagement."""
     engagement = Engagement.query.get_or_404(id)
@@ -395,7 +442,7 @@ def engagement_edit(id: int):
 
         if not title:
             flash('Engagement title is required.', 'danger')
-            return redirect(url_for('engagements.engagement_edit', id=id))
+            return _render_engagement_form(customer, engagement)
 
         target_date = None
         if target_date_str:
@@ -403,7 +450,7 @@ def engagement_edit(id: int):
                 target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
             except ValueError:
                 flash('Invalid target date format.', 'danger')
-                return redirect(url_for('engagements.engagement_edit', id=id))
+                return _render_engagement_form(customer, engagement)
 
         engagement.title = title
         engagement.status = status
@@ -457,19 +504,7 @@ def engagement_edit(id: int):
         flash(f'Engagement "{title}" updated.', 'success')
         return redirect(url_for('engagements.engagement_view', id=id))
 
-    # GET: load form data
-    customer_notes = sorted(customer.notes, key=lambda n: n.call_date, reverse=True)
-    opportunities = customer.opportunities.order_by(Opportunity.name).all()
-    milestones = customer.milestones.order_by(Milestone.title).all()
-
-    return render_template(
-        'engagement_form.html',
-        customer=customer,
-        engagement=engagement,
-        customer_notes=customer_notes,
-        opportunities=opportunities,
-        milestones=milestones,
-    )
+    return _render_engagement_form(customer, engagement)
 
 
 @engagements_bp.route('/engagement/<int:id>/delete', methods=['POST'])

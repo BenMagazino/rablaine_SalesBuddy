@@ -155,6 +155,10 @@
         root.addEventListener('submit', event => {
             if (event.target.closest('#commentFormCached')) approvedNavigation = true;
         }, {signal: listeners.signal});
+        root.addEventListener('input', () => {
+            approvedNavigation = false;
+            changed();
+        }, {signal: listeners.signal});
         root.addEventListener('sb:dialog-before-close', event => {
             const child = event.target;
             if (disposed || bypass || !child.matches('dialog[data-sb-milestone-child]') ||
@@ -184,6 +188,7 @@
                 child.querySelector('[data-sb-child-status]').textContent = '';
                 const error = child.querySelector('[role="alert"]');
                 if (error && !child.querySelector('#create_task_btn')?.disabled) error.hidden = true;
+                changed();
             }
         }, {signal: listeners.signal});
         discard.addEventListener('sb:dialog-closed', () => { transition = null; },
@@ -195,6 +200,97 @@
             bypass = true;
             try { proceed(); } finally { bypass = false; }
         }, {signal: listeners.signal});
+        if (root.hasAttribute('data-sb-milestone-page')) {
+            const reading = [...root.querySelectorAll('[data-sb-ms-reading]')];
+            const key = root.dataset.sbMilestoneId;
+            const notice = root.querySelector('[data-sb-ms-page-notice]');
+            const status = document.getElementById('milestonePageState');
+            const warn = (message, error) => {
+                notice.textContent = message;
+                notice.hidden = false;
+                if (error) console.error(message, error);
+            };
+            const updateStatus = () => {
+                const spinner = root.querySelector('#detailsSpinner');
+                status.textContent = writes ? 'Saving milestone changes...'
+                    : api.isDirty() ? 'Unsaved milestone draft'
+                    : spinner && spinner.style.display !== 'none' ? 'Reading MSX details...'
+                    : root.querySelector('#detailsError')?.textContent.trim()
+                        ? 'MSX read unavailable · Cached details retained'
+                    : spinner ? 'MSX details loaded · Manual save'
+                    : 'Local milestone · No MSX ID';
+            };
+            const remember = () => {
+                try {
+                    const state = window.history.state;
+                    window.history.replaceState({
+                        ...state,
+                        sbMilestoneReading: {
+                            ...state?.sbMilestoneReading,
+                            [key]: Object.fromEntries(reading.map(pane =>
+                                [pane.dataset.sbMsReading, pane.scrollTop])),
+                        },
+                    }, '');
+                } catch (error) {
+                    warn('Could not preserve milestone reading position for Back.', error);
+                }
+            };
+            const restore = () => {
+                approvedNavigation = false;
+                try {
+                    const saved = window.history.state?.sbMilestoneReading?.[key];
+                    if (saved !== undefined) {
+                        if (!saved || reading.some(pane =>
+                            !Number.isFinite(saved[pane.dataset.sbMsReading])
+                            || saved[pane.dataset.sbMsReading] < 0)) {
+                            throw new Error('Invalid milestone reading position.');
+                        }
+                        for (const pane of reading) pane.scrollTop = saved[pane.dataset.sbMsReading];
+                    }
+                } catch (error) {
+                    warn('Could not restore milestone reading position. All content is available.',
+                        error);
+                }
+                updateStatus();
+            };
+            for (const pane of reading) {
+                pane.addEventListener('scroll', remember, {signal: listeners.signal});
+            }
+            root.addEventListener('sb:record-state', updateStatus, {signal: listeners.signal});
+            window.addEventListener('pagehide', remember, {signal: listeners.signal});
+            window.addEventListener('pageshow', () => schedule(restore, 0),
+                {signal: listeners.signal});
+            window.addEventListener('popstate', restore, {signal: listeners.signal});
+            document.addEventListener('click', event => {
+                const link = event.target.closest?.('a[href]');
+                if (!link || event.defaultPrevented || event.button !== 0
+                    || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey
+                    || link.target === '_blank' || link.hasAttribute('download')
+                    || link.getAttribute('href').startsWith('#')) return;
+                if (!writes && !api.isDirty()) return;
+                event.preventDefault();
+                if (writes) {
+                    warn('Saving milestone changes. Wait before leaving.');
+                    return;
+                }
+                transition = () => {
+                    for (const child of children()) {
+                        child.querySelector('form').reset();
+                        baselines.delete(child);
+                    }
+                    for (const field of root.querySelectorAll(
+                        '#commentFormCached textarea, #commentFormMsx textarea, [id^="editText-"]'
+                    )) field.value = field.defaultValue;
+                    approvedNavigation = true;
+                    remember();
+                    window.location.assign(link.href);
+                };
+                document.getElementById('recordDiscardDescription').textContent =
+                    'Your milestone draft has not been saved. Keep editing, or discard it to leave.';
+                SBDialog.open(discard);
+            }, {signal: listeners.signal});
+            restore();
+        }
         instances.set(root, api);
         active.add(api);
         try {

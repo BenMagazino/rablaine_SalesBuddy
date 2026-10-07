@@ -9,6 +9,9 @@
     eng_count_id      - ID for the count badge (default: 'engCount')
     eng_empty_msg     - Empty state message
 #}
+{% if eng_native | default(false) %}
+{% include 'partials/engagements_directory.html' %}
+{% else %}
 {% set body_id = eng_body_id | default('engagementsBody') %}
 {% set count_id = eng_count_id | default('engCount') %}
 {% set empty_msg = eng_empty_msg | default('No engagements found.') %}
@@ -372,3 +375,4 @@
     {% endif %}
 })();
 </script>
+{% endif %}

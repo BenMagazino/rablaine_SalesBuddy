@@ -74,7 +74,10 @@ function fixture() {
             element.dispatch('sb:dialog-closed');
         },
     };
-    const window = {addEventListener: (name, handler) => { events[name] = handler; }};
+    const window = {addEventListener: (name, handler) => { events[name] = handler; },
+        removeEventListener: (name, handler) => {
+            if (events[name] === handler) delete events[name];
+        }};
     const context = {document, window, SBDialog, URL, AbortController,
         location: {href: 'http://127.0.0.1:5000/', reload: () => reloads++,
             assign: url => navigations.push(url)},
@@ -100,6 +103,46 @@ async function ready(h, task = h.task(), opts) {
     h.reply(h.requests.length - 1, {success: true, task});
     await pending;
 }
+
+test('scoped nested task controller uses local discard and disposes pending reads and global guards', async () => {
+    const h = fixture();
+    let changed = 0;
+    const controller = h.window.SBActionItemDialog.mount(h.dialog, {
+        discard: h.discard, onChanged: () => changed++,
+    });
+    const pending = controller.open(9);
+    h.reply(0, {success: true, task: h.task()});
+    await pending;
+    assert.equal(controller.isBusy(), false);
+    h.field('aiDetailEditBtn').dispatch('click');
+    h.field('aiEditTitle').value = 'Changed title';
+    assert.equal(controller.isDirty(), true);
+    h.field('aiDetailEditMode').dispatch('submit');
+    assert.equal(controller.isBusy(), true);
+    h.reply(1, {success: true, task: h.task(9, {title: 'Changed title'})});
+    await settle();
+    assert.equal(controller.isBusy(), false);
+    h.SBDialog.close(h.dialog);
+    assert.equal(changed, 1);
+    assert.equal(h.reloads(), 0);
+    controller.open(12);
+    controller.dispose();
+    assert.equal(h.requests[2].options.signal.aborted, true);
+    assert.deepEqual(Object.keys(h.events), []);
+});
+
+test('local queue project context and page-exit guard preserve unsaved edits', async () => {
+    const h = fixture();
+    await ready(h, h.task(9, {project_id: 3}), {showProjectLink: true});
+    assert.equal(h.field('aiDetailMeta').children.at(-1).href, '/project/3');
+    h.field('aiDetailEditBtn').dispatch('click');
+    h.field('aiEditTitle').value = 'Unsubmitted draft';
+    const event = {preventDefault() { this.prevented = true; }};
+    h.events.beforeunload(event);
+    assert.equal(event.prevented, true);
+    assert.equal(event.returnValue, '');
+    assert.equal(h.requests.length, 1);
+});
 
 test('native partial retains every field, label and action without Bootstrap hooks', () => {
     assert.match(partial, /<dialog[^>]+id="actionItemDetailModal"/);
@@ -180,11 +223,11 @@ test('new selection and dismissal abort and invalidate all late successes/failur
     }
 });
 
-test('editing keeps plain-text fields, guards dirty close/cancel and preserves failed drafts', async () => {
+test('editing retains description HTML, guards dirty close/cancel and preserves failed drafts', async () => {
     const h = fixture();
     await ready(h);
     h.field('aiDetailEditBtn').dispatch('click');
-    assert.equal(h.field('aiEditDesc').value, 'Rich description');
+    assert.equal(h.field('aiEditDesc').value, '<p>Rich description</p>');
     assert.equal(h.document.activeElement, h.field('aiEditTitle'));
     h.field('aiEditTitle').value = 'Edited title';
     h.SBDialog.close(h.dialog);

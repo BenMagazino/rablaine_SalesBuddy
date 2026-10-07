@@ -242,8 +242,8 @@ function pageHelp(pathname) {
 
 test('contextual entries have unique routes, valid content and the current Hygiene help contract', () => {
     const help = pageHelp('/');
-    assert.equal(help.helpMap.length, 67);
-    assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 67);
+    assert.equal(help.helpMap.length, 72);
+    assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 72);
     for (const entry of [...help.helpMap, help.fallbackHelp]) {
         assert.equal(typeof entry.title, 'string');
         assert.ok(entry.title.trim().length > 0);
@@ -256,6 +256,19 @@ test('contextual entries have unique routes, valid content and the current Hygie
     assert.match(hygiene.body.innerHTML, /both queues/);
     assert.match(hygiene.body.innerHTML, /creation cannot be confirmed/);
     assert.match(hygiene.body.innerHTML, /Only confirmed notes/);
+});
+
+test('project dossier help stays distinct from native New and Edit form help', () => {
+    const detail = pageHelp('/project/3');
+    detail.show();
+    assert.equal(detail.title.textContent, 'Project Details');
+    assert.match(detail.body.innerHTML, /Initiative Tracker/);
+    assert.match(detail.body.innerHTML, /failed saves keep your input/);
+    for (const pathname of ['/project/new', '/project/3/edit']) {
+        const form = pageHelp(pathname);
+        form.show();
+        assert.equal(form.title.textContent, 'Project Form');
+    }
 });
 
 test('contextual and fallback help use native dialogs without Bootstrap markup or APIs', () => {

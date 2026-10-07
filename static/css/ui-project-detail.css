@@ -1,0 +1,77 @@
+/* Internal project dossier, with persistent commands and a single reading region. */
+.sb-project-detail {
+    color: var(--sb-ui-ink); background: var(--sb-ui-surface);
+    font: 13px/1.5 var(--sb-ui-font); min-width: 0;
+}
+.sb-project-detail [hidden] { display: none !important; }
+.sb-project-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 24px; padding: 18px 24px; border-bottom: 1px solid var(--sb-ui-line);
+}
+.sb-project-heading { min-width: 0; }
+.sb-project-heading h1 {
+    margin: 0 0 6px; font-size: 22px; font-weight: 600;
+    overflow-wrap: anywhere; letter-spacing: -.3px;
+}
+.sb-project-meta, .sb-project-commands {
+    display: flex; align-items: center; gap: 12px;
+}
+.sb-project-meta { color: var(--sb-ui-muted); font-size: 12px; }
+.sb-project-commands { flex-shrink: 0; gap: 8px; }
+.sb-project-reading { overflow: auto !important; overscroll-behavior: contain; }
+.sb-project-dossier { max-width: 1100px; margin: 0 auto; padding: 24px 32px 40px; }
+.sb-project-overview { border-bottom: 1px solid var(--sb-ui-line); padding-bottom: 24px; }
+.sb-project-description { max-width: 780px; margin: 0 0 24px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sb-project-facts { display: flex; flex-wrap: wrap; gap: 32px; margin: 0; }
+.sb-project-facts dt, .sb-project-add label {
+    color: var(--sb-ui-muted); font-size: 11px; font-weight: 500;
+}
+.sb-project-facts dd { margin: 3px 0 0; }
+.sb-project-evidence { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 40px; }
+.sb-project-section-heading {
+    display: flex; align-items: center; gap: 8px; min-height: 64px;
+    border-bottom: 1px solid var(--sb-ui-line);
+}
+.sb-project-section-heading h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.sb-project-section-heading a { margin-left: auto; }
+.sb-project-count { color: var(--sb-ui-muted); font-size: 12px; }
+.sb-project-task {
+    display: flex; align-items: baseline; gap: 10px; text-align: left;
+    width: 100%; border: 0; border-bottom: 1px solid var(--sb-ui-grid-line);
+    padding: 14px 8px; background: transparent; color: inherit; font: inherit; cursor: pointer;
+}
+.sb-project-task:hover, .sb-project-note:hover { background: var(--sb-ui-raised); }
+.sb-project-task-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sb-project-task[data-status="completed"] .sb-project-task-title {
+    text-decoration: line-through; color: var(--sb-ui-muted);
+}
+.sb-project-task[data-status="completed"] > i { color: var(--sb-ui-milestone-rail); }
+.sb-project-task[data-priority="high"] .sb-project-task-title {
+    color: var(--sb-ui-danger); font-weight: 600;
+}
+.sb-project-tag {
+    padding: 1px 6px; border: 1px solid var(--sb-ui-line); font-size: 11px; white-space: nowrap;
+}
+.sb-project-tag[data-status="Active"] { color: var(--sb-ui-milestone-rail); }
+.sb-project-tag[data-status="On Hold"] { color: var(--sb-ui-warning); }
+.sb-project-note {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between;
+    padding: 14px 8px; border-bottom: 1px solid var(--sb-ui-grid-line);
+    color: var(--sb-ui-accent); text-decoration: none;
+}
+.sb-project-note time { color: var(--sb-ui-muted); font-size: 12px; }
+.sb-project-empty { padding: 12px 0; color: var(--sb-ui-muted); }
+.sb-project-add {
+    display: flex; align-items: flex-end; gap: 12px; padding: 12px 24px;
+    border-top: 1px solid var(--sb-ui-line); background: var(--sb-ui-context);
+}
+.sb-project-add-title { flex: 1; }
+.sb-project-add label { display: block; margin-bottom: 4px; }
+.sb-project-add input { width: 100%; }
+.sb-project-danger, .sb-project-notice { color: var(--sb-ui-danger) !important; }
+.sb-project-notice { margin: 0; padding: 8px 24px; }
+.sb-project-detail :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.sb-project-detail:not(.sb-project-page) .sb-project-header { padding: 0 0 16px; }
+.sb-project-detail:not(.sb-project-page) .sb-project-dossier { padding: 20px 0; }
+.sb-project-detail:not(.sb-project-page) .sb-project-evidence { display: block; }
+.sb-project-detail:not(.sb-project-page) .sb-project-add { padding: 12px 0 0; background: transparent; }

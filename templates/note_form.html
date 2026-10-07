@@ -842,51 +842,57 @@
 {% endif %}
 
 {% if not is_general_note %}
-<!-- Engagement Action Item Creation Flyout -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="engTaskFlyout" aria-labelledby="engTaskFlyoutLabel" data-bs-backdrop="false" data-bs-scroll="true" style="width: 400px;">
-    <div class="offcanvas-header py-2 border-bottom">
-        <h6 class="offcanvas-title" id="engTaskFlyoutLabel"><i class="bi bi-check2-square"></i> <span id="engTaskFlyoutTitleText">New Action Item</span></h6>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+<!-- Engagement Action Item Creation Dialog -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-task-editor.css') }}">
+<dialog class="sb-dialog sb-task-dialog" id="engTaskFlyout" aria-labelledby="engTaskFlyoutLabel">
+    <div class="sb-dialog-shell">
+    <div class="sb-dialog-header">
+        <h2 id="engTaskFlyoutLabel"><i class="bi bi-check2-square"></i> <span id="engTaskFlyoutTitleText">New Action Item</span></h2>
+        <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">×</button>
     </div>
-    <div class="offcanvas-body">
-        <div class="mb-3">
-            <label for="engTaskTitle" class="form-label">Title <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="engTaskTitle" placeholder="Follow up on POC results..." maxlength="300">
+    <div class="sb-dialog-body sb-task-fields">
+        <div>
+            <label for="engTaskTitle" class="sb-record-field-label">Title (required)</label>
+            <input type="text" class="sb-record-field" id="engTaskTitle" placeholder="Follow up on POC results..." maxlength="300">
         </div>
-        <div class="mb-3">
-            <label class="form-label">Description</label>
+        <div class="sb-task-rich">
+            <span class="sb-record-field-label">Description</span>
             <div id="engTaskDescriptionEditor" style="min-height: 80px;"></div>
         </div>
-        <div class="mb-3">
-            <label for="engTaskTarget" class="form-label">Engagement</label>
-            <select class="form-select" id="engTaskTarget"></select>
+        <div>
+            <label for="engTaskTarget" class="sb-record-field-label">Engagement</label>
+            <select class="sb-record-field" id="engTaskTarget"></select>
         </div>
-        <div class="row mb-3">
-            <div class="col-7">
-                <label for="engTaskDue" class="form-label">Due Date</label>
-                <input type="date" class="form-control" id="engTaskDue">
+        <div class="sb-task-row">
+            <div>
+                <label for="engTaskDue" class="sb-record-field-label">Due Date</label>
+                <input type="date" class="sb-record-field" id="engTaskDue">
             </div>
-            <div class="col-5">
-                <label for="engTaskPriority" class="form-label">Priority</label>
-                <select class="form-select" id="engTaskPriority">
+            <div>
+                <label for="engTaskPriority" class="sb-record-field-label">Priority</label>
+                <select class="sb-record-field" id="engTaskPriority">
                     <option value="normal">Normal</option>
                     <option value="high">High</option>
                 </select>
             </div>
         </div>
-        <div class="mb-3">
-            <label for="engTaskContact" class="form-label">Contact</label>
-            <input type="text" class="form-control" id="engTaskContact" placeholder="Point of contact" maxlength="200">
+        <div>
+            <label for="engTaskContact" class="sb-record-field-label">Contact</label>
+            <input type="text" class="sb-record-field" id="engTaskContact" placeholder="Point of contact" maxlength="200">
         </div>
-        <button type="button" class="btn btn-success w-100" id="engTaskCreateBtn" onclick="createEngTask()">
+        <div id="engTaskResult" role="status" style="display:none;"></div>
+    </div>
+    <div class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+        <button type="button" class="sb-dialog-button" id="engTaskCreateBtn" onclick="createEngTask()">
             <i class="bi bi-check-circle"></i> Create Action Item
         </button>
-        <button type="button" class="btn btn-primary w-100" id="engTaskSaveBtn" onclick="saveEngTask()" style="display:none;">
+        <button type="button" class="sb-dialog-button" id="engTaskSaveBtn" onclick="saveEngTask()" style="display:none;">
             <i class="bi bi-save"></i> Save Changes
         </button>
-        <div id="engTaskResult" class="small mt-2" style="display:none;"></div>
     </div>
-</div>
+    </div>
+</dialog>
 
 <!-- Engagement Creation Flyout -->
 <div class="offcanvas offcanvas-end" tabindex="-1" id="engagementFlyout" aria-labelledby="engagementFlyoutLabel" data-bs-backdrop="false" data-bs-scroll="true" style="width: 400px;">
@@ -1099,7 +1105,7 @@
 <style>
     /* Push flyouts below the sticky navbar (z-index 1050, ~56px tall) */
     #partnerFlyout, #engagementFlyout, #contactsFlyout,
-    #customerInfoFlyout, #engTaskFlyout, #projectFlyout {
+    #customerInfoFlyout, #projectFlyout {
         top: var(--sb-navbar-height, 56px) !important;
         height: calc(100% - var(--sb-navbar-height, 56px)) !important;
     }
@@ -1134,7 +1140,7 @@
 </style>
 <script>
 (function() {
-    const ids = ['partnerFlyout', 'engagementFlyout', 'contactsFlyout', 'customerInfoFlyout', 'engTaskFlyout', 'projectFlyout'];
+    const ids = ['partnerFlyout', 'engagementFlyout', 'contactsFlyout', 'customerInfoFlyout', 'projectFlyout'];
     const flyouts = ids.map(id => document.getElementById(id)).filter(Boolean);
     if (flyouts.length < 2) return;
 
@@ -8081,9 +8087,10 @@ function textToHtml(text) {
 // Engagement Action Item Creation (Flyout)
 // =============================================
 var _lastQuillCursorPos = null;
-var _engTaskFlyoutInstance = null;
 var _engTaskEditId = null;        // null = create mode, int = editing task ID
 var _engTaskCleanState = null;    // snapshot of form when opened/loaded for dirty check
+var _engTaskPending = false;
+var _engTaskReadVersion = 0;
 
 // Mini Quill editor for action item description
 var _engTaskQuill = new Quill('#engTaskDescriptionEditor', {
@@ -8098,6 +8105,9 @@ var _engTaskQuill = new Quill('#engTaskDescriptionEditor', {
         ]
     }
 });
+_engTaskQuill.root.setAttribute('role', 'textbox');
+_engTaskQuill.root.setAttribute('aria-label', 'Action item description');
+_engTaskQuill.root.setAttribute('aria-multiline', 'true');
 
 // Track cursor position continuously so we have it when Quill loses focus
 quill.on('selection-change', function(range) {
@@ -8127,7 +8137,7 @@ function _getEngTaskFormState() {
 
 function isEngTaskFlyoutDirty() {
     var flyout = document.getElementById('engTaskFlyout');
-    if (!flyout || !flyout.classList.contains('show')) return false;
+    if (!flyout || !flyout.open) return false;
     return _engTaskCleanState !== _getEngTaskFormState();
 }
 
@@ -8170,6 +8180,7 @@ function syncEngTaskButton() {
 }
 
 function openEngTaskFlyout() {
+    if (_engTaskPending) return;
     // If flyout is already open with unsaved changes, warn
     if (isEngTaskFlyoutDirty()) {
         if (!confirm('You have unsaved changes to an action item. Discard them?')) return;
@@ -8177,15 +8188,14 @@ function openEngTaskFlyout() {
     // _lastQuillCursorPos is already tracked via selection-change listener
     _resetEngTaskFlyout();
     syncEngTaskButton();
-    if (!_engTaskFlyoutInstance) {
-        _engTaskFlyoutInstance = new bootstrap.Offcanvas(document.getElementById('engTaskFlyout'));
-    }
-    _engTaskFlyoutInstance.show();
+    _engTaskReadVersion++;
+    SBDialog.open('engTaskFlyout');
     _engTaskCleanState = _getEngTaskFormState();
     setTimeout(function() { document.getElementById('engTaskTitle').focus(); }, 300);
 }
 
 function openEngTaskEdit(taskId) {
+    if (_engTaskPending) return;
     // If flyout is already open with unsaved changes (create or different edit), warn
     if (_engTaskEditId !== taskId && isEngTaskFlyoutDirty()) {
         if (!confirm('You have unsaved changes to an action item. Discard them?')) return;
@@ -8199,16 +8209,21 @@ function openEngTaskEdit(taskId) {
     document.getElementById('engTaskSaveBtn').style.display = '';
     document.getElementById('engTaskTarget').disabled = true;
 
-    if (!_engTaskFlyoutInstance) {
-        _engTaskFlyoutInstance = new bootstrap.Offcanvas(document.getElementById('engTaskFlyout'));
-    }
-    _engTaskFlyoutInstance.show();
+    SBDialog.open('engTaskFlyout');
+    var readVersion = ++_engTaskReadVersion;
+    document.getElementById('engTaskSaveBtn').disabled = true;
+    _engTaskCleanState = _getEngTaskFormState();
 
     // Fetch task data
     fetch('/action-item/' + taskId)
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) throw new Error('Could not load action item (HTTP ' + r.status + ').');
+            return r.json();
+        })
         .then(function(data) {
-            if (data.success) {
+            if (readVersion !== _engTaskReadVersion ||
+                    !document.getElementById('engTaskFlyout').open) return;
+            if (data.success && data.task && data.task.id === taskId) {
                 var t = data.task;
                 document.getElementById('engTaskTitle').value = t.title || '';
                 _engTaskQuill.root.innerHTML = t.description || '';
@@ -8228,26 +8243,32 @@ function openEngTaskEdit(taskId) {
                     }
                 }
                 _engTaskCleanState = _getEngTaskFormState();
+                document.getElementById('engTaskSaveBtn').disabled = false;
                 setTimeout(function() { document.getElementById('engTaskTitle').focus(); }, 100);
-            }
+            } else throw new Error(data.error || 'The requested action item was not returned.');
         })
         .catch(function(err) {
+            if (readVersion !== _engTaskReadVersion) return;
+            console.error('Could not load engagement action item.', err);
             var result = document.getElementById('engTaskResult');
-            result.className = 'small mt-2 text-danger';
+            result.className = 'sb-task-error';
             result.textContent = 'Failed to load action item: ' + err.message;
             result.style.display = 'block';
         });
 }
 
 function saveEngTask() {
+    if (_engTaskPending) return;
     var titleEl = document.getElementById('engTaskTitle');
     var title = titleEl.value.trim();
     if (!title) { titleEl.focus(); return; }
-    var description = _engTaskQuill.getText().trim() ? _engTaskQuill.root.innerHTML : '';
+    var description = _engTaskQuill.getText().trim() ||
+        _engTaskQuill.root.querySelector('img, table, video') ? _engTaskQuill.root.innerHTML : '';
     var due = document.getElementById('engTaskDue').value;
     var priority = document.getElementById('engTaskPriority').value;
     var contact = document.getElementById('engTaskContact').value.trim();
 
+    setEngTaskPending(true);
     fetch('/action-item/' + _engTaskEditId, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
@@ -8259,7 +8280,10 @@ function saveEngTask() {
             contact: contact || null
         })
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+        if (!r.ok) throw new Error('Could not save action item (HTTP ' + r.status + ').');
+        return r.json();
+    })
     .then(function(data) {
         if (data.success) {
             var task = data.task;
@@ -8272,21 +8296,23 @@ function saveEngTask() {
                 }
             });
             _engTaskCleanState = _getEngTaskFormState();
-            if (_engTaskFlyoutInstance) _engTaskFlyoutInstance.hide();
+            setEngTaskPending(false);
+            SBDialog.close('engTaskFlyout', 'saved');
             _resetEngTaskFlyout();
         } else {
             var result = document.getElementById('engTaskResult');
-            result.className = 'small mt-2 text-danger';
+            result.className = 'sb-task-error';
             result.textContent = data.error || 'Failed.';
             result.style.display = 'block';
         }
     })
     .catch(function(err) {
+        console.error('Could not save engagement action item.', err);
         var result = document.getElementById('engTaskResult');
-        result.className = 'small mt-2 text-danger';
+        result.className = 'sb-task-error';
         result.textContent = 'Error: ' + err.message;
         result.style.display = 'block';
-    });
+    }).finally(function() { setEngTaskPending(false); });
 }
 
 function _makeEngTaskBadge(task) {
@@ -8303,29 +8329,36 @@ function _makeEngTaskBadge(task) {
 }
 
 function createEngTask() {
+    if (_engTaskPending) return;
     var titleEl = document.getElementById('engTaskTitle');
     var title = titleEl.value.trim();
     if (!title) { titleEl.focus(); return; }
     var engId = document.getElementById('engTaskTarget').value;
     if (!engId) { alert('Select an engagement first.'); return; }
-    var description = _engTaskQuill.getText().trim() ? _engTaskQuill.root.innerHTML : '';
+    var description = _engTaskQuill.getText().trim() ||
+        _engTaskQuill.root.querySelector('img, table, video') ? _engTaskQuill.root.innerHTML : '';
     var due = document.getElementById('engTaskDue').value;
     var priority = document.getElementById('engTaskPriority').value;
     var contact = document.getElementById('engTaskContact').value.trim();
     var noteId = {% if note %}{{ note.id }}{% else %}null{% endif %};
 
+    setEngTaskPending(true);
     fetch('/engagement/' + engId + '/action-items', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({title: title, description: description || null, due_date: due || null, priority: priority, contact: contact || null, note_id: noteId})
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+        if (!r.ok) throw new Error('Could not create action item (HTTP ' + r.status + ').');
+        return r.json();
+    })
     .then(function(data) {
         if (data.success) {
             var task = data.task;
             // Clear dirty state before hide so the close guard doesn't fire
             _engTaskCleanState = _getEngTaskFormState();
-            if (_engTaskFlyoutInstance) _engTaskFlyoutInstance.hide();
+            setEngTaskPending(false);
+            SBDialog.close('engTaskFlyout', 'saved');
             _resetEngTaskFlyout();
             // Add badge to toolbar area
             var badges = document.getElementById('engTaskBadges');
@@ -8341,33 +8374,53 @@ function createEngTask() {
             setTimeout(function() { if (typeof saveDraft === 'function') saveDraft(); }, 100);
         } else {
             var result = document.getElementById('engTaskResult');
-            result.className = 'small mt-2 text-danger';
+            result.className = 'sb-task-error';
             result.textContent = data.error || 'Failed.';
             result.style.display = 'block';
         }
     })
     .catch(function(err) {
+        console.error('Could not create engagement action item.', err);
         var result = document.getElementById('engTaskResult');
-        result.className = 'small mt-2 text-danger';
+        result.className = 'sb-task-error';
         result.textContent = 'Error: ' + err.message;
         result.style.display = 'block';
+    }).finally(function() { setEngTaskPending(false); });
+}
+
+function setEngTaskPending(pending) {
+    _engTaskPending = pending;
+    document.getElementById('engTaskCreateBtn').disabled = pending;
+    document.getElementById('engTaskSaveBtn').disabled = pending;
+    ['engTaskTitle', 'engTaskDue', 'engTaskPriority', 'engTaskContact'].forEach(function(id) {
+        document.getElementById(id).disabled = pending;
     });
+    document.getElementById('engTaskTarget').disabled = pending || !!_engTaskEditId;
+    _engTaskQuill.enable(!pending);
 }
 
 var _engTaskTitleEl = document.getElementById('engTaskTitle');
 if (_engTaskTitleEl) {
     _engTaskTitleEl.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') { e.preventDefault(); createEngTask(); }
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (_engTaskEditId) saveEngTask();
+            else createEngTask();
+        }
     });
 }
 
 // Guard the action item flyout close (X button or backdrop click)
-document.getElementById('engTaskFlyout').addEventListener('hide.bs.offcanvas', function(e) {
+document.getElementById('engTaskFlyout').addEventListener('sb:dialog-before-close', function(e) {
+    if (_engTaskPending) { e.preventDefault(); return; }
     if (isEngTaskFlyoutDirty()) {
         if (!confirm('You have unsaved changes to an action item. Discard them?')) {
             e.preventDefault();
         }
     }
+});
+document.getElementById('engTaskFlyout').addEventListener('sb:dialog-closed', function() {
+    _engTaskReadVersion++;
 });
 
 // Hook into engagement selection changes
@@ -8979,10 +9032,6 @@ function saveAllInlineEngagements() {
 var saveInlineEngagement = saveAllInlineEngagements;
 </script>
 {% endblock %}
-
-
-
-
 
 
 

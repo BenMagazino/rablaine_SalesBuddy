@@ -1,81 +1,38 @@
 {% extends "base.html" %}
-
 {% block title %}Action Items - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status"><span>Local action items · Milestone maintenance is separate from MSX HoK tasks</span><span>Open tasks · Existing seller and preference scope</span></footer>
+{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-check2-square"></i> Action Items</h2>
-</div>
-
-{% include 'partials/_action_items_hub.html' %}
-
+<section class="sb-actions" data-sb-page-surface aria-labelledby="actionsTitle">
+    <header class="sb-actions-heading" data-sb-page-band><h1 id="actionsTitle">Action Items</h1><p>Follow-ups and maintenance, at a glance.</p></header>
+    <nav class="sb-actions-nav" aria-label="Action queues" data-sb-page-band>
+        <a href="#actions-engagement">Engagement Tasks <span>{{ engagement_tasks|length }}</span></a>
+        <a href="#actions-copilot">Copilot Suggestions <span>{{ saved_tasks|length + copilot_tasks|length }}</span></a>
+        <a href="#actions-project">Project Tasks <span>{{ project_tasks|length }}</span></a>
+        <a href="#actions-hygiene">Hygiene <span>{{ hygiene_tasks|length }}</span></a>
+        <a href="#actions-stale">Stale Milestones <span>{{ stale_milestones|length }}</span></a>
+    </nav>
+    <p class="sb-actions-notice" id="actionsReadingNotice" role="alert" hidden></p>
+    <div class="sb-actions-reading" data-sb-page-body tabindex="0" aria-label="Action queues">
+        {% include 'partials/_action_items_hub.html' %}
+    </div>
+</section>
 {% include 'partials/_action_item_detail_modal.html' %}
-
 <script>
-window.openActionItemsMilestone = function(event, msId, msTitle, msStatus, msUrl) {
+window.openActionItemsMilestone = function(event, id, title, status, url) {
     if (event.target.closest('a, button')) return;
-    return SBMilestonePreview.open(msId, msTitle, msStatus, msUrl);
+    return SBMilestonePreview.open(id, title, status, url);
 };
 </script>
-
-<!-- Engagement Detail Modal -->
-<div class="modal fade" id="actionItemsEngagementModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1100px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <div class="d-flex align-items-center gap-2">
-                    <h5 class="modal-title mb-0"><i class="bi bi-diagram-3"></i> <span id="aiEngTitle">Loading...</span></h5>
-                    <span id="aiEngBadge"></span>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <a id="aiEngFullLink" href="#" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrows-fullscreen"></i> Full Page</a>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-            </div>
-            <div class="modal-body p-3" id="aiEngBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+<dialog class="sb-dialog sb-actions-engagement-dialog" id="actionItemsEngagementModal" aria-labelledby="aiEngTitle">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header"><div class="sb-dialog-heading"><div class="sb-dialog-eyebrow">Engagement</div><h2 id="aiEngTitle">Engagement</h2></div><span id="aiEngBadge"></span><a id="aiEngFullLink" href="#" class="sb-dialog-button">Full Page</a><button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close engagement"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+        <div class="sb-dialog-body" id="aiEngBody"></div>
     </div>
-</div>
-<script>
-(function() {
-    var engModal = null;
-    var titleEl = document.getElementById('aiEngTitle');
-    var bodyEl = document.getElementById('aiEngBody');
-    var badgeEl = document.getElementById('aiEngBadge');
-    var fullLink = document.getElementById('aiEngFullLink');
-
-    window.openActionItemsEngagement = function(engId, engTitle, engStatus) {
-        if (!engModal) {
-            engModal = new bootstrap.Modal(document.getElementById('actionItemsEngagementModal'));
-        }
-        titleEl.textContent = engTitle || 'Engagement';
-        if (engStatus) {
-            var cls = {'Active':'bg-success','Won':'bg-primary','Lost':'bg-danger','On Hold':'bg-warning text-dark'}[engStatus] || 'bg-secondary';
-            badgeEl.innerHTML = '<span class="badge ' + cls + '">' + engStatus + '</span>';
-        } else {
-            badgeEl.innerHTML = '';
-        }
-        fullLink.href = '/engagement/' + engId;
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        engModal.show();
-        fetch('/api/engagement/' + engId + '/detail')
-            .then(function(r) { if (!r.ok) throw new Error(); return r.text(); })
-            .then(function(html) {
-                bodyEl.innerHTML = html;
-                bodyEl.querySelectorAll('script').forEach(function(old) {
-                    var s = document.createElement('script');
-                    if (old.src) { s.src = old.src; } else { s.textContent = '(function(){' + old.textContent + '})();'; }
-                    old.replaceWith(s);
-                });
-            })
-            .catch(function() { bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load engagement details.</div>'; });
-    };
-})();
-</script>
+</dialog>
 {% endblock %}
