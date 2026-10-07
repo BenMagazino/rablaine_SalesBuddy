@@ -4,6 +4,33 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
+test('a failed workspace flush protects the existing detail from replacement', async () => {
+    const h = harness();
+    let disposed = false;
+    h.window.SBOneOnOneWorkspace = {
+        root: {isConnected: true}, flush: async () => { throw new Error('Offline'); },
+        dispose() { disposed = true; },
+    };
+    h.sellerNotes();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests.length, 0);
+    assert.equal(disposed, false);
+});
+
+test('successful workspace flush disposes old editor timers before a new detail read', async () => {
+    const h = harness();
+    const sequence = [];
+    h.window.SBOneOnOneWorkspace = {
+        root: {isConnected: true}, flush: async () => { sequence.push('flush'); },
+        dispose() { sequence.push('dispose'); },
+    };
+    h.sellerNotes();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(sequence, ['flush', 'dispose']);
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.requests[0].url, '/api/seller/12/one-on-one/detail');
+});
+
 function classes(initial = []) {
     const values = new Set(initial);
     return {

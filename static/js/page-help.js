@@ -407,6 +407,12 @@ const PageHelp = (function () {
       <p>Filter sellers in <strong>Start another workspace</strong>. This only narrows available seller quick starts, not the existing workspace directory. Opening a seller quick start creates or reuses that seller's scoped workspace. The Manager/Other form creates a workspace only when you click <strong>Create</strong>.</p>
       <p>Back restores seller filtering, table order, reading positions and an unsubmitted name/type draft. Embedded hubs keep their state local without changing the parent history.</p>
     `},
+    { pattern: /^\/one-on-one\/\d+\/?$/, title: '1:1 Notes', content: `
+      <p>Keep recurring context in <strong>Standing notes</strong> while the <strong>Next conversation</strong> agenda scrolls separately. The existing rich-text toolbar supports headings, lists, links, images and editable tables. The notes editor fills the available page height, with long notes scrolling beneath the fixed toolbar. Back restores both reading regions and the discussion-history disclosure.</p>
+      <p>Standing notes and talking points save automatically. <strong>Not saved</strong> keeps the draft in place and offers <strong>Retry save</strong>. Navigation, agenda actions and closing an inline workspace wait for pending autosaves; unsent discussion notes and engagement edits remain protected.</p>
+      <p><strong>Add to Agenda</strong> searches engagements or milestones. Seller workspaces stay scoped to that seller's customers; Manager/Other workspaces use the full book. Existing active items are excluded. Choosing a result adds it to this workspace.</p>
+      <p>Use an item's actions menu to mark it discussed or remove it. <strong>Discussion history</strong> retains earlier talking points and dates, with Restore and Delete controls. Milestones can become linked engagements without losing their talking points. Engagements retain their inline details editor and discussion-note history; <strong>Save to engagement</strong> creates the linked note.</p>
+    `},
     { pattern: /^\/reports\/one-on-one\/?$/, title: '1:1 Preparation', content: `
       <p>Prepare for a seller or manager conversation using recent activity and all open engagements.</p>
       <p><strong>Last 2 Weeks</strong> groups customers by recent note call dates. <strong>All Open Engagements</strong> shows Active engagements, including work without recent notes. The six totals and highlight tables keep their existing scopes in both views.</p>

@@ -2,7 +2,7 @@
 
 - Route: `/one-on-one/`, including embed.
 - Baseline: approved product `acb97fb3`; live Before captured before editing.
-- Status: VERIFY, user-approved October 6; local commit authorized.
+- Status: VERIFY, user-approved October 6; locally committed as `dead47b9`.
 - Scope: existing directory and quick starts only. Persistent workspace/editor
   and Initiative Tracker are not redesigned here. Hub remains outside the nav menu.
 

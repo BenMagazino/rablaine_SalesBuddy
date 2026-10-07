@@ -57,6 +57,11 @@ standalone UI iterations using entirely fictional data. See the
   type, standing context, queue/history counts and update dates. Seller quick starts
   retain their customer-book scope. Back restores the seller filter, table order,
   reading positions and an unsubmitted Manager/Other name. Creation remains explicit.
+  Each workspace pairs the existing rich-text standing notes with an independently
+  scrolling conversation agenda. Agenda search and engagement editing use native
+  dialogs. Autosaves serialize newer edits, expose Retry save on failure and
+  protect pending work before navigation, agenda changes or closing an inline workspace.
+  Back restores the agenda, standing-note reading regions and discussion-history disclosure.
 - **Initiative Tracker** - create named initiatives, select engagements and milestones,
   grouped by their current seller, with live status, commitment, dates, and ACR.
   When user-facing internal projects exist, **Add work** also offers **Projects**, with

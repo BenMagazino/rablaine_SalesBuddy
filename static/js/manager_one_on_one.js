@@ -286,6 +286,15 @@
     }
 
     async function openDetail(title, fullUrl, fragmentUrl) {
+        const workspace = window.SBOneOnOneWorkspace;
+        if (workspace?.root?.isConnected) {
+            try {
+                await workspace.flush();
+            } catch {
+                return;
+            }
+            workspace.dispose();
+        }
         detailRequest?.abort();
         for (const modal of document.querySelectorAll('[data-workspace-parent-modal]')) {
             if (modal instanceof HTMLDialogElement) SBDialog.close(modal, 'replace');
