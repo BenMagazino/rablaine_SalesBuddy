@@ -15,7 +15,7 @@
 {% endif %}
 {% endblock %}
 {% block content %}
-<section class="sb-impact" data-sb-impact data-sb-page-surface data-since="{{ since_date }}"
+<section class="sb-impact{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-impact data-sb-page-surface data-since="{{ since_date }}"
          data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          aria-labelledby="impactTitle">
     <header class="sb-impact-header" data-sb-page-band>

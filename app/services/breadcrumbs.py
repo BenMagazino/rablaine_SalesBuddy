@@ -11,7 +11,8 @@ from app.services.breadcrumb_types import Breadcrumb, current, home, link
 
 SYSTEM_ENDPOINTS = {
     "main.index", "main.search", "main.preferences", "main.template_create",
-    "main.template_edit", "main.analytics", "main.action_items_hub",
+    "main.template_edit", "main.template_save", "main.template_update",
+    "main.analytics", "main.action_items_hub",
     "admin.admin_panel", "admin.admin_ai_logs", "admin.admin_favicon_gallery",
     "metrics.metrics_dashboard", "connect_export.connect_export_page",
 }
@@ -35,7 +36,10 @@ def system_breadcrumbs(endpoint: str, label: str) -> list[Breadcrumb] | None:
     if endpoint == "main.index":
         return [current("Home")]
     ancestors = [home()]
-    if endpoint in {"main.template_create", "main.template_edit"}:
+    if endpoint in {
+        "main.template_create", "main.template_edit", "main.template_save",
+        "main.template_update",
+    }:
         ancestors.append(link("Settings", "main.preferences"))
     elif endpoint.startswith("admin.") and endpoint != "admin.admin_panel":
         ancestors.append(link("Admin Panel", "admin.admin_panel"))

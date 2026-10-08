@@ -68,6 +68,8 @@ def test_native_ranking_and_milestone_panes(client, impact_data, embedded):
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one("[data-sb-impact]")
+    for frame in ("sb-directory-frame", "sb-directory-frame-wide"):
+        assert (frame in root.get("class", [])) is not embedded
     assert root["data-since"] == "2026-05-01"
     assert root["data-embedded"] == str(embedded).lower()
     options = root.select("#impactDatePreset option")

@@ -8,7 +8,7 @@
 .sb-revenue-workspace, .sb-revenue-workspace * { box-sizing: border-box; }
 .sb-revenue-workspace {
     padding: 20px 24px 32px;
-    background: var(--sb-ui-canvas);
+    background: var(--sb-ui-surface);
     color: var(--sb-ui-ink);
     font: 13px/1.6 var(--sb-ui-font);
 }
@@ -93,7 +93,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    background: var(--sb-ui-canvas);
+    background: var(--sb-ui-surface);
 }
 .sb-page-frame .sb-revenue-workarea > .sb-revenue-alerts { flex: 1; }
 .sb-page-frame .sb-revenue-workarea .sb-revenue-list-summary {
@@ -114,7 +114,7 @@
     position: sticky;
     top: 0;
     z-index: 1;
-    background: var(--sb-ui-canvas);
+    background: var(--sb-ui-surface);
     box-shadow: inset 0 -1px var(--sb-ui-line);
 }
 .sb-page-frame .sb-revenue-workarea .sb-revenue-alerts-table :is(th, td):first-child { padding-left: var(--sb-ui-space-4); }

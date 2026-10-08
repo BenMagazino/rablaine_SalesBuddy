@@ -19,6 +19,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from flask import Blueprint, jsonify, request, Response, g, current_app, stream_with_context
 import logging
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.services.msx_auth import (
     get_msx_auth_status,
@@ -744,7 +745,15 @@ def join_deal_team():
 
     if result.get("success"):
         opportunity.on_deal_team = True
-        db.session.commit()
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            logger.exception("MSX join succeeded but deal-team cache failed for %s", opportunity_id)
+            return jsonify(success=False, remote_changed=True, error=(
+                'MSX team membership changed, but the local cache could not be saved. '
+                'Check MSX before retrying.'
+            )), 500
 
     return jsonify(result)
 
@@ -779,7 +788,15 @@ def leave_deal_team():
 
     if result.get("success"):
         opportunity.on_deal_team = False
-        db.session.commit()
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            logger.exception("MSX leave succeeded but deal-team cache failed for %s", opportunity_id)
+            return jsonify(success=False, remote_changed=True, error=(
+                'MSX team membership changed, but the local cache could not be saved. '
+                'Check MSX before retrying.'
+            )), 500
 
     return jsonify(result)
 

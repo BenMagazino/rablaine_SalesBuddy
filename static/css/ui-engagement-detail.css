@@ -24,7 +24,9 @@
 .sb-engagement-layout {
     display: grid; grid-template-columns: minmax(420px, 43%) 1fr; min-height: 0;
 }
-.sb-engagement-story, .sb-engagement-work { min-width: 0; padding: 0 24px 24px; }
+.sb-engagement-story, .sb-engagement-work {
+    min-width: 0; padding: 0 24px 24px; background: var(--sb-ui-surface);
+}
 .sb-engagement-story { border-right: 1px solid var(--sb-ui-line); }
 .sb-engagement-page .sb-engagement-story,
 .sb-engagement-page .sb-engagement-work { overflow: auto; overscroll-behavior: contain; }

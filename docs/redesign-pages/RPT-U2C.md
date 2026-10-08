@@ -1,10 +1,31 @@
 # RPT-U2C: U2C Attainment
 
+## Content consistency review
+
+Latest evidence: `consistency-reports-u2c-{before,after,light-after}.png`.
+Earlier captures below are preserved as superseded comparisons. This single
+reading composition stays 1152px and surface-backed in both themes. Fiscal
+values, trend chart and semantic attainment fills are unchanged.
+Complete measurements and source audit: private `consistency-reports-results.json`.
+
 - Checkpoint: 43, `feature/ui-redesign`.
 - Audited revision: `55c4bc9c`.
 - Status: VERIFY, technically checked and user-approved October 6, 2026.
 - Approved implementation committed locally as `deac029f`.
 - Approved overall effort is about 48%; final inventory reconciliation is separate.
+
+## Readable-width follow-up, October 7, 2026
+
+- The standalone title, quarter/workload filters, metrics, trend and milestone queues
+  share a centered 1152px reading frame; the app/context/status strips remain full-width.
+- The chart still uses the complete quarter and all retained series. Queue columns,
+  frozen/live totals, filtering, agenda actions and embedded ownership are unchanged.
+- Actual dev desktop, unchanged 1559x1167: x=203.5, width=1152; shell width=1559.
+  Dark/light chart and queue checks show no internal horizontal or document overflow.
+- Inspected private evidence: `width-report-reports-u2c-before.png`,
+  `width-report-reports-u2c-after.png` and its `light-after` counterpart.
+- Combined focused width/parity regression: 150 pytest and 178 Node tests pass.
+  Prior approval/checkpoint status remains unchanged; no refresh/agenda write performed.
 
 ## Contract
 

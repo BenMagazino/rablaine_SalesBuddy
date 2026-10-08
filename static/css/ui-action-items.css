@@ -8,7 +8,10 @@
 .sb-actions-nav a { color: var(--sb-ui-ink); text-decoration: none; }
 .sb-actions-nav span { margin-left: 6px; color: var(--sb-ui-muted); font-variant-numeric: tabular-nums; }
 .sb-actions .sb-actions-reading { overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
-.sb-actions-content { font: 13px/1.5 var(--sb-ui-font); color: var(--sb-ui-ink); }
+.sb-actions-content {
+    font: 13px/1.5 var(--sb-ui-font); color: var(--sb-ui-ink);
+    background: var(--sb-ui-surface);
+}
 .sb-actions-queue { border-bottom: 1px solid var(--sb-ui-line); scroll-margin-top: 8px; }
 .sb-actions-queue > header { display: flex; align-items: center; gap: 12px; padding: 12px 24px; background: var(--sb-ui-context); border-bottom: 1px solid var(--sb-ui-line); }
 .sb-actions-queue h2 { font-size: 13px; font-weight: 600; margin: 0; }

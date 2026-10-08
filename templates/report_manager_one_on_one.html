@@ -46,7 +46,7 @@
 {% endmacro %}
 
 {% block content %}
-<div id="managerReport" class="sb-initiative-tracker" data-sb-page-surface>
+<div id="managerReport" class="sb-initiative-tracker{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface>
     <header class="it-header">
         <div><h2>Initiative Tracker</h2><p>Track priorities, related work, and discussion points.</p></div>
         <button class="it-command is-primary" type="button" data-action="toggle-editor"

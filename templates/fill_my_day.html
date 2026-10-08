@@ -1,142 +1,67 @@
 {% extends "base.html" %}
 
 {% block title %}Fill My Day - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-fill-day.css') }}">
+{% endblock %}
 {% block content %}
-<style>
-    .meeting-card {
-        transition: all 0.4s ease;
-    }
-    .meeting-card.saving {
-        opacity: 0.5;
-        pointer-events: none;
-    }
-    .meeting-card.saved {
-        opacity: 0;
-        max-height: 0;
-        overflow: hidden;
-        margin: 0 !important;
-        padding: 0 !important;
-        border: none !important;
-    }
-    .step-badge {
-        width: 28px;
-        height: 28px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        font-size: 0.8rem;
-        font-weight: bold;
-    }
-    .step-badge.pending { background-color: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
-    .step-badge.active { background-color: #2A86D1; color: white; }
-    .step-badge.done { background-color: var(--bs-success); color: white; }
-    .step-badge.error { background-color: var(--bs-danger); color: white; }
-    .notes-preview {
-        max-height: 200px;
-        overflow-y: auto;
-        font-size: 0.9rem;
-        border: 1px solid var(--bs-border-color);
-        border-radius: 4px;
-        padding: 0.75rem;
-        background: var(--bs-tertiary-bg);
-        color: var(--bs-body-color);
-    }
-    .customer-match-badge {
-        font-size: 0.75rem;
-    }
-    .topic-tag {
-        font-size: 0.75rem;
-        cursor: pointer;
-    }
-    .topic-tag.deselected {
-        opacity: 0.4;
-        text-decoration: line-through;
-    }
-</style>
-
-<div class="container-fluid px-4 py-3">
-
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2><i class="bi bi-lightning-charge text-warning"></i> Fill My Day</h2>
-            <p class="text-muted mb-0">Import all your meetings for a day into notes in one shot.</p>
-        </div>
-        <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Back
-        </a>
+<section class="fill-workbench sb-directory-frame" data-sb-page-surface aria-labelledby="fillTitle">
+    <header class="fill-heading" data-sb-page-band>
+        <h1 id="fillTitle"><i class="bi bi-lightning-charge" aria-hidden="true"></i> Fill My Day</h1>
+        <a class="fill-button" href="{{ url_for('main.index') }}">Back</a>
+    </header>
+    <div class="fill-controls" data-sb-page-band>
+        <label for="fillDate">Date</label>
+        <input type="date" id="fillDate" value="{{ prefill_date }}">
+        <button class="fill-button fill-primary" id="startBtn" onclick="startFillMyDay()">
+            <i class="bi bi-lightning-charge" aria-hidden="true"></i> Fetch Meetings
+        </button>
+        <span class="fill-muted">Fetch, match customers, then enrich with AI. Save each note after review.</span>
+        <span id="statusArea" style="display:none;"><span id="statusText"></span></span>
     </div>
-
-    <!-- Date Selection & Start -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row align-items-end">
-                <div class="col-auto">
-                    <label for="fillDate" class="form-label fw-bold">Date</label>
-                    <input type="date" class="form-control" id="fillDate" 
-                           value="{{ prefill_date }}" style="width: 200px;">
-                </div>
-                <div class="col-auto">
-                    <button class="btn btn-warning btn-lg" id="startBtn" onclick="startFillMyDay()">
-                        <i class="bi bi-lightning-charge"></i> Fetch Meetings
-                    </button>
-                </div>
-                <div class="col-auto" id="statusArea" style="display: none;">
-                    <span id="statusText" class="text-muted"></span>
-                </div>
-            </div>
-        </div>
+    <div id="progressPanel" class="fill-progress" data-sb-page-band role="status" style="display:none;">
+        <span id="stepFetch"><span class="step-badge pending" id="stepFetchBadge">1</span>
+            <span id="stepFetchLabel">Fetching meetings...</span></span>
+        <span id="stepMatch"><span class="step-badge pending" id="stepMatchBadge">2</span>
+            <span id="stepMatchLabel">Matching customers</span></span>
+        <span id="stepEnrich"><span class="step-badge pending" id="stepEnrichBadge">3</span>
+            <span id="stepEnrichLabel">AI enrichment</span></span>
     </div>
-
-    <!-- Progress Steps -->
-    <div id="progressPanel" style="display: none;" class="mb-4">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="d-flex align-items-center gap-2" id="stepFetch">
-                        <span class="step-badge pending" id="stepFetchBadge">1</span>
-                        <span class="text-muted" id="stepFetchLabel">Fetching meetings...</span>
-                    </div>
-                    <i class="bi bi-arrow-right text-muted"></i>
-                    <div class="d-flex align-items-center gap-2" id="stepMatch">
-                        <span class="step-badge pending" id="stepMatchBadge">2</span>
-                        <span class="text-muted" id="stepMatchLabel">Matching customers</span>
-                    </div>
-                    <i class="bi bi-arrow-right text-muted"></i>
-                    <div class="d-flex align-items-center gap-2" id="stepEnrich">
-                        <span class="step-badge pending" id="stepEnrichBadge">3</span>
-                        <span class="text-muted" id="stepEnrichLabel">AI enrichment</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div id="errorArea" class="fill-notice fill-danger" role="alert" data-sb-page-band style="display:none;">
+        <span id="errorText"></span>
     </div>
-
-    <!-- Error Area -->
-    <div id="errorArea" class="alert alert-danger" style="display: none;">
-        <i class="bi bi-exclamation-triangle"></i> <span id="errorText"></span>
-    </div>
-
-    <!-- Meeting Cards Container -->
-    <div id="meetingCards"></div>
-
-    <!-- Completion Summary -->
-    <div id="completionSummary" style="display: none;" class="mb-4">
-        <div class="alert alert-success">
-            <i class="bi bi-check-circle"></i>
+    <div class="fill-reading" data-sb-page-body tabindex="0" aria-label="Meeting review">
+        <p id="fillEmpty" class="fill-empty">Choose a date to import external meetings into notes.
+            Matched meetings appear here for content, topics, milestone and task review.</p>
+        <div id="meetingCards"></div>
+        <div id="completionSummary" class="fill-notice fill-success" role="status" style="display:none;">
             <strong>All done!</strong> <span id="completionText"></span>
         </div>
-    </div>
-
-    <!-- No Meetings Message -->
-    <div id="noMeetingsMsg" style="display: none;" class="mb-4">
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> No external meetings found for this date.
+        <div id="noMeetingsMsg" class="fill-notice" role="status" style="display:none;">
+            No external meetings found for this date.
         </div>
     </div>
-</div>
+</section>
+<dialog id="fillGuard" class="sb-dialog" aria-labelledby="fillGuardTitle">
+    <header class="sb-dialog-header"><h2 id="fillGuardTitle">Replace this review?</h2>
+        <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">&times;</button></header>
+    <div class="sb-dialog-body"><p id="fillGuardMessage">Fetching again replaces the current meeting review and unsaved edits.
+        Tasks already created in MSX are not undone.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Cancel</button>
+        <button type="button" id="fillGuardConfirm" class="fill-button fill-primary">Fetch Meetings</button>
+    </footer>
+</dialog>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Fill My Day status">
+    <span id="fillCount">No meetings fetched</span><span>WorkIQ / MSX · Manual save</span>
+</footer>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-fill-day.js') }}" defer></script>
 
 <script>
 // State
@@ -145,13 +70,18 @@ let customerMap = {};  // meeting index -> {customer_id, customer_name, score}
 let enrichedData = {};  // meeting index -> {content_html, topics, task_subject, task_description}
 let savedCount = 0;
 let totalCards = 0;
+let fillPending = false;
 
 async function startFillMyDay() {
+    if (fillPending) return;
     const dateStr = document.getElementById('fillDate').value;
     if (!dateStr) {
-        alert('Please select a date first.');
+        showError('Please select a date first.');
         return;
     }
+    if (!await confirmFill()) return;
+    setFillPending(true);
+    document.getElementById('fillDate').disabled = true;
 
     // Reset state
     meetings = [];
@@ -163,10 +93,14 @@ async function startFillMyDay() {
     document.getElementById('completionSummary').style.display = 'none';
     document.getElementById('noMeetingsMsg').style.display = 'none';
     document.getElementById('errorArea').style.display = 'none';
+    document.getElementById('fillEmpty').hidden = true;
+    ['Fetch', 'Match', 'Enrich'].forEach((step, index) => {
+        setStep(step, 'pending', ['Fetching meetings...', 'Matching customers', 'AI enrichment'][index]);
+    });
 
     // Disable start button, show progress
     document.getElementById('startBtn').disabled = true;
-    document.getElementById('startBtn').innerHTML = '<span class="spinner-border spinner-border-sm"></span> Working...';
+    document.getElementById('startBtn').innerHTML = '<span class="fill-busy"></span> Working...';
     document.getElementById('progressPanel').style.display = 'block';
 
     try {
@@ -175,8 +109,8 @@ async function startFillMyDay() {
         const meetingsResp = await fetch(`/api/meetings?date=${encodeURIComponent(dateStr)}`);
         const meetingsData = await meetingsResp.json();
 
-        if (meetingsData.error) {
-            throw new Error(meetingsData.error);
+        if (!meetingsResp.ok || meetingsData.error) {
+            throw new Error(meetingsData.error || 'Failed to fetch meetings.');
         }
 
         meetings = meetingsData.meetings || [];
@@ -206,6 +140,8 @@ async function startFillMyDay() {
 
     } catch (err) {
         console.error('Fill My Day error:', err);
+        const active = document.querySelector('.step-badge.active');
+        if (active) setStep(active.id.replace('step', '').replace('Badge', ''), 'error');
         showError(err.message || 'An unexpected error occurred');
     }
 
@@ -218,18 +154,18 @@ function setStep(stepName, state, label) {
 
     badge.className = `step-badge ${state}`;
 
+    labelEl.className = '';
     if (state === 'active') {
-        badge.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span>';
-        labelEl.classList.remove('text-muted');
-        labelEl.classList.add('text-primary', 'fw-bold');
+        badge.innerHTML = '<span class="fill-busy" style="width:14px;height:14px;"></span>';
+        labelEl.classList.add('fill-active');
     } else if (state === 'done') {
         badge.innerHTML = '<i class="bi bi-check"></i>';
-        labelEl.classList.remove('text-primary', 'fw-bold', 'text-muted');
-        labelEl.classList.add('text-success');
+        labelEl.classList.add('fill-success');
     } else if (state === 'error') {
         badge.innerHTML = '<i class="bi bi-x"></i>';
-        labelEl.classList.remove('text-primary', 'fw-bold', 'text-muted');
-        labelEl.classList.add('text-danger');
+        labelEl.classList.add('fill-danger');
+    } else {
+        badge.textContent = String(['Fetch', 'Match', 'Enrich'].indexOf(stepName) + 1);
     }
 
     if (label) {
@@ -240,6 +176,7 @@ function setStep(stepName, state, label) {
 async function matchCustomers(meetings) {
     // Fetch all customers for client-side matching
     const resp = await fetch('/api/customers');
+    if (!resp.ok) throw new Error('Could not load customers for matching.');
     const customers = await resp.json();
 
     for (let i = 0; i < meetings.length; i++) {
@@ -292,7 +229,7 @@ function fuzzyScore(str1, str2) {
     if (a.includes(b) || b.includes(a)) return 0.9;
 
     // Require at least one meaningful word (2+ chars) from one string
-    // to appear as a substring in the other — prevents false positives
+    // to appear as a substring in the other, preventing false positives
     // from single-character LCS on short strings (e.g. "CDP EHS" vs "McLeod Health")
     const wordsA = a.split(/\s+/).filter(w => w.length >= 2);
     const wordsB = b.split(/\s+/).filter(w => w.length >= 2);
@@ -348,11 +285,11 @@ async function enrichMeetings(dateStr) {
             });
             const data = await resp.json();
 
-            if (data.success) {
+            if (resp.ok && data.success) {
                 enrichedData[idx] = data;
             } else {
                 enrichedData[idx] = {
-                    content_html: `<h2>${escapeHtml(meeting.title)}</h2><p><em>Could not enrich: ${data.error || 'unknown error'}</em></p>`,
+                    content_html: `<h2>${escapeHtml(meeting.title)}</h2><p><em>Could not enrich: ${escapeHtml(data.error || 'unknown error')}</em></p>`,
                     topics: [],
                     task_subject: '',
                     task_description: ''
@@ -381,8 +318,8 @@ function renderMeetingCards(dateStr) {
 
     if (matchedIndices.length === 0 && unmatchedIndices.length > 0) {
         container.innerHTML = `
-            <div class="alert alert-warning">
-                <i class="bi bi-exclamation-triangle"></i> 
+            <div class="fill-notice fill-warning">
+                <i class="bi bi-exclamation-triangle"></i>
                 Found ${meetings.length} meeting(s) but couldn't match any to customers in your database.
             </div>`;
     }
@@ -397,48 +334,47 @@ function renderMeetingCards(dateStr) {
 
         const card = createMeetingCard(idx, meeting, customer, data, dateStr, cardNum);
         container.appendChild(card);
+        populateCardTaskCategories(idx);
     });
 
     // Show unmatched meetings as a collapsed section
     if (unmatchedIndices.length > 0) {
         const section = document.createElement('div');
-        section.className = 'mt-4';
+        section.className = 'fill-unmatched';
         section.innerHTML = `
-            <div class="card border-secondary">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center" 
-                     style="cursor:pointer" data-bs-toggle="collapse" data-bs-target="#unmatchedMeetings">
-                    <span><i class="bi bi-question-circle text-secondary"></i> 
+            <details id="unmatchedMeetings">
+                <summary>
                         <strong>${unmatchedIndices.length} Unmatched Meeting${unmatchedIndices.length > 1 ? 's' : ''}</strong>
-                        <small class="text-muted ms-2">(no customer match found)</small>
-                    </span>
-                    <i class="bi bi-chevron-down"></i>
-                </div>
-                <div class="collapse" id="unmatchedMeetings">
-                    <div class="card-body p-0">
-                        <table class="table table-sm mb-0">
+                        <small class="fill-muted">(no customer match found)</small>
+                </summary>
+                        <table class="fill-table" data-sb-sortable data-sb-sort-key="fill-unmatched">
+                            <thead><tr>
+                                <th data-sb-sort-type="number">Time</th>
+                                <th data-sb-sort-type="text">Meeting</th>
+                                <th data-sb-sort-type="text">Customer</th>
+                            </tr></thead>
                             <tbody>
                                 ${unmatchedIndices.map(i => {
                                     const m = meetings[i];
                                     return `<tr>
-                                        <td class="px-3 py-2"><small class="text-muted">${m.start_time_display || ''}</small></td>
-                                        <td class="px-3 py-2">${escapeHtml(m.title)}</td>
-                                        <td class="px-3 py-2 text-muted">${escapeHtml(m.customer || 'Unknown')}</td>
+                                        <td data-sb-sort-value="${m.start_time && Number.isFinite(Date.parse(m.start_time)) ? Date.parse(m.start_time) : ''}">${escapeHtml(m.start_time_display || '')}</td>
+                                        <td>${escapeHtml(m.title)}</td>
+                                        <td>${escapeHtml(m.customer || 'Unknown')}</td>
                                     </tr>`;
                                 }).join('')}
                             </tbody>
                         </table>
-                    </div>
-                </div>
-            </div>`;
+            </details>`;
         container.appendChild(section);
     }
 
     updateCompletionStatus();
+    window.SBTableSort?.mount(container);
 }
 
 function createMeetingCard(idx, meeting, customer, data, dateStr, cardNum) {
     const card = document.createElement('div');
-    card.className = 'card mb-3 meeting-card';
+    card.className = 'meeting-card';
     card.id = `meetingCard-${idx}`;
 
     const timeStr = meeting.start_time_display || '';
@@ -446,135 +382,140 @@ function createMeetingCard(idx, meeting, customer, data, dateStr, cardNum) {
 
     // Build topic badges
     const topicBadges = (data.topics || []).map(t =>
-        `<span class="badge bg-warning text-dark topic-tag me-1" 
+        `<button type="button" class="topic-tag" aria-pressed="true"
               data-topic-id="${t.id}" data-card="${idx}"
               onclick="toggleTopic(this)">
             <i class="bi bi-tag"></i> ${escapeHtml(t.name)}
-        </span>`
+        </button>`
     ).join('');
 
-    const matchQuality = customer.score >= 0.8 ? 'text-bg-success' : 
-                          customer.score >= 0.6 ? 'text-bg-primary' : 'text-bg-warning';
+    const matchQuality = customer.score >= 0.8 ? 'fill-success' :
+                          customer.score >= 0.6 ? 'fill-active' : 'fill-warning';
 
     card.innerHTML = `
-        <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="fill-card-heading">
             <div>
                 <strong>${escapeHtml(meeting.title)}</strong>
-                <span class="text-muted ms-2">${timeStr}</span>
+                <span class="fill-muted">${escapeHtml(timeStr)}</span>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <span class="badge ${matchQuality} customer-match-badge">
+            <div class="fill-line">
+                <span class="fill-badge ${matchQuality}">
                     <i class="bi bi-building"></i> ${escapeHtml(customer.nickname || customer.customer_name)}
                 </span>
-                <button class="btn btn-sm btn-outline-primary" onclick="editCardNotes(${idx})" title="Edit notes">
+                <button class="fill-button" onclick="editCardNotes(${idx})" title="Edit notes" aria-label="Edit notes">
                     <i class="bi bi-pencil"></i>
                 </button>
             </div>
         </div>
-        <div class="card-body">
+        <div class="fill-card-body">
             <!-- Notes Preview -->
-            <div class="notes-preview mb-3" id="notesPreview-${idx}">
+            <div class="notes-preview" id="notesPreview-${idx}">
                 ${data.content_html || '<em>No content</em>'}
             </div>
             <!-- Edit Area (hidden by default) -->
-            <div id="notesEdit-${idx}" style="display:none;" class="mb-3">
-                <textarea class="form-control" id="overviewTextarea-${idx}" rows="8"
+            <div id="notesEdit-${idx}" style="display:none;" class="fill-edit">
+                <textarea aria-label="Note HTML" id="overviewTextarea-${idx}" rows="8"
                     style="font-family: monospace; font-size: 0.85rem;">${escapeHtml(data.content_html || '')}</textarea>
-                <div class="mt-2">
-                    <button class="btn btn-sm btn-primary" onclick="saveCardEdit(${idx})">
+                <div class="fill-line">
+                    <button class="fill-button fill-primary" onclick="saveCardEdit(${idx})">
                         <i class="bi bi-check"></i> Done Editing
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="cancelCardEdit(${idx})">Cancel</button>
+                    <button class="fill-button" onclick="cancelCardEdit(${idx})">Cancel</button>
                 </div>
             </div>
             <!-- Topics -->
-            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                <small class="text-muted">Topics:</small>
-                <span id="topicContainer-${idx}">${topicBadges || '<small class="text-muted">None suggested</small>'}</span>
+            <div class="fill-line">
+                <small class="fill-muted">Topics:</small>
+                <span id="topicContainer-${idx}">${topicBadges || '<small class="fill-muted">None suggested</small>'}</span>
             </div>
             <!-- Milestone (matching note form style) -->
-            <div id="milestoneSection-${idx}" class="mb-2">
+            <div id="milestoneSection-${idx}" class="fill-field">
                 ${data.milestone ? buildMilestoneCard(idx, data.milestone) : ''}
             </div>
             <!-- Task Creation (matching note form style) -->
             <div id="taskSection-${idx}" style="${data.milestone ? '' : 'display:none;'}">
-                <div class="card border-primary">
-                    <div class="card-header bg-primary text-white py-2">
-                        <i class="bi bi-plus-circle me-1"></i> Create Task on Milestone
+                <div class="fill-task">
+                    <div class="fill-task-title">
+                        <i class="bi bi-plus-circle"></i> Create Task on Milestone
                     </div>
-                    <div class="card-body">
+                    <div class="fill-card-body">
                         <!-- Task Created Status -->
-                        <div id="taskCreated-${idx}" class="alert alert-success mb-0" style="display: none;">
-                            <i class="bi bi-check-circle-fill me-1"></i>
+                        <div id="taskCreated-${idx}" class="fill-notice fill-success" style="display: none;">
+                            <i class="bi bi-check-circle-fill"></i>
                             <strong>Task Created!</strong>
-                            <a href="#" id="taskCreatedLink-${idx}" target="_blank" class="ms-2">View in MSX</a>
+                            <a href="#" id="taskCreatedLink-${idx}" target="_blank">View in MSX</a>
                         </div>
                         <!-- Task Form -->
                         <div id="taskForm-${idx}">
-                            <div class="mb-2">
-                                <label class="form-label small mb-1">Task Title *</label>
-                                <input type="text" class="form-control form-control-sm" id="taskSubject-${idx}"
+                            <div class="fill-field">
+                                <label for="taskSubject-${idx}">Task Title *</label>
+                                <input type="text" id="taskSubject-${idx}"
                                        value="${escapeHtml(data.task_subject || '')}" placeholder="Brief task description...">
                             </div>
-                            <div class="row mb-2">
-                                <div class="col-md-8">
-                                    <label class="form-label small mb-1">Category *</label>
-                                    <select class="form-select form-select-sm task-category-select" id="taskCategory-${idx}">
+                            <div class="fill-task-row">
+                                <div class="fill-field">
+                                    <label for="taskCategory-${idx}">Category *</label>
+                                    <select class="task-category-select" id="taskCategory-${idx}">
                                         <option value="">-- Select task category --</option>
                                     </select>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small mb-1">Duration (min)</label>
-                                    <input type="number" class="form-control form-control-sm" id="taskDuration-${idx}"
+                                <div class="fill-field">
+                                    <label for="taskDuration-${idx}">Duration (min)</label>
+                                    <input type="number" id="taskDuration-${idx}"
                                            value="60" min="15" step="15">
                                 </div>
                             </div>
-                            <div class="row mb-2">
-                                <div class="col-md-6">
-                                    <label class="form-label small mb-1"><i class="bi bi-calendar-event me-1"></i>Due Date</label>
-                                    <input type="date" class="form-control form-control-sm" id="taskDueDate-${idx}"
+                            <div class="fill-task-row">
+                                <div class="fill-field">
+                                    <label for="taskDueDate-${idx}"><i class="bi bi-calendar-event"></i> Due Date</label>
+                                    <input type="date" id="taskDueDate-${idx}"
                                            value="${new Date().toISOString().split('T')[0]}">
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label small mb-1">Description (optional)</label>
-                                <textarea class="form-control form-control-sm" id="taskDesc-${idx}" rows="2"
+                            <div class="fill-edit">
+                                <label for="taskDesc-${idx}">Description (optional)</label>
+                                <textarea id="taskDesc-${idx}" rows="2"
                                           placeholder="Additional details...">${escapeHtml(data.task_description || '')}</textarea>
                             </div>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <button type="button" class="btn btn-primary btn-sm" id="createTaskBtn-${idx}"
+                            <div class="fill-card-commands">
+                                <button type="button" class="fill-button fill-primary" id="createTaskBtn-${idx}"
                                         onclick="createCardTask(${idx})">
-                                    <i class="bi bi-cloud-upload me-1"></i> Create Task in MSX
+                                    <i class="bi bi-cloud-upload"></i> Create Task in MSX
                                 </button>
-                                <small class="text-muted">Task will be linked when you save</small>
+                                <small class="fill-muted">Task will be linked when you save</small>
                             </div>
-                            <div id="taskError-${idx}" class="alert alert-danger mt-2" style="display: none;"></div>
+                            <div id="taskError-${idx}" class="fill-notice fill-danger" role="alert" style="display: none;"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="card-footer d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-2">
-                <small class="text-muted">
+        <div class="fill-card-commands">
+            <div class="fill-line">
+                <small class="fill-muted">
                     <i class="bi bi-calendar"></i> ${dateStr}
                     ${callTime ? ` &middot; <i class="bi bi-clock"></i> ${callTime}` : ''}
                 </small>
             </div>
-            <div class="d-flex gap-2">
-                <a href="/note/new?customer_id=${customer.customer_id}&date=${dateStr}" 
-                   class="btn btn-sm btn-outline-secondary" target="_blank" title="Open in full editor">
+            <div class="fill-line">
+                <a href="/note/new?customer_id=${customer.customer_id}&date=${dateStr}"
+                   class="fill-button" target="_blank" title="Open in full editor">
                     <i class="bi bi-box-arrow-up-right"></i> Full Editor
                 </a>
-                <button class="btn btn-sm btn-success" onclick="saveNote(${idx}, '${dateStr}', '${callTime}')" id="saveBtn-${idx}">
+                <button class="fill-button fill-success" onclick="saveNote(${idx}, '${dateStr}', '${callTime}')" id="saveBtn-${idx}">
                     <i class="bi bi-check-circle"></i> Save Note
                 </button>
             </div>
         </div>
     `;
 
-    // Populate task category dropdown for this card
-    populateCardTaskCategories(idx);
+    if (data.summary_ok === false) {
+        const warning = document.createElement('p');
+        warning.className = 'fill-notice fill-warning';
+        warning.setAttribute('role', 'status');
+        warning.textContent = 'Summary unavailable. Review the fallback content before saving.';
+        card.querySelector('.notes-preview').before(warning);
+    }
 
     // Store data on the element for saving
     card.dataset.customerId = customer.customer_id;
@@ -597,66 +538,70 @@ let taskCategoriesCache = null;
 
 async function loadTaskCategories() {
     if (taskCategoriesCache) return taskCategoriesCache;
-    try {
-        const resp = await fetch('/api/msx/task-categories');
-        if (resp.ok) {
-            taskCategoriesCache = await resp.json();
-        } else {
-            taskCategoriesCache = [];
-        }
-    } catch {
-        taskCategoriesCache = [];
-    }
+    const resp = await fetch('/api/msx/task-categories');
+    if (!resp.ok) throw new Error('Could not load task categories. Reopen the selector to retry.');
+    taskCategoriesCache = await resp.json();
     return taskCategoriesCache;
 }
 
 function populateCardTaskCategories(idx) {
     const select = document.getElementById(`taskCategory-${idx}`);
     if (!select) return;
-    loadTaskCategories().then(categories => {
+    return loadTaskCategories().then(categories => {
+        hideCardTaskError(idx);
+        select.querySelectorAll('option:not(:first-child)').forEach(option => option.remove());
         categories.forEach(cat => {
             const opt = document.createElement('option');
             opt.value = cat.name;
             opt.textContent = cat.name;
-            if (cat.is_hva) opt.dataset.isHva = 'true';
+            if (cat.is_hva) opt.dataset.isHva = '1';
             select.appendChild(opt);
         });
+        rememberFillReview();
+    }).catch(error => {
+        console.error('Fill My Day task categories:', error);
+        showCardTaskError(idx, error.message);
+        select.onfocus = () => {
+            select.onfocus = null;
+            hideCardTaskError(idx);
+            populateCardTaskCategories(idx);
+        };
     });
 }
 
 function getStatusBadgeClass(status) {
-    if (!status) return 'bg-secondary';
+    if (!status) return 'fill-muted';
     const s = status.toLowerCase();
-    if (s.includes('on track')) return 'bg-success';
-    if (s.includes('at risk')) return 'bg-warning text-dark';
-    if (s.includes('behind') || s.includes('blocked')) return 'bg-danger';
-    if (s.includes('complete')) return 'bg-secondary';
-    if (s.includes('not started')) return 'bg-info text-dark';
-    return 'bg-secondary';
+    if (s.includes('on track')) return 'fill-success';
+    if (s.includes('at risk')) return 'fill-warning';
+    if (s.includes('behind') || s.includes('blocked')) return 'fill-danger';
+    if (s.includes('complete')) return 'fill-muted';
+    if (s.includes('not started')) return 'fill-muted';
+    return 'fill-muted';
 }
 
 function buildMilestoneCard(idx, milestone) {
     if (!milestone) return '';
     return `
-        <div class="card border-success" id="milestoneCard-${idx}">
-            <div class="card-body py-2">
-                <div class="d-flex justify-content-between align-items-start">
+        <div class="fill-milestone" id="milestoneCard-${idx}">
+            <div class="fill-card-body">
+                <div class="fill-card-heading">
                     <div>
-                        <i class="bi bi-flag-fill text-success me-1"></i>
-                        ${milestone.url 
-                            ? `<a href="${milestone.url}" target="_blank" class="fw-bold text-decoration-none">${escapeHtml(milestone.name)}</a>`
-                            : `<span class="fw-bold">${escapeHtml(milestone.name)}</span>`
+                        <i class="bi bi-flag-fill fill-success"></i>
+                        ${milestone.url
+                            ? `<a href="${milestone.url}" target="_blank">${escapeHtml(milestone.name)}</a>`
+                            : `<span>${escapeHtml(milestone.name)}</span>`
                         }
-                        <span class="badge ${getStatusBadgeClass(milestone.status)} ms-2">${escapeHtml(milestone.status || 'Unknown')}</span>
+                        <span class="fill-badge ${getStatusBadgeClass(milestone.status)}">${escapeHtml(milestone.status || 'Unknown')}</span>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeCardMilestone(${idx})" title="Remove milestone">
+                    <button type="button" class="fill-button fill-danger" onclick="removeCardMilestone(${idx})" title="Remove milestone" aria-label="Remove milestone">
                         <i class="bi bi-x"></i>
                     </button>
                 </div>
-                ${milestone.number ? `<small class="text-muted d-block">Milestone #${escapeHtml(String(milestone.number))}</small>` : ''}
-                ${milestone.opportunity_name ? `<small class="text-muted d-block"><i class="bi bi-cash-stack me-1"></i>${escapeHtml(milestone.opportunity_name)}</small>` : ''}
-                ${milestone.workload ? `<small class="text-muted d-block"><i class="bi bi-gear me-1"></i>${escapeHtml(milestone.workload)}</small>` : ''}
-                ${milestone.monthly_usage ? `<small class="text-muted d-block"><i class="bi bi-graph-up me-1"></i>${escapeHtml(milestone.monthly_usage)}</small>` : ''}
+                ${milestone.number ? `<small class="fill-muted">Milestone #${escapeHtml(String(milestone.number))}</small>` : ''}
+                ${milestone.opportunity_name ? `<small class="fill-muted"><i class="bi bi-cash-stack"></i>${escapeHtml(milestone.opportunity_name)}</small>` : ''}
+                ${milestone.workload ? `<small class="fill-muted"><i class="bi bi-gear"></i>${escapeHtml(milestone.workload)}</small>` : ''}
+                ${milestone.monthly_usage ? `<small class="fill-muted"><i class="bi bi-graph-up"></i>${escapeHtml(milestone.monthly_usage)}</small>` : ''}
             </div>
         </div>`;
 }
@@ -669,10 +614,12 @@ function removeCardMilestone(idx) {
 }
 
 async function createCardTask(idx) {
+    if (fillPending) return;
     const card = document.getElementById(`meetingCard-${idx}`);
+    if (card.dataset.createdTaskId) return;
     const milestone = JSON.parse(card.dataset.milestone || 'null');
     if (!milestone || !milestone.msx_milestone_id) {
-        alert('No milestone linked — cannot create task.');
+        showCardTaskError(idx, 'No milestone linked, cannot create task.');
         return;
     }
 
@@ -690,10 +637,12 @@ async function createCardTask(idx) {
         showCardTaskError(idx, 'Please select a task category.');
         return;
     }
+    setFillPending(true);
+    document.getElementById('startBtn').disabled = true;
 
     const btn = document.getElementById(`createTaskBtn-${idx}`);
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating...';
+    btn.innerHTML = '<span class="fill-busy"></span> Creating...';
     hideCardTaskError(idx);
 
     try {
@@ -713,7 +662,7 @@ async function createCardTask(idx) {
 
         const result = await resp.json();
 
-        if (result.success) {
+        if (resp.ok && result.success) {
             // Show success state
             document.getElementById(`taskForm-${idx}`).style.display = 'none';
             const createdDiv = document.getElementById(`taskCreated-${idx}`);
@@ -737,9 +686,14 @@ async function createCardTask(idx) {
             throw new Error(result.error || 'Failed to create task');
         }
     } catch (err) {
+        console.error('Fill My Day task creation:', err);
         showCardTaskError(idx, err.message);
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i> Create Task in MSX';
+        btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Create Task in MSX';
+    } finally {
+        setFillPending(false);
+        document.getElementById('startBtn').disabled = false;
+        rememberFillReview();
     }
 }
 
@@ -757,6 +711,7 @@ function hideCardTaskError(idx) {
 
 function toggleTopic(el) {
     el.classList.toggle('deselected');
+    el.setAttribute('aria-pressed', String(!el.classList.contains('deselected')));
     // Update stored topic IDs on the card
     const cardIdx = el.dataset.card;
     const card = document.getElementById(`meetingCard-${cardIdx}`);
@@ -788,6 +743,7 @@ function cancelCardEdit(idx) {
 }
 
 async function saveNote(idx, dateStr, callTime) {
+    if (fillPending) return;
     const card = document.getElementById(`meetingCard-${idx}`);
     const btn = document.getElementById(`saveBtn-${idx}`);
 
@@ -804,14 +760,16 @@ async function saveNote(idx, dateStr, callTime) {
     const taskDescription = taskDescEl ? taskDescEl.value : (card.dataset.taskDescription || '');
 
     if (!content || content.trim() === '') {
-        alert('Cannot save an empty note. Please add some content.');
+        showError('Cannot save an empty note. Please add some content.');
         return;
     }
 
     // Disable button, show saving state
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+    btn.innerHTML = '<span class="fill-busy"></span> Saving...';
     card.classList.add('saving');
+    setFillPending(true);
+    document.getElementById('startBtn').disabled = true;
 
     try {
         const resp = await fetch('/api/fill-my-day/save', {
@@ -836,22 +794,20 @@ async function saveNote(idx, dateStr, callTime) {
 
         const result = await resp.json();
 
-        if (result.success) {
+        if (resp.ok && result.success) {
             // Show success briefly then animate away
             btn.innerHTML = '<i class="bi bi-check"></i> Saved!';
-            btn.className = 'btn btn-sm btn-success';
+            btn.className = 'fill-button fill-success';
             card.classList.remove('saving');
 
             // Replace save button with view link
-            btn.outerHTML = `<a href="${result.view_url}" class="btn btn-sm btn-outline-success" target="_blank">
+            btn.outerHTML = `<a href="${result.view_url}" class="fill-button fill-success" target="_blank">
                 <i class="bi bi-eye"></i> View
             </a>`;
 
-            setTimeout(() => {
-                card.classList.add('saved');
-                savedCount++;
-                updateCompletionStatus();
-            }, 1200);
+            card.classList.add('saved');
+            savedCount++;
+            updateCompletionStatus();
         } else {
             throw new Error(result.error || 'Save failed');
         }
@@ -859,16 +815,22 @@ async function saveNote(idx, dateStr, callTime) {
         console.error('Save error:', err);
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Retry';
-        btn.className = 'btn btn-sm btn-danger';
+        btn.className = 'fill-button fill-danger';
         card.classList.remove('saving');
-        alert('Failed to save: ' + err.message);
+        showError('Failed to save: ' + err.message);
+    } finally {
+        setFillPending(false);
+        document.getElementById('startBtn').disabled = false;
+        rememberFillReview();
     }
 }
 
 function updateCompletionStatus() {
+    document.getElementById('fillCount').textContent = meetings.length ?
+        `${meetings.length} meetings · ${totalCards} matched · ${savedCount} saved` : 'No meetings fetched';
     if (totalCards > 0 && savedCount >= totalCards) {
         document.getElementById('completionSummary').style.display = 'block';
-        document.getElementById('completionText').textContent = 
+        document.getElementById('completionText').textContent =
             `Saved ${savedCount} note${savedCount > 1 ? 's' : ''} for this day.`;
     }
 }
@@ -879,9 +841,13 @@ function showError(message) {
 }
 
 function resetStartBtn() {
+    setFillPending(false);
+    document.getElementById('fillDate').disabled = false;
     const btn = document.getElementById('startBtn');
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-lightning-charge"></i> Fetch Meetings';
+    updateCompletionStatus();
+    rememberFillReview();
 }
 
 function escapeHtml(text) {

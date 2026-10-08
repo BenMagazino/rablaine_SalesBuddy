@@ -21,6 +21,8 @@ def test_workload_native_structure(
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one("[data-sb-workload]")
+    assert ("sb-directory-frame" in root.get("class", [])) is not embedded
+    assert ("sb-directory-frame-wide" in root.get("class", [])) is not embedded
     assert root["data-embedded"] == str(embedded).lower()
     assert ("sb-page-frame" in soup.body.get("class", [])) is not embedded
     assert bool(soup.select(".sb-page-status")) is not embedded

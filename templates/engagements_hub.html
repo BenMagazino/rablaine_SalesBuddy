@@ -9,7 +9,7 @@
 <footer class="sb-page-status"><span>{{ stats.total }} engagements · Existing {{ 'seller' if seller_mode else 'SE' }} scope</span><span>Story health includes Active and On Hold · Internal projects retain their own scope</span></footer>
 {% endblock %}
 {% block content %}
-<section class="sb-eng-directory" data-sb-page-surface aria-labelledby="engDirectoryTitle">
+<section class="sb-eng-directory sb-directory-frame sb-directory-frame-wide" data-sb-page-surface aria-labelledby="engDirectoryTitle">
     <header class="sb-eng-heading" data-sb-page-band>
         <h1 id="engDirectoryTitle">Engagements</h1>
         <button type="button" class="sb-eng-command" data-sb-dialog="quickEngagementModal" aria-haspopup="dialog" aria-controls="quickEngagementModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> New Engagement</button>

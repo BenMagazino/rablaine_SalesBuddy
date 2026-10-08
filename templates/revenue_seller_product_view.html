@@ -16,7 +16,7 @@
 {% endif %}
 {% endblock %}
 {% block content %}
-<div class="sb-revenue-workspace sb-seller-product" data-sb-seller-product data-sb-page-surface
+<div class="sb-revenue-workspace sb-seller-product{% if not request.args.get('embed') %} sb-directory-frame{% endif %}" data-sb-seller-product data-sb-page-surface
      data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
     <header class="sb-revenue-page-header" data-sb-page-band>
         <h1><i class="bi bi-box" aria-hidden="true"></i> {{ product }}</h1>

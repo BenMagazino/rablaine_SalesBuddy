@@ -15,6 +15,38 @@ from app.models import (
 )
 
 
+@pytest.mark.parametrize('partial,bounded', [
+    ('customer_view_content.html', True),
+    ('territory_view_content.html', True),
+    ('pod_view_content.html', True),
+    ('solution_engineer_view_content.html', True),
+    ('seller_view_content.html', False),
+])
+def test_readable_width_only_matches_standalone_partial_roots(partial, bounded):
+    """Shared domain fragments never inherit full-page caps inside a dialog."""
+    project = Path(__file__).resolve().parents[1]
+    template = (project / 'templates' / 'partials' / partial).read_text(encoding='utf-8')
+    root = BeautifulSoup(template, 'html.parser').select_one('[data-sb-page-surface]')
+    assert ('sb-directory-frame' in root['class']) is bounded
+    assert ('sb-directory-frame-wide' in root['class']) is (
+        partial != 'seller_view_content.html'
+    )
+    selector = '.sb-page-frame #main-content > [data-sb-page-surface].sb-directory-frame'
+    css = (project / 'static' / 'css' / 'ui-page-frame.css').read_text(encoding='utf-8')
+    assert selector in css
+    standalone = BeautifulSoup(
+        f'<body class="sb-page-frame"><main id="main-content">{root}</main></body>',
+        'html.parser',
+    )
+    assert bool(standalone.select(selector)) is bounded
+    embedded = BeautifulSoup(
+        f'<body class="sb-page-frame"><main id="main-content">'
+        f'<dialog><div>{root}</div></dialog></main></body>',
+        'html.parser',
+    )
+    assert not embedded.select(selector)
+
+
 @pytest.fixture
 def dossier(app, sample_data):
     """Seed differing orders, conditional fields and real source relationships."""
@@ -120,6 +152,7 @@ def test_exact_provider_populations_and_original_links(client, app, dossier, rol
     soup = parse(response)
     old = BeautifulSoup(baseline[0], 'html.parser')
     root = soup.select_one('[data-sb-customer-detail]')
+    assert 'sb-directory-frame' in root['class']
     assert sorted(a['href'] for a in root.select('a[href]')) == sorted(
         a['href'] for a in old.select('main a[href]'))
     assert [int(row['data-note-id']) for row in root.select('.cd-note')] == [

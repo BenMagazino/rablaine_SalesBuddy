@@ -15,7 +15,7 @@
 {% endif %}
 {% endblock %}
 {% block content %}
-<section class="sb-revenue-reports" data-sb-page-surface data-sb-report-key="revenue-reports"
+<section class="sb-revenue-reports{% if not request.args.get('embed') %} sb-directory-frame{% endif %}" data-sb-page-surface data-sb-report-key="revenue-reports"
          data-sb-report-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          aria-labelledby="revenueReportsTitle">
     <header class="sb-revenue-reports-header" data-sb-page-band>

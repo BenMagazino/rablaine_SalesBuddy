@@ -53,6 +53,7 @@ _ORDINARY_PAGES = {
     "pods.pod_view": ("pods", False),
     "pods.pod_edit": ("pods", True),
     "solution_engineers.solution_engineer_view": ("solution_engineers", False),
+    "solution_engineers.solution_engineer_delete": ("solution_engineers", False),
     "solution_engineers.solution_engineer_edit": ("solution_engineers", True),
     "topics.topic_create": ("topics", False),
     "topics.topic_view": ("topics", False),
@@ -73,6 +74,7 @@ HANDLED_ENDPOINTS: set[str] = set(_COLLECTIONS) | set(_ORDINARY_PAGES) | {
     "sellers.seller_create", "sellers.seller_view", "sellers.seller_edit",
     "territories.territory_create", "territories.territory_view", "territories.territory_edit",
     "internal_contacts.internal_contact_new", "internal_contacts.internal_contact_edit",
+    "internal_contacts.internal_contact_delete",
     "notes.note_create", "notes.note_view", "notes.note_edit", "notes.fill_my_day",
     "engagements.engagement_create", "engagements.engagement_view", "engagements.engagement_edit",
     "milestones.milestone_create", "milestones.milestone_view", "milestones.milestone_edit",
@@ -262,6 +264,9 @@ def get_entity_breadcrumbs(
         contact = context.get("contact")
         # This form inherits the generic base title and has no separate detail page.
         label = f"Edit {contact.name}" if contact is not None else "New Internal Contact"
+        if endpoint.endswith("_delete"):
+            ancestors = [home()]
+            label = "Internal Contacts"
     elif endpoint == "notes.note_create":
         ancestors = _note_create_path(context)
     elif endpoint.startswith("notes."):

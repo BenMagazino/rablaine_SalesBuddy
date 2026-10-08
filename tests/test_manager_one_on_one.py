@@ -30,6 +30,7 @@ def test_native_tracker_frame_sort_and_raw_values(
         add_work(client, section['id'], item_type, [entity_id])
     soup = BeautifulSoup(client.get(url).data, 'html.parser')
     root = soup.select_one('#managerReport[data-sb-page-surface]')
+    assert {'sb-directory-frame', 'sb-directory-frame-wide'} <= set(root['class'])
     assert 'sb-page-frame' in soup.body['class']
     assert soup.select_one('body > footer.sb-page-status #talkingPointsState')
     assert root.select_one('#initiativeReading[aria-label]')

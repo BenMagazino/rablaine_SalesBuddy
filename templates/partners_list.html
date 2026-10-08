@@ -1,98 +1,51 @@
 {% extends "base.html" %}
 {% from 'partials/partner_favicon.html' import partner_favicon %}
 {% block title %}Partners - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-partners-directory.css') }}">
+{% endblock %}
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col">
-            <h1><i class="bi bi-briefcase"></i> Partners</h1>
-            <p class="text-muted">Manage partner organizations and contacts</p>
+<section class="sb-partners-directory sb-directory-frame" data-partners-directory data-sb-page-surface aria-labelledby="partnersTitle">
+    <header class="partners-heading" data-sb-page-band>
+        <h1 id="partnersTitle">Partners</h1>
+        <div class="partners-commands">
+            <a class="sb-dialog-button" href="{{ url_for('partners.specialties_list') }}"><i class="bi bi-star" aria-hidden="true"></i> Manage Specialties</a>
+            <button class="sb-dialog-button btn-share" type="button" data-share-directory title="Share your partner directory with a teammate"><i class="bi bi-share" aria-hidden="true"></i> Share Directory <span class="share-online-count" style="display:none"></span></button>
+            <a class="sb-dialog-button partners-primary" href="{{ url_for('partners.partner_new') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i> New Partner</a>
         </div>
-        <div class="col-auto">
-            <a href="{{ url_for('partners.partner_new') }}" class="btn btn-success">
-                <i class="bi bi-plus-lg"></i> New Partner
-            </a>
-            <a href="{{ url_for('partners.specialties_list') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-star"></i> Manage Specialties
-            </a>
-            <button class="btn btn-outline-primary btn-share"
-                    onclick="Share.openShareModal('directory')"
-                    title="Share your partner directory with a teammate">
-                <i class="bi bi-share"></i> Share Directory
-                <span class="badge bg-success rounded-pill share-online-count" style="display:none"></span>
-            </button>
-        </div>
+    </header>
+    <p class="partners-notice" role="alert" hidden data-sb-page-band></p>
+    <div class="partners-reading" data-sb-page-body tabindex="0" aria-label="Partners directory">
+        {% if partners %}
+        <table class="partners-table" data-sb-sortable data-sb-sort-key="partners-directory">
+            <thead><tr>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Name">Name</th>
+                <th scope="col" data-sb-sort-type="number" data-export-label="Rating">Rating</th>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Specialties">Specialties</th>
+                <th scope="col" data-sb-sort-type="number" data-export-label="Contacts">Contacts</th>
+                <th scope="col" data-sb-sort-type="number" data-export-label="Notes">Notes</th>
+            </tr></thead>
+            <tbody>{% for partner in partners %}
+                <tr data-partner-id="{{ partner.id }}" data-partner-href="{{ url_for('partners.partner_view', id=partner.id) }}">
+                    <td data-sb-sort-value="{{ partner.name }}"><a class="partners-name" href="{{ url_for('partners.partner_view', id=partner.id) }}">{{ partner_favicon(partner) }} {{ partner.name }}</a></td>
+                    <td data-sb-sort-value="{{ partner.rating if partner.rating is not none else '' }}">{% if partner.rating is not none %}<span class="partners-rating" aria-label="{{ partner.rating }} out of 5 stars" title="{{ partner.rating }} out of 5 stars">{% for i in range(5) %}<i class="bi bi-star{{ '-fill' if i < partner.rating else '' }}" aria-hidden="true"></i>{% endfor %}</span>{% endif %}</td>
+                    <td data-sb-sort-value="{{ partner.specialties|map(attribute='name')|join(' · ') }}"><div class="partners-specialties">{% for specialty in partner.specialties %}<a href="{{ url_for('partners.specialty_view', id=specialty.id) }}"><i class="bi bi-star" aria-hidden="true"></i> {{ specialty.name }}</a>{% endfor %}</div></td>
+                    <td class="partners-count" data-sb-sort-value="{{ partner.contacts|length }}">{{ partner.contacts|length }} contact{{ 's' if partner.contacts|length != 1 else '' }}</td>
+                    <td class="partners-count" data-sb-sort-value="{{ partner.notes|length }}">{{ partner.notes|length }}</td>
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}
+        <p class="partners-empty">No partners yet. <a href="{{ url_for('partners.partner_new') }}">Create your first partner</a>.</p>
+        {% endif %}
     </div>
-
-    {% if partners %}
-    <div class="card">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th style="width: 15%;">Partner</th>
-                            <th style="width: 8%;">Rating</th>
-                            <th>Specialties</th>
-                            <th style="width: 10%;">Contacts</th>
-                            <th style="width: 7%;">Notes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for partner in partners %}
-                        <tr>
-                            <td>
-                                <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="text-decoration-none">
-                                    {{ partner_favicon(partner) }} {{ partner.name }}
-                                </a>
-                            </td>
-                            <td>
-                                {% if partner.rating is not none %}
-                                    {% for i in range(5) %}
-                                        <i class="bi bi-star{{ '-fill text-warning' if i < partner.rating else ' text-muted' }}" style="font-size: 0.85rem;"></i>
-                                    {% endfor %}
-                                {% else %}
-                                    <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-1" style="max-height: 4.5rem; overflow: hidden;">
-                                {% for specialty in partner.specialties %}
-                                <a href="{{ url_for('partners.specialty_view', id=specialty.id) }}" class="badge bg-warning text-dark text-decoration-none" style="font-size: 0.75em;">
-                                    <i class="bi bi-star"></i> {{ specialty.name }}
-                                </a>
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endfor %}
-                                </div>
-                            </td>
-                            <td>
-                                {% if partner.contacts %}
-                                {{ partner.contacts|length }} contact{{ 's' if partner.contacts|length != 1 else '' }}
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if partner.notes %}
-                                <span class="badge bg-secondary">{{ partner.notes|length }}</span>
-                                {% else %}
-                                <span class="text-muted">0</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    {% else %}
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> No partners yet. 
-        <a href="{{ url_for('partners.partner_new') }}">Create your first partner</a>.
-    </div>
-    {% endif %}
-</div>
+</section>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Partners directory status"><span>{{ partners|length }} Partners</span><span>All Partners</span></footer>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-partners-directory.js') }}"></script>
 {% endblock %}

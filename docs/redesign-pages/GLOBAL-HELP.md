@@ -1,5 +1,14 @@
 # GLOBAL-HELP / GLOBAL-KEYS: native reference dialogs
 
+- Checkpoint 88 host extension, October 7: New/Edit Note Template help explains
+  manual saves, rich formatting, guarded drafts/Back, retry and existing note
+  Replace/Add to top insertion. Current inventory is 81 unique route patterns;
+  every coupled count/uniqueness assertion is updated and passes. VERIFY, not approval.
+- Checkpoint 84 host extension, October 7: Specialty New/Edit contextual help uses
+  the same approved dialog, with exact manual save, case-insensitive uniqueness,
+  draft/Back/retry and separate immediate partner creation guidance. Inventory now
+  has 79 unique route patterns; shared help tests updated. This host extension is
+  VERIFY pending user review, not a new approval of the Specialty page body.
 - Status: DONE; technically verified and user-approved on October 2, 2026
 - Checkpoint: 3, native dialog foundation and read-only help surfaces
 - Pre-release reviewer: the user

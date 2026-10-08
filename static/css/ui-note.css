@@ -1,10 +1,15 @@
 /* Shared note body; rich-text markup and legacy entity hooks are retained. */
 .sb-note-view {
     color: var(--sb-ui-ink);
+    background: var(--sb-ui-surface);
     font-family: var(--sb-ui-font);
     font-size: 14px;
     line-height: 1.6;
 }
+.sb-note-reading-page #main-content {
+    max-width: 1368px;
+}
+.sb-note-context, .sb-note-main { background: var(--sb-ui-surface); }
 .sb-note-view-page {
     padding: 24px;
     border: 1px solid var(--sb-ui-line);

@@ -56,6 +56,8 @@ def test_products_aliases_preserve_all_values_links_and_native_boundaries(
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one("[data-sb-products-directory][data-sb-page-surface]")
+    assert ("sb-directory-frame" in root.get("class", [])) is not embedded
+    assert ("sb-directory-frame-wide" in root.get("class", [])) is not embedded
     assert root.select_one("h1").get_text(strip=True) == "Products"
     assert root.select_one('label[for="directoryProductSearch"]')
     assert len(soup.select("#directoryProductSearch")) == 1
@@ -85,7 +87,7 @@ def test_products_aliases_preserve_all_values_links_and_native_boundaries(
     assert soup.select_one("[data-sb-products-count]").text == "3 of 3 products shown"
     if embedded:
         assert "sb-page-frame" not in soup.body.get("class", [])
-        assert not soup.select(".sb-app-bar, .sb-context-bar, footer")
+        assert not soup.select(".sb-app-bar, .sb-context-bar, footer.sb-page-status")
         assert root.select_one("[data-sb-products-count]")
     else:
         assert "sb-page-frame" in soup.body["class"]

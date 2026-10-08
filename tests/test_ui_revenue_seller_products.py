@@ -82,6 +82,8 @@ def test_seller_directory_reuses_native_browser_and_preserves_sort_urls(
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one("[data-sb-products-directory]")
+    assert ("sb-directory-frame" in root.get("class", [])) is not embedded
+    assert ("sb-directory-frame-wide" in root.get("class", [])) is not embedded
     assert root["data-seller-name"] == seller_product_context["seller"]
     assert root.select_one("h1").get_text(strip=True) == (
         seller_product_context["seller"] + "'s Products"
@@ -178,7 +180,7 @@ def test_seller_consolidated_detail_preserves_members_and_full_totals(
     assert [m.text for m in soup.select("[data-sb-product-metric]")] == ["1", "$350", "$350"]
     assert soup.select_one("tbody tr").select("td")[-1]["data-sb-sort-value"] == "350.0"
     assert ("sb-page-frame" in soup.body.get("class", [])) is not embedded
-    assert bool(soup.select(".sb-app-bar, .sb-context-bar, footer")) is not embedded
+    assert bool(soup.select(".sb-app-bar, .sb-context-bar, footer.sb-page-status")) is not embedded
     assert bool(soup.select("[data-sb-seller-product] [data-sb-seller-product-count]")) is embedded
 
 

@@ -1,10 +1,32 @@
 # RPT-ACT: Activity Coverage
 
+## Content consistency review
+
+Latest private evidence: `consistency-reports-activity-coverage` and its
+`-full-fy`, `-milestones`, `-caip` variants, each with Before, After and Light After.
+Earlier captures below are preserved as superseded comparisons. This single
+reading region remains 1152px, with transparent panes inheriting the surface token.
+No meeting, milestone, date preference or sync action is changed.
+Complete measurements and source audit: private `consistency-reports-results.json`.
+
 - Checkpoint: 42, `feature/ui-redesign`.
 - Audited revision: `706cf6ae`.
 - Status: VERIFY, technically checked and user-approved October 6, 2026.
 - Approved implementation committed locally as `55c4bc9c`.
 - Approved overall effort is about 47%; final whole-app reconciliation remains separate.
+
+## Readable-width follow-up, October 7, 2026
+
+- Standalone heading, lens/scope controls and audit list now share the centered
+  1152px directory frame. The navigation, context and status strips remain full-width.
+- Flexible milestone text tracks and prepared-meeting tracks fit the narrower reading
+  region without dropping fields, changing coverage math or constraining embedded views.
+- Actual dev desktop, unchanged 1559x1167: work area x=203.5, width=1152; shell width=1559.
+  Meetings, full FY, expanded milestone HVA and CAIP have no horizontal region/document overflow.
+- Dark/light screenshots inspected. Private evidence uses `width-report-reports-activity-coverage-`
+  and `width-report-activity-coverage-` prefixes in the current session's `files`.
+- Combined focused width/parity regression: 150 pytest and 178 Node tests pass.
+  Approval/checkpoint status is unchanged; no write, commit or deployment authorized.
 
 ## Contract
 

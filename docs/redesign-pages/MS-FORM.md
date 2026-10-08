@@ -1,5 +1,11 @@
 # Manual milestone forms, checkpoint 52
 
+## October 8 reading-width revision
+- Shared manual New/Edit form opts into the centered 1152px root.
+- Live New form dark/light at 1559x1167: fields and commands fit without overflow.
+- Private evidence: `width-workflow-milestone-form-{before,after,light-after}.png`.
+- Revision is uncommitted and awaiting review; existing checkpoint status is unchanged.
+
 - IDs: MS-NEW `/milestone/new`, MS-EDIT `/milestone/<int:id>/edit`.
 - Shared template: `milestone_form.html`; only full-page consumers exist.
 - Audited baseline: `c7fb7b19`, approved Milestones directory checkpoint 51.

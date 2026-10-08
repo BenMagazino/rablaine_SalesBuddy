@@ -1,5 +1,8 @@
 """Native Reports directory preserves the canonical report registry and contexts."""
 
+from pathlib import Path
+import re
+
 import pytest
 from bs4 import BeautifulSoup
 from flask import Flask
@@ -30,6 +33,8 @@ def test_directory_preserves_order_accessibility_and_context(
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one("[data-sb-reports-hub]")
+    assert ("sb-directory-frame" in root.get("class", [])) is not embedded
+    assert ("sb-directory-frame-wide" in root.get("class", [])) is not embedded
     assert root["data-sb-report-key"] == "reports-hub"
     assert root["data-sb-report-embedded"] == str(embedded).lower()
     assert ("sb-page-frame" in soup.body.get("class", [])) is not embedded
@@ -70,8 +75,114 @@ def test_report_directory_help_matches_filter_and_back(client: FlaskClient) -> N
     assert "Embedded directories keep their filter local" in section
 
 
+@pytest.mark.parametrize("route,selector", [
+    ("/reports/connect-goals", ".sb-connect-goals"),
+    ("/reports/msx-workspace", ".sb-msx-workspace"),
+    ("/reports/one-on-one", ".sb-one-on-one"),
+    ("/reports", ".sb-reports-hub"),
+    ("/revenue/config", ".sb-revenue-config"),
+])
+@pytest.mark.parametrize("embedded", [False, True])
+def test_review_wider_roots_preserve_embedded_scope(
+    client: FlaskClient, route: str, selector: str, embedded: bool,
+) -> None:
+    """Requested wider standalone pages never impose their width on embedded consumers."""
+    response = client.get(route, query_string={"embed": "1"} if embedded else {})
+    assert response.status_code == 200
+    root = BeautifulSoup(response.data, "html.parser").select_one(selector)
+    assert ("sb-directory-frame-wide" in root.get("class", [])) is not embedded
+
+
+def test_wider_revenue_config_expands_the_actual_form() -> None:
+    """The wider shell removes the standalone form cap while retaining the embedded rule."""
+    css = (Path(__file__).parents[1] / "static" / "css" /
+           "ui-revenue-config.css").read_text(encoding="utf-8")
+    assert ".sb-revenue-config-apply-note { max-width: 1120px; }" in css
+    assert ".sb-revenue-config.sb-directory-frame-wide .sb-revenue-config-reading > form," in css
+    assert (
+        ".sb-revenue-config.sb-directory-frame-wide "
+        ".sb-revenue-config-apply-note { max-width: none; }"
+    ) in css
+
+
 def test_report_dividers_only_follow_visible_rows(client: FlaskClient) -> None:
     """Hidden preceding entries must not add a divider above a group's first match."""
     source = client.get("/static/css/ui-reports-hub.css").get_data(as_text=True)
     assert ".sb-reports-list li:not([hidden]) ~ li:not([hidden])" in source
     assert ".sb-reports-list li + li" not in source
+
+
+@pytest.mark.parametrize("template,bounded", [
+    ("reports_hub.html", True),
+    ("report_activity_coverage.html", True),
+    ("report_connect_goals.html", True),
+    ("report_hygiene.html", True),
+    ("report_msx_workspace.html", True),
+    ("report_one_on_one.html", True),
+    ("report_u2c.html", True),
+    ("report_workload.html", True),
+    ("revenue_config.html", True),
+    ("revenue_products_list.html", True),
+    ("revenue_product_view.html", True),
+    ("revenue_seller_product_view.html", True),
+    ("revenue_reports_list.html", True),
+    ("revenue_report_synapse_customers.html", True),
+    ("report_connect_impact.html", True),
+    ("revenue_bucket_products.html", False),
+    ("revenue_customer_view.html", True),
+    ("report_manager_one_on_one.html", True),
+    ("revenue_dashboard.html", False),
+    ("revenue_import.html", True),
+    ("revenue_seller_alerts.html", True),
+    # Side-by-side comparison matrices and substantial inspectors retain their working width.
+    ("report_marketing_insights.html", False),
+    ("report_whats_new.html", False),
+    ("report_whitespace.html", False),
+])
+def test_report_and_revenue_standalone_width_dispositions(
+    template: str, bounded: bool,
+) -> None:
+    """All standalone roots explicitly choose readable width or a dense workspace exemption."""
+    templates = Path(__file__).parents[1] / "templates"
+    source = (templates / template).read_text(encoding="utf-8")
+    surface = re.search(r'<(?:section|div)\b[^>]*\bdata-sb-page-surface[^>]*>', source)
+    assert surface is not None
+    assert ("sb-directory-frame" in surface.group()) is bounded
+    assert ("sb-directory-frame-wide" in surface.group()) is (
+        template in {
+            "reports_hub.html", "report_connect_goals.html", "report_msx_workspace.html",
+            "report_one_on_one.html", "revenue_config.html", "report_connect_impact.html",
+            "revenue_customer_view.html",
+            "report_manager_one_on_one.html",
+            "revenue_import.html", "revenue_seller_alerts.html",
+            "report_workload.html", "revenue_products_list.html", "revenue_product_view.html",
+        }
+    )
+    if bounded:
+        assert "{% if not " in surface.group()
+    inherited = (templates / "revenue_seller_products.html").read_text(encoding="utf-8")
+    assert '{% extends "revenue_products_list.html" %}' in inherited
+
+
+def test_bounded_comparison_tracks_remove_only_coupled_minimums() -> None:
+    """Narrow catalog/history panes preserve all columns without inherited table overflow."""
+    css = Path(__file__).parents[1] / "static" / "css"
+    product = (css / "ui-revenue-product.css").read_text(encoding="utf-8")
+    directory = (css / "ui-revenue-products.css").read_text(encoding="utf-8")
+    workspace = (css / "ui-msx-workspace.css").read_text(encoding="utf-8")
+    coverage = (css / "ui-activity-coverage.css").read_text(encoding="utf-8")
+    impact = (css / "ui-impact.css").read_text(encoding="utf-8")
+    assert (
+        '.sb-revenue-product[data-sb-product-enhanced="true"] '
+        '.sb-product-customers { min-width: 0; }'
+    ) in product
+    assert '.sb-products-consumption .sb-product-customers { min-width: 0; }' in directory
+    assert 'grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr)' in directory
+    assert '.sb-msx-workspace.sb-directory-frame .msx-table td:not(' in workspace
+    assert 'overflow-wrap: anywhere' in workspace
+    assert '.sb-directory-frame .milestone-coverage-columns' in coverage
+    assert '.sb-directory-frame .prepared-meeting-task' in coverage
+    assert (
+        '.sb-impact.sb-directory-frame-wide .sb-impact-list-pane th:first-child '
+        '{ width: 64px; }'
+    ) in impact

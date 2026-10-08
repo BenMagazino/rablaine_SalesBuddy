@@ -1,5 +1,11 @@
 # ENG-VIEW - Engagement dossier
 
+## October 8 reading-width revision
+- Standalone dossier uses a centered 1344px root; modal consumers do not opt in.
+- Live dark/light at 1559x1167: context, linked notes and commands fit without overflow.
+- Private evidence: `width-workflow-engagement-detail-{before,after,light-after}.png`.
+- Revision awaits review and is uncommitted; prior checkpoint approval is preserved.
+
 Checkpoint 57, October 7, 2026: VERIFY, user-approved, final reconciliation pending.
 Audited baseline: `4e57b1a6` plus checkpoints 53-56. Approved batch effort: about 75%.
 Implementation SHA is recorded in the page tracker's approved batch handoff.
@@ -59,3 +65,9 @@ node --test tests\js\ui_engagement_detail.test.cjs tests\js\ui_action_item_dialo
   required migration, plus repair of tightly coupled prior form breadcrumb coverage.
 - Restored dark theme, clean dialogs and native fetch; dev server remains running.
 - Discord: one generic ready DM accepted; message ID `1557285807793115180`.
+## October 8 content-background consistency
+
+- Story and actionable evidence panes explicitly share `--sb-ui-surface`.
+- Existing 1344px standalone frame and stacked embedded geometry remain unchanged.
+- Evidence: `consistency-engagement-detail-{before,after,light-after}.png`.
+- Parent coordinates `test_ui_engagement_detail.py` and `test_ui_workflow_consistency.py`.

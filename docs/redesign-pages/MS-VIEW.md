@@ -1,5 +1,12 @@
 # Milestone detail, checkpoint 53
 
+## October 8 reading-width revision
+- Standalone detail uses a centered 1344px root; preview consumers do not opt in.
+- Live dark/light at 1559x1167: context and forecast reading regions fit.
+- Evidence: `width-workflow-milestone-detail-{before,after,light-after}.png`.
+- Before is a width-only reconstruction on the same live record, explicitly labelled.
+- Revision is uncommitted and awaiting review; prior checkpoint approval is preserved.
+
 - ID: MS-VIEW `/milestone/<int:id>`; canonical fragment FR-MS.
 - Status: VERIFY, implemented and user-approved October 7; final reconciliation pending.
 - Audited baseline: approved checkpoint 52 forms `4e57b1a6`.

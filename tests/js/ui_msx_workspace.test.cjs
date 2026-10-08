@@ -88,12 +88,16 @@ function fixture() {
         SBDialog: {open: dialog => dialogs.push(['open', dialog]),
             close: (dialog, reason) => dialogs.push(['close', dialog, reason])},
         SBMilestonePreview: {open() {}},
+        SBRecordDialog: {create: (id, options) => ({open: selection => {
+            dialogs.push(['opportunity', id, selection, options]);
+        }})},
+        SBOpportunityWorkflow: {activate() {}},
         confirm: () => true,
     };
     const instrumented = source.replace(/    restoreView\(\);\n\}\);\s*$/, `
     mountSort = () => {};
     window.hooks = {readRecords, renderOpportunities, renderTasks, showTab, saveView,
-        mountOpportunityBridge, opportunityDirty,
+        openOppDetail,
         restoreView, applyAll, loadOpportunities, loadTasks, allowContextChange,
         setScope: value => appliedScope = value,
         setOpps: value => oppsData = value,
@@ -224,47 +228,17 @@ test('tab changes restore independent scroll positions rather than hidden-pane z
     assert.equal(h.get('opps-tab')['aria-selected'], 'true');
 });
 
-test('legacy opportunity requests, timers and selectors belong to their native host', async () => {
+test('opportunity previews use the shared guarded lifecycle and exact destinations', async () => {
     const h = fixture();
-    const child = {id: 'commentText'};
-    const host = {isConnected: true, querySelector: selector =>
-        selector === '#commentText' ? child : null, querySelectorAll: () => []};
-    const bridge = h.hooks.mountOpportunityBridge(host);
-    assert.equal(bridge.document.getElementById('commentText'), child);
-    assert.equal(bridge.document.getElementById('taskSubject'), null);
-    let resolve;
-    h.reply(() => new Promise(done => { resolve = done; }));
-    const pending = bridge.fetch('/api/opportunity/17/comment',
-        {method: 'PUT', body: '{"comment":"draft"}'});
-    assert.equal(bridge.busy, true);
-    assert.equal(h.requests[0].options.body, '{"comment":"draft"}');
-    assert.equal(h.requests[0].options.signal.aborted, false);
-    let retries = 0;
-    bridge.setTimeout(() => retries++, 1500);
-    assert.equal(h.timers.size, 1);
-    bridge.dispose();
-    assert.equal(h.requests[0].options.signal.aborted, true);
-    assert.equal(h.timers.size, 0);
-    resolve({ok: true, json: async () => ({success: true})});
-    const response = await pending;
-    assert.equal(bridge.busy, true);
-    await response.json();
-    assert.equal(bridge.busy, false);
-    assert.equal(retries, 0);
-});
-
-test('legacy inline team actions use local controller functions with unchanged IDs', () => {
-    const h = fixture();
-    const calls = [];
-    const buttons = ['joinDealTeam(17)', 'leaveDealTeam(18)'].map(inline => ({
-        getAttribute: () => inline, removeAttribute(name) { this.removed = name; },
-        addEventListener(event, handler) { this.click = handler; },
-    }));
-    const bridge = h.hooks.mountOpportunityBridge({querySelectorAll: () => buttons});
-    bridge.bindTeam(id => calls.push(['join', id]), id => calls.push(['leave', id]));
-    buttons.forEach(button => button.click());
-    assert.deepEqual(calls, [['join', 17], ['leave', 18]]);
-    assert.equal(buttons[0].removed, 'onclick');
+    h.hooks.openOppDetail('17', 'Deal', 'https://example.com/deal');
+    const [, id, selection, options] = h.dialogs[0];
+    assert.equal(id, 'msxOppDetailModal');
+    assert.equal(selection.id, 17);
+    assert.equal(selection.title, 'Deal');
+    assert.equal(options.loadUrl(17), '/api/opportunity/17/detail');
+    assert.equal(options.fullUrl(17), '/opportunity/17');
+    assert.equal(options.identityAttribute, 'data-sb-opportunity-id');
+    assert.equal(options.stateEvent, 'sb:record-state');
 });
 
 test('deal-team success keeps the established payload and raw membership key', async () => {

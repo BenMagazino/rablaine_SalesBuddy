@@ -15,7 +15,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="sb-activity-coverage" data-sb-page-surface
+<section class="sb-activity-coverage{% if not request.args.get('embed') %} sb-directory-frame{% endif %}" data-sb-page-surface
          data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          data-lens="{{ lens }}" aria-labelledby="activityCoverageTitle">
 <header class="coverage-header" data-sb-page-band>

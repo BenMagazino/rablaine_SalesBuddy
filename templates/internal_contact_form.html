@@ -1,74 +1,90 @@
 {% extends "base.html" %}
+{% block title %}{{ 'Edit' if contact else 'New' }} Internal Contact - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestone-form.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-internal-contact-form.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Internal contact form status">
+    <span id="icFormState">{{ 'Existing internal contact' if contact else 'New internal contact' }}</span>
+    <span>Manual save · Name required</span>
+</footer>
+{% endblock %}
 {% block content %}
-<div class="container py-4">
-    <div class="row">
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-person-badge"></i> {{ 'Edit' if contact else 'New' }} Internal Contact
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        <div class="mb-3">
-                            <label for="name" class="form-label">
-                                Name <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" class="form-control" id="name" name="name"
-                                   value="{{ contact.name if contact else '' }}"
-                                   required autofocus>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="alias" class="form-label">Alias</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="alias" name="alias"
-                                       placeholder="e.g. johnd"
-                                       value="{{ contact.alias if contact and contact.alias else '' }}">
-                                <span class="input-group-text">@microsoft.com</span>
-                            </div>
-                            <div class="form-text">The part before @microsoft.com. Used for deduplication and email display.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="role" class="form-label">Role</label>
-                            <input type="text" class="form-control" id="role" name="role"
-                                   placeholder="e.g. DAE, DSS, DSE - Security"
-                                   value="{{ contact.role if contact and contact.role else '' }}"
-                                   list="role_suggestions">
-                            <datalist id="role_suggestions">
-                                <option value="DAE">
-                                <option value="DSS">
-                                <option value="DSE - Security">
-                                <option value="DSE - Modern Work">
-                                <option value="DSE - Business Applications">
-                                <option value="SSP">
-                                <option value="TSP">
-                                <option value="CSA">
-                            </datalist>
-                            <div class="form-text">Free text - type anything or pick from suggestions.</div>
-                        </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg"></i> {{ 'Save Changes' if contact else 'Create Contact' }}
-                            </button>
-                            <a href="{{ url_for('internal_contacts.internal_contacts_list') }}" class="btn btn-outline-secondary">
-                                Cancel
-                            </a>
-                            {% if contact %}
-                            <form method="post" action="{{ url_for('internal_contacts.internal_contact_delete', id=contact.id) }}" class="ms-auto" onsubmit="return confirm('Delete {{ contact.name }}?');">
-                                <button type="submit" class="btn btn-outline-danger">
-                                    <i class="bi bi-trash"></i> Delete
-                                </button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </form>
-                </div>
+{% set posted = form_values is not none %}
+<form method="POST" id="icForm" class="sb-milestone-form sb-ic-form sb-directory-frame"
+      data-sb-page-surface data-form-key="{{ 'edit-' ~ contact.id if contact else 'new' }}"
+      data-posted="{{ 'true' if posted else 'false' }}" aria-labelledby="icFormTitle">
+    <header class="mf-heading" data-sb-page-band>
+        <div><h1 id="icFormTitle">{{ 'Edit' if contact else 'New' }} Internal Contact</h1>
+        <p>Microsoft colleague identity and role.</p></div>
+    </header>
+    <p id="icFormNotice" class="mf-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="mf-reading" data-sb-page-body>
+        <section class="icf-fields" aria-label="Contact identity">
+            <div class="mf-field">
+                <label for="name">Name *</label>
+                <input type="text" id="name" name="name" required autofocus
+                       value="{{ form_values.get('name', '') if posted else contact.name if contact else '' }}">
             </div>
-        </div>
+            <div class="mf-field">
+                <label for="alias">Alias</label>
+                <div class="icf-alias">
+                    <input type="text" id="alias" name="alias" placeholder="e.g. johnd"
+                           aria-describedby="icAliasHelp"
+                           value="{{ form_values.get('alias', '') if posted else contact.alias or '' if contact else '' }}">
+                    <span>@microsoft.com</span>
+                </div>
+                <p id="icAliasHelp">The part before @microsoft.com. Used for deduplication and email display.</p>
+            </div>
+            <div class="mf-field">
+                <label for="role">Role</label>
+                <input type="text" id="role" name="role" list="role_suggestions"
+                       placeholder="e.g. DAE, DSS, DSE - Security" aria-describedby="icRoleHelp"
+                       value="{{ form_values.get('role', '') if posted else contact.role or '' if contact else '' }}">
+                <datalist id="role_suggestions">
+                    {% for role in ['DAE', 'DSS', 'DSE - Security', 'DSE - Modern Work', 'DSE - Business Applications', 'SSP', 'TSP', 'CSA'] %}
+                    <option value="{{ role }}">
+                    {% endfor %}
+                </datalist>
+                <p id="icRoleHelp">Free text - type anything or pick from suggestions.</p>
+            </div>
+        </section>
     </div>
-</div>
+    <footer class="icf-commands" data-sb-page-band>
+        <span>Changes stay here until you save the contact.</span>
+        {% if contact %}
+        <button type="button" class="sb-dialog-button icf-delete" data-sb-dialog="icFormDelete">Delete</button>
+        {% endif %}
+        <a href="{{ url_for('internal_contacts.internal_contacts_list') }}" class="sb-dialog-button" data-ic-cancel>Cancel</a>
+        <button type="submit" id="icFormSave" class="sb-dialog-button mf-save">
+            <i class="bi bi-check-lg" aria-hidden="true"></i> {{ 'Save Changes' if contact else 'Create Contact' }}
+        </button>
+    </footer>
+</form>
+<dialog class="sb-dialog sb-dialog-compact" id="icFormDiscard" aria-labelledby="icFormDiscardTitle">
+    <header class="sb-dialog-header"><h2 id="icFormDiscardTitle">Discard internal contact changes?</h2></header>
+    <div class="sb-dialog-body"><p>These changes have not been saved. Keep editing, or discard them to continue.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="icFormDiscardConfirm">Discard changes</button>
+    </footer>
+</dialog>
+{% if contact %}
+<dialog class="sb-dialog sb-dialog-compact" id="icFormDelete" aria-labelledby="icFormDeleteTitle">
+    <header class="sb-dialog-header"><h2 id="icFormDeleteTitle">Delete {{ contact.name }}?</h2></header>
+    <form method="POST" action="{{ url_for('internal_contacts.internal_contact_delete', id=contact.id) }}" id="icFormDeletePost">
+        <div class="sb-dialog-body"><p>This deletes the saved contact, not just these edits. Unsaved edits will not be saved. Existing note attendees retain the saved name and email.</p></div>
+        <footer class="sb-dialog-footer">
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Cancel</button>
+            <button type="submit" class="sb-dialog-button icf-delete">Delete Contact</button>
+        </footer>
+    </form>
+</dialog>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-milestone-form.js') }}"></script>
 {% endblock %}

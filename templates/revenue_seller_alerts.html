@@ -19,7 +19,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="sb-revenue-workspace" data-sb-revenue-page="seller" data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
+<div class="sb-revenue-workspace{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-revenue-page="seller" data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
     {% if not request.args.get('embed') %}
     <header class="sb-revenue-page-header" data-sb-page-band>
         <div>

@@ -4,7 +4,7 @@
 {% if show_edit_delete is not defined %}{% set show_edit_delete = True %}{% endif %}
 {% set forecast_workbench = true %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
-<div class="sb-milestone-view{% if show_edit_delete %} sb-ms-page{% endif %}"
+<div class="sb-milestone-view{% if show_edit_delete %} sb-ms-page sb-directory-frame sb-directory-frame-wide{% endif %}"
      {% if show_edit_delete %}data-sb-page-surface data-sb-milestone-page{% endif %}
      data-sb-milestone-detail data-sb-milestone-id="{{ milestone.id }}">
 

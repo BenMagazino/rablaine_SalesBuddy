@@ -4,6 +4,8 @@
 .sb-revenue-config-reading { padding: 0 24px 24px; scrollbar-gutter: stable; }
 .sb-revenue-config-reading > form,
 .sb-revenue-config-apply-note { max-width: 1120px; }
+.sb-revenue-config.sb-directory-frame-wide .sb-revenue-config-reading > form,
+.sb-revenue-config.sb-directory-frame-wide .sb-revenue-config-apply-note { max-width: none; }
 .sb-revenue-config-group {
     display: grid;
     grid-template-columns: 240px minmax(0, 1fr);

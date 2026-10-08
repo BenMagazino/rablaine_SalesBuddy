@@ -1,59 +1,49 @@
 {% extends "base.html" %}
-
 {% block title %}Territories - Sales Buddy{% endblock %}
-
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-geo-alt"></i> Territories</h1>
-    <a href="{{ url_for('territories.territory_create') }}" class="btn btn-sm btn-primary">
-        <i class="bi bi-plus-circle"></i> New Territory
-    </a>
-</div>
-
-{% if territories %}
-    <div class="list-group">
-        {% for territory in territories %}
-            <div class="list-group-item row-link">
-                <a href="{{ url_for('territories.territory_view', id=territory.id) }}" class="stretched-link" aria-label="View {{ territory.name }}"></a>
-                <div class="d-flex w-100 justify-content-between align-items-start">
-                    <div class="flex-grow-1">
-                        <h5 class="mb-1">{{ territory.name }}</h5>
-                        <p class="mb-1">
-                            {% if territory.pod %}
-                                <a href="{{ url_for('pods.pod_view', id=territory.pod.id) }}" class="badge bg-info text-dark text-decoration-none"><i class="bi bi-diagram-2"></i> {{ territory.pod.name }}</a>
-                            {% endif %}
-                            {% if territory.sellers %}
-                                {% for seller in territory.sellers|sort(attribute='name') %}
-                                    <a href="{{ url_for('sellers.seller_view', id=seller.id) }}" class="badge bg-secondary text-decoration-none"><i class="bi bi-person"></i> {{ seller.name }}</a>
-                                {% endfor %}
-                            {% else %}
-                                <span class="badge bg-secondary text-muted">No sellers</span>
-                            {% endif %}
-                            <span class="badge bg-primary">{{ territory.customers|length }} customers</span>
-                        </p>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <a href="{{ url_for('customers.customer_create', territory_id=territory.id) }}" class="btn btn-sm btn-success text-white">
-                            <i class="bi bi-plus-circle"></i> New Customer
-                        </a>
-                    </div>
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-{% else %}
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> No territories yet. <a href="{{ url_for('territories.territory_create') }}">Create your first territory</a>!
-    </div>
-{% endif %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-territories-directory.css') }}">
 {% endblock %}
 
-
-
-
-
-
-
-
-
-
+{% block content %}
+<section class="sb-territories-directory sb-directory-frame" data-sb-page-surface data-territories-directory aria-labelledby="territoriesTitle">
+    <header class="sb-territories-heading" data-sb-page-band>
+        <h1 id="territoriesTitle">Territories</h1>
+        <a class="sb-territory-command" href="{{ url_for('territories.territory_create') }}"><i class="bi bi-plus-circle" aria-hidden="true"></i> New Territory</a>
+    </header>
+    <p class="sb-territory-notice" role="alert" hidden></p>
+    <div class="sb-territories-reading" data-sb-page-body tabindex="0" aria-label="Territory directory">
+        {% if territories %}
+        <table class="sb-territories-table" data-sb-sortable data-sb-sort-key="territories-directory">
+            <thead><tr>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Name">Name</th>
+                <th scope="col" data-sb-sort-type="text" data-export-label="POD">POD</th>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Sellers">Sellers</th>
+                <th scope="col" data-sb-sort-type="number" data-export-label="Customers">Customers</th>
+                <th scope="col">Actions</th>
+            </tr></thead>
+            <tbody>{% for territory in territories %}
+                <tr data-territory-id="{{ territory.id }}" data-territory-href="{{ url_for('territories.territory_view', id=territory.id) }}">
+                    <td data-sb-sort-value="{{ territory.name }}"><a class="sb-territory-name" href="{{ url_for('territories.territory_view', id=territory.id) }}" aria-label="View {{ territory.name }}"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ territory.name }}</a></td>
+                    <td data-sb-sort-value="{{ territory.pod.name if territory.pod else '' }}">{% if territory.pod %}<a class="sb-territory-pod" href="{{ url_for('pods.pod_view', id=territory.pod.id) }}"><i class="bi bi-diagram-2" aria-hidden="true"></i> {{ territory.pod.name }}</a>{% endif %}</td>
+                    <td data-sb-sort-value="{{ territory.sellers|sort(attribute='name')|map(attribute='name')|join(', ') }}"><div class="sb-territory-sellers">
+                        {% for seller in territory.sellers|sort(attribute='name') %}<a class="sb-territory-seller" href="{{ url_for('sellers.seller_view', id=seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ seller.name }}</a>{% else %}<span class="sb-territory-muted">No sellers</span>{% endfor %}
+                    </div></td>
+                    <td class="sb-territory-count" data-sb-sort-value="{{ territory.customers|length }}">{{ territory.customers|length }} customers</td>
+                    <td><a class="sb-territory-command" href="{{ url_for('customers.customer_create', territory_id=territory.id) }}"><i class="bi bi-plus-circle" aria-hidden="true"></i> New Customer</a></td>
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}
+        <p class="sb-territory-empty">No territories yet. <a href="{{ url_for('territories.territory_create') }}">Create your first territory</a>!</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Territory directory status"><span>{{ territories|length }} territories</span><span>All territories</span></footer>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-territories-directory.js') }}"></script>
+{% endblock %}

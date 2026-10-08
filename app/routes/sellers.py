@@ -2,14 +2,51 @@
 Seller routes for Sales Buddy.
 Handles seller listing, creation, viewing, and editing.
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, jsonify, session
 from datetime import date, datetime, timedelta, timezone
+import logging
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, subqueryload
 
 from app.models import db, Seller, Territory, Customer, Engagement, Note
 
 # Create blueprint
 sellers_bp = Blueprint('sellers', __name__)
+logger = logging.getLogger(__name__)
+
+
+def _render_seller_form(seller: Seller | None, values: dict | None = None):
+    """Render the manual editor with sorted choices and failed-input precedence."""
+    territories = Territory.query.order_by(Territory.name).all()
+    query = Seller.query
+    if seller:
+        query = query.filter(Seller.id != seller.id)
+    return render_template(
+        'seller_form.html', seller=seller, territories=territories,
+        existing_sellers=query.order_by(Seller.name).all(), form_values=values,
+        territory_choices=[{'id': item.id, 'name': item.name} for item in territories],
+    )
+
+
+def _retain_seller_input() -> None:
+    """Retain one failed form across its original validation redirect."""
+    session['seller_form_failure'] = {
+        'path': request.path, 'values': {
+            'name': request.form.get('name', ''),
+            'alias': request.form.get('alias', ''),
+            'seller_type': request.form.get('seller_type', 'Growth'),
+            'territory_ids': request.form.getlist('territory_ids'),
+        },
+    }
+
+
+def _seller_failed_input() -> dict | None:
+    """Consume redirected input only on its matching New or Edit page."""
+    draft = session.get('seller_form_failure')
+    if draft and draft.get('path') == request.path:
+        session.pop('seller_form_failure')
+        return draft['values']
+    return None
 
 
 @sellers_bp.route('/sellers')
@@ -51,6 +88,7 @@ def seller_create():
         
         if not name:
             flash('Seller name is required.', 'danger')
+            _retain_seller_input()
             return redirect(url_for('sellers.seller_create'))
         
         # Check for duplicate
@@ -59,29 +97,30 @@ def seller_create():
             flash(f'Seller "{name}" already exists.', 'warning')
             return redirect(url_for('sellers.seller_view', id=existing.id))
         
-        seller = Seller(name=name, alias=alias, seller_type=seller_type)
-        
-        # Add territories to many-to-many relationship
-        if territory_ids:
+        try:
+            seller = Seller(name=name, alias=alias, seller_type=seller_type)
+            db.session.add(seller)
             for territory_id in territory_ids:
                 territory = db.session.get(Territory, int(territory_id))
                 if territory:
                     seller.territories.append(territory)
-        
-        db.session.add(seller)
-        db.session.commit()
+            db.session.commit()
+        except (SQLAlchemyError, ValueError):
+            db.session.rollback()
+            logger.exception('Could not create seller from manual form')
+            flash('Could not save the seller. Your entries are still here.', 'danger')
+            _retain_seller_input()
+            return _render_seller_form(None, _seller_failed_input()), 500
         
         flash(f'Seller "{name}" created successfully!', 'success')
         return redirect(url_for('sellers.sellers_list'))
     
-    territories = Territory.query.order_by(Territory.name).all()
-    existing_sellers = Seller.query.order_by(Seller.name).all()
-    return render_template('seller_form.html', seller=None, territories=territories, existing_sellers=existing_sellers)
+    return _render_seller_form(None, _seller_failed_input())
 
 
 @sellers_bp.route('/seller/<int:id>')
 def seller_view(id):
-    """View seller details — single source of truth for a seller."""
+    """View seller details, the single source of truth for a seller."""
     seller = Seller.query.options(
         db.joinedload(Seller.customers).joinedload(Customer.notes)
     ).filter_by(id=id).first_or_404()
@@ -158,6 +197,7 @@ def seller_edit(id):
         
         if not name:
             flash('Seller name is required.', 'danger')
+            _retain_seller_input()
             return redirect(url_for('sellers.seller_edit', id=id))
         
         # Check for duplicate (excluding current seller)
@@ -167,28 +207,30 @@ def seller_edit(id):
         ).first()
         if existing:
             flash(f'Seller "{name}" already exists.', 'warning')
+            _retain_seller_input()
             return redirect(url_for('sellers.seller_edit', id=id))
         
-        seller.name = name
-        seller.alias = alias
-        seller.seller_type = seller_type
-        
-        # Update territories - replace the collection
-        seller.territories = []
-        if territory_ids:
+        try:
+            seller.name = name
+            seller.alias = alias
+            seller.seller_type = seller_type
+            seller.territories = []
             for territory_id in territory_ids:
                 territory = db.session.get(Territory, int(territory_id))
                 if territory:
                     seller.territories.append(territory)
-        
-        db.session.commit()
+            db.session.commit()
+        except (SQLAlchemyError, ValueError):
+            db.session.rollback()
+            logger.exception('Could not update seller %s from manual form', id)
+            flash('Could not save the seller. Your entries are still here.', 'danger')
+            _retain_seller_input()
+            return _render_seller_form(seller, _seller_failed_input()), 500
         
         flash(f'Seller "{name}" updated successfully!', 'success')
         return redirect(url_for('sellers.seller_view', id=seller.id))
     
-    territories = Territory.query.order_by(Territory.name).all()
-    existing_sellers = Seller.query.filter(Seller.id != id).order_by(Seller.name).all()
-    return render_template('seller_form.html', seller=seller, territories=territories, existing_sellers=existing_sellers)
+    return _render_seller_form(seller, _seller_failed_input())
 
 
 @sellers_bp.route('/seller/create-inline', methods=['POST'])
@@ -222,8 +264,14 @@ def seller_delete(id):
         return redirect(url_for('sellers.seller_view', id=id))
     
     # Delete the seller
-    db.session.delete(seller)
-    db.session.commit()
+    try:
+        db.session.delete(seller)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Could not delete seller %s', id)
+        flash('Could not delete the seller. Please try again.', 'danger')
+        return redirect(url_for('sellers.seller_view', id=id))
     
     flash(f'Seller "{seller_name}" deleted successfully.', 'success')
     return redirect(url_for('sellers.sellers_list'))
@@ -277,4 +325,3 @@ def api_seller_engagements(id):
         })
 
     return jsonify({'success': True, 'engagements': results, 'count': len(results)})
-

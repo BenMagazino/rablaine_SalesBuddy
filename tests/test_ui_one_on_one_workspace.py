@@ -73,12 +73,16 @@ def test_native_workspace_contract(
     assert soup.select_one("script[src$='ui-one-on-one-save.js']")
     assert soup.select_one("link[href$='ui-one-on-one-workspace.css']")
     if surface == "full":
+        assert "sb-directory-frame" in root["class"]
+        assert "sb-directory-frame-wide" in root["class"]
         assert "sb-page-frame" in soup.body["class"]
         assert soup.select_one("body > footer.sb-page-status")
     elif surface == "embed":
+        assert "sb-directory-frame" not in root["class"]
         assert "sb-page-frame" in soup.body["class"]
         assert not soup.select_one("footer.sb-page-status")
     else:
+        assert "sb-directory-frame" not in root["class"]
         assert not soup.select("html, body, iframe")
     with app.app_context():
         after = db.session.get(OneOnOneWorkspace, workspace_id)

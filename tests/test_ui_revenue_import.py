@@ -38,6 +38,8 @@ def test_import_records_sort_keys_and_contexts(
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one("[data-sb-import]")
+    for frame in ("sb-directory-frame", "sb-directory-frame-wide"):
+        assert (frame in root.get("class", [])) is not embedded
     assert root["data-has-buckets"] == str(not dss).lower()
     assert ("sb-page-frame" in soup.body.get("class", [])) is not embedded
     assert bool(soup.select(".sb-page-status")) is not embedded

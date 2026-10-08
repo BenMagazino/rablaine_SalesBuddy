@@ -49,6 +49,7 @@ def test_native_customer_and_detail_panes(client, marketing_data, embedded):
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one("[data-sb-marketing]")
+    assert not {"sb-directory-frame", "sb-directory-frame-wide"} & set(root["class"])
     assert root["data-embedded"] == str(embedded).lower()
     assert bool(soup.select_one("body.sb-page-frame")) is not embedded
     assert bool(soup.select_one("footer.sb-page-status")) is not embedded

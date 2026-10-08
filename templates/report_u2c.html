@@ -17,7 +17,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="sb-u2c" data-sb-page-surface
+<section class="sb-u2c{% if not request.args.get('embed') %} sb-directory-frame{% endif %}" data-sb-page-surface
          data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          aria-labelledby="u2cTitle">
 <header class="u2c-header" data-sb-page-band>

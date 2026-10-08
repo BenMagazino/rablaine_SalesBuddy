@@ -1,0 +1,30 @@
+.sb-ic-directory { color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); }
+.sb-ic-directory * { box-sizing: border-box; }
+.sb-ic-directory [hidden] { display: none !important; }
+.ic-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.ic-heading h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.ic-heading p { margin: 3px 0 0; color: var(--sb-ui-muted); font-size: 12px; }
+.ic-heading > a { flex-shrink: 0; }
+.sb-ic-directory .ic-reading { overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+.ic-table { width: 100%; border-collapse: collapse; }
+.ic-table :is(th, td) { padding: 9px 16px; border-bottom: 1px solid var(--sb-ui-grid-line); text-align: left; vertical-align: middle; }
+.ic-table :is(th, td):first-child { padding-left: 24px; }
+.ic-table th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-context); color: var(--sb-ui-muted); font-size: 12px; font-weight: 500; }
+.ic-table th:first-child { width: 30%; }
+.ic-table th:nth-child(2) { width: 38%; }
+.ic-table tbody tr { cursor: pointer; }
+.ic-table tbody tr:hover { background: var(--sb-ui-raised); }
+.ic-name { color: var(--sb-ui-accent); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.ic-name i, .ic-role { color: var(--sb-ui-warning); }
+.ic-alias, .ic-unset { color: var(--sb-ui-muted); overflow-wrap: anywhere; }
+.ic-unset { font-style: italic; }
+.ic-role { overflow-wrap: anywhere; }
+.ic-actions { width: 88px; white-space: nowrap; }
+.ic-delete { padding: 3px 0; border: 0; background: transparent; color: var(--sb-ui-danger); font: inherit; font-size: 12px; cursor: pointer; }
+.ic-delete:hover, .sb-ic-directory a:hover { text-decoration: underline; }
+.ic-danger { color: var(--sb-ui-danger); }
+.ic-empty, .ic-notice { margin: 0; padding: 12px 24px; color: var(--sb-ui-muted); }
+.ic-empty a { color: var(--sb-ui-accent); }
+.ic-notice { color: var(--sb-ui-danger); }
+.sb-ic-directory :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.ic-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

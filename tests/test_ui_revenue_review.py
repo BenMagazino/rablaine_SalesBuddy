@@ -51,6 +51,12 @@ def test_revenue_pages_use_native_chrome(
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one(f'[data-sb-revenue-page="{kind}"]')
     assert root is not None
+    frames = {"sb-directory-frame", "sb-directory-frame-wide"}
+    if kind == "analyzer":
+        assert not frames & set(root["class"])
+        assert soup.select_one('link[href="/static/css/ui-revenue-detail.css"]')
+    else:
+        assert frames <= set(root["class"])
     assert root.select_one("h1")
     if kind == "seller":
         assert not root.select(".sb-revenue-page-header > div:first-child > p")
@@ -101,7 +107,8 @@ def test_revenue_pages_opt_into_native_desktop_frame(
         strip=True
     ) == "© 2026 Sales Buddy - Your Azure Sales Companion"
     assert not footer.select(".container, .bg-light, .text-muted, .py-3, .mt-5")
-    assert len(soup.select("footer")) == 1
+    assert len(soup.select("body > footer")) == 1
+    assert soup.select_one("#shareImportReviewModal > footer #shareImportConfirmBtn")
     assert soup.select_one("#alertsTable")
     assert soup.select_one("dialog[data-sb-revenue-preview]")
 
@@ -116,11 +123,14 @@ def test_embedded_revenue_pages_do_not_take_over_the_host_frame(
     """Embedded content keeps its previous sizing and has no outer navigation or footer."""
     soup = BeautifulSoup(client.get(path).data, "html.parser")
     assert "sb-page-frame" not in soup.body.get("class", [])
-    assert not soup.select(".sb-app-bar, .sb-context-bar, footer")
+    root = soup.select_one("[data-sb-page-surface]")
+    assert not {"sb-directory-frame", "sb-directory-frame-wide"} & set(root["class"])
+    assert not soup.select("body > .sb-app-bar, body > .sb-context-bar, body > footer")
+    assert soup.select_one("#shareImportReviewModal > footer #shareImportConfirmBtn")
     assert soup.select_one("#alertsTable")
 
 
-@pytest.mark.parametrize("path", ["/", "/preferences", "/customers"])
+@pytest.mark.parametrize("path", ["/", "/preferences", "/analytics"])
 def test_native_revenue_frame_does_not_restyle_legacy_or_home_pages(
     client: FlaskClient, path: str,
 ) -> None:
@@ -591,7 +601,16 @@ def test_alert_list_preserves_data_links_and_native_controls(
     assert all(h["scope"] == "col" for h in table.select("thead th"))
     assert table.has_attr("data-sb-sortable")
     assert table["data-sb-sort-default-direction"] == "descending"
-    assert all(header.get("data-sb-sort-type") for header in table.select("thead th"))
+    headers = table.select("thead th")
+    unsorted = [header for header in headers if not header.get("data-sb-sort-type")]
+    assert [
+        (header.get_text(" ", strip=True), header.get("data-export-label"))
+        for header in unsorted
+    ] == ([("Actions", "Actions")] if host == "seller" else [])
+    assert all(
+        header.get("data-sb-sort-type")
+        for header in headers if header.get("data-export-label") != "Actions"
+    )
     for header in table.select("th[data-export-label]"):
         assert header["data-export-label"] == header.get_text(" ", strip=True)
     row = table.select_one(f'tr[data-analysis-id="{review_alert["alert"]}"]')
@@ -936,6 +955,7 @@ def test_bucket_history_native_composition_and_embed_boundary(
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one('[data-sb-revenue-page="bucket"][data-sb-page-surface]')
+    assert not {"sb-directory-frame", "sb-directory-frame-wide"} & set(root["class"])
     assert root.select_one('[data-sb-page-body]')
     assert root.select_one('.sb-revenue-bucket-context[tabindex="0"]')
     assert root.select_one('.sb-revenue-bucket-reading[role="region"][tabindex="0"]')
@@ -953,7 +973,8 @@ def test_bucket_history_native_composition_and_embed_boundary(
     )
     if embedded:
         assert "sb-page-frame" not in soup.body.get("class", [])
-        assert not soup.select(".sb-app-bar, .sb-context-bar, footer")
+        assert not soup.select("body > .sb-app-bar, body > .sb-context-bar, body > footer")
+        assert soup.select_one("#shareImportReviewModal > footer #shareImportConfirmBtn")
     else:
         assert "sb-page-frame" in soup.body["class"]
         assert soup.select_one(".sb-context-bar [aria-current='page'] > span[title]").text == (
@@ -1021,6 +1042,7 @@ def test_customer_revenue_has_connected_native_regions_and_shared_analysis(
     soup = BeautifulSoup(response.data, "html.parser")
     assert "sb-page-frame" in soup.body["class"]
     root = soup.select_one('[data-sb-revenue-page="customer"][data-sb-page-surface]')
+    assert {"sb-directory-frame", "sb-directory-frame-wide"} <= set(root["class"])
     assert root.select_one('[data-sb-page-body][role="region"][tabindex="0"]')
     assert root.select_one('[data-sb-customer-nav][hidden]')
     assert root.select_one('[data-sb-customer-bucket="Databases"]')["href"] == (
@@ -1142,6 +1164,8 @@ def test_customer_revenue_empty_and_embedded_views_do_not_invent_analysis(
             f"/revenue/customer/{customer_id}{suffix}"
         ).data, "html.parser")
         root = soup.select_one('[data-sb-revenue-page="customer"]')
+        for frame in ("sb-directory-frame", "sb-directory-frame-wide"):
+            assert (frame in root.get("class", [])) == (not suffix)
         assert not root.select("[data-sb-customer-analysis], [data-sb-customer-history], table")
         assert "No revenue history found for this customer." in soup.get_text()
         assert bool(soup.select(".sb-page-status")) == (not suffix)

@@ -3,7 +3,10 @@
 .mt-heading h2 { margin: 0; font: 600 21px/1.3 var(--sb-ui-font); }
 .mt-heading p { margin: 5px 0 0; color: var(--sb-ui-muted); font-size: 12px; }
 .mt-commands, .mt-controls { display: flex; align-items: center; gap: 8px; }
-.milestone-tracker-instance { color: var(--sb-ui-ink); font: 12px/1.45 var(--sb-ui-font); }
+.milestone-tracker-instance {
+    color: var(--sb-ui-ink); font: 12px/1.45 var(--sb-ui-font);
+    background: var(--sb-ui-surface);
+}
 .sb-milestone-tracker .milestone-tracker-instance { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 .mt-summary { display: flex; gap: 36px; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
 .mt-metric { display: flex; align-items: baseline; gap: 8px; }
@@ -17,6 +20,11 @@
 .mt-search-slot { flex: 1; min-width: 160px; }
 .mt-customer-slot { width: 180px; }
 .mt-seller-slot { width: 150px; }
+.sb-milestone-tracker.sb-directory-frame-wide .mt-customer-slot { width: 150px; }
+.sb-milestone-tracker.sb-directory-frame-wide .mt-seller-slot { width: 135px; }
+.sb-milestone-tracker.sb-directory-frame-wide .mt-picker:has([data-role="quarterDropdown"]) > summary { min-width: 125px; max-width: 125px; }
+.sb-milestone-tracker.sb-directory-frame-wide .mt-picker:has([data-role="statusDropdownBtn"]) > summary { min-width: 110px; max-width: 110px; }
+.sb-milestone-tracker.sb-directory-frame-wide .mt-picker:has([data-role="areaDropdownBtn"]) > summary { min-width: 100px; max-width: 100px; }
 .mt-input, .mt-command { box-sizing: border-box; border: 1px solid var(--sb-ui-control-line); border-radius: 2px; color: var(--sb-ui-ink); background: var(--sb-ui-surface); font: 12px/1.4 var(--sb-ui-font); padding: 5px 8px; }
 .mt-input { width: 100%; min-width: 0; }
 .mt-command { display: inline-flex; align-items: center; gap: 5px; text-decoration: none; cursor: pointer; white-space: nowrap; }

@@ -3,7 +3,7 @@
     'use strict';
     const instances = new WeakMap(), active = new Set();
 
-    function attach(root, initialize) {
+    function attach(root, initialize, options = {}) {
         if (instances.has(root)) return instances.get(root);
         const listeners = new AbortController(), reads = new Set(), timers = new Set();
         const baselines = new Map();
@@ -200,11 +200,13 @@
             bypass = true;
             try { proceed(); } finally { bypass = false; }
         }, {signal: listeners.signal});
-        if (root.hasAttribute('data-sb-milestone-page')) {
+        if (root.hasAttribute('data-sb-milestone-page') || root.hasAttribute('data-sb-record-page')) {
             const reading = [...root.querySelectorAll('[data-sb-ms-reading]')];
-            const key = root.dataset.sbMilestoneId;
+            const key = options.readingKey || root.dataset.sbMilestoneId;
             const notice = root.querySelector('[data-sb-ms-page-notice]');
-            const status = document.getElementById('milestonePageState');
+            const status = document.getElementById(options.statusId || 'milestonePageState');
+            const label = options.label || 'milestone';
+            let restoringRead = false;
             const warn = (message, error) => {
                 notice.textContent = message;
                 notice.hidden = false;
@@ -212,8 +214,8 @@
             };
             const updateStatus = () => {
                 const spinner = root.querySelector('#detailsSpinner');
-                status.textContent = writes ? 'Saving milestone changes...'
-                    : api.isDirty() ? 'Unsaved milestone draft'
+                status.textContent = writes ? `Saving ${label} changes...`
+                    : api.isDirty() ? `Unsaved ${label} draft`
                     : spinner && spinner.style.display !== 'none' ? 'Reading MSX details...'
                     : root.querySelector('#detailsError')?.textContent.trim()
                         ? 'MSX read unavailable · Cached details retained'
@@ -221,6 +223,7 @@
                     : 'Local milestone · No MSX ID';
             };
             const remember = () => {
+                if (restoringRead) return;
                 try {
                     const state = window.history.state;
                     window.history.replaceState({
@@ -245,6 +248,8 @@
                             || saved[pane.dataset.sbMsReading] < 0)) {
                             throw new Error('Invalid milestone reading position.');
                         }
+                        restoringRead = Boolean(options.restoreAfterRead
+                            && root.querySelector('#detailsSpinner')?.style.display !== 'none');
                         for (const pane of reading) pane.scrollTop = saved[pane.dataset.sbMsReading];
                     }
                 } catch (error) {
@@ -256,7 +261,16 @@
             for (const pane of reading) {
                 pane.addEventListener('scroll', remember, {signal: listeners.signal});
             }
-            root.addEventListener('sb:record-state', updateStatus, {signal: listeners.signal});
+            root.addEventListener('wheel', () => { restoringRead = false; },
+                {signal: listeners.signal});
+            root.addEventListener('sb:record-state', () => {
+                if (restoringRead
+                    && root.querySelector('#detailsSpinner')?.style.display === 'none') {
+                    restoringRead = false;
+                    restore();
+                }
+                updateStatus();
+            }, {signal: listeners.signal});
             window.addEventListener('pagehide', remember, {signal: listeners.signal});
             window.addEventListener('pageshow', () => schedule(restore, 0),
                 {signal: listeners.signal});
@@ -270,7 +284,7 @@
                 if (!writes && !api.isDirty()) return;
                 event.preventDefault();
                 if (writes) {
-                    warn('Saving milestone changes. Wait before leaving.');
+                    warn(`Saving ${label} changes. Wait before leaving.`);
                     return;
                 }
                 transition = () => {
@@ -286,7 +300,7 @@
                     window.location.assign(link.href);
                 };
                 document.getElementById('recordDiscardDescription').textContent =
-                    'Your milestone draft has not been saved. Keep editing, or discard it to leave.';
+                    `Your ${label} draft has not been saved. Keep editing, or discard it to leave.`;
                 SBDialog.open(discard);
             }, {signal: listeners.signal});
             restore();

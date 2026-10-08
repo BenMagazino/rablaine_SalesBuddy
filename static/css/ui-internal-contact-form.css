@@ -1,0 +1,10 @@
+/* A focused identity editor with persistent manual commands. */
+.sb-ic-form .mf-reading { padding: 28px 32px; }
+.icf-fields { max-width: 620px; margin: 0 auto; }
+.icf-alias { display: flex; align-items: stretch; }
+.icf-alias input { min-width: 0; }
+.icf-alias > span { display: flex; align-items: center; padding: 0 10px; border: 1px solid var(--sb-ui-control-line); border-left: 0; color: var(--sb-ui-muted); background: var(--sb-ui-context); font-size: 13px; }
+.icf-commands { display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-top: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }
+.icf-commands > span { flex: 1; color: var(--sb-ui-muted); font-size: 12px; }
+.icf-commands a { color: var(--sb-ui-ink); }
+.icf-delete { color: var(--sb-ui-danger); }

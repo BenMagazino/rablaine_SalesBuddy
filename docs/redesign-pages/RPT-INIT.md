@@ -1,5 +1,13 @@
 # Initiative Tracker, checkpoint 48
 
+## Content consistency review
+
+Latest evidence: `consistency-initiative-qualification-{before,after,light-after}.png`.
+Earlier captures below are preserved as superseded comparisons. The 1344px frame
+and surface ancestry remain correct in both themes. No initiatives, discussion
+history, selections or business records are changed.
+Complete measurements and source audit: private `consistency-reports-results.json`.
+
 - ID: RPT-INIT. Routes: `/reports/initiative-tracker`, `/reports/manager-one-on-one`.
 - Template: `report_manager_one_on_one.html`; baseline `6ee2af6d`.
 - Status: VERIFY, user-approved October 6; approved local commit `42c552c7`.
@@ -37,6 +45,25 @@
   hosted at body level with parent restoration; their entity redesign is deferred.
 
 ## Verification
+
+### Readable-width follow-up, October 7, 2026
+
+- The standalone initiative dossier now uses the shared centered 1344px frame.
+  The live trial retains all three initiatives, fourteen work items, seller
+  grouping, seven table columns, dates, ACR and action controls without overflow.
+- The report is one scrolling dossier, not a simultaneous multi-pane editor.
+  Its rich workspace/detail and Points dialogs keep their existing independent
+  viewport-based bounds (1100/1320px and 780px); they are not squeezed into a row.
+- Header, index and work now align. Navigation, breadcrumbs and status remain
+  full-width; request-embedded rendering does not acquire the new width classes.
+- Existing initiative-name/context tracks (240px/320px minimums) fit comfortably
+  inside the wider frame. No editor values or save behavior change.
+- Private evidence: `width-report-initiative-qualification-before.png`,
+  `width-report-initiative-qualification-trial.png`,
+  `width-report-initiative-qualification-after.png` and its light counterpart.
+  Desktop viewport is unchanged at 1559x1167; no live save/add/remove controls used.
+- Existing `test_manager_one_on_one.py` and `test_ui_reports_hub.py` assert the
+  bounded root. Parent owns the final combined regression run.
 
 - 170 scoped pytest tests pass (20.15s):
   `python.exe -m pytest tests\test_manager_one_on_one.py tests\test_manager_one_on_one_js.py tests\test_ui_one_on_one_workspace.py tests\test_one_on_one_workspace.py tests\test_salesiq_tools.py -q`.

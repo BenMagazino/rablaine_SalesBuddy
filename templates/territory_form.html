@@ -1,57 +1,60 @@
 {% extends "base.html" %}
-
 {% block title %}{{ 'Edit' if territory else 'New' }} Territory - Sales Buddy{% endblock %}
-
-{% block content %}
-<h1 class="mb-4">{{ 'Edit' if territory else 'New' }} Territory</h1>
-
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Territory Name *</label>
-                        <input type="text" class="form-control" id="name" name="name" 
-                               value="{{ territory.name if territory else '' }}" required>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle"></i> Save Territory
-                        </button>
-                        <a href="{{ url_for('territories.territories_list') }}" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i> Cancel
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        {% if existing_territories %}
-        <div class="card mt-3">
-            <div class="card-header">
-                <h6 class="mb-0">Existing Territories (to prevent duplicates)</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-flex flex-wrap gap-2">
-                    {% for t in existing_territories %}
-                        <span class="badge bg-secondary">{{ t.name }}</span>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-</div>
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestone-form.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-territory-form.css') }}">
 {% endblock %}
-
-
-
-
-
-
-
-
-
-
+{% block footer %}
+<footer class="sb-page-status" aria-label="Territory form status">
+    <span id="territoryFormState">{{ 'Existing territory' if territory else 'New territory' }}</span>
+    <span>Manual save · Territory name required</span>
+</footer>
+{% endblock %}
+{% block content %}
+{% set posted = form_values is not none %}
+<form method="POST" id="territoryForm" class="sb-milestone-form sb-territory-form sb-directory-frame sb-directory-frame-wide"
+      data-sb-page-surface data-form-key="{{ 'edit-' ~ territory.id if territory else 'new' }}"
+      data-posted="{{ 'true' if posted else 'false' }}" aria-labelledby="territoryFormTitle">
+    <header class="mf-heading" data-sb-page-band>
+        <div><h1 id="territoryFormTitle">{{ 'Edit' if territory else 'New' }} Territory</h1>
+        <p>Name the region or segment used to organize customer and seller coverage.</p></div>
+    </header>
+    <p id="territoryFormNotice" class="mf-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="mf-reading" data-sb-page-body>
+        <div class="tf-layout">
+            <section aria-labelledby="territoryIdentity">
+                <h2 id="territoryIdentity">Territory identity</h2>
+                <div class="mf-field">
+                    <label for="name">Territory Name *</label>
+                    <input type="text" id="name" name="name"
+                           value="{{ form_values.get('name', '') if posted else territory.name if territory else '' }}" required>
+                </div>
+            </section>
+            {% if existing_territories %}
+            <aside class="tf-existing" aria-labelledby="existingTerritoriesTitle">
+                <h2 id="existingTerritoriesTitle">Existing Territories <span>(to prevent duplicates)</span></h2>
+                <ul>{% for t in existing_territories %}<li><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ t.name }}</li>{% endfor %}</ul>
+            </aside>
+            {% endif %}
+        </div>
+    </div>
+    <footer class="tf-commands" data-sb-page-band>
+        <span>Changes stay here until you save the territory.</span>
+        <a href="{{ url_for('territories.territories_list') }}" class="sb-dialog-button" data-territory-cancel>Cancel</a>
+        <button type="submit" id="territoryFormSave" class="sb-dialog-button mf-save"><i class="bi bi-check-circle" aria-hidden="true"></i> Save Territory</button>
+    </footer>
+</form>
+<dialog class="sb-dialog sb-dialog-compact" id="territoryFormDiscard" aria-labelledby="territoryFormDiscardTitle">
+    <header class="sb-dialog-header"><h2 id="territoryFormDiscardTitle">Discard territory changes?</h2></header>
+    <div class="sb-dialog-body"><p>These changes have not been saved. Keep editing, or discard them to continue.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="territoryFormDiscardConfirm">Discard changes</button>
+    </footer>
+</dialog>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-milestone-form.js') }}"></script>
+{% endblock %}

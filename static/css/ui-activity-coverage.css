@@ -140,10 +140,12 @@
 .coverage-popup:not(:popover-open) { display: none; }
 .coverage-popup .coverage-command { width: 100%; justify-content: flex-start; border: 0; }
 .milestone-coverage-columns { display: grid; grid-template-columns: 18px minmax(144px, 1fr) minmax(176px, 1.25fr) minmax(224px, 1.7fr) 112px 144px 160px 40px; align-items: center; gap: 12px; padding-inline: 8px; }
+.sb-directory-frame .milestone-coverage-columns { grid-template-columns: 18px minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1.7fr) 96px 128px 136px 40px; }
 .milestone-coverage-fields { display: grid; grid-template-columns: minmax(256px, 1fr) 208px 128px 208px; gap: 12px; }
 .milestone-hva-description { min-height: 80px; resize: vertical; }
 .prepared-meeting-list { border-top: 1px solid var(--sb-ui-line); }
 .prepared-meeting-task { display: grid; grid-template-columns: 128px minmax(192px, .9fr) minmax(224px, 1.3fr) 208px 112px 168px; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--sb-ui-grid-line); }
+.sb-directory-frame .prepared-meeting-task { grid-template-columns: 128px minmax(0, .9fr) minmax(0, 1.3fr) 208px 112px 144px; }
 .prepared-meeting-context, .prepared-activity-draft { min-width: 0; }
 .prepared-meeting-context strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prepared-activity-description { grid-column: 3 / 6; }

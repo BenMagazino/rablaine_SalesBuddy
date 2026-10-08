@@ -48,14 +48,13 @@ def test_all_milestone_hosts_use_the_shared_native_shell(client, preview_milesto
 
 
 def test_seller_preview_keeps_tracker_parent_handoff(client, sample_data, preview_milestone) -> None:
-    """Seller's embedded tracker restores its original parent on native detail dismissal."""
+    """Seller's embedded tracker uses the shared stacked native detail lifecycle."""
     response = client.get(f'/seller/{sample_data["seller1_id"]}')
     assert response.status_code == 200
-    assert b"window.openStandaloneMilestoneDetail" in response.data
-    assert b"SBMilestonePreview.open" in response.data
-    assert b"sb:dialog-closed" in response.data
-    assert b"parentModal.show()" in response.data
-    assert b"event.target !== detailEl" in response.data
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert soup.select_one('dialog#milestonesModal .milestone-tracker-instance')
+    assert soup.select_one('script[src="/static/js/ui-seller-detail.js"]')
+    assert not soup.select('#milestonesModal [data-bs-dismiss]')
     assert b"standaloneMilestoneDetailModal" not in response.data
 
 
@@ -117,6 +116,9 @@ def test_launcher_contracts_are_retained_without_duplicated_partial_loaders(file
     """Original launcher signatures remain while one controller owns fragment loading."""
     template = Path(__file__).parents[1] / "templates" / filename
     text = template.read_text(encoding="utf-8")
+    if filename == "seller_view.html":
+        text += (Path(__file__).parents[1] / "static" / "js" /
+                 "ui-seller-detail.js").read_text()
     assert launcher in text
     if filename == "report_connect_impact.html":
         text += (Path(__file__).parents[1] / "static" / "js" / "ui-impact.js").read_text()

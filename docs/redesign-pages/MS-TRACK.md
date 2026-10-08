@@ -1,5 +1,15 @@
 # Milestone Tracker, checkpoint 50
 
+## October 8 reading-width revision
+- Dense tracker uses a centered 1344px root, preserving its single filter line.
+- Standalone customer/seller and picker slots are tightened explicitly; all ten
+  controls stay on one line, including the eleventh Reset control when displayed.
+  Actual control centers and widths verified, with no business/filter submissions.
+- Live dark/light at 1559x1167: reading region has no horizontal overflow.
+- Private evidence: `width-workflow-tracker-{before,after,light-after}.png`.
+- Shared tracker fragment has no standalone root-width rule.
+- Revision is uncommitted and awaiting review; existing checkpoint status is unchanged.
+
 - ID: MS-TRACK; `/reports/milestone-tracker`, existing `/milestone-tracker` redirect.
 - Template: `milestone_tracker.html`; shared `partials/milestone_tracker_content.html`.
 - Audited baseline and preceding approved MSX workspace commit: `3e6244eb`.
@@ -64,3 +74,9 @@
   selections and Reset stay on one row; the Area menu remains inside the desktop viewport.
   Images: `milestone-tracker-filters-before.png`, `milestone-tracker-filters-after.png`.
 - Discord accepted one generic readiness DM: `1557237240810446908` (exit 0).
+## October 8 content-background consistency
+
+- Shared tracker roots use `--sb-ui-surface`; filters, headers and status tones remain.
+- Existing 1344px width, scope, sorting, calendar and embedded geometry are unchanged.
+- Evidence: `consistency-tracker-{before,after,light-after}.png`.
+- Parent coordinates `test_ui_milestone_tracker.py` and `test_ui_workflow_consistency.py`.

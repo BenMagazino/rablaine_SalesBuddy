@@ -170,11 +170,10 @@ def test_search_results_hierarchy_simplified(client):
     seller_cards = soup.find_all('div', class_='card-header bg-secondary')
     assert len(seller_cards) == 0, "Should not use heavy card headers for sellers"
     
-    # Should have lighter border-based grouping
-    seller_sections = soup.find_all('div', class_='border-bottom')
-    # If there are results, should have at least one seller section
+    # The native stream keeps semantic seller groups separated by functional dividers.
+    seller_sections = soup.select(".search-seller-heading")
     if b'Found' in response.data:
-        assert len(seller_sections) > 0, "Should use lighter border-based grouping"
+        assert len(seller_sections) > 0, "Should retain native seller grouping"
 
 
 def test_draft_save_indicator_exists(client):

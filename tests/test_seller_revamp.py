@@ -144,11 +144,12 @@ class TestSellerCustomersCompact:
         assert 'Most Recent Call' not in html
 
     def test_customer_list_is_scrollable(self, client, sample_data):
-        """Customer list has max-height and overflow-y for scrolling."""
+        """Customer list owns reading in the continuous native frame."""
         response = client.get(f'/seller/{sample_data["seller1_id"]}')
         html = response.data.decode()
-        assert 'max-height' in html
-        assert 'overflow-y: auto' in html
+        assert 'data-sd-scroll="customers"' in html
+        assert 'css/ui-seller-detail.css' in html
+        assert 'sb-page-frame' in html
 
     def test_customer_list_shows_customers(self, client, sample_data):
         """Customer list still shows all customers."""
@@ -297,7 +298,7 @@ class TestSellerEngagementsAPI:
         assert eng_data['customer_id'] == sample_data['customer1_id']
         assert eng_data['estimated_acr'] == 50000
         assert eng_data['target_date'] == '2026-06-15'
-        assert eng_data['story_completeness'] == 83  # 5 of 6 fields filled
+        assert eng_data['story_completeness'] == 71  # 5 of 7 fields, including contacts
         assert 'linked_note_count' in eng_data
         assert 'opportunity_count' in eng_data
         assert 'milestone_count' in eng_data

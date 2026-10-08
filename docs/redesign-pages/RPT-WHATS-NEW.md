@@ -1,5 +1,13 @@
 # RPT-NEW: What's New
 
+## Content consistency review
+
+Latest evidence: `consistency-report-whats-new-{before,after,light-after}.png`.
+Earlier captures below are preserved as superseded comparisons. The existing
+full-width paired composition remains 1559px, with 779.5px and 778.5px reading
+tracks inheriting the surface token. Results and date controls are unchanged.
+Complete measurements and source audit: private `consistency-reports-results.json`.
+
 - Checkpoint: 37. User-approved October 6, 2026.
 - Implementation: `175a0b0b`; audited provider baseline: `9195a2c8`.
 - Status: VERIFY for final inventory reconciliation; checkpoint approved and committed.

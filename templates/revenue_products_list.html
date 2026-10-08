@@ -16,7 +16,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="sb-revenue-workspace sb-products-directory" data-sb-products-directory
+<div class="sb-revenue-workspace sb-products-directory{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-products-directory
      data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
      data-seller-name="{{ seller_name|default('') }}"
      data-comparison-status="{{ 'All imported months. Choose a customer to open its monthly comparison.' if seller_name is defined else 'All imported months. Choose a customer to open its graph and history.' }}">

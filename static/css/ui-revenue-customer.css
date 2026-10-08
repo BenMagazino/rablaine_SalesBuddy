@@ -1,6 +1,6 @@
 .sb-revenue-customer .sb-revenue-page-header h1 { min-width: 0; }
 .sb-page-frame .sb-revenue-customer [data-sb-page-body] { overflow: auto; }
-.sb-revenue-customer-scroll { background: var(--sb-ui-canvas); }
+.sb-revenue-customer-scroll { background: var(--sb-ui-surface); }
 .sb-revenue-customer-scroll:focus-visible { outline-offset: -2px; }
 .sb-revenue-customer-analyses > h2 { margin: 0; padding: 12px 24px; font: 600 13px/1.5 var(--sb-ui-font); color: var(--sb-ui-muted); background: var(--sb-ui-surface); border-bottom: 1px solid var(--sb-ui-line); }
 .sb-revenue-customer-analysis, .sb-revenue-customer-history { padding: 16px 24px; border-bottom: 1px solid var(--sb-ui-line); }

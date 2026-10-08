@@ -17,7 +17,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="sb-connect-goals" data-sb-page-surface
+<section class="sb-connect-goals{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface
          data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          aria-labelledby="connectGoalsTitle">
     <header class="sb-goals-header" data-sb-page-band>

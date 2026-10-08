@@ -1,9 +1,39 @@
 # Seller 1:1 preparation, checkpoint 45
 
+## Content consistency review
+
+Latest evidence: `consistency-reports-one-on-one-{before,after,light-after}.png`.
+Earlier captures below are preserved as superseded comparisons. The paired
+preparation content remains 1344px, with surface-backed reading and sticky
+headers. Actual customer evidence, launcher actions and date preferences remain
+unchanged. Complete audit: private `consistency-reports-results.json`.
+
+## Creator width review correction, October 8, 2026
+
+- Widen the standalone report from 1152px to the shared 1344px working region.
+- Preserve metrics, both highlight columns, activity populations, commands and embed guard.
+- Live dark/light at 1559x1174: root 1344px, no document or reading overflow.
+- Private comparison: `review-one-on-one-wider-{before,after,light-after}.png`.
+- Earlier 1152px photos are superseded; revision remains uncommitted.
+- Combined nine-surface regression: 263 Python and 111 JavaScript tests pass.
+
 - Route: `/reports/one-on-one`, including its embed.
 - Baseline: approved product `b1574e84`; before captured before this page changed.
 - Status: VERIFY, user-approved October 6 and committed locally as `acb97fb3`.
 - Scope: preparation report only, not persistent workspaces or Initiative Tracker.
+
+## Readable-width follow-up, October 7, 2026
+
+- The approved preparation report now aligns its heading, six metrics, scope and
+  highlight/activity reading region inside the centered 1152px standalone frame.
+- Both highlight columns and independently scrolling tables fit without removing
+  data or wrapping the page in cards. Embedded report composition stays host-owned.
+- Actual dev desktop, unchanged 1559x1167: x=203.5, width=1152; shell width=1559.
+  No internal horizontal or document overflow in either dark or light mode.
+- Inspected private evidence: `width-report-reports-one-on-one-before.png`,
+  `width-report-reports-one-on-one-after.png` and its `light-after` counterpart.
+- Combined focused width/parity regression: 150 pytest and 178 Node tests pass.
+  Existing approval status remains unchanged; no live workspace/preference write performed.
 
 ## Preserved contracts
 

@@ -1,5 +1,12 @@
 :root { --sb-navbar-height: var(--sb-ui-header-height); }
 
+body:not(.sb-page-frame):has(> .sb-app-bar) {
+    background: var(--sb-ui-canvas);
+}
+body:not(.sb-page-frame):has(> .sb-app-bar) > #main-content {
+    background: var(--sb-ui-surface);
+}
+
 .sb-context-bar {
     box-sizing: border-box;
     display: flex;

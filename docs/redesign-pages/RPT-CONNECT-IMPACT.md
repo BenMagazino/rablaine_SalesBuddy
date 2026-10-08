@@ -1,5 +1,13 @@
 # RPT-IMPACT: Connect Impact
 
+## Content consistency review
+
+Latest evidence: `consistency-impact-wide-{before,after,light-after}.png`.
+Earlier captures below are preserved as superseded comparisons. The paired
+1344px workbench retains its 479px navigator and 862px detail reading track.
+Both inherit the surface token; date preferences, selection fills and values
+are unchanged. Complete audit: private `consistency-reports-results.json`.
+
 - Checkpoint: 40; status: VERIFY, user-approved October 6, 2026.
 - Route: `/reports/connect-impact`, including `embed=1`.
 - Audited baseline: `858b85df`; approved revision committed as `eb588a08`.
@@ -21,6 +29,22 @@
 - Deferred: new exports/search, changing calculations/status inclusion or MSX sync.
 
 ## Contract
+
+### Readable-width follow-up, October 7, 2026
+
+- Standalone ranking and milestone context now share a centered 1344px frame.
+  The 480px ranking pane and 720px milestone-table floor need more than the
+  default 1152px, but do not require the full desktop window.
+- Full-width navigation, breadcrumbs and status retain ownership. Embedded
+  panes remain stacked without either standalone width class.
+- The ranking's first column is 64px in the wider frame so its sort label and
+  indicator fit. No data, commitment scope, totals or controller behavior changes.
+- Live dark/light evidence: `width-report-impact-wide-before.png`,
+  `width-report-impact-wide-after.png`, `width-report-impact-wide-light-after.png`
+  in the private session files. Current viewport is unchanged at 1559x1167.
+- Focused assertions are in `test_ui_reports_hub.py` and `test_ui_impact.py`.
+  Parent owns the final combined regression run; prior verification above is
+  historical and is not a claim that these follow-up assertions have run.
 
 | Surface | Expected outcome | Evidence |
 | --- | --- | --- |

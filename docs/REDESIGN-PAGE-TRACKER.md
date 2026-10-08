@@ -6,17 +6,337 @@ Inventory date: October 2, 2026. Baseline product SHA:
 
 ## Working checkpoint
 
+- Branch: `feature/ui-redesign`, HEAD `7a43faab`; no commit, push, merge or deployment.
+- Last committed approved implementation: `e5bde8c3`, checkpoints 53-62.
+- Checkpoints63-90 are implemented, VERIFY, user-approved October8 and uncommitted.
+- Shared gutter standard is complete: all centered standalone content regions
+  use the darker canvas outside their surface-colored reading pane.
+  This replaces the Sellers-only override. Full-width roots cover the canvas;
+  shell-free embeds retain their existing surface. Breadcrumb/status colors stay unchanged.
+ 165 scoped regression tests pass;32 report/legacy routes pass64 live Dark/Light
+  checks, five shell-free embed routes stay unchanged and all eight palette pairs pass.
+- Creator signs off all pending checkpoints63-90 after this gutter standard.
+  Approved effort now approximately90%. This is approval, not permission to
+  merge, push, deploy or implement checkpoint91. Changes remain uncommitted.
+- Earlier creator approval of all reading-width/background updates October8,
+  including the352px standalone Milestone context pane, did not by itself
+  approve checkpoints63-90; the later full sign-off above supersedes it.
+  Checkpoint gallery After evidence is refreshed from the current live UI;
+  all36 original Bootstrap Before PNGs are preserved and SHA-256 verified.
+- Initial Sellers-only gutter experiment used the darker canvas outside
+  the unchanged1152px reading pane. Not rolled out to other pages; awaiting
+  creator feedback at that stage. It is now the shared, approved standard.
+  Dark/light checks and8 scoped directory tests passed.
+  Checkpoint63 current After photos, including expanded/light variants, refreshed;
+  original Bootstrap Before hashes remain unchanged.
+- Same private return gallery: `review-63-76.html`, now covering all 28 checkpoints.
+  36 original Bootstrap/current-UI pairs, including New/Edit and Search history.
+  122 fresh Dark/Light After screenshots,158 total PNGs decoded successfully.
+  All122 After files are refreshed again for the shared darker-gutter standard.
+  Final approval/progress labels render correctly;36 original Before hashes match.
+  All primary variants and current contextual states are covered at1559x1174.
+  No stale After images are shown; old images and gallery are preserved separately.
+  Offline sharing is pictured as the actual no-teammates notice, not a fake modal.
+  Fill My Day remains idle/confirmation-only; no enrichment or business writes.
+  Refreshed gallery has zero stale After references or horizontal overflow.
+  Requested generic readiness DM accepted: `1557880273083961356`; no private content sent.
+- Final selected regression: 901 pytest and 379 JavaScript tests pass, no deselections.
+  This covers the new surfaces and coupled shared consumers, not the full suite.
+- Static ancestry discovery now follows local renderer helpers without lowering
+  the 90-page threshold. Failed Template save/update retain Settings ancestry.
+- Twenty-eight checkpoint and two refinement readiness DMs accepted;
+  no private data sent externally.
+- Sellers review refinement aligns territory tags in a shared column, including
+  missing-email rows. Live themes and expansion checks pass; 6 pytest/4 JS tests pass.
+  Gallery includes revision evidence; one additional generic readiness DM accepted.
+- User selected centered directory reading areas. Sellers and Customers now opt into
+  a shared 1,152-pixel working width; headings/controls/results align while the shell
+  remains full-width. Live themes, disclosure and actual Back
+  pass; 22 pytest/9 JavaScript cases pass. Seven additional revision photos inspected.
+  Layout-direction approval is not batch approval; refinements remain uncommitted.
+- User requested the same reading-width correction across all relevant views,
+  including previously approved pages. The broad pass uses explicit 1152px roots,
+  or 1344px for dense tables/contextual workspaces; full-width shell bands remain.
+  Home retains its useful calendar/attention split. Legacy Settings still uses
+  its existing 1320px container; remaining TODO pages are not silently migrated.
+  Shared/direct-main selector and standalone guards preserve embedded/modal consumers.
+  Review artifact: `reading-width-review.html`, linked from the original return gallery.
+  Three workflow Before images are explicitly labelled width-only reconstructions
+  on the same loaded live records, not original pre-edit captures.
+  Tracker retains one filter line even with Reset visible; engagement count
+  headings keep whole words. Search history groups wrap rather than overflow.
+  Current classification covers all 67 actual native roots: 30 at 1152px, 31 at
+  1344px and six intentional full-width surfaces (Seller detail, Marketing,
+  What's New, Whitespace, Bucket Products and Revenue Analyzer), plus inherited
+  Seller Products. Home retains its connected grid.
+  Initiative Tracker, Seller Alerts and Import retain the measured 1344px bound.
+  Creator review explicitly restores Bucket Products and Analyzer to full width.
+  Final selected regression: 982 Python and 901 JavaScript tests pass, no failures
+  or deselections. This is scoped UI and directly coupled report coverage, not the full suite.
+  Embedded/modal contracts, exact native-root inventory and inherited-root policy pass.
+  The original 28-checkpoint gallery is preserved; broad revisions remain uncommitted.
+  Current private width gallery has 174 comparison pairs and 560 image references
+  (559 unique PNGs), including 92 fresh whole-app consistency comparisons.
+  Lazy-loaded visible images and gallery overflow checks pass.
+  Three reconstructed Before labels are present; no source captures are misrepresented.
+  One generic broad-refinement readiness DM accepted: `1557623279420842045`;
+  no private screenshots, data, code or URLs sent.
+- Width review follow-up: POD detail is now1344px rather than1152px after the
+  creator found it cramped. Both equal panes gain96px; directory/forms unchanged.
+  Live dark/light at1559x1174 has zero horizontal overflow and unchanged assignments.
+  75 scoped Python and three JavaScript tests pass. Earlier POD photos are retained
+  as superseded history; latest revision is first in its width-gallery section.
+  This is a requested correction, not batch approval; everything remains uncommitted.
+- Subsequent request also widens Edit POD to1344px. Existing inner layout now1240px
+  gives900px to assignments, up154px; identity stays300px, directory stays1152px.
+  Both live themes fit without overflow or changed assignment values. Combined
+  POD detail/edit and width-policy regression:87 Python/11 JavaScript pass.
+  Form revision pictures precede preserved/superseded originals in the same gallery.
+- Seller detail returns to full width at the creator's request; Sellers directory
+  stays bounded. Customer headers and rows align with their heading at an 18px
+  left inset. Actual 102-customer seller retains all rows and independent scrolling.
+  Dark/light inspected at unchanged 1559x1174, no horizontal overflow.
+  Scoped detail/directory/width-policy regression: 90 Python/14 JavaScript pass.
+  Latest revision precedes superseded bounded evidence in the same width gallery.
+- Specialties directory no longer has a second inner table cap. Both brief and
+  description-bearing shapes fill the existing bounded pane. Live table grows
+  from760px to1135px usable width inside the unchanged1152px root; all14 rows remain.
+  Dark/light inspected at1559x1174 without overflow.81 Python/five JavaScript pass.
+  Latest comparison added to the same width gallery; no approval or commit implied.
+- Specialty detail receives the same inner-width correction: partner table fills
+  all1135px usable reading width instead of1000px, with the1152px root unchanged.
+  Both themes at1559x1174 have zero overflow and retain all nine live partners.
+  Combined detail/directory/width-policy regression:90 Python/11 JavaScript pass.
+  Latest comparison added above preserved historical photos; still uncommitted.
+- Territory Accounts Notes headings/counts align at the right reading edge with
+  the standard18px inset, instead of the large gap from left-aligned last-column text.
+  Roster and Recent Notes dates are unchanged; live102 rows and saved mode preserved.
+  Dark/light1559x1174 has no overflow.93 Python/eight JavaScript pass.
+  Latest revision added above historical evidence; no approval/commit implied.
+- Latest creator review batch widens Connect Goals, MSX Workspace, 1:1 Report,
+  Reports hub and Revenue Config from1152px to1344px. Config's actual nine-field
+  form expands1087px to1279px rather than staying capped at1120px; embedded scope
+  retains its prior cap and host-owned width. Topics removes760px/1100px inner
+  caps and fills1135px usable reading width inside its unchanged1152px root.
+  All129 topics,15 reports/four groups and nine configuration values remain.
+  MSX's1384 opportunities,983 milestones and five tasks remain in their existing tabs.
+- Bucket Products and the actual `/reports/revenue` Analyzer return to full width,
+  1344px to1559px at the current desktop. Customer Revenue retains1344px.
+  Workareas, sticky headers and expanded product history now use the shared
+  dark/light palette rather than mismatched canvas backgrounds. Seller Alerts
+  is not part of this restoration and remains1344px. Live1559x1174 checks show
+  zero horizontal overflow; all43 Analyzer alerts/14 visible and Priority sort remain.
+- Latest nine-surface regression:263 Python and111 JavaScript tests pass.
+  Editor diagnostics and Git whitespace checks pass. Updated comparisons precede
+  the preserved/superseded rollout images, with expanded revenue evidence retained.
+  Pure width/background corrections require no additional changelog entry.
+- Whole-app consistency sweep supersedes the prior Revenue Import resume point.
+  Reading and contextual content panes now share the theme surface, including
+  Seller/Territory sidebars and all revenue list/inspector/sticky-header paths.
+  Legacy neutral body/card backgrounds also follow the same palette, without
+  migrating pending legacy layouts. Command/status bands, hover/selection,
+  identity/status fills, calendar meanings and authored content remain distinct.
+- User selected1344px minimum for actual paired working regions, not fields
+  grouped inside one form. Customer/Territory/SE detail, Seller/Territory editors,
+  Project detail, Workload, Products and Product detail gain1344px. Inherited
+  Seller Products follows the catalog. Stale inner clamps are removed where
+  necessary, including POD assignments. Note detail and paired legacy
+  Admin/Analytics also gain1344px; already-wider contextual Note editor remains.
+  Simple native lists/forms and host-owned embed/modal widths remain intact.
+- Final consistency regression:947 scoped Python UI tests and all UI-prefix
+  JavaScript controller/palette tests pass. No full application suite run.
+  Live Dark/Light evidence covers entities, workflows, all25 report/revenue
+  templates and variants, Home and remaining legacy pages. All eight palette
+  pairs pass live checks; no desktop resizing, saved preferences or business writes.
+  Six supplemental After-only images are clearly labelled, never fake Before photos.
+  Final gallery check confirms173 pairs,557 references and556 PNGs successfully
+  decoded with the Windows native image decoder, with zero failures or overflow.
+  Visible browser comparisons render correctly. Bulk browser decoding stalled
+  on the hidden QA page; no successful all-image browser decode is claimed.
+  Final editor diagnostics and Git whitespace checks pass.
+  Generic readiness DM accepted: `1557870736427974717`; no private content sent.
+- Milestone detail creator revision: standalone left context pane grows304px
+  to352px inside the unchanged1344px frame. Forecast reading retains990px;
+  embedded previews remain280px. Dark/light checks show zero overflow.
+ 41 scoped milestone body/preview/workflow tests pass. Fresh Before/After/light
+  screenshots precede the preserved consistency comparison in the width gallery.
+- **Width/background and checkpoints63-90 are approved October8.** All original
+  Bootstrap Before images remain unchanged. Everything remains uncommitted;
+  do not advance checkpoint91 without a new implementation request.
+- Approved effort is approximately90%; strict DONE counters remain unchanged
+  until final reconciliation. Working remaining plan is15 checkpoints91-105 below.
+- Next action: report completion and remaining scope; no automatic merge or deployment.
+- Live QA avoids business writes; caches/telemetry and shell Socket.IO traffic may
+  occur. Individual caveats remain in evidence cards. Protected drafts stay untouched.
+
+## Sequential batch handoff archive
+
+These are historical per-checkpoint handoffs, not current instructions.
+Use the compact working checkpoint above and the individual evidence cards.
+
 - Branch: `feature/ui-redesign`; no push, merge or deployment authorized.
 - Last approved implementation: overnight checkpoints 53-62, including morning
   Action Items refinements, user-approved October 7, committed as `e5bde8c3`.
-- Current task: approved batch committed; awaiting the next segment.
-- Active card: [CUST-VIEW](redesign-pages/CUST-VIEW.md), user-approved, final reconciliation pending.
+- Current task: user-authorized second fourteen-checkpoint batch 77-90.
+- Last authorized surface: Fill My Day 90, implemented and VERIFY.
+  [Evidence](redesign-pages/FILL-DAY.md): original date/customer matching, sequential
+  WorkIQ/AI enrichment, topic/HTML review, milestone context, remote task and note-save
+  contracts remain intact. Native connected frame, explicit fetch guard, unmatched
+  raw sorts and request-free Back restoration; no new candidate/account workflows.
+  216 isolated pytest and 69 JavaScript cases pass. Four private photos, all After
+  images inspected. Read-only live themes, actual Back and guard Cancel pass at
+  unchanged desktop 1566 x 1167; no business POSTs observed during monitored QA.
+  Browser reports existing shell `/socket.io/` POST/CORS failures, not business writes.
+  Visible QA `44dc4737-c193-4ff9-9193-0778dba43f2f`. Ordinary shell telemetry,
+  cache bookkeeping and Notes local page-size memory can occur; no unchanged-DB claim.
+  Stop before 91. All 63-90 remain uncommitted and await user review, effort stays 75%.
+  Parent owns the same 28-checkpoint gallery, final regression and breadcrumb inventory.
+  One generic readiness DM accepted: `1557512412058492999`; no private content sent.
+- Previous surface: Opportunity detail, checkpoint 89, implemented and VERIFY.
+  [Evidence](redesign-pages/OPP-VIEW.md): complete standalone/shared partial and actual
+  Workspace preview, original provider fields, forecasts, team and linked workflows.
+  Native regions, raw milestone sorts, guarded manual writes and exact Back restoration.
+  151 isolated pytest and 124 JavaScript cases pass; final dialog-shell recheck: six pass.
+  Ten private photos saved and After images inspected; dark/light, native nested Cancel,
+  draft retention and parent focus verified read-only at desktop 1566 x 1167.
+  Visible QA `44dc4737-c193-4ff9-9193-0778dba43f2f`; no monitored business POSTs.
+  Shell `/socket.io/` polling POSTs and ordinary read-cache bookkeeping are disclosed.
+  Fill My Day 90 is implemented and VERIFY. Preserve 63-90 uncommitted; all await review,
+  approved effort stays 75%. Parent owns gallery and static breadcrumb reconciliation.
+  Generic readiness DM status is in the evidence card. No git/agents/gallery changes.
+  New/Edit Note Templates, checkpoint 88, remain implemented and VERIFY.
+  [Evidence](redesign-pages/NT-FORM.md): exact fields, distinct original POST paths,
+  rich HTML roundtrip, Settings/default associations and actual Note insertion.
+  Native pinned form/editor, shared manual guards/Back and retained write failures.
+  303 isolated pytest and 99 JavaScript cases pass; seven private photos inspected.
+  Visible QA `deaa7837-858e-4e7c-91df-f35b05d02e1b`, both themes, no monitored POSTs.
+  Opportunity detail 89 is now VERIFY. Preserve 63-89 uncommitted, all 63-90 await review;
+  approved effort stays 75%. Parent owns gallery and static breadcrumb inventory check.
+  Generic readiness DM status is in the evidence card. No git/agents/gallery changes.
+  Search, checkpoint 87, remains implemented and VERIFY.
+  [Evidence](redesign-pages/SEARCH.md): unchanged exact GET/content/ownership/ANY-topic
+  rules, role scope, grouping, excerpts, links and original history. Native persistent
+  controls, reading stream and actual 900px/draft Back restoration; no new search features.
+  166 isolated regression cases pass, plus final expanded Search selection 38 pass;
+  50 JavaScript tests pass. Stale global ancestry threshold failure recorded separately.
+  Eight private photos saved, After images inspected; both themes, desktop 1566 x 1167.
+  Visible QA tab `deaa7837-858e-4e7c-91df-f35b05d02e1b`; no monitored POST paths.
+  Note Template New/Edit forms 88 are now VERIFY. Prior 63-87 stay uncommitted;
+  all 63-90 await review, approved effort 75%. No git, agents or gallery edits.
+  Readiness DM status is recorded in the evidence card.
+  Notes directory 86 remains implemented and VERIFY:
+  [Evidence](redesign-pages/NOTE-LIST.md), original chronology, filters and pagination,
+  201 pytest and 51 JavaScript tests, four inspected photos, no monitored POSTs.
+  Specialty detail, checkpoint 85, remains implemented and VERIFY.
+  [Evidence](redesign-pages/SPEC-VIEW.md): original description, partner listing/counts,
+  contact/note context, links, Edit/delete/empty states; native sorting/history/dialog
+  and relationship-safe rollback. 206 isolated pytest and 61 JavaScript tests pass;
+  four inspected photos recorded. Explicit pytest supersedes stale editor discovery.
+  Trusted visible dark/light sorts, Back, links and Cancel pass; no monitored POSTs.
+  Before/After host viewport mismatch documented. Preserve all 63-84 uncommitted.
+  Notes directory 86 is now VERIFY; approved effort remains 75%.
+  All 63-90 await review. Parent owns the gallery; DM status is in the evidence card.
+  Specialty New/Edit forms, checkpoint 84, remain implemented and VERIFY.
+  [Evidence](redesign-pages/SPEC-FORM.md): original required name, optional description,
+  normalization, case-insensitive duplicates, relationships, commands and redirects;
+  shared native manual lifecycle, guarded Back drafts and retained write failures.
+  Scoped verification: 177 isolated pytest and 83 JavaScript tests pass; seven photos.
+  Visible read-only New/Edit and dark/light QA covers trusted guards and actual Back.
+  No POST paths observed in monitored QA; original dark theme/directory restored.
+  Late follow-up trusted-control timeouts are recorded without claiming extra coverage.
+  Preserve all 63-83 uncommitted. Specialty detail 85 is now implemented and VERIFY.
+  Approved effort remains 75%; all 63-90 await review. Parent owns the gallery.
+  Readiness DM status is recorded in the evidence card.
+  Specialties directory, checkpoint 83, remains implemented and VERIFY.
+  [Evidence](redesign-pages/SPEC-LIST.md): all-specialty/all-partner scope, original
+  descriptions and SQL name order, complete counts, New/detail/Edit destinations,
+  compact native data sorts and actual Back restoration. Scoped verification:
+  125 isolated pytest and 53 JavaScript tests pass; three private photos inspected.
+  Visible read-only QA verifies both themes, raw sorts, links and native help closure.
+  No POST paths observed. All 63-82 remain preserved and uncommitted.
+  Specialties New/Edit forms 84 and detail 85 are now implemented and VERIFY.
+  Approved effort remains 75%; all 63-90 await review. Parent owns the gallery.
+  Readiness DM status is recorded in the evidence card.
+  Partner detail, checkpoint 82, remains implemented and VERIFY.
+  [Evidence](redesign-pages/PART-VIEW.md): full original contacts/primary/edit/delete,
+  clipboard photos, linked notes, rating/specialty/favicon context, explicit meeting
+  domain/search/review/import/retry and existing native sharing consumers.
+  Scoped verification: 234 pytest and 95 JavaScript tests pass; six private photos.
+  Trusted live QA covers both themes, actual Back/editor/note links, sorting,
+  native cancellation/draft guards and photo inspection without business writes.
+  Prior 63-81 remain preserved and uncommitted. Specialties directory 83 is now VERIFY.
+  Approved effort remains 75%; all 63-90 await review; parent owns the gallery.
+  Readiness DM status is recorded in the evidence card.
+  Partner New/Edit forms, checkpoint 81, remain implemented and VERIFY.
+  [Evidence](redesign-pages/PART-FORM.md): exact manual fields, repeated specialties,
+  nullable/zero rating and favicon normalization; separate immediate specialty creation,
+  shared native draft/pending/Back guards and retained write failures.
+  Scoped verification: 140 pytest and 81 JavaScript tests pass; seven private photos.
+  Visible New/Edit dark/light QA is read-only, with trusted controls and actual Back.
+  Prior 63-80, including shared native sharing, remain preserved and uncommitted.
+  Partner detail 82 is now implemented and VERIFY; Specialties directory 83 is next.
+  Approved effort remains 75%; all 63-90 await review.
+  Parent owns the gallery; this checkpoint makes no git or gallery changes.
+  Readiness DM status is recorded in the evidence card.
+  Partners directory checkpoint 80 remains implemented and VERIFY.
+  [Evidence](redesign-pages/PART-LIST.md): original all-partner/all-note scope,
+  compact native five-axis rows, native shared sharing/import reviews, exact exports,
+  cancellation/pending/failure guards and Back context. Both themes and real links
+  verified read-only; no live business sends/imports. Prior 63-79 remain preserved.
+  Scoped verification: 252 pytest and 72 JavaScript tests pass; five private photos
+  inspected. Generic readiness DM accepted `1557478025933889670`.
+  Partner forms 81 are now implemented and VERIFY; Partner detail 82 is next.
+  Topic detail checkpoint 79 remains implemented and VERIFY.
+  [Evidence](redesign-pages/TOPIC-VIEW.md): original all-date/all-role tagged-note scope,
+  complete relationships and previews, native data sorts/history/delete confirmation.
+  Scoped verification: 155 pytest and 62 JavaScript tests pass; four private photos.
+  Visible trusted keyboard sort/topic navigation also closes checkpoint 77's QA gap.
+  Partners directory 80 is now implemented and VERIFY. All 63-90 await review;
+  approved effort remains 75%. Parent owns the same 28-checkpoint gallery.
+  Topic New/Edit forms checkpoint 78 remain implemented and VERIFY.
+  [Evidence](redesign-pages/TOPIC-FORM.md): exact original manual fields and redirects,
+  native shared lifecycle, guarded drafts/Back, retained failures and null-description fix.
+  Scoped verification: 259 pytest and 73 JavaScript tests pass; seven private photos.
+  All 63-90 await review; approved effort remains 75%.
+  Topics directory checkpoint 77 remains implemented and VERIFY:
+  [Evidence](redesign-pages/TOPIC-LIST.md): all-topic/all-note scope, original fields,
+  links and default ordering, compact native data sorts and actual Back restoration.
+  Scoped verification: 57 pytest and 38 JavaScript tests pass; three photos inspected.
+  Parent owns the same 28-checkpoint gallery.
+  Prior batch 63-76 remains complete, VERIFY, unreviewed and uncommitted.
+  Prior checkpoint 76:
+  [Evidence](redesign-pages/IC-FORM.md): original identity/role suggestions and redirects,
+  manual lifecycle, draft/Back guards, failed-input retention and separate delete POST.
+  Scoped verification: 139 pytest and 52 JavaScript tests pass; six photos inspected.
+  Checkpoints 63 [directory](redesign-pages/SELL-LIST.md) and 64
+  [forms](redesign-pages/SELL-FORM.md) remain VERIFY, unchanged by this checkpoint.
+  Checkpoint 65 [seller detail](redesign-pages/SELL-VIEW.md) remains VERIFY, unchanged.
+  Checkpoint 66 [territories directory](redesign-pages/TERR-LIST.md) remains VERIFY.
+  Checkpoint 67 [territory forms](redesign-pages/TERR-FORM.md) remains VERIFY.
+  Checkpoint 68 [territory detail](redesign-pages/TERR-VIEW.md) remains VERIFY.
+  Checkpoint 69 [POD directory](redesign-pages/POD-LIST.md) remains VERIFY.
+  Checkpoint 70 [Edit POD](redesign-pages/POD-FORM.md) remains VERIFY.
+  Checkpoint 71 [POD detail](redesign-pages/POD-VIEW.md) remains VERIFY.
+  Checkpoint 72 [SE directory](redesign-pages/SE-LIST.md) remains VERIFY.
+  Checkpoint 73 [Edit SE](redesign-pages/SE-FORM.md) remains VERIFY.
+  Checkpoint 74 [SE detail](redesign-pages/SE-VIEW.md) remains VERIFY.
+  Checkpoint 75 [Internal Contacts directory](redesign-pages/IC-LIST.md) remains VERIFY.
+  Prior authorized batch 63-76 is implemented and uncommitted.
+  User authorized checkpoints 77-90 on October 7, before reviewing 63-76.
+  Scope: Topics, Partners and Specialties directory/forms/detail, Notes directory,
+  Search, Note Template New/Edit forms, Opportunity detail and Fill My Day.
+  Extend the same private gallery for all 28 checkpoints; stop before 91.
+  No New POD or New Solution Engineer workflow invented.
 - Approved effort estimate: about 75%; strict DONE counters below are separate.
 - Use current page code/tests and shared contracts, not historical logs.
 - Protected note drafts and production port 5151 remain untouched.
 - Known/deferred issues: [archived checkpoint context](REDESIGN-CHECKPOINT-HISTORY.md).
 - Every future segment includes before/after screenshots and one Discord review-ready notification.
-- Next action: select the next bounded remaining surface when requested.
+- Next action: stop before 91. Parent compiles the same 28-checkpoint gallery,
+  runs final focused integration and reconciles the static breadcrumb inventory.
+  Leave all 63-90 VERIFY and uncommitted for user review.
+  Scope: Sellers, Territories, PODs, Solution Engineers and Internal Contacts,
+  with their existing directories/forms/details. No new routes invented.
   Checkpoints 53-62 and morning refinements share approved implementation `e5bde8c3`;
   previous checkpoint 52 is `4e57b1a6`.
   Push, merge and deployment remain unauthorized; strict DONE counters are unchanged.
@@ -25,6 +345,18 @@ Inventory date: October 2, 2026. Baseline product SHA:
   Customer-directory role cases explicitly cover both no-note visibility preferences.
   Private morning gallery: `overnight-review-53-62.html`, 26 verified screenshot files
   covering all ten checkpoints and both modes of each paired form.
+- Final new-batch regression: 423 scoped pytest and 181 JavaScript tests pass.
+  Coverage includes the fourteen new surfaces, shared form/dialog/sorter workflows,
+  existing Seller/POD domains, contact relationships and canonical breadcrumbs.
+  Integration fixes scope form styling assertions to owned markup, account for
+  normal flash consumption on intervening navigation, explicitly verify rendered
+  validation redirects, and update the unique contextual-help inventory to 77.
+  Private return gallery: `review-63-76.html`, 17 before/after pairs and supplementary
+  theme/workflow images, 57 screenshots total. Fourteen readiness DMs accepted.
+  Existing SQLAlchemy warnings and sharing-hub failures remain documented; no
+  full-suite pass is claimed. Seller detail's two early background POST paths
+  were not recorded; later probes observed no business POSTs. No business-write
+  controls were exercised, and normal read-cache/shell bookkeeping may occur.
 
 - Working branch: `feature/ui-redesign`; approved archive is present in `design-studies/`
 - Last reconciled product SHA: `ef552587a6514e116840b19f27c9b79ea6db0708`
@@ -52,14 +384,39 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoints 53-62 sign-off, the rough effort-based estimate is **about 75%**
+As of checkpoints63-90 sign-off, the rough effort-based estimate is **about 90%**
 of the full redesign (a judgment call, not a measured metric).
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved, alongside the engagement, project and customer
-families and most report workbenches. Remaining work includes seller/territory/
-POD/SE/contact/topic/partner/specialty surfaces, note/search utilities, preferences,
-admin/setup and final cross-page reconciliation. This moves the prior checkpoint
-52 estimate of 61% forward by roughly fourteen percentage points.
+families, reports, directories/forms/details, Search, Note Templates and Fill My Day.
+The gutter standard and all width/background refinements are also approved.
+Remaining work includes standalone note forms/detail and Home completion,
+Preferences/admin/utilities, global setup/chat, Electron/error surfaces and final
+cross-page reconciliation. This moves the previous75% estimate forward about15 points.
+
+### Remaining checkpoint working plan
+
+Plan15 further checkpoints,91-105. These are planned work packages, not an
+assertion that all remaining parity gaps are already audited. Split or consolidate
+only if the implementation audit shows a meaningful need; do not silently advance.
+
+| Checkpoint | Planned scope |
+| --- | --- |
+| 91 | Standalone New/Edit Note editor and draft/write parity |
+| 92 | Standalone Note detail completion and consumer reconciliation |
+| 93 | Home/calendar completion and note/action integration |
+| 94 | Preferences and dashboard settings |
+| 95 | Admin and fiscal-year management |
+| 96 | Analytics and Metrics |
+| 97 | Connect export workspace |
+| 98 | AI logs and favicon utility pages |
+| 99 | Welcome/sign-in/onboarding and guided tour |
+| 100 | Copilot chat flyout |
+| 101 | Global sharing/import-review reconciliation and remaining helper gaps |
+| 102 | Electron starting/slow-start/reconnect states |
+| 103 | Electron update/build states and native window restoration |
+| 104 | Missing-record and HTTP error presentation |
+| 105 | Final cross-page parity, Bootstrap cleanup and release reconciliation |
 
 Report an updated effort-based estimate whenever a checkpoint is completed and
 committed. Keep estimates approximate; small checkpoints may not move the rounded
@@ -120,10 +477,10 @@ have separate rows even when they use one template.
 | --- | --- | --- | --- | --- | --- |
 | HOME | Dashboard/calendar | `/` | `index.html` | BUILDING | [Workbench frame](redesign-pages/HOME-WORKBENCH.md), [note-preview slice](redesign-pages/HOME-NOTE-PREVIEW.md) |
 | ACTIONS | Action items | `/action-items` | `action_items_hub.html` | VERIFY | [ACTIONS](redesign-pages/ACTIONS.md); user-approved October 7, including dashboard/row refinements |
-| SEARCH | Search | `/search` | `search.html` | TODO | - |
+| SEARCH | Search | `/search` | `search.html` | VERIFY | [Evidence](redesign-pages/SEARCH.md); user-approved October 8, checkpoints63-90 |
 | PREFS | Preferences | `/preferences` | `settings.html` | TODO | - |
-| NT-NEW | Create note template | `/templates/new` | `note_template_form.html` | TODO | - |
-| NT-EDIT | Edit note template | `/templates/<int:id>/edit` | `note_template_form.html` | TODO | - |
+| NT-NEW | Create note template | `/templates/new` | `note_template_form.html` | VERIFY | [Evidence](redesign-pages/NT-FORM.md); user-approved October 8, checkpoints63-90 |
+| NT-EDIT | Edit note template | `/templates/<int:id>/edit` | `note_template_form.html` | VERIFY | [Evidence](redesign-pages/NT-FORM.md); user-approved October 8, checkpoints63-90 |
 | ANALYTICS | Analytics | `/analytics` | `analytics.html` | TODO | - |
 | ADMIN | Admin panel | `/admin` | `admin_panel.html` | TODO | - |
 | ADMIN-AI | AI logs | `/admin/ai-logs` | `admin_ai_logs.html` | TODO | - |
@@ -134,32 +491,32 @@ have separate rows even when they use one template.
 | CUST-NEW | Create customer | `/customer/new` | `customer_form.html` | VERIFY | [CUST-FORM](redesign-pages/CUST-FORM.md); user-approved October 7 |
 | CUST-VIEW | Customer detail | `/customer/<int:id>` | `customer_view.html`; `partials/customer_view_content.html` | VERIFY | [CUST-VIEW](redesign-pages/CUST-VIEW.md); user-approved October 7 |
 | CUST-EDIT | Edit customer | `/customer/<int:id>/edit` | `customer_form.html` | VERIFY | [CUST-FORM](redesign-pages/CUST-FORM.md); user-approved October 7 |
-| SELL-LIST | Sellers | `/sellers` | `sellers_list.html` | TODO | - |
-| SELL-NEW | Create seller | `/seller/new` | `seller_form.html` | TODO | - |
-| SELL-VIEW | Seller detail | `/seller/<int:id>` | `seller_view.html` | TODO | - |
-| SELL-EDIT | Edit seller | `/seller/<int:id>/edit` | `seller_form.html` | TODO | - |
-| TERR-LIST | Territories | `/territories` | `territories_list.html` | TODO | - |
-| TERR-NEW | Create territory | `/territory/new` | `territory_form.html` | TODO | - |
-| TERR-VIEW | Territory detail | `/territory/<int:id>` | `territory_view.html` | TODO | - |
-| TERR-EDIT | Edit territory | `/territory/<int:id>/edit` | `territory_form.html` | TODO | - |
-| POD-LIST | PODs | `/pods` | `pods_list.html` | TODO | - |
-| POD-VIEW | POD detail | `/pod/<int:id>` | `pod_view.html` | TODO | - |
-| POD-EDIT | Edit POD | `/pod/<int:id>/edit` | `pod_form.html` | TODO | - |
-| SE-LIST | Solution engineers | `/solution-engineers` | `solution_engineers_list.html` | TODO | - |
-| SE-VIEW | Solution engineer detail | `/solution-engineer/<int:id>` | `solution_engineer_view.html` | TODO | - |
-| SE-EDIT | Edit solution engineer | `/solution-engineer/<int:id>/edit` | `solution_engineer_form.html` | TODO | - |
-| IC-LIST | Internal contacts | `/internal-contacts` | `internal_contacts_list.html` | TODO | - |
-| IC-NEW | Create internal contact | `/internal-contacts/new` | `internal_contact_form.html` | TODO | - |
-| IC-EDIT | Edit internal contact | `/internal-contacts/<int:id>/edit` | `internal_contact_form.html` | TODO | - |
-| TOPIC-LIST | Topics | `/topics` | `topics_list.html` | TODO | - |
-| TOPIC-NEW | Create topic | `/topic/new` | `topic_form.html` | TODO | - |
-| TOPIC-VIEW | Topic detail | `/topic/<int:id>` | `topic_view.html` | TODO | - |
-| TOPIC-EDIT | Edit topic | `/topic/<int:id>/edit` | `topic_form.html` | TODO | - |
-| NOTE-LIST | Notes | `/notes` | `notes_list.html` | TODO | - |
+| SELL-LIST | Sellers | `/sellers` | `sellers_list.html` | VERIFY | [SELL-LIST](redesign-pages/SELL-LIST.md); user-approved October 8, checkpoints63-90 |
+| SELL-NEW | Create seller | `/seller/new` | `seller_form.html` | VERIFY | [SELL-FORM](redesign-pages/SELL-FORM.md); user-approved October 8, checkpoints63-90 |
+| SELL-VIEW | Seller detail | `/seller/<int:id>` | `seller_view.html` | VERIFY | [Seller detail](redesign-pages/SELL-VIEW.md); user-approved October 8, checkpoints63-90 |
+| SELL-EDIT | Edit seller | `/seller/<int:id>/edit` | `seller_form.html` | VERIFY | [SELL-FORM](redesign-pages/SELL-FORM.md); user-approved October 8, checkpoints63-90 |
+| TERR-LIST | Territories | `/territories` | `territories_list.html` | VERIFY | [Evidence](redesign-pages/TERR-LIST.md); user-approved October 8, checkpoints63-90 |
+| TERR-NEW | Create territory | `/territory/new` | `territory_form.html` | VERIFY | [Evidence](redesign-pages/TERR-FORM.md); user-approved October 8, checkpoints63-90 |
+| TERR-VIEW | Territory detail | `/territory/<int:id>` | `territory_view.html` | VERIFY | [Evidence](redesign-pages/TERR-VIEW.md); user-approved October 8, checkpoints63-90 |
+| TERR-EDIT | Edit territory | `/territory/<int:id>/edit` | `territory_form.html` | VERIFY | [Evidence](redesign-pages/TERR-FORM.md); user-approved October 8, checkpoints63-90 |
+| POD-LIST | PODs | `/pods` | `pods_list.html` | VERIFY | [POD-LIST](redesign-pages/POD-LIST.md); checkpoint 69; user-approved October 8, checkpoints63-90 |
+| POD-VIEW | POD detail | `/pod/<int:id>` | `pod_view.html` | VERIFY | [POD-VIEW](redesign-pages/POD-VIEW.md); user-approved October 8, checkpoints63-90 |
+| POD-EDIT | Edit POD | `/pod/<int:id>/edit` | `pod_form.html` | VERIFY | [Evidence](redesign-pages/POD-FORM.md); user-approved October 8, checkpoints63-90 |
+| SE-LIST | Solution engineers | `/solution-engineers` | `solution_engineers_list.html` | VERIFY | [Evidence](redesign-pages/SE-LIST.md); user-approved October 8, checkpoints63-90 |
+| SE-VIEW | Solution engineer detail | `/solution-engineer/<int:id>` | `solution_engineer_view.html` | VERIFY | [Evidence](redesign-pages/SE-VIEW.md); user-approved October 8, checkpoints63-90 |
+| SE-EDIT | Edit solution engineer | `/solution-engineer/<int:id>/edit` | `solution_engineer_form.html` | VERIFY | [SE-FORM](redesign-pages/SE-FORM.md); user-approved October 8, checkpoints63-90 |
+| IC-LIST | Internal contacts | `/internal-contacts` | `internal_contacts_list.html` | VERIFY | [card](redesign-pages/IC-LIST.md); user-approved October 8, checkpoints63-90 |
+| IC-NEW | Create internal contact | `/internal-contacts/new` | `internal_contact_form.html` | VERIFY | [IC-FORM](redesign-pages/IC-FORM.md); user-approved October 8, checkpoints63-90 |
+| IC-EDIT | Edit internal contact | `/internal-contacts/<int:id>/edit` | `internal_contact_form.html` | VERIFY | [IC-FORM](redesign-pages/IC-FORM.md); user-approved October 8, checkpoints63-90 |
+| TOPIC-LIST | Topics | `/topics` | `topics_list.html` | VERIFY | [77](redesign-pages/TOPIC-LIST.md); user-approved October 8, checkpoints63-90 |
+| TOPIC-NEW | Create topic | `/topic/new` | `topic_form.html` | VERIFY | [78](redesign-pages/TOPIC-FORM.md); user-approved October 8, checkpoints63-90 |
+| TOPIC-VIEW | Topic detail | `/topic/<int:id>` | `topic_view.html` | VERIFY | [Parity](redesign-pages/TOPIC-VIEW.md); user-approved October 8, checkpoints63-90 |
+| TOPIC-EDIT | Edit topic | `/topic/<int:id>/edit` | `topic_form.html` | VERIFY | [78](redesign-pages/TOPIC-FORM.md); user-approved October 8, checkpoints63-90 |
+| NOTE-LIST | Notes | `/notes` | `notes_list.html` | VERIFY | [86](redesign-pages/NOTE-LIST.md); user-approved October 8, checkpoints63-90 |
 | NOTE-NEW | Create note | `/note/new` | `note_form.html` | TODO | - |
 | NOTE-VIEW | Note detail | `/note/<int:id>` | `note_view.html` | BUILDING | [Shared body slice](redesign-pages/NOTE-BODY.md) |
 | NOTE-EDIT | Edit note | `/note/<int:id>/edit` | `note_form.html` | TODO | - |
-| FILL-DAY | Fill My Day | `/fill-my-day` | `fill_my_day.html` | TODO | - |
+| FILL-DAY | Fill My Day | `/fill-my-day` | `fill_my_day.html` | VERIFY | [Evidence](redesign-pages/FILL-DAY.md); user-approved October 8, checkpoints63-90 |
 | ENG-LIST | Engagements | `/engagements` | `engagements_hub.html` | VERIFY | [ENG-LIST](redesign-pages/ENG-LIST.md); user-approved October 7 |
 | ENG-NEW | Create engagement | `/customer/<int:customer_id>/engagement/new` | `engagement_form.html` | VERIFY | [ENG-FORM](redesign-pages/ENG-FORM.md); checkpoint 56, user-approved October 7 |
 | ENG-VIEW | Engagement detail | `/engagement/<int:id>` | `engagement_view.html` | VERIFY | [ENG-VIEW](redesign-pages/ENG-VIEW.md); checkpoint 57, user-approved October 7 |
@@ -169,18 +526,18 @@ have separate rows even when they use one template.
 | MS-VIEW | Milestone detail | `/milestone/<int:id>` | `milestone_view.html` | VERIFY | [Standalone frame](redesign-pages/MS-VIEW.md), [approved body](redesign-pages/MILESTONE-BODY.md); user-approved October 7 |
 | MS-EDIT | Edit milestone | `/milestone/<int:id>/edit` | `milestone_form.html` | VERIFY | [Manual milestone forms](redesign-pages/MS-FORM.md); checkpoint 52, user-approved October 7 |
 | MS-TRACK | Milestone tracker | `/reports/milestone-tracker`; `/milestone-tracker` redirects | `milestone_tracker.html` | VERIFY | [Milestone tracker](redesign-pages/MS-TRACK.md); user-approved October 6 |
-| OPP-VIEW | Opportunity detail | `/opportunity/<int:id>` | `opportunity_view.html` | TODO | - |
+| OPP-VIEW | Opportunity detail | `/opportunity/<int:id>` | `opportunity_view.html` | VERIFY | [Complete native detail and consumers](redesign-pages/OPP-VIEW.md); user-approved October 8, checkpoints63-90 |
 | PROJ-NEW | Create project | `/project/new` | `project_form.html` | VERIFY | [PROJ-FORM](redesign-pages/PROJ-FORM.md); checkpoint 58, user-approved October 7 |
 | PROJ-VIEW | Project detail | `/project/<int:id>` | `project_view.html` | VERIFY | [PROJ-VIEW](redesign-pages/PROJ-VIEW.md); checkpoint 59, user-approved October 7 |
 | PROJ-EDIT | Edit project | `/project/<int:id>/edit` | `project_form.html` | VERIFY | [PROJ-FORM](redesign-pages/PROJ-FORM.md); checkpoint 58, user-approved October 7 |
-| PART-LIST | Partners | `/partners` | `partners_list.html` | TODO | - |
-| PART-NEW | Create partner | `/partners/new` | `partner_form.html` | TODO | - |
-| PART-VIEW | Partner detail | `/partners/<int:id>` | `partner_view.html` | TODO | - |
-| PART-EDIT | Edit partner | `/partners/<int:id>/edit` | `partner_form.html` | TODO | - |
-| SPEC-LIST | Specialties | `/specialties` | `specialties_list.html` | TODO | - |
-| SPEC-NEW | Create specialty | `/specialties/new` | `specialty_form.html` | TODO | - |
-| SPEC-VIEW | Specialty detail | `/specialties/<int:id>` | `specialty_view.html` | TODO | - |
-| SPEC-EDIT | Edit specialty | `/specialties/<int:id>/edit` | `specialty_form.html` | TODO | - |
+| PART-LIST | Partners | `/partners` | `partners_list.html` | VERIFY | [Parity](redesign-pages/PART-LIST.md); user-approved October 8, checkpoints63-90 |
+| PART-NEW | Create partner | `/partners/new` | `partner_form.html` | VERIFY | [81](redesign-pages/PART-FORM.md); user-approved October 8, checkpoints63-90 |
+| PART-VIEW | Partner detail | `/partners/<int:id>` | `partner_view.html` | VERIFY | [Evidence](redesign-pages/PART-VIEW.md); user-approved October 8, checkpoints63-90 |
+| PART-EDIT | Edit partner | `/partners/<int:id>/edit` | `partner_form.html` | VERIFY | [81](redesign-pages/PART-FORM.md); user-approved October 8, checkpoints63-90 |
+| SPEC-LIST | Specialties | `/specialties` | `specialties_list.html` | VERIFY | [Evidence](redesign-pages/SPEC-LIST.md); user-approved October 8, checkpoints63-90 |
+| SPEC-NEW | Create specialty | `/specialties/new` | `specialty_form.html` | VERIFY | [84](redesign-pages/SPEC-FORM.md); user-approved October 8, checkpoints63-90 |
+| SPEC-VIEW | Specialty detail | `/specialties/<int:id>` | `specialty_view.html` | VERIFY | [85](redesign-pages/SPEC-VIEW.md); user-approved October 8, checkpoints63-90 |
+| SPEC-EDIT | Edit specialty | `/specialties/<int:id>/edit` | `specialty_form.html` | VERIFY | [84](redesign-pages/SPEC-FORM.md); user-approved October 8, checkpoints63-90 |
 | OOO-LIST | 1:1 hub | `/one-on-one/` | `one_on_one_hub.html` | VERIFY | [Card](redesign-pages/OOO-LIST.md) |
 | OOO-VIEW | 1:1 workspace | `/one-on-one/<int:workspace_id>` | `one_on_one_workspace.html` | VERIFY | [Checkpoint 47](redesign-pages/OOO-VIEW.md); user-approved `6ee2af6d`, final reconciliation pending |
 | RPT-HUB | Reports hub | `/reports` | `reports_hub.html` | VERIFY | [Checkpoint 34](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-34-main-reports-directory); native grouped directory, identical registry/menu order, local filter and Back context; user-approved October 5 |
@@ -222,7 +579,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | FR-MS | `partials/milestone_view_content.html` | `/api/milestone/<int:id>/detail` | VERIFY | [Standalone/fragment parity](redesign-pages/MS-VIEW.md), [lifecycle/editors](redesign-pages/MILESTONE-PREVIEW.md), [approved body](redesign-pages/MILESTONE-BODY.md) |
 | FR-NOTE | `partials/note_view_content.html` | `/api/note/<int:id>/detail` | BUILDING | [Lifecycle/editor](redesign-pages/HOME-NOTE-PREVIEW.md), [shared body](redesign-pages/NOTE-BODY.md) |
 | FR-OOO | `partials/one_on_one_workspace_content.html` | `/api/seller/<int:seller_id>/one-on-one/detail` | TODO | - |
-| FR-OPP | `partials/opportunity_view_content.html` | `/api/opportunity/<int:id>/detail` | TODO | - |
+| FR-OPP | `partials/opportunity_view_content.html` | `/api/opportunity/<int:id>/detail` | VERIFY | [Full body/scripts and actual Workspace preview](redesign-pages/OPP-VIEW.md) |
 | FR-PROJ | `partials/project_view_content.html` | `/api/project/<int:id>/detail` | VERIFY | [PROJ-VIEW](redesign-pages/PROJ-VIEW.md); complete native body and nested tasks |
 | FR-REV | `partials/revenue_alert_detail.html` | `/api/revenue/analysis/<int:analysis_id>/detail`, all four preview hosts | DONE | [Checkpoint 20 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | FR-REV-HISTORY | `partials/_revenue_monthly_history.html` | Customer bucket Full History and product customer history | DONE | [Checkpoint 28 evidence](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-28-product-revenue-comparison-and-history) |
@@ -237,14 +594,14 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | INC-ACT-CAIP | `partials/activity_coverage_caip.html` | Activity coverage | TODO | - |
 | INC-ACT-MS | `partials/activity_coverage_milestones.html` | Activity coverage | TODO | - |
 | INC-CUST-ICON | `partials/customer_favicon.html` | Customer favicon macro, multiple hosts | TODO | - |
-| INC-ENG-PANEL | `partials/engagements_panel.html` | Home, engagements hub, seller | BUILDING | [Hub opt-in; embeds retained](redesign-pages/ENG-LIST.md) |
-| INC-MS-TRACK | `partials/milestone_tracker_content.html` | Milestone tracker and seller | VERIFY | [Milestone tracker](redesign-pages/MS-TRACK.md); native shared scope/list, no seller page overhaul |
+| INC-ENG-PANEL | `partials/engagements_panel.html` | Home, engagements hub, seller | BUILDING | [Hub opt-in](redesign-pages/ENG-LIST.md); [seller native consumer](redesign-pages/SELL-VIEW.md), Home unchanged |
+| INC-MS-TRACK | `partials/milestone_tracker_content.html` | Milestone tracker and seller | VERIFY | [Milestone tracker](redesign-pages/MS-TRACK.md); [complete seller Full View](redesign-pages/SELL-VIEW.md) |
 | INC-PART-ICON | `partials/partner_favicon.html` | Partner/specialty surfaces | TODO | - |
 | INC-REV-ALERTS | `partials/revenue_alerts_content.html`, `static/js/ui-revenue-alerts.js` | Revenue Analyzer, seller alerts and Seller Full View | DONE | [Checkpoint 22 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-REV-PREVIEW | `partials/revenue_alert_preview.html`, `static/js/ui-revenue-preview.js` | Home, Revenue Analyzer, seller alerts and native Seller Full View drilldown | DONE | [Checkpoints 21-22 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-REVIEW | `partials/review_action.html`, `static/js/ui-revenue-review.js` | Home and revenue/seller surfaces | DONE | [Checkpoint 19 evidence](redesign-pages/HOME-WORKBENCH.md) |
-| INC-FORECAST | `_forecast_comments.html` | Milestone/opportunity details | BUILDING | [Native opt-in and legacy parity](redesign-pages/MILESTONE-BODY.md) |
-| INC-FORECAST-JS | `_forecast_comments_js.html` | Milestone/opportunity details | BUILDING | [Native opt-in and draft/write parity](redesign-pages/MILESTONE-BODY.md) |
+| INC-FORECAST | `_forecast_comments.html` | Milestone/opportunity details | VERIFY | [Milestone evidence](redesign-pages/MILESTONE-BODY.md), [complete opportunity integration](redesign-pages/OPP-VIEW.md) |
+| INC-FORECAST-JS | `_forecast_comments_js.html` | Milestone/opportunity details | VERIFY | [Milestone evidence](redesign-pages/MILESTONE-BODY.md), [opportunity draft/write parity](redesign-pages/OPP-VIEW.md) |
 
 ## Global, native-shell and error surfaces
 
@@ -257,7 +614,7 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | GLOBAL-HELP | Contextual page help | `base.html`, native help dialog | DONE | [Card](redesign-pages/GLOBAL-HELP.md) |
 | GLOBAL-KEYS | Keyboard shortcuts | `base.html`, native shortcuts dialog | DONE | [Card](redesign-pages/GLOBAL-HELP.md) |
 | GLOBAL-CHAT | Copilot chat | `base.html`, chat flyout | TODO | - |
-| GLOBAL-SHARE | Sharing | `base.html`, share modal | TODO | - |
+| GLOBAL-SHARE | Sharing | `base.html`, share modal | VERIFY | [Checkpoint 80](redesign-pages/PART-LIST.md) |
 | GLOBAL-IMPORT | Shared-data import review | `base.html`, import-review modal | TODO | - |
 | GLOBAL-ZOOM | Image zoom | `base.html`, native image dialog | DONE | [Card](redesign-pages/GLOBAL-ZOOM.md) |
 | GLOBAL-TOUR | Guided product tour | `base.html`, tour script | TODO | - |

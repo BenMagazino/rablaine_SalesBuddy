@@ -18,7 +18,7 @@
 {% macro count_cell(value) -%}
 <td data-sb-sort-value="{{ value if value is not none else '' }}">{{ '{:,}'.format(value) if value is not none else '-' }}</td>
 {%- endmacro %}
-<section class="sb-revenue-workspace sb-revenue-import" data-sb-page-surface
+<section class="sb-revenue-workspace sb-revenue-import{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface
          data-sb-import data-has-buckets="{{ 'true' if user_role != 'dss' else 'false' }}"
          data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          data-sync-url="{{ url_for('revenue.revenue_sync') }}"

@@ -45,7 +45,7 @@
             date.toLocaleDateString('en-US', {month: 'short', day: 'numeric',
                 ...(calendar ? {year: 'numeric'} : {})});
     }
-    function rowHtml(item) {
+    function rowHtml(item, sellerScope = false) {
         const e = escapeHtml;
         const tone = {Active: 'success', 'On Hold': 'warning', Won: 'accent', Lost: ''};
         const story = item.story_completeness || 0;
@@ -65,31 +65,35 @@
             ${rawCell(item.estimated_acr ?? '', item.estimated_acr ? '$' + Number(item.estimated_acr).toLocaleString() : '-')}
             ${rawCell(item.target_date || '', dateLabel(item.target_date, true))}
             ${rawCell(Number.isFinite(noteKey) ? noteKey : '', dateLabel(item.latest_note_date))}
-            ${rawCell(item.open_action_item_count || 0, item.open_action_item_count || 0)}
+            ${sellerScope ? '' : rawCell(item.open_action_item_count || 0, item.open_action_item_count || 0)}
             ${rawCell(item.linked_note_count || 0, item.linked_note_count || 0)}
             ${rawCell(item.opportunity_count || 0, item.opportunity_count || 0)}
             ${rawCell(item.milestone_count || 0, item.milestone_count || 0)}
             <td><button type="button" class="sb-eng-favorite" data-eng-favorite="${e(item.id)}" aria-label="${item.is_favorited ? 'Remove from' : 'Add to'} favorites: ${e(item.title)}" title="${item.is_favorited ? 'Remove from' : 'Add to'} favorites"><i class="bi bi-star${item.is_favorited ? '-fill' : ''}" aria-hidden="true"></i></button></td>
         </tr>`;
     }
-    function tableHtml(groups, key) {
+    function tableHtml(groups, key, sellerScope = false) {
         const columns = [['Engagement', 'text'], ['Customer / seller', 'text'],
             ['Status', 'text'], ['Story', 'number'], ['ACR/mo', 'number'],
             ['Target', 'date'], ['Latest note', 'number'], ['Tasks', 'number'],
             ['Notes', 'number'], ['Opps', 'number', 'Opportunities'],
             ['MS', 'number', 'Milestones'], ['Star', null, 'Favorite']];
+        if (sellerScope) {
+            columns[1][0] = 'Customer';
+            columns.splice(7, 1);
+        }
         let lastSeller = null;
         const bodies = groups.map(group => {
             let heading = '';
             if (group.customer) {
                 if (group.seller && group.seller !== lastSeller) {
-                    heading += `<tr data-sb-sort-fixed><td colspan="12" class="sb-eng-seller"><i class="bi bi-person" aria-hidden="true"></i> ${escapeHtml(group.seller)}</td></tr>`;
+                    heading += `<tr data-sb-sort-fixed><td colspan="${columns.length}" class="sb-eng-seller"><i class="bi bi-person" aria-hidden="true"></i> ${escapeHtml(group.seller)}</td></tr>`;
                     lastSeller = group.seller;
                 }
                 const customer = group.customer;
-                heading += `<tr data-sb-sort-fixed><td colspan="12" class="sb-eng-customer"><a href="/customer/${escapeHtml(customer.customer_id)}">${escapeHtml(customer.customer_nickname || customer.customer_name)}</a><span>${group.items.length}</span></td></tr>`;
+                heading += `<tr data-sb-sort-fixed><td colspan="${columns.length}" class="sb-eng-customer"><a href="/customer/${escapeHtml(customer.customer_id)}">${escapeHtml(customer.customer_nickname || customer.customer_name)}</a><span>${group.items.length}</span></td></tr>`;
             }
-            return `<tbody data-eng-customer="${group.customer?.customer_id || ''}" data-eng-seller="${escapeHtml(group.seller || '')}">${heading}${group.items.map(rowHtml).join('')}</tbody>`;
+            return `<tbody data-eng-customer="${group.customer?.customer_id || ''}" data-eng-seller="${escapeHtml(group.seller || '')}">${heading}${group.items.map(item => rowHtml(item, sellerScope)).join('')}</tbody>`;
         }).join('');
         return `<table class="sb-eng-table" data-sb-sortable data-sb-sort-key="${escapeHtml(key)}"><thead><tr>${columns.map(([label, type, full]) => `<th scope="col" title="${full || label}" data-export-label="${full || label}"${type ? ` data-sb-sort-type="${type}"` : ''}>${label}</th>`).join('')}</tr></thead>${bodies}</table>`;
     }
@@ -136,7 +140,8 @@
             document.getElementById(root.dataset.countId).textContent =
                 items.length + ' shown / ' + data.length + ' total';
             body.innerHTML = items.length ? tableHtml(groupItems(items, state.group,
-                root.dataset.showSeller === 'true'), id + (state.group ? '-grouped' : '-flat')) :
+                root.dataset.showSeller === 'true'), id + (state.group ? '-grouped' : '-flat'),
+                root.dataset.sellerScope === 'true') :
                 `<p class="sb-eng-empty">${escapeHtml(root.dataset.emptyMsg)}</p>`;
             body.querySelectorAll('[data-eng-favorite]').forEach(button => {
                 button.disabled = pending.has(button.dataset.engFavorite);

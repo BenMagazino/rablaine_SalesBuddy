@@ -2,13 +2,127 @@
 Partner routes for Sales Buddy.
 Handles partner management, contacts, and specialties.
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
+import logging
+from functools import wraps
+from flask import (
+    Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, session,
+)
+from sqlalchemy.exc import SQLAlchemyError
 from app.models import db, Partner, PartnerContact, Specialty, Note
 from app.routes.admin import fetch_favicon_for_domain
 from app.routes.msx import _extract_domain
 from app.services.backup import backup_partner, delete_partner_backup
 
 partners_bp = Blueprint('partners', __name__)
+logger = logging.getLogger(__name__)
+
+
+def _contact_values() -> dict:
+    """Keep the exact manual contact payload for a failed save."""
+    return {key: request.form.get(key, '') for key in (
+        'contact_name', 'contact_title', 'contact_email', 'is_primary')}
+
+
+def _render_partner_detail(partner: Partner, failure: dict | None = None):
+    """Render contact data safely for the native detail controller."""
+    if failure is None:
+        saved = session.get('partner_contact_failure')
+        if saved and saved.get('partner_id') == partner.id:
+            failure = session.pop('partner_contact_failure')
+    return render_template(
+        'partner_view.html', partner=partner, contact_failure=failure,
+        contact_data=[{
+            'id': c.id, 'name': c.name, 'title': c.title or '', 'email': c.email or '',
+            'is_primary': c.is_primary,
+        } for c in partner.contacts])
+
+
+def _detail_write(handler):
+    """Roll back detail writes and surface recoverable errors to their actual consumers."""
+    @wraps(handler)
+    def guarded(*args, **kwargs):
+        """Preserve the original route response on successful writes."""
+        try:
+            return handler(*args, **kwargs)
+        except SQLAlchemyError:
+            db.session.rollback()
+            logger.exception('Partner detail write failed on %s', request.path)
+            if request.path.startswith('/api/'):
+                return jsonify({'success': False, 'error': 'Could not save. Please try again.'}), 503
+            partner_id = kwargs.get('partner_id', kwargs.get('id'))
+            partner = db.session.get(Partner, partner_id)
+            failure = {'partner_id': partner_id, 'path': request.path,
+                       'values': _contact_values()} if 'contact_name' in request.form else None
+            flash('Could not save the partner change. Please try again.', 'error')
+            return _render_partner_detail(partner, failure), 500
+    return guarded
+
+
+def _remember_contact_failure(partner_id: int) -> None:
+    """Carry validation entries through the existing detail redirect."""
+    session['partner_contact_failure'] = {
+        'partner_id': partner_id, 'path': request.path, 'values': _contact_values()}
+
+
+def _partner_form_values() -> dict:
+    """Capture raw manual entries, including repeated specialty associations."""
+    values = {key: request.form.get(key, '') for key in ('name', 'website', 'rating', 'overview')}
+    values['specialty_ids'] = request.form.getlist('specialty_ids')
+    return values
+
+
+def _render_partner_form(partner: Partner | None, values: dict | None = None):
+    """Render path-local failed entries without replacing another form's draft."""
+    failure = session.get('partner_form_failure')
+    if values is None and failure and failure.get('path') == request.path:
+        values = session.pop('partner_form_failure')['values']
+    specialties = Specialty.query.order_by(Specialty.name).all()
+    return render_template(
+        'partner_form.html', partner=partner, specialties=specialties, form_values=values)
+
+
+def _save_partner_form(partner: Partner | None):
+    """Save the original manual payload with recoverable validation and database errors."""
+    values = _partner_form_values()
+    name = values['name'].strip()
+    try:
+        rating = int(values['rating'].strip()) if values['rating'].strip() else None
+    except ValueError:
+        flash('Rating must be a whole number from 0 to 5, or blank.', 'error')
+        session['partner_form_failure'] = {'path': request.path, 'values': values}
+        return redirect(request.url)
+    if rating is not None and not 0 <= rating <= 5:
+        rating = None
+    if not name:
+        flash('Partner name is required', 'error')
+        session['partner_form_failure'] = {'path': request.path, 'values': values}
+        return redirect(request.url)
+    creating = partner is None
+    try:
+        website = _extract_domain(values['website'].strip()) if values['website'].strip() else None
+        if creating:
+            partner = Partner(name=name)
+            db.session.add(partner)
+        old_website = partner.website
+        partner.name = name
+        partner.overview = values['overview'].strip() or None
+        partner.rating = rating
+        partner.website = website
+        if website and (creating or website != old_website):
+            partner.favicon_b64 = fetch_favicon_for_domain(website)
+        elif not website:
+            partner.favicon_b64 = None
+        partner.specialties = Specialty.query.filter(
+            Specialty.id.in_(values['specialty_ids'])).all() if values['specialty_ids'] else []
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Could not save manual partner form on %s', request.path)
+        flash('Could not save the partner. Your entries are still here.', 'error')
+        return _render_partner_form(None if creating else partner, values), 500
+    backup_partner(partner.id)
+    flash(f'Partner "{name}" {"created" if creating else "updated"} successfully', 'success')
+    return redirect(url_for('partners.partner_view', id=partner.id))
 
 
 # =============================================================================
@@ -26,57 +140,15 @@ def partners_list():
 def partner_new():
     """Create a new partner."""
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        overview = request.form.get('overview', '').strip()
-        rating_str = request.form.get('rating', '').strip()
-        website = request.form.get('website', '').strip()
-        specialty_ids = request.form.getlist('specialty_ids')
-        
-        # Parse rating (empty string = no rating)
-        rating = int(rating_str) if rating_str else None
-        if rating is not None and (rating < 0 or rating > 5):
-            rating = None
-        
-        if not name:
-            flash('Partner name is required', 'error')
-            return redirect(request.url)
-        
-        # Normalize website to clean domain and fetch favicon
-        website = _extract_domain(website) if website else None
-        favicon_b64 = None
-        if website:
-            favicon_b64 = fetch_favicon_for_domain(website)
-        
-        partner = Partner(
-            name=name,
-            overview=overview or None,
-            rating=rating,
-            website=website,
-            favicon_b64=favicon_b64,
-        )
-        
-        # Add specialties
-        if specialty_ids:
-            specialties = Specialty.query.filter(Specialty.id.in_(specialty_ids)).all()
-            partner.specialties = specialties
-        
-        db.session.add(partner)
-        db.session.commit()
-        
-        backup_partner(partner.id)
-        
-        flash(f'Partner "{name}" created successfully', 'success')
-        return redirect(url_for('partners.partner_view', id=partner.id))
-    
-    specialties = Specialty.query.order_by(Specialty.name).all()
-    return render_template('partner_form.html', partner=None, specialties=specialties)
+        return _save_partner_form(None)
+    return _render_partner_form(None)
 
 
 @partners_bp.route('/partners/<int:id>')
 def partner_view(id):
     """View a partner's details."""
     partner = Partner.query.get_or_404(id)
-    return render_template('partner_view.html', partner=partner)
+    return _render_partner_detail(partner)
 
 
 @partners_bp.route('/partners/<int:id>/edit', methods=['GET', 'POST'])
@@ -85,53 +157,12 @@ def partner_edit(id):
     partner = Partner.query.get_or_404(id)
     
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        overview = request.form.get('overview', '').strip()
-        rating_str = request.form.get('rating', '').strip()
-        website = request.form.get('website', '').strip()
-        specialty_ids = request.form.getlist('specialty_ids')
-        
-        # Parse rating (empty string = no rating)
-        rating = int(rating_str) if rating_str else None
-        if rating is not None and (rating < 0 or rating > 5):
-            rating = None
-        
-        if not name:
-            flash('Partner name is required', 'error')
-            return redirect(request.url)
-        
-        partner.name = name
-        partner.overview = overview or None
-        partner.rating = rating
-        
-        # Normalize website to clean domain and refetch favicon if changed
-        website = _extract_domain(website) if website else None
-        old_website = partner.website
-        partner.website = website
-        if website and website != old_website:
-            partner.favicon_b64 = fetch_favicon_for_domain(website)
-        elif not website:
-            partner.favicon_b64 = None
-        
-        # Update specialties
-        if specialty_ids:
-            specialties = Specialty.query.filter(Specialty.id.in_(specialty_ids)).all()
-            partner.specialties = specialties
-        else:
-            partner.specialties = []
-        
-        db.session.commit()
-        
-        backup_partner(partner.id)
-        
-        flash(f'Partner "{name}" updated successfully', 'success')
-        return redirect(url_for('partners.partner_view', id=partner.id))
-    
-    specialties = Specialty.query.order_by(Specialty.name).all()
-    return render_template('partner_form.html', partner=partner, specialties=specialties)
+        return _save_partner_form(partner)
+    return _render_partner_form(partner)
 
 
 @partners_bp.route('/partners/<int:id>/delete', methods=['POST'])
+@_detail_write
 def partner_delete(id):
     """Delete a partner."""
     partner = Partner.query.get_or_404(id)
@@ -154,6 +185,7 @@ def partner_delete(id):
 # =============================================================================
 
 @partners_bp.route('/partners/<int:partner_id>/contacts/new', methods=['POST'])
+@_detail_write
 def contact_new(partner_id):
     """Add a new contact to a partner."""
     partner = Partner.query.get_or_404(partner_id)
@@ -165,6 +197,7 @@ def contact_new(partner_id):
     
     if not name:
         flash('Contact name is required', 'error')
+        _remember_contact_failure(partner_id)
         return redirect(url_for('partners.partner_view', id=partner_id))
     
     # If marking as primary, unmark others
@@ -190,6 +223,7 @@ def contact_new(partner_id):
 
 
 @partners_bp.route('/partners/<int:partner_id>/contacts/<int:contact_id>/primary', methods=['POST'])
+@_detail_write
 def contact_set_primary(partner_id, contact_id):
     """Set a contact as the primary contact."""
     partner = Partner.query.get_or_404(partner_id)
@@ -213,6 +247,7 @@ def contact_set_primary(partner_id, contact_id):
 
 
 @partners_bp.route('/partners/<int:partner_id>/contacts/<int:contact_id>/edit', methods=['POST'])
+@_detail_write
 def contact_edit(partner_id, contact_id):
     """Edit a contact's name and email."""
     partner = Partner.query.get_or_404(partner_id)
@@ -225,6 +260,7 @@ def contact_edit(partner_id, contact_id):
     name = request.form.get('contact_name', '').strip()
     if not name:
         flash('Contact name is required', 'error')
+        _remember_contact_failure(partner_id)
         return redirect(url_for('partners.partner_view', id=partner_id))
 
     contact.name = name
@@ -245,6 +281,7 @@ def contact_edit(partner_id, contact_id):
 
 
 @partners_bp.route('/partners/<int:partner_id>/contacts/<int:contact_id>/delete', methods=['POST'])
+@_detail_write
 def contact_delete(partner_id, contact_id):
     """Delete a contact."""
     contact = PartnerContact.query.get_or_404(contact_id)
@@ -285,6 +322,7 @@ def api_partner_contact_create(partner_id):
 
 
 @partners_bp.route('/api/partner/contact/<int:contact_id>/photo', methods=['POST'])
+@_detail_write
 def api_partner_contact_photo(contact_id):
     """Save a photo for a partner contact. Runs face detection server-side."""
     contact = PartnerContact.query.get_or_404(contact_id)
@@ -292,7 +330,11 @@ def api_partner_contact_photo(contact_id):
     raw_b64 = data.get('photo_b64')
     if raw_b64:
         from app.services.contact_photo import process_contact_photo
-        cropped, full = process_contact_photo(raw_b64)
+        try:
+            cropped, full = process_contact_photo(raw_b64)
+        except ValueError:
+            logger.exception('Invalid photo for partner contact %s', contact_id)
+            return jsonify({'success': False, 'error': 'Could not decode the photo. Try again.'}), 400
         contact.photo_b64 = cropped
         contact.photo_full_b64 = full
     else:
@@ -313,35 +355,52 @@ def specialties_list():
     return render_template('specialties_list.html', specialties=specialties)
 
 
+def _render_specialty_form(specialty: Specialty | None, values: dict | None = None):
+    """Retain failed manual entries once, only on their original form path."""
+    failure = session.get('specialty_form_failure')
+    if values is None and failure and failure.get('path') == request.path:
+        values = session.pop('specialty_form_failure')['values']
+    return render_template('specialty_form.html', specialty=specialty, form_values=values)
+
+
+def _save_specialty_form(specialty: Specialty | None):
+    """Save the original manual fields without changing partner associations."""
+    values = {key: request.form.get(key, '') for key in ('name', 'description')}
+    name = values['name'].strip()
+    creating = specialty is None
+    if not name:
+        flash('Specialty name is required', 'error')
+        session['specialty_form_failure'] = {'path': request.path, 'values': values}
+        return redirect(request.url)
+    try:
+        duplicates = Specialty.query.filter(db.func.lower(Specialty.name) == name.lower())
+        if not creating:
+            duplicates = duplicates.filter(Specialty.id != specialty.id)
+        if duplicates.first():
+            flash(f'Specialty "{name}" already exists', 'error')
+            session['specialty_form_failure'] = {'path': request.path, 'values': values}
+            return redirect(request.url)
+        if creating:
+            specialty = Specialty(name=name)
+            db.session.add(specialty)
+        specialty.name = name
+        specialty.description = values['description'].strip() or None
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Could not save manual specialty form on %s', request.path)
+        flash('Could not save the specialty. Your entries are still here.', 'error')
+        return _render_specialty_form(None if creating else specialty, values), 500
+    flash(f'Specialty "{name}" {"created" if creating else "updated"} successfully', 'success')
+    return redirect(url_for('partners.specialty_view', id=specialty.id))
+
+
 @partners_bp.route('/specialties/new', methods=['GET', 'POST'])
 def specialty_new():
     """Create a new specialty."""
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        description = request.form.get('description', '').strip()
-        
-        if not name:
-            flash('Specialty name is required', 'error')
-            return redirect(request.url)
-        
-        # Check for duplicate
-        existing = Specialty.query.filter(db.func.lower(Specialty.name) == name.lower()).first()
-        if existing:
-            flash(f'Specialty "{name}" already exists', 'error')
-            return redirect(request.url)
-        
-        specialty = Specialty(
-            name=name,
-            description=description or None,
-        )
-        
-        db.session.add(specialty)
-        db.session.commit()
-        
-        flash(f'Specialty "{name}" created successfully', 'success')
-        return redirect(url_for('partners.specialty_view', id=specialty.id))
-    
-    return render_template('specialty_form.html', specialty=None)
+        return _save_specialty_form(None)
+    return _render_specialty_form(None)
 
 
 @partners_bp.route('/specialties/<int:id>')
@@ -355,32 +414,9 @@ def specialty_view(id):
 def specialty_edit(id):
     """Edit a specialty."""
     specialty = Specialty.query.get_or_404(id)
-    
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        description = request.form.get('description', '').strip()
-        
-        if not name:
-            flash('Specialty name is required', 'error')
-            return redirect(request.url)
-        
-        # Check for duplicate (excluding self)
-        existing = Specialty.query.filter(
-            db.func.lower(Specialty.name) == name.lower(),
-            Specialty.id != id
-        ).first()
-        if existing:
-            flash(f'Specialty "{name}" already exists', 'error')
-            return redirect(request.url)
-        
-        specialty.name = name
-        specialty.description = description or None
-        db.session.commit()
-        
-        flash(f'Specialty "{name}" updated successfully', 'success')
-        return redirect(url_for('partners.specialty_view', id=specialty.id))
-    
-    return render_template('specialty_form.html', specialty=specialty)
+        return _save_specialty_form(specialty)
+    return _render_specialty_form(specialty)
 
 
 @partners_bp.route('/specialties/<int:id>/delete', methods=['POST'])
@@ -388,13 +424,16 @@ def specialty_delete(id):
     """Delete a specialty."""
     specialty = Specialty.query.get_or_404(id)
     name = specialty.name
-    
-    # Remove from all partners (unassociate)
-    specialty.partners = []
-    
-    db.session.delete(specialty)
-    db.session.commit()
-    
+    try:
+        specialty.partners = []
+        db.session.delete(specialty)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Could not delete specialty %s on %s', id, request.path)
+        flash('Could not delete the specialty. Its partner associations are unchanged.', 'error')
+        return redirect(url_for('partners.specialty_view', id=id))
+
     flash(f'Specialty "{name}" deleted successfully', 'success')
     return redirect(url_for('partners.specialties_list'))
 
@@ -502,6 +541,7 @@ def api_partner_get(id):
 
 
 @partners_bp.route('/api/partners/<int:id>', methods=['PUT'])
+@_detail_write
 def api_partner_update(id):
     """Update a partner via API (for inline editing from note form flyout)."""
     partner = Partner.query.get_or_404(id)
@@ -596,7 +636,9 @@ def api_specialties_search():
 @partners_bp.route('/api/specialties/create', methods=['POST'])
 def api_specialty_create():
     """Create a specialty via API (for inline creation from partner form)."""
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get('name', ''), str):
+        return jsonify({'error': 'Specialty name is required'}), 400
     name = data.get('name', '').strip()
     
     if not name:
@@ -605,16 +647,26 @@ def api_specialty_create():
     # Check if exists
     existing = Specialty.query.filter(db.func.lower(Specialty.name) == name.lower()).first()
     if existing:
-        return jsonify({'id': existing.id, 'name': existing.name, 'description': existing.description or '', 'existed': True})
+        return jsonify({
+            'id': existing.id, 'name': existing.name,
+            'description': existing.description or '', 'existed': True,
+        })
     
     specialty = Specialty(
         name=name,
     )
     
-    db.session.add(specialty)
-    db.session.commit()
+    try:
+        db.session.add(specialty)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Could not create specialty from partner form')
+        return jsonify({'error': 'Could not create the specialty. Please try again.'}), 503
     
-    return jsonify({'id': specialty.id, 'name': specialty.name, 'description': '', 'existed': False})
+    return jsonify({
+        'id': specialty.id, 'name': specialty.name, 'description': '', 'existed': False,
+    })
 
 
 # =============================================================================
@@ -682,7 +734,12 @@ def api_share_receive():
     if not partners_data:
         return jsonify({'success': False, 'error': 'No partners in payload'}), 400
 
-    results = upsert_partners(partners_data, sender_name)
+    try:
+        results = upsert_partners(partners_data, sender_name)
+    except Exception:
+        db.session.rollback()
+        logger.exception("Could not import shared partner directory")
+        return jsonify({'success': False, 'error': 'Could not import selected partners.'}), 503
     return jsonify({'success': True, **results})
 
 
@@ -704,6 +761,7 @@ def api_partner_scrape(partner_id):
         result = scrape_partner_data(partner)
         return jsonify({'success': True, **result})
     except TimeoutError:
+        logger.exception('Partner scrape timed out for partner %s', partner_id)
         return jsonify({'success': False, 'error': 'WorkIQ query timed out. Try again.'}), 504
     except Exception as e:
         logger.exception(f"Partner scrape failed for {partner.name}")
@@ -729,4 +787,5 @@ def api_partner_scrape_apply(partner_id):
         return jsonify({'success': True, **summary})
     except Exception as e:
         db.session.rollback()
+        logger.exception('Partner scrape apply failed for partner %s', partner_id)
         return jsonify({'success': False, 'error': str(e)}), 500

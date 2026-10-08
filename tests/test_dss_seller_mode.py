@@ -433,8 +433,8 @@ class TestAIMatchOpportunity:
 class TestNoteViewOpportunities:
     """Tests for opportunity display on note view page."""
 
-    def test_note_view_shows_opportunity_card(self, client, app, basic_data):
-        """Note view should display linked opportunities as cards with status and value."""
+    def test_note_view_shows_opportunity_context(self, client, app, basic_data):
+        """Approved native note context preserves opportunity status, value and owner."""
         with app.app_context():
             opp = Opportunity(
                 msx_opportunity_id='opp-view-1',
@@ -456,7 +456,7 @@ class TestNoteViewOpportunities:
         html = resp.data.decode()
         assert 'Visible Opportunity' in html
         assert 'bi-cash-stack' in html
-        assert 'border-info' in html  # card style
+        assert 'sb-note-related' in html
         assert 'Open' in html  # state badge
         assert '$75,000' in html  # estimated value
         assert 'Jane Doe' in html  # owner name

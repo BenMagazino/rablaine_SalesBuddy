@@ -13,7 +13,7 @@
 </footer>
 {% endblock %}
 {% block content %}
-<form method="POST" id="milestoneForm" class="sb-milestone-form" data-sb-page-surface
+<form method="POST" id="milestoneForm" class="sb-milestone-form sb-directory-frame" data-sb-page-surface
       data-form-key="{{ 'edit-' ~ milestone.id if milestone else 'new' }}"
       data-posted="{{ 'true' if request.method == 'POST' else 'false' }}"
       data-original-url="{{ milestone.url if milestone else '' }}"

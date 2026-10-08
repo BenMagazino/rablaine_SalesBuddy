@@ -1,73 +1,52 @@
 {% extends "base.html" %}
+{% block title %}Internal Contacts - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-internal-contacts-directory.css') }}">
+{% endblock %}
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col">
-            <h1><i class="bi bi-person-badge"></i> Internal Contacts</h1>
-            <p class="text-muted">Microsoft employees not tracked as sellers or solution engineers (DAEs, DSS, DSEs from other solution areas, etc.)</p>
-        </div>
-        <div class="col-auto">
-            <a href="{{ url_for('internal_contacts.internal_contact_new') }}" class="btn btn-success">
-                <i class="bi bi-plus-lg"></i> New Contact
-            </a>
-        </div>
+<section class="sb-ic-directory sb-directory-frame" data-ic-directory data-sb-page-surface aria-labelledby="icTitle">
+    <header class="ic-heading" data-sb-page-band>
+        <div><h1 id="icTitle">Internal Contacts</h1><p>Microsoft employees not tracked as sellers or solution engineers (DAEs, DSS, DSEs from other solution areas, etc.)</p></div>
+        <a class="sb-dialog-button" href="{{ url_for('internal_contacts.internal_contact_new') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i> New Contact</a>
+    </header>
+    <p class="ic-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="ic-reading" data-sb-page-body tabindex="0" aria-label="Internal Contacts directory">
+        {% if contacts %}
+        <table class="ic-table" data-sb-sortable data-sb-sort-key="internal-contacts-directory">
+            <thead><tr>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Name">Name</th>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Alias">Alias</th>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Role">Role</th>
+                <th scope="col" data-export-label="Actions"><span class="ic-visually-hidden">Actions</span></th>
+            </tr></thead>
+            <tbody>{% for contact in contacts %}
+                <tr data-ic-id="{{ contact.id }}" data-ic-href="{{ url_for('internal_contacts.internal_contact_edit', id=contact.id) }}">
+                    <td data-sb-sort-value="{{ contact.name }}"><a class="ic-name" href="{{ url_for('internal_contacts.internal_contact_edit', id=contact.id) }}" aria-label="Edit {{ contact.name }}"><i class="bi bi-person-badge" aria-hidden="true"></i> {{ contact.name }}</a></td>
+                    <td data-sb-sort-value="{{ contact.alias ~ '@microsoft.com' if contact.alias else '' }}">{% if contact.alias %}<span class="ic-alias">{{ contact.alias }}@microsoft.com</span>{% else %}<span class="ic-unset">Not set</span>{% endif %}</td>
+                    <td data-sb-sort-value="{{ contact.role or '' }}">{% if contact.role %}<span class="ic-role">{{ contact.role }}</span>{% endif %}</td>
+                    <td class="ic-actions"><button class="ic-delete" type="button" data-ic-delete-name="{{ contact.name }}" data-ic-delete-url="{{ url_for('internal_contacts.internal_contact_delete', id=contact.id) }}" aria-label="Delete {{ contact.name }}"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button></td>
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}
+        <p class="ic-empty"><i class="bi bi-info-circle" aria-hidden="true"></i> No internal contacts yet.
+            <a href="{{ url_for('internal_contacts.internal_contact_new') }}">Create your first</a>, or they'll be created automatically when you add attendees to notes.</p>
+        {% endif %}
     </div>
-
-    {% if contacts %}
-    <div class="card">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Name</th>
-                            <th>Alias</th>
-                            <th>Role</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for contact in contacts %}
-                        <tr>
-                            <td>
-                                <a href="{{ url_for('internal_contacts.internal_contact_edit', id=contact.id) }}" class="text-decoration-none">
-                                    <i class="bi bi-person-badge text-warning me-1"></i>{{ contact.name }}
-                                </a>
-                            </td>
-                            <td>
-                                {% if contact.alias %}
-                                    <span class="text-muted">{{ contact.alias }}@microsoft.com</span>
-                                {% else %}
-                                    <span class="text-muted fst-italic">Not set</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if contact.role %}
-                                    <span class="badge bg-warning text-dark">{{ contact.role }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end">
-                                <a href="{{ url_for('internal_contacts.internal_contact_edit', id=contact.id) }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-pencil"></i> Edit
-                                </a>
-                                <form method="post" action="{{ url_for('internal_contacts.internal_contact_delete', id=contact.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ contact.name }}? Any note attendee references will be converted to external attendees.');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    {% else %}
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> No internal contacts yet.
-        <a href="{{ url_for('internal_contacts.internal_contact_new') }}">Create your first</a>, or they'll be created automatically when you add attendees to notes.
-    </div>
-    {% endif %}
-</div>
+    <dialog id="icDeleteDialog" class="sb-dialog sb-dialog-compact" aria-labelledby="icDeleteTitle" data-sb-backdrop-close="true">
+        <form class="sb-dialog-shell" method="post">
+            <header class="sb-dialog-header"><h2 id="icDeleteTitle">Delete Internal Contact</h2><button class="sb-dialog-close" type="button" data-sb-dialog-close aria-label="Cancel deletion">×</button></header>
+            <div class="sb-dialog-body"><p>Delete <strong data-ic-delete-identity></strong>?</p><p>Any note attendee references will be converted to external attendees.</p></div>
+            <footer class="sb-dialog-footer"><p data-ic-delete-status role="status"></p><button class="sb-dialog-button" type="button" data-sb-dialog-close autofocus>Cancel</button><button class="sb-dialog-button ic-danger" type="submit">Delete Contact</button></footer>
+        </form>
+    </dialog>
+</section>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Internal Contacts directory status"><span>{{ contacts|length }} Internal Contacts</span><span>All Internal Contacts</span></footer>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-internal-contacts-directory.js') }}"></script>
 {% endblock %}

@@ -19,7 +19,7 @@
 {{ request.form.get(name, '') if posted else (engagement|attr(name) or '') if engagement else '' }}
 {%- endmacro %}
 {% set icons = {'customer_contact': 'bi-person-circle', 'partner_contact': 'bi-building', 'se': 'bi-tools', 'seller': 'bi-person', 'internal_contact': 'bi-person-badge', 'external': 'bi-person-dash'} %}
-<div class="sb-engagement-form" data-sb-page-surface>
+<div class="sb-engagement-form sb-directory-frame sb-directory-frame-wide" data-sb-page-surface>
     <header class="ef-heading" data-sb-page-band>
         <h1 id="engagementFormTitle">{{ 'Edit' if engagement else 'New' }} Engagement</h1>
         <p>for <a href="{{ url_for('customers.customer_view', id=customer.id) }}">{{ customer.get_display_name() }}</a></p>

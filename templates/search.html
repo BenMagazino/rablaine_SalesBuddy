@@ -1,243 +1,137 @@
 {% extends "base.html" %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
-
 {% block title %}Search Notes - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-search.css') }}">
+{% endblock %}
 {% block content %}
-<h1 class="mb-4"><i class="bi bi-search"></i> Search & Filter Notes</h1>
-
-<!-- Search and Filter Form -->
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="GET" action="{{ url_for('main.search') }}">
-            <div class="row g-3">
-                <div class="col-md-12">
-                    <label for="q" class="form-label">Search Text</label>
-                    <input type="text" class="form-control" id="q" name="q" 
-                           value="{{ search_text }}" placeholder="Search in call notes...">
-                </div>
-                
-                <div class="col-md-6">
-                    <label for="customer_id" class="form-label">Customer</label>
-                    <select class="form-select" id="customer_id" name="customer_id">
-                        <option value="">-- All customers --</option>
-                        {% for customer in customers %}
-                            <option value="{{ customer.id }}"
-                                {{ 'selected' if selected_customer_id == customer.id else '' }}>
-                                {{ customer.name }} ({{ customer.tpid }})
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                {% if not seller_mode %}
-                <div class="col-md-6">
-                    <label for="seller_id" class="form-label">Seller</label>
-                    <select class="form-select" id="seller_id" name="seller_id">
-                        <option value="">-- All sellers --</option>
-                        {% for seller in sellers %}
-                            <option value="{{ seller.id }}"
-                                {{ 'selected' if selected_seller_id == seller.id else '' }}>
-                                {{ seller.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% endif %}
-                
-                <div class="col-md-6">
-                    <label for="territory_id" class="form-label">Territory</label>
-                    <select class="form-select" id="territory_id" name="territory_id">
-                        <option value="">-- All territories --</option>
-                        {% for territory in territories %}
-                            <option value="{{ territory.id }}"
-                                {{ 'selected' if selected_territory_id == territory.id else '' }}>
-                                {{ territory.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="col-md-6">
-                    <label for="topics" class="form-label">Topics</label>
-                    <select class="form-select" id="topics" name="topic_ids" multiple size="3">
-                        {% for topic in topics %}
-                            <option value="{{ topic.id }}"
-                                {{ 'selected' if topic.id in selected_topic_ids else '' }}>
-                                {{ topic.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple</small>
-                </div>
-            </div>
-            
-            <div class="mt-3">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-search"></i> Search
-                </button>
-                <a href="{{ url_for('main.search') }}" class="btn btn-secondary">
-                    <i class="bi bi-x-circle"></i> Clear Filters
-                </a>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Results -->
-{% if recently_viewed and not notes %}
-<div class="mb-4">
-    <h5 class="mb-3"><i class="bi bi-clock-history"></i> Recently Viewed</h5>
-    <div class="row g-3">
-        {% for etype, group in recently_viewed.items() %}
-        <div class="col-md-6 col-lg-3">
-            <div class="card h-100">
-                <div class="card-header bg-{{ group.color }} bg-opacity-10">
-                    <h6 class="mb-0">
-                        <i class="bi {{ group.icon }} text-{{ group.color }}"></i>
-                        {{ group.label }}
-                    </h6>
-                </div>
-                <div class="list-group list-group-flush">
-                    {% for item in group['items'] %}
-                    <a href="{{ item.url }}" class="list-group-item list-group-item-action py-2">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="text-truncate me-2">
-                                <span class="fw-semibold">{{ item.name }}</span>
-                                {% if item.customer_name %}
-                                <br><small class="text-muted">{{ item.customer_name }}</small>
-                                {% endif %}
-                            </div>
-                            <small class="text-muted text-nowrap local-datetime" data-utc="{{ item.viewed_at.strftime('%Y-%m-%dT%H:%M:%SZ') if item.viewed_at }}">
-                                {{ item.viewed_at.strftime('%b %d') if item.viewed_at }}
-                            </small>
-                        </div>
-                    </a>
-                    {% endfor %}
-                </div>
-            </div>
+<section class="sb-search sb-directory-frame" data-search-workbench data-sb-page-surface aria-labelledby="searchTitle">
+    <header class="search-heading" data-sb-page-band>
+        <h1 id="searchTitle">Search Notes</h1>
+        <span>Seller / Customer / Notes</span>
+    </header>
+    <form class="search-controls" method="GET" action="{{ url_for('main.search') }}" data-sb-page-band>
+        <div class="search-query">
+            <label for="q">Search Text</label>
+            <input type="text" id="q" name="q" value="{{ search_text }}" placeholder="Search in call notes...">
+            <button type="submit"><i class="bi bi-search" aria-hidden="true"></i> Search</button>
+            <a href="{{ url_for('main.search') }}">Clear Filters</a>
         </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-{% if recently_updated and not notes %}
-<div class="mb-4">
-    <h5 class="mb-3"><i class="bi bi-pencil-square"></i> Recently Updated</h5>
-    <div class="row g-3">
-        {% for etype, group in recently_updated.items() %}
-        <div class="col-md-6 col-lg-3">
-            <div class="card h-100">
-                <div class="card-header bg-{{ group.color }} bg-opacity-10">
-                    <h6 class="mb-0">
-                        <i class="bi {{ group.icon }} text-{{ group.color }}"></i>
-                        {{ group.label }}
-                    </h6>
-                </div>
-                <div class="list-group list-group-flush">
-                    {% for item in group['items'] %}
-                    <a href="{{ item.url }}" class="list-group-item list-group-item-action py-2">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="text-truncate me-2">
-                                <span class="fw-semibold">{{ item.name }}</span>
-                                {% if item.customer_name %}
-                                <br><small class="text-muted">{{ item.customer_name }}</small>
-                                {% endif %}
-                            </div>
-                            <small class="text-muted text-nowrap local-datetime" data-utc="{{ item.updated_at.strftime('%Y-%m-%dT%H:%M:%SZ') if item.updated_at }}">
-                                {{ item.updated_at.strftime('%b %d') if item.updated_at }}
-                            </small>
-                        </div>
-                    </a>
+        <div class="search-filters">
+            <div class="search-field">
+                <label for="customer_id">Customer</label>
+                <select id="customer_id" name="customer_id">
+                    <option value="">All customers</option>
+                    {% for customer in customers %}
+                    <option value="{{ customer.id }}"{% if selected_customer_id == customer.id %} selected{% endif %}>{{ customer.name }} ({{ customer.tpid }})</option>
                     {% endfor %}
-                </div>
+                </select>
             </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-{% if notes %}
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> Found {{ notes|length }} note(s)
-    </div>
-    
-    <!-- Grouped Results: Seller → Customer → Notes -->
-    {% for seller_id, seller_data in grouped_data.items() %}
-        <div class="mb-4">
             {% if not seller_mode %}
-            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
-                <h5 class="mb-0">
-                    <i class="bi bi-person text-primary"></i> 
-                    {% if seller_data.seller %}
-                        <a href="{{ url_for('sellers.seller_view', id=seller_data.seller.id) }}" class="text-decoration-none">
-                            {{ seller_data.seller.name }}
-                        </a>
-                    {% else %}
-                        <span class="text-muted">No Seller Assigned</span>
-                    {% endif %}
-                </h5>
+            <div class="search-field">
+                <label for="seller_id">Seller</label>
+                <select id="seller_id" name="seller_id">
+                    <option value="">All sellers</option>
+                    {% for seller in sellers %}
+                    <option value="{{ seller.id }}"{% if selected_seller_id == seller.id %} selected{% endif %}>{{ seller.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
             {% endif %}
-            
-            {% for customer_data in seller_data.customers_sorted %}
-                <div class="ms-3 mb-4">
-                    <h6 class="mb-2">
+            <div class="search-field">
+                <label for="territory_id">Territory</label>
+                <select id="territory_id" name="territory_id">
+                    <option value="">All territories</option>
+                    {% for territory in territories %}
+                    <option value="{{ territory.id }}"{% if selected_territory_id == territory.id %} selected{% endif %}>{{ territory.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="search-field search-topics">
+                <label for="topics">Topics <small>Any selected topic</small></label>
+                <select id="topics" name="topic_ids" multiple size="3" aria-describedby="topicsHint">
+                    {% for topic in topics %}
+                    <option value="{{ topic.id }}"{% if topic.id in selected_topic_ids %} selected{% endif %}>{{ topic.name }}</option>
+                    {% endfor %}
+                </select>
+                <small id="topicsHint">Hold Ctrl/Cmd to select multiple</small>
+            </div>
+        </div>
+    </form>
+    <p class="search-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="search-reading" data-sb-page-body tabindex="0" aria-label="Search results and recent history">
+        {% if notes %}
+        <div class="search-results">
+            {% for seller_id, seller_data in grouped_data.items() %}
+            <section class="search-seller">
+                {% if not seller_mode %}
+                <h2 class="search-seller-heading">
+                    <i class="bi bi-person" aria-hidden="true"></i>
+                    {% if seller_data.seller %}
+                    <a href="{{ url_for('sellers.seller_view', id=seller_data.seller.id) }}">{{ seller_data.seller.name }}</a>
+                    {% else %}No Seller Assigned{% endif %}
+                </h2>
+                {% endif %}
+                {% for customer_data in seller_data.customers_sorted %}
+                <section class="search-customer" data-customer-id="{{ customer_data.customer.id if customer_data.customer else 0 }}">
+                    <h3>
                         {% if customer_data.customer %}
-                            {{ customer_favicon(customer_data.customer) }}
-                            <a href="{{ url_for('customers.customer_view', id=customer_data.customer.id) }}">{{ customer_data.customer.name }}</a>
-                            {% if customer_data.customer.tpid_url %}
-                                (<a href="{{ customer_data.customer.tpid_url }}" target="_blank">{{ customer_data.customer.tpid }}</a>)
-                            {% else %}
-                                ({{ customer_data.customer.tpid }})
-                            {% endif %}
-                        {% else %}
-                            No Customer Assigned
-                        {% endif %}
-                        <small class="text-muted ms-2">({{ customer_data.calls|length }} note{{ 's' if customer_data.calls|length != 1 else '' }})</small>
-                    </h6>
-                    
-                    <div class="list-group ms-4">
-                        {% for call in customer_data.calls %}
-                            <a href="{{ url_for('notes.note_view', id=call.id) }}" class="list-group-item list-group-item-action">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ call.call_date.strftime('%b %d, %Y') }}{% if call.call_date.hour != 0 or call.call_date.minute != 0 %} {{ call.call_date.strftime('%I:%M %p') }}{% endif %}</h6>
-                                </div>
-                                <p class="mb-1">{{ call.content|striptags|truncate(200, true) }}</p>
-                                <small>
-                                    {% if call.territory %}
-                                        <span class="badge bg-info"><i class="bi bi-geo-alt"></i> {{ call.territory.name }}</span>
-                                    {% endif %}
-                                    {% for topic in call.topics %}
-                                        <span class="badge bg-warning text-dark"><i class="bi bi-tag"></i> {{ topic.name }}</span>
-                                    {% endfor %}
-                                    {% for partner in call.partners %}
-                                        <span class="badge bg-purple"><i class="bi bi-building"></i> {{ partner.name }}</span>
-                                    {% endfor %}
-                                </small>
-                            </a>
-                        {% endfor %}
-                    </div>
-                </div>
+                        {{ customer_favicon(customer_data.customer) }}
+                        <a href="{{ url_for('customers.customer_view', id=customer_data.customer.id) }}">{{ customer_data.customer.name }}</a>
+                        <span class="search-tpid">({% if customer_data.customer.tpid_url %}<a href="{{ customer_data.customer.tpid_url }}" target="_blank">{{ customer_data.customer.tpid }}</a>{% else %}{{ customer_data.customer.tpid }}{% endif %})</span>
+                        {% else %}No Customer Assigned{% endif %}
+                        <small>{{ customer_data.calls|length }} note{{ 's' if customer_data.calls|length != 1 else '' }}</small>
+                    </h3>
+                    {% for call in customer_data.calls %}
+                    <a class="search-result" data-note-id="{{ call.id }}" href="{{ url_for('notes.note_view', id=call.id) }}">
+                        <time datetime="{{ call.call_date.isoformat() }}">{{ call.call_date.strftime('%b %d, %Y') }}{% if call.call_date.hour != 0 or call.call_date.minute != 0 %} {{ call.call_date.strftime('%I:%M %p') }}{% endif %}</time>
+                        <p class="search-excerpt">{{ call.content|striptags|truncate(200, true) }}</p>
+                        <span class="search-relationships">
+                            {% if call.territory %}<span class="search-tag search-tag-territory"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ call.territory.name }}</span>{% endif %}
+                            {% for topic in call.topics %}<span class="search-tag search-tag-topic"><i class="bi bi-tag" aria-hidden="true"></i> {{ topic.name }}</span>{% endfor %}
+                            {% for partner in call.partners %}<span class="search-tag search-tag-partner"><i class="bi bi-building" aria-hidden="true"></i> {{ partner.name }}</span>{% endfor %}
+                        </span>
+                    </a>
+                    {% endfor %}
+                </section>
+                {% endfor %}
+            </section>
             {% endfor %}
         </div>
-    {% endfor %}
-{% elif search_text or selected_customer_id or selected_seller_id or selected_territory_id or selected_topic_ids %}
-    <div class="alert alert-warning">
-        <i class="bi bi-inbox"></i> 
-        No notes match your search criteria. Try adjusting your filters.
+        {% else %}
+        {% if search_text or selected_customer_id or selected_seller_id or selected_territory_id or selected_topic_ids %}
+        <p class="search-empty">No notes match your search criteria. Try adjusting your filters.</p>
+        {% endif %}
+        {% for heading, groups, timestamp in [('Recently Viewed', recently_viewed, 'viewed_at'), ('Recently Updated', recently_updated, 'updated_at')] if groups %}
+        <section class="search-history" aria-label="{{ heading }}">
+            <h2>{{ heading }}</h2>
+            <div class="search-history-groups">
+                {% for etype, group in groups.items() %}
+                <section class="search-history-group" data-tone="{{ group.color }}">
+                    <h3><i class="bi {{ group.icon }}" aria-hidden="true"></i> {{ group.label }}</h3>
+                    {% for item in group['items'] %}
+                    <a href="{{ item.url }}" class="search-history-link">
+                        <span><strong>{{ item.name }}</strong>{% if item.customer_name %}<small>{{ item.customer_name }}</small>{% endif %}</span>
+                        <time class="local-datetime" data-utc="{{ item[timestamp].strftime('%Y-%m-%dT%H:%M:%SZ') if item[timestamp] }}">{{ item[timestamp].strftime('%b %d') if item[timestamp] }}</time>
+                    </a>
+                    {% endfor %}
+                </section>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+        {% endif %}
     </div>
-{% endif %}
+</section>
 {% endblock %}
-
-
-
-
-
-
-
-
-
-
+{% block footer %}
+<footer class="sb-page-status" aria-label="Search status">
+    <span>{% if notes %}Found {{ notes|length }} note(s){% elif search_text or selected_customer_id or selected_seller_id or selected_territory_id or selected_topic_ids %}No matching notes{% else %}Enter search text or choose filters{% endif %}</span>
+    <span>{% if seller_mode %}Seller scope / {% endif %}Newest notes within each customer</span>
+</footer>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-search.js') }}" defer></script>
+{% endblock %}

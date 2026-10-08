@@ -122,3 +122,15 @@ text in all eight theme pairs, rather than the old Graphite hue of 184 degrees.
 Graphite dark now measures about 90 degrees against 85-degree text, and the
 Home preview uses the identical computed border/text colors. Original theme
 attributes are restored; no note content or links are changed.
+# October 8 background and paired-width consistency
+
+- Standalone note reading uses a 1344px surface, with 24px legacy container gutters.
+- Shared note context/content roots use `--sb-ui-surface` in both themes.
+- Embedded note geometry, rich content, semantic badges and commands are unchanged.
+- The pending legacy editor keeps its existing content-dependent 1900px maximum.
+- Evidence: `consistency-note-detail-{before,after,light-after}.png`.
+- Scoped regressions: `test_ui_note_body.py`, `test_ui_workflow_consistency.py`.
+- Validation is coordinated by the parent; no tests run in this worker.
+- Final shared-palette integration verified: legacy Note editor/context cards,
+  standalone Note body/footer and Settings template directory all use UI surface
+  in dark/light. Legacy layout and existing wider paired editor remain unchanged.

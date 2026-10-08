@@ -1,5 +1,14 @@
 # PROJ-VIEW - Internal project dossier
 
+## October 8 reading-width revision
+- Standalone detail uses centered 1344px for the paired task/note reading areas.
+- Remove the dossier's 1100px inner clamp so the real work area gains the room.
+- Task/note panes use the shared surface background; inline consumers stay stacked.
+- Live dark/light at 1559x1167: task/note reading and bottom task entry remain usable.
+- Evidence: `width-workflow-project-detail-{before,after,light-after}.png`.
+- Revision is uncommitted and awaiting review; prior checkpoint approval is preserved.
+- Consistency evidence: `consistency-project-detail-{before,after,light-after}.png`.
+
 Checkpoint 59, October 7, 2026: VERIFY, user-approved, final reconciliation pending.
 Audited baseline: `4e57b1a6` plus checkpoints 53-58. Approved batch effort: about 75%.
 Implementation SHA is recorded in the page tracker's approved batch handoff.

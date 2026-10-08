@@ -29,6 +29,7 @@
 .sb-impact-rank, .sb-impact-date { color: var(--sb-ui-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sb-impact-list-pane table { table-layout: fixed; }
 .sb-impact-list-pane th:first-child { width: 56px; }
+.sb-impact.sb-directory-frame-wide .sb-impact-list-pane th:first-child { width: 64px; }
 .sb-impact-list-pane th:nth-child(3) { width: 112px; }
 .sb-impact-list-pane th:last-child { width: 92px; }
 .sb-impact-list-pane :is(th, td) { padding: 9px 8px; }

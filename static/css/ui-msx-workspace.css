@@ -30,6 +30,7 @@
 .msx-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .msx-table th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-context); text-align: left; font-weight: 600; white-space: nowrap; }
 .msx-table td, .msx-table th { padding: 9px 12px; border-bottom: 1px solid var(--sb-ui-grid-line); vertical-align: middle; }
+.sb-msx-workspace.sb-directory-frame .msx-table td:not(.msx-number, .msx-date) { overflow-wrap: anywhere; }
 .msx-table th:first-child, .msx-table td:first-child { padding-left: 24px; }
 .msx-table tr:hover > td { background: color-mix(in oklch, var(--sb-ui-raised) 40%, var(--sb-ui-surface)); }
 .msx-table a { color: var(--sb-ui-accent); }

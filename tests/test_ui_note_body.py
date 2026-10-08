@@ -98,6 +98,7 @@ def test_note_body_uses_native_panes_with_all_original_context(
     assert "at 12:00" not in root.get_text()
     assert len(root.select(".sb-note-timestamps .local-datetime")) == 2
     assert bool(root.select_one(".sb-note-page-header")) is not preview
+    assert bool(soup.select_one("body.sb-note-reading-page")) is not preview
     groups = root.select(".sb-note-context > .sb-note-detail-group")
     assert [group["data-sb-note-group"] for group in groups] == ["context", "people", "work"]
     assert not root.select(".sb-note-detail-group h3, .sb-note-group-heading")

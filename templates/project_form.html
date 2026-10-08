@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block content %}
-<form method="POST" id="projectForm" class="sb-milestone-form sb-project-form"
+<form method="POST" id="projectForm" class="sb-milestone-form sb-project-form sb-directory-frame"
       data-sb-page-surface data-form-key="{{ 'edit-' ~ project.id if project else 'new' }}"
       data-posted="{{ 'true' if request.method == 'POST' else 'false' }}"
       aria-labelledby="projectFormTitle">

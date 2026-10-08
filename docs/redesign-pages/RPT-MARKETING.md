@@ -1,5 +1,13 @@
 # RPT-MKT: Marketing Insights
 
+## Content consistency review
+
+Latest evidence: `consistency-report-marketing-{before,after,light-after}.png`.
+Earlier captures below are preserved as superseded comparisons. The paired
+workbench stays full width (1559px), with 439px list and 1119px detail reading
+tracks inheriting the surface token. Marketing values and selections are unchanged.
+Complete measurements and source audit: private `consistency-reports-results.json`.
+
 - Checkpoint: 39; status: VERIFY, user-approved October 6, 2026.
 - Route: `/reports/marketing-insights`, including `embed=1`.
 - Audited baseline: `fe758b9b`; approved revision committed as `858b85df`.
@@ -18,6 +26,20 @@
 - Deferred: larger MSX Workspace family, query optimization, new sync behavior.
 
 ## Contract
+
+### Readable-width audit follow-up, October 7, 2026
+
+- Retain the full-width account/contact workspace, based on actual data rather
+  than assuming that every two-pane page needs the entire window.
+- A live 1344px trial leaves 887px beside the 440px customer chooser. The selected
+  account's seven-column contact table needs 920px despite its declared 850px
+  minimum, causing 33px of internal horizontal overflow. The eight-column
+  sales-play table fits, but both populations must remain readable.
+- The trial is reverted. Private `width-report-marketing-wide-fit-audit.png`
+  records the limiting contact table, and `width-report-marketing-wide-before.png`
+  records the unchanged full-width baseline. No viewport resizing or data writes.
+- `test_ui_marketing.py` now explicitly asserts the full-width exemption in both
+  standalone and embedded rendering. Parent owns the final combined regression.
 
 | Surface | Expected outcome | Evidence |
 | --- | --- | --- |

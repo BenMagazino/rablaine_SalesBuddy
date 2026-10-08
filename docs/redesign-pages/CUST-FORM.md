@@ -1,4 +1,9 @@
 # CUST-FORM: New and Edit Customer
+
+## Readable-width rollout, October 7, 2026
+- `/customer/new` and edit: 1152px root aligns commands around existing identity/ownership tracks.
+- Dark/light live desktop has no horizontal overflow; existing 1100px maximum stays.
+- Private evidence: `width-entity-customer-form-{before,dark-after,light-after}.png`.
 ## Checkpoint 61 contract
 - IDs: CUST-NEW `/customer/new`, CUST-EDIT `/customer/<int:id>/edit`.
 - Status: VERIFY, user-approved October 7; approved batch effort about 75%.

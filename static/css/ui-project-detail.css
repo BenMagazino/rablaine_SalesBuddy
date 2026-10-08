@@ -19,7 +19,8 @@
 .sb-project-meta { color: var(--sb-ui-muted); font-size: 12px; }
 .sb-project-commands { flex-shrink: 0; gap: 8px; }
 .sb-project-reading { overflow: auto !important; overscroll-behavior: contain; }
-.sb-project-dossier { max-width: 1100px; margin: 0 auto; padding: 24px 32px 40px; }
+.sb-project-dossier { margin: 0 auto; padding: 24px 32px 40px; }
+.sb-project-reading, .sb-project-evidence { background: var(--sb-ui-surface); }
 .sb-project-overview { border-bottom: 1px solid var(--sb-ui-line); padding-bottom: 24px; }
 .sb-project-description { max-width: 780px; margin: 0 0 24px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .sb-project-facts { display: flex; flex-wrap: wrap; gap: 32px; margin: 0; }

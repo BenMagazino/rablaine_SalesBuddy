@@ -1,5 +1,20 @@
 # CUST-VIEW: customer dossier
 
+## Content consistency sweep, October 8, 2026
+- Widen the standalone context/reading workspace from 1152px to 1344px.
+- Actual `.cd-layout` grows from 1150px to 1342px; the context stays 360px.
+- Single forms/directories retain 1152px. Shared dialog roots remain outside the
+  standalone direct-child width selector; no controls, data or checkpoints change.
+- Private live evidence: `consistency-customer-detail-{before,after,light-after}.png`.
+
+## Readable-width rollout, October 7, 2026
+- `/customer/107`: 1152px root fits 360px context and flexible sustained-reading pane.
+- Live dark/light and expanded Notes/Opportunities/Revenue: zero horizontal overflow.
+- Revenue table measures 727px; pane measures 775px. Shared dialog fragments do not match.
+- Private evidence: `width-entity-customer-detail-{before,dark-after,light-after}.png`
+  and `width-entity-customer-cd{Notes,Pipeline,Revenue}Tab-expanded-after.png`.
+- Scoped entity tests total 261, including direct-child modal exclusions and wider-detail bounds.
+
 Checkpoint 62, October 7, 2026. **VERIFY, user-approved, final reconciliation pending.**
 Baseline: approved checkpoint 52 `4e57b1a6` plus preserved uncommitted 53-61.
 Checkpoints 53-62 signed off together October 7. Approved effort: about 75%.

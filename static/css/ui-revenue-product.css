@@ -2,7 +2,7 @@
 .sb-product-summary { display: flex; gap: 36px; margin: 0; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
 .sb-product-summary dt { margin: 0 0 4px; color: var(--sb-ui-muted); font-size: 12px; }
 .sb-product-summary dd { margin: 0; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.sb-product-workarea { background: var(--sb-ui-canvas); }
+.sb-product-workarea { background: var(--sb-ui-surface); }
 .sb-page-frame .sb-revenue-product [data-sb-page-body] { overflow: auto; }
 .sb-revenue-product [hidden] { display: none !important; }
 .sb-product-notice { flex-shrink: 0; margin: 0; padding: 8px 24px; color: var(--sb-ui-danger); }
@@ -36,8 +36,9 @@
 .sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-comparison { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--sb-ui-line); }
 .sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-list-scroll { flex: 1; min-height: 0; }
 .sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-list-controls { flex-shrink: 0; }
-.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-customers thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-canvas); box-shadow: inset 0 -1px var(--sb-ui-line); }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-customers thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); box-shadow: inset 0 -1px var(--sb-ui-line); }
 .sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-customers tbody tr { cursor: pointer; }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-customers { min-width: 0; }
 .sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-reading { min-height: 0; overflow: auto; }
 .sb-revenue-product[data-sb-product-enhanced="true"] :is(.sb-product-history, .sb-product-members) { max-width: none; }
-.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-history .sb-revenue-products-header { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-canvas); box-shadow: inset 0 -1px var(--sb-ui-line); }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-history .sb-revenue-products-header { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); box-shadow: inset 0 -1px var(--sb-ui-line); }

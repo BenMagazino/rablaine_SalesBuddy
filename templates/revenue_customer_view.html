@@ -19,7 +19,7 @@
 {% set sections = namespace(buckets=[]) %}
 {% for bucket in revenue_by_bucket %}{% set sections.buckets = sections.buckets + [bucket] %}{% endfor %}
 {% for a in analyses %}{% if a.bucket not in sections.buckets %}{% set sections.buckets = sections.buckets + [a.bucket] %}{% endif %}{% endfor %}
-<div class="sb-revenue-workspace sb-revenue-customer" data-sb-revenue-page="customer"
+<div class="sb-revenue-workspace sb-revenue-customer{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-revenue-page="customer"
      data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
     <header class="sb-revenue-page-header" data-sb-page-band>
         <h1><i class="bi bi-building" aria-hidden="true"></i> {{ customer_name }}</h1>

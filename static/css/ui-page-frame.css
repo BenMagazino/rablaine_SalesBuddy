@@ -26,6 +26,7 @@ html:has(> body.sb-page-frame) { overflow: clip; }
     margin: 0 !important;
     padding: 0;
     overflow: hidden;
+    background: var(--sb-ui-canvas);
 }
 .sb-page-frame #main-content > [data-sb-page-surface] {
     box-sizing: border-box;
@@ -38,6 +39,15 @@ html:has(> body.sb-page-frame) { overflow: clip; }
     padding: 0;
     background: var(--sb-ui-surface);
 }
+.sb-page-frame #main-content > [data-sb-page-surface].sb-directory-frame {
+    max-width: 1152px;
+    margin-inline: auto;
+    border-inline: 1px solid var(--sb-ui-line);
+}
+.sb-page-frame #main-content > [data-sb-page-surface].sb-directory-frame.sb-directory-frame-wide {
+    max-width: 1344px;
+}
+.sb-legacy-paired #main-content { max-width: 1344px; }
 .sb-page-frame [data-sb-page-band] { flex-shrink: 0; }
 .sb-page-frame [data-sb-page-body] { flex: 1; min-height: 0; overflow: hidden; }
 .sb-page-status {

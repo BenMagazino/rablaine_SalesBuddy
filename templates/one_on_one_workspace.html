@@ -14,5 +14,6 @@
 {% endblock %}
 
 {% block content %}
+{% set workspace_width_bounded = not request.args.get('embed') %}
 {% include 'partials/one_on_one_workspace_content.html' %}
 {% endblock %}

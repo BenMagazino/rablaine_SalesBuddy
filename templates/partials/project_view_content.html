@@ -1,5 +1,5 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-project-detail.css') }}">
-<section class="sb-project-detail {% if parent_modal_id is not defined %}sb-project-page{% endif %}"
+<section class="sb-project-detail {% if parent_modal_id is not defined %}sb-project-page sb-directory-frame sb-directory-frame-wide{% endif %}"
          data-sb-project-detail="{{ project.id }}" data-sb-page-surface
          {% if parent_modal_id is defined %}data-project-parent="{{ parent_modal_id }}"{% endif %}
          aria-labelledby="projectTitle">

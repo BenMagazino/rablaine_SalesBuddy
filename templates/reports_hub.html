@@ -15,7 +15,7 @@
 {% endif %}
 {% endblock %}
 {% block content %}
-<section class="sb-reports-hub" data-sb-page-surface data-sb-reports-hub
+<section class="sb-reports-hub{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface data-sb-reports-hub
          data-sb-report-key="reports-hub"
          data-sb-report-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          aria-labelledby="reportsHubTitle">

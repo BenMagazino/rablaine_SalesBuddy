@@ -60,12 +60,12 @@
         :root,
         [data-bs-theme="light"] {
             --sb-navbar-height: 56px;
-            --sb-bg: #FFFFFF;
-            --sb-card: #FFFFFF;
-            --sb-navbar: #F6F8FA;
-            --sb-border: #D1D9E0;
-            --sb-text: #1a202c;
-            --sb-text-muted: #64748b;
+            --sb-bg: var(--sb-ui-surface);
+            --sb-card: var(--sb-ui-surface);
+            --sb-navbar: var(--sb-ui-header);
+            --sb-border: var(--sb-ui-line);
+            --sb-text: var(--sb-ui-ink);
+            --sb-text-muted: var(--sb-ui-muted);
             --sb-primary: #2A86D1;
             --sb-primary-hover: #2272B5;
             --sb-primary-active: #1C5F99;
@@ -79,16 +79,19 @@
             --bs-link-color-rgb: 42, 134, 209;
             --bs-link-hover-color: #2272B5;
             --bs-link-hover-color-rgb: 34, 114, 181;
-            --bs-body-bg: #FFFFFF;
-            --bs-body-color: #1a202c;
+            --bs-body-bg: var(--sb-ui-surface);
+            --bs-body-color: var(--sb-ui-ink);
+            --bs-secondary-bg: var(--sb-ui-raised);
+            --bs-tertiary-bg: var(--sb-ui-context);
+            --bs-border-color: var(--sb-ui-line);
         }
         [data-bs-theme="dark"] {
-            --sb-bg: #080E18;
-            --sb-card: #111927;
-            --sb-navbar: #0E1A2B;
-            --sb-border: #2B3648;
-            --sb-text: #E2E8F0;
-            --sb-text-muted: #94a3b8;
+            --sb-bg: var(--sb-ui-surface);
+            --sb-card: var(--sb-ui-surface);
+            --sb-navbar: var(--sb-ui-header);
+            --sb-border: var(--sb-ui-line);
+            --sb-text: var(--sb-ui-ink);
+            --sb-text-muted: var(--sb-ui-muted);
             --sb-primary: #4A9DE0;
             --sb-primary-hover: #6BB1E8;
             --sb-primary-active: #2A86D1;
@@ -102,8 +105,11 @@
             --bs-link-color-rgb: 107, 177, 232;
             --bs-link-hover-color: #8FC5EF;
             --bs-link-hover-color-rgb: 143, 197, 239;
-            --bs-body-bg: #080E18;
-            --bs-body-color: #E2E8F0;
+            --bs-body-bg: var(--sb-ui-surface);
+            --bs-body-color: var(--sb-ui-ink);
+            --bs-secondary-bg: var(--sb-ui-raised);
+            --bs-tertiary-bg: var(--sb-ui-context);
+            --bs-border-color: var(--sb-ui-line);
         }
 
         /* --- Utility class overrides --- */
@@ -232,6 +238,8 @@
 
         /* --- Card elevation --- */
         .card {
+            --bs-card-bg: var(--sb-ui-surface);
+            --bs-card-cap-bg: var(--sb-ui-context);
             border: 1px solid var(--sb-border);
             border-radius: var(--sb-radius-lg);
             box-shadow: 0 2px 6px rgba(0,0,0,0.06);
@@ -251,27 +259,38 @@
         }
 
         /* --- Dark mode surfaces --- */
-        [data-bs-theme="dark"] .bg-light {
+        .bg-light {
             background-color: var(--sb-card) !important;
+        }
+        [data-bs-theme="dark"] .bg-light.text-dark {
+            color: var(--sb-text) !important;
+        }
+        .list-group-item {
+            --bs-list-group-bg: var(--sb-ui-surface);
+            --bs-list-group-action-hover-bg: var(--sb-ui-raised);
+            --bs-list-group-action-active-bg: var(--sb-ui-selection);
+            --bs-list-group-active-bg: var(--sb-ui-selection);
+            --bs-list-group-active-color: var(--sb-ui-ink);
+            --bs-list-group-active-border-color: var(--sb-ui-accent);
         }
         [data-bs-theme="dark"] .list-group-item {
             background-color: var(--sb-card);
             color: var(--sb-text);
         }
         [data-bs-theme="dark"] .list-group-item:hover {
-            background-color: #243040;
+            background-color: var(--sb-ui-raised);
         }
         [data-bs-theme="dark"] .list-group-item.active {
-            background-color: #1a5276;
-            border-color: #2980b9;
-            color: #fff;
+            background-color: var(--sb-ui-selection);
+            border-color: var(--sb-ui-accent);
+            color: var(--sb-ui-ink);
         }
         [data-bs-theme="dark"] .card {
             background-color: var(--sb-card);
             color: var(--sb-text);
         }
         [data-bs-theme="dark"] .card-header {
-            background-color: #243040;
+            background-color: var(--sb-ui-context);
             border-bottom-color: var(--sb-border);
         }
         [data-bs-theme="dark"] .text-muted {
@@ -568,9 +587,11 @@
     
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-navigation.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-dialog.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-share.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-detail.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-note.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestone.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-opportunity.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-feedback.css') }}">
     {% block extra_css %}{% endblock %}
     {% block extra_head %}{% endblock %}
@@ -1438,6 +1459,7 @@
     <script src="{{ url_for('static', filename='js/ui-table-sort.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-record-dialog.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-milestone-workflow.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui-opportunity-workflow.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-milestone-preview.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/page-help.js') }}" defer></script>
     <script>document.addEventListener('DOMContentLoaded', () => Share.init());</script>
@@ -1474,48 +1496,28 @@
     });
     </script>
 
-    <!-- Share Modal (global — used by all share features) -->
-    <div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="shareModalLabel">
-                        <i class="bi bi-share"></i> Share with Teammate
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="shareModalBody">
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2 text-muted">Loading online users...</p>
-                    </div>
-                </div>
-            </div>
+    <!-- Shared native dialogs retain the public Share API for every consumer. -->
+    <dialog class="sb-dialog sb-share-dialog" id="shareModal" aria-labelledby="shareModalLabel" data-sb-backdrop-close="true">
+        <header class="sb-dialog-header">
+            <h2 id="shareModalLabel">Share with Teammate</h2>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close sharing"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </header>
+        <div class="sb-dialog-body" id="shareModalBody">
+            <p role="status">Loading online users...</p>
         </div>
-    </div>
-
-    <!-- Partner Import Review Modal -->
-    <div class="modal fade" id="shareImportReviewModal" tabindex="-1" aria-labelledby="shareImportReviewLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="shareImportReviewLabel">
-                        <i class="bi bi-clipboard-check"></i> Review Partner Import
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="shareImportReviewBody">
-                    <!-- Populated by share.js -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="shareImportConfirmBtn" onclick="Share.confirmImport()">
-                        <i class="bi bi-download"></i> Import Selected
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    </dialog>
+    <dialog class="sb-dialog sb-share-dialog sb-share-import-dialog" id="shareImportReviewModal" aria-labelledby="shareImportReviewLabel" data-sb-backdrop-close="true">
+        <header class="sb-dialog-header">
+            <h2 id="shareImportReviewLabel">Review Partner Import</h2>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close import review"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </header>
+        <div class="sb-dialog-body" id="shareImportReviewBody"></div>
+        <footer class="sb-dialog-footer">
+            <p id="shareImportStatus" role="status"></p>
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+            <button type="button" class="sb-dialog-button" id="shareImportConfirmBtn" onclick="Share.confirmImport()">Import Selected</button>
+        </footer>
+    </dialog>
     
     <script src="{{ url_for('static', filename='js/ui-navigation.js') }}" defer></script>
 

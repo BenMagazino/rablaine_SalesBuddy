@@ -69,11 +69,12 @@ function harness(native, cached = []) {
     cachedList.children = cached.map(item => ({dataset: {modified: item.modifiedOn}}));
     const context = vm.createContext({
         document, escapeHtml, COMMENT_ENTITY_ID: 42,
-        COMMENT_API_PREFIX: native ? '/api/milestone' : '/api/opportunity',
-        COMMENT_ENTITY_LABEL: native ? 'milestone' : 'opportunity',
+        COMMENT_API_PREFIX: native === true ? '/api/milestone' : '/api/opportunity',
+        COMMENT_ENTITY_LABEL: native === true ? 'milestone' : 'opportunity',
         ...(native ? {COMMENT_WORKBENCH: true} : {}),
         fetch: async (url, options) => {
             requests.push({url, options});
+            if (response instanceof Error) throw response;
             return {json: async () => response};
         },
         fetchMsxDetails: value => refreshes.push(value),
@@ -93,8 +94,8 @@ function harness(native, cached = []) {
         tick: () => new Promise(resolve => setImmediate(resolve))};
 }
 
-for (const native of [false, true]) {
-    const label = native ? 'native milestone' : 'legacy opportunity';
+for (const native of [false, true, 'opportunity']) {
+    const label = native === true ? 'native milestone' : native ? 'native opportunity' : 'legacy opportunity';
     test(`${label}: fresh comments keep sorting, escaping, tables, ref links and handlers`, () => {
         const h = harness(native);
         const comments = [
@@ -111,8 +112,8 @@ for (const native of [false, true]) {
         assert.ok(html.includes('href="/note/12"'));
         assert.ok(html.includes('href="/engagement/9"'));
         assert.ok(html.includes(native ? 'sb-comment-item' : 'list-group-item'));
-        assert.equal(html.includes('aria-label="Edit forecast comment"'), native);
-        assert.equal(html.includes('aria-label="Delete forecast comment"'), native);
+        assert.equal(html.includes('aria-label="Edit forecast comment"'), Boolean(native));
+        assert.equal(html.includes('aria-label="Delete forecast comment"'), Boolean(native));
         assert.equal(/\b(card|list-group-item|btn-primary|form-control)\b/.test(html), !native);
         assert.equal(h.elements.get('commentCount').textContent, '2 comments');
         assert.ok(h.elements.get('commentFormMsx').listeners.has('submit'));
@@ -143,7 +144,7 @@ for (const native of [false, true]) {
         h.api.postComment({preventDefault() { prevented = true; }});
         await h.tick();
         assert.equal(prevented, true);
-        assert.equal(h.requests[0].url, native ? '/api/milestone/42/comment' : '/api/opportunity/42/comment');
+        assert.equal(h.requests[0].url, native === true ? '/api/milestone/42/comment' : '/api/opportunity/42/comment');
         assert.equal(h.requests[0].options.method, 'POST');
         assert.deepEqual(JSON.parse(h.requests[0].options.body), {comment: 'post this'});
         assert.deepEqual(h.refreshes, [0]);
@@ -205,6 +206,47 @@ for (const native of [false, true]) {
         assert.equal(button.disabled, false);
         assert.equal(button.innerHTML, '<i class="bi bi-check"></i> Save');
         assert.equal(h.elements.get('editText-0').value, 'Retain this draft');
+    });
+
+    test(`${label}: post refusal and network failure retain drafts and allow explicit retry`, async () => {
+        const h = harness(native);
+        h.api.renderComments({comments: []});
+        const field = h.elements.get('commentText'), button = h.elements.get('postCommentBtn');
+        field.value = 'Keep my comment';
+        for (const failure of [{success: false, error: 'Rejected'}, new Error('Offline')]) {
+            h.respond(failure);
+            h.api.postComment({preventDefault() {}});
+            await h.tick();
+            assert.equal(field.value, 'Keep my comment');
+            assert.equal(button.disabled, false);
+        }
+        assert.equal(h.refreshes.length, 0);
+        h.respond({success: true});
+        h.api.postComment({preventDefault() {}});
+        await h.tick();
+        assert.deepEqual(h.refreshes, [0]);
+    });
+
+    test(`${label}: edit and delete network failures restore controls for retry`, async () => {
+        const h = harness(native);
+        h.body('<p>Original</p>');
+        h.api.startEditComment(0, 'modified', 'owner');
+        h.elements.get('editText-0').value = 'Retained edit';
+        h.respond(new Error('Offline'));
+        h.api.saveEditComment(0, 'modified', 'owner');
+        await h.tick();
+        assert.equal(h.elements.get('editText-0').value, 'Retained edit');
+        assert.equal(h.elements.get('saveEdit-0').disabled, false);
+        const button = h.elements.get('saveEdit-0');
+        h.api.deleteComment('modified', 'owner', button);
+        await h.tick();
+        assert.equal(button.disabled, false);
+        h.respond({success: true});
+        h.api.saveEditComment(0, 'modified', 'owner');
+        await h.tick();
+        h.api.deleteComment('modified', 'owner', button);
+        await h.tick();
+        assert.deepEqual(h.refreshes, [0, 0]);
     });
 
     test(`${label}: cache stays readable through errors and uncached failures stay explicit`, () => {

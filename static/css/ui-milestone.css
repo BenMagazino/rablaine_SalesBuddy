@@ -1,6 +1,7 @@
 /* Shared milestone body; preview and full page retain the same workflow hooks. */
 .sb-milestone-view {
     color: var(--sb-ui-ink);
+    background: var(--sb-ui-surface);
     font-family: var(--sb-ui-font);
     font-size: 14px;
     line-height: 1.6;
@@ -38,6 +39,7 @@
 .sb-ms-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 24px; }
 .sb-ms-context { min-width: 0; padding-right: 24px; border-right: 1px solid var(--sb-ui-line); }
 .sb-ms-main { min-width: 0; }
+.sb-ms-context, .sb-ms-main { background: var(--sb-ui-surface); }
 .sb-milestone-view .sb-ms-heading {
     margin: 0;
     color: var(--sb-ui-ink);
@@ -151,7 +153,7 @@
 }
 .sb-ms-page[data-sb-milestone-page] .sb-ms-layout {
     display: grid;
-    grid-template-columns: 304px minmax(0, 1fr);
+    grid-template-columns: 352px minmax(0, 1fr);
     gap: 0;
 }
 .sb-ms-page[data-sb-milestone-page] [data-sb-ms-reading] {

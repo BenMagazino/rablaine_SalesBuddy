@@ -71,6 +71,7 @@ def test_synapse_native_contract_and_exact_values(
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one(".sb-synapse-report")
+    assert ("sb-directory-frame" in root.get("class", [])) is not embedded
     assert root["data-sb-report-key"] == "synapse-" + mode
     assert root["data-sb-report-embedded"] == str(embedded).lower()
     assert soup.select_one('script[src$="/js/ui-revenue-reports.js"]')
@@ -151,6 +152,7 @@ def test_revenue_reports_hub_retains_real_destinations(client: FlaskClient) -> N
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one(".sb-revenue-reports")
+    assert "sb-directory-frame" in root["class"]
     assert root.select_one('h1').text == "Revenue Reports"
     assert not root.select(".card, .btn")
     assert len(root.select(".sb-revenue-report-entry")) == 1

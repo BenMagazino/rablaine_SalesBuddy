@@ -41,6 +41,8 @@
 .sb-eng-table th:nth-child(8), .sb-eng-table th:nth-child(9) { width: 5%; }
 .sb-eng-table th:nth-child(10), .sb-eng-table th:nth-child(11) { width: 5%; }
 .sb-eng-table th:last-child { width: 5%; }
+.sb-eng-table :is(th,td):nth-child(n+8) { padding-inline: 8px; }
+.sb-eng-table th:nth-child(n+8) .sb-table-sort-button { white-space: nowrap; }
 .sb-eng-table .sb-eng-story-bar { width: 100%; max-width: 80px; margin-top: 5px; }
 .sb-eng-table td:first-child { padding-left: 24px; }
 .sb-eng-table tbody tr:hover { background: var(--sb-ui-raised); }

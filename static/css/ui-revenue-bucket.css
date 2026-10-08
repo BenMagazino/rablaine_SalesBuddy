@@ -1,5 +1,5 @@
 /* Bucket reading surface: useful context beside bounded product history. */
-.sb-revenue-bucket-workarea { background: var(--sb-ui-canvas); }
+.sb-revenue-bucket-workarea { background: var(--sb-ui-surface); }
 .sb-page-frame .sb-revenue-bucket-workarea { display: grid; grid-template-columns: 340px minmax(0, 1fr); }
 .sb-revenue-bucket-context, .sb-revenue-bucket-reading { min-height: 0; padding: 16px 24px; }
 .sb-page-frame :is(.sb-revenue-bucket-context, .sb-revenue-bucket-reading) { overflow: auto; }

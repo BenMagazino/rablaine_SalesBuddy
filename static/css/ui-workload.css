@@ -17,7 +17,7 @@
 .sb-workload-summary dt { font-size: 11px; color: var(--sb-ui-muted); font-weight: 400; }
 .sb-workload-summary dd { margin: 2px 0 0; font-size: 16px; font-variant-numeric: tabular-nums; }
 .sb-workload-summary #statAcr, .sb-workload-money, .sb-workload .group-acr { color: var(--sb-ui-milestone-rail); }
-.sb-workload-workarea { display: grid; grid-template-columns: 430px minmax(0, 1fr); }
+.sb-workload-workarea { display: grid; grid-template-columns: 340px minmax(0, 1fr); }
 .sb-workload-topics { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--sb-ui-line); }
 .sb-workload-pane-header { display: flex; align-items: center; gap: 16px; min-height: 54px; padding: 12px 16px; border-bottom: 1px solid var(--sb-ui-line); }
 .sb-workload-pane-header h2 { margin: 0; font-size: 14px; font-weight: 600; }

@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 import json
+from pathlib import Path
 
 from bs4 import BeautifulSoup
 from flask import Flask
@@ -17,6 +18,17 @@ COMMENTS = [
     {"comment": "<table><tr><td>Architecture</td></tr></table>",
      "displayName": "Seller Two", "modifiedOn": "2026-10-02T13:00:00Z", "userId": "two"},
 ]
+
+
+def test_standalone_context_width_preserves_embedded_geometry() -> None:
+    """Give standalone context more room without widening embedded milestone previews."""
+    css = (Path(__file__).resolve().parents[1] / "static" / "css" / "ui-milestone.css")
+    styles = css.read_text(encoding="utf-8")
+    standalone = styles.split(
+        ".sb-ms-page[data-sb-milestone-page] .sb-ms-layout {", 1,
+    )[1].split("}", 1)[0]
+    assert "grid-template-columns: 352px minmax(0, 1fr);" in standalone
+    assert ".sb-ms-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr);" in styles
 
 
 @pytest.fixture

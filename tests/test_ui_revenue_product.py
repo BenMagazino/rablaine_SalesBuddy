@@ -63,6 +63,8 @@ def test_product_workbench_preserves_aliases_links_and_stacked_fallback(
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one('[data-sb-revenue-page="product"][data-sb-page-surface]')
+    assert ("sb-directory-frame" in root.get("class", [])) is not embedded
+    assert ("sb-directory-frame-wide" in root.get("class", [])) is not embedded
     assert root.select_one("h1").get_text(" ", strip=True) == product_context["product"]
     assert root.select_one("a.sb-revenue-command")["href"] == "/products"
     assert root.select_one('#productCustomerSearch[type="search"]')
@@ -98,7 +100,7 @@ def test_product_workbench_preserves_aliases_links_and_stacked_fallback(
         assert not root.select("[data-sb-product-trend]")
         assert not soup.select('script[src="/static/js/vendor/chart.umd.min.js"]')
         assert "sb-page-frame" not in soup.body.get("class", [])
-        assert not soup.select(".sb-app-bar, .sb-context-bar, footer")
+        assert not soup.select(".sb-app-bar, .sb-context-bar, footer.sb-page-status")
     else:
         trends = root.select("[data-sb-product-trend][hidden]")
         assert len(trends) == 2

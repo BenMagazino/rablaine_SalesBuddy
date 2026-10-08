@@ -134,7 +134,7 @@
 {% endmacro %}
 
 {% block content %}
-<section class="sb-one-on-one" data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}" aria-labelledby="oneOnOneTitle">
+<section class="sb-one-on-one{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}" aria-labelledby="oneOnOneTitle">
     <header class="oo-header" data-sb-page-band>
         <div><h1 id="oneOnOneTitle">1:1 Report</h1><p>Meeting prep view showing active engagements and recent activity.</p></div>
         <div class="oo-commands">

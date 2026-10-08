@@ -2,6 +2,11 @@
 
 {% block title %}Admin Panel - Sales Buddy{% endblock %}
 
+{% block body_class %}{% if not request.args.get('embed') %}sb-legacy-paired{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+
 {# Determine if FY card should be expanded: during FY season or active transition #}
 {% set fy_expanded = fy_season or fy_transition_active %}
 
@@ -5189,7 +5194,6 @@ setupMergeSearch('mergeSourceSearch', 'mergeSourceResults', 'mergeSourceId', 'me
 setupMergeSearch('mergeDestSearch', 'mergeDestResults', 'mergeDestId', 'mergeDestSelected');
 </script>
 {% endblock %}
-
 
 
 

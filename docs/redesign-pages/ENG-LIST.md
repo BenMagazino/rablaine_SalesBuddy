@@ -1,5 +1,13 @@
 # ENG-LIST: checkpoint 55
 
+## October 8 reading-width revision
+- Centered 1344px surface keeps all twelve columns and existing group/sort semantics.
+- Compact count-column padding keeps Tasks, Notes, Opps and MS labels on one line,
+  verified using actual text ranges, not just document overflow.
+- Live dark/light at 1559x1167; shell and bottom status remain full-width.
+- Private evidence: `width-workflow-engagements-{before,after,light-after}.png`.
+- Revision awaits review and is uncommitted; prior checkpoint approval is preserved.
+
 - Status: VERIFY, user-approved October 7; final reconciliation pending.
 - Audited baseline: `4e57b1a6` plus preserved 53-54.
 - Approved batch effort: about 75%; implementation SHA is in the page tracker.

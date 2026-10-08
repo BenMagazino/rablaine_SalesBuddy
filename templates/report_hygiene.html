@@ -12,7 +12,7 @@
 {% endif %}
 {% endblock %}
 {% block content %}
-<section class="sb-hygiene" data-hygiene data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+<section class="sb-hygiene{% if not request.args.get('embed') %} sb-directory-frame{% endif %}" data-hygiene data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          data-sb-page-surface aria-labelledby="hygieneTitle">
     <header class="sb-hygiene-header" data-sb-page-band>
         <div><h1 id="hygieneTitle">Engagement / Milestone Hygiene</h1>

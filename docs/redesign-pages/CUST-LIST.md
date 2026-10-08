@@ -62,3 +62,23 @@
 - Final batch check fixes a preference-dependent test assumption: all three roles now
   explicitly cover customers with and without notes. Combined scope passes 136 pytest
   and 177 JavaScript checks; no application scoping behavior changed.
+
+## Review refinement: centered directory reading width
+
+- User selected a centered working area shared with Sellers. This directory opts
+  into `sb-directory-frame`, capped at 1,152 pixels, without Bootstrap containers.
+- Heading, creation/import commands, sort/filter controls and scrolling table align
+  to the same width. Navigation, breadcrumbs and status remain full-width.
+- Actual dev checks retain all 210 customer IDs, exact By Notes order, source links
+  and controls. At the current 1,559-pixel desktop window, both gutters are 203.5 pixels.
+  Dark/light have no document or reading overflow; footer remains at viewport bottom.
+- Actual Back from the read-only Sellers directory restores complete customer order,
+  reading offset and 1,152-pixel width. No import, form or preference write was invoked.
+- Scoped Sellers/Customers regression: 22 pytest and 9 JavaScript cases pass;
+  changed-file editor diagnostics are clean. Existing Socket.IO failures remain unrelated.
+- Private screenshots: `customers-reading-width-{before,after}.png` and
+  `customers-reading-width-light-after.png`; both After images inspected.
+  Comparison added under checkpoint 63 in the same return gallery.
+- The approved original migration is unchanged; this review refinement remains
+  uncommitted and does not approve the pending 63-90 batch.
+- One generic readiness DM covers this combined revision: `1557602728639864843`.

@@ -39,6 +39,7 @@ def test_native_config_preserves_fields_and_constraints(
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one(".sb-revenue-config")
+    assert ("sb-directory-frame" in root.get("class", [])) is not embedded
     styles = [link["href"] for link in soup.select('link[rel="stylesheet"]')]
     detail_style = next(href for href in styles if href.endswith("/ui-revenue-detail.css"))
     frame_style = next(href for href in styles if href.endswith("/ui-page-frame.css"))

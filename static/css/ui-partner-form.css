@@ -1,0 +1,36 @@
+/* Organization identity and expertise share one compact manual editing column. */
+.sb-partner-form .mf-reading { padding: 24px 32px; }
+.partf-fields { max-width: 720px; margin: 0 auto; }
+.sb-partner-form .mf-field + .mf-field { margin-top: 20px; }
+.partf-fields textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--sb-ui-control-line);
+    border-radius: 0; background: var(--sb-ui-context); color: var(--sb-ui-ink);
+    font: 14px/1.5 var(--sb-ui-font); resize: vertical;
+}
+.partf-fields textarea:focus-visible, .partf-star:focus-visible,
+.partf-tag button:focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.partf-specialties { position: relative; }
+#specialty_dropdown {
+    position: absolute; top: 66px; left: 0; right: 0; max-height: 220px; overflow: auto;
+    z-index: 3; border: 1px solid var(--sb-ui-control-line); background: var(--sb-ui-surface);
+}
+#specialty_dropdown button {
+    display: block; width: 100%; padding: 9px 10px; border: 0;
+    border-bottom: 1px solid var(--sb-ui-line); background: transparent;
+    text-align: left; color: var(--sb-ui-ink); font: 13px/1.4 var(--sb-ui-font);
+}
+#specialty_dropdown button[aria-selected="true"],
+#specialty_dropdown button:hover { background: var(--sb-ui-context); }
+#specialty_dropdown small { display: block; color: var(--sb-ui-muted); }
+#selected_specialties { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.partf-tag { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px;
+    background: var(--sb-ui-context); border: 1px solid var(--sb-ui-line); font-size: 12px; }
+.partf-tag button { border: 0; padding: 0 3px; background: transparent; color: var(--sb-ui-muted); }
+.partf-rating { display: flex; align-items: center; gap: 6px; }
+.partf-star { border: 0; background: transparent; padding: 4px; font-size: 22px; color: var(--sb-ui-muted); }
+.partf-star[aria-pressed="true"] { color: var(--sb-ui-warning); }
+.partf-rating #rating { display: none; }
+.partf-commands { display: flex; align-items: center; gap: 8px; padding: 12px 24px;
+    border-top: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }
+.partf-commands > span { flex: 1; color: var(--sb-ui-muted); font-size: 12px; }
+.partf-commands a { color: var(--sb-ui-ink); }

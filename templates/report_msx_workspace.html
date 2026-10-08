@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="sb-msx-workspace" data-sb-page-surface>
+<div class="sb-msx-workspace{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface>
 <header class="msx-heading" data-sb-page-band>
     <div>
         <h2>MSX Workspace</h2>
@@ -254,21 +254,29 @@
 
 <!-- Opportunity Detail Modal -->
 <dialog class="sb-dialog msx-opportunity-dialog" id="msxOppDetailModal" aria-labelledby="msxOppDetailTitle">
+        <div class="sb-dialog-shell">
             <div class="sb-dialog-header">
-                    <h2 id="msxOppDetailTitle">Opportunity</h2>
+                    <h2 id="msxOppDetailTitle" data-sb-record-title>Opportunity</h2>
                 <div class="msx-controls">
                     <a href="#" id="msxOppDetailMsxLink" target="_blank" rel="noopener" class="msx-command" style="display:none;">
                         <i class="bi bi-box-arrow-up-right"></i> Open in MSX
                     </a>
-                    <a href="#" id="msxOppDetailFullLink" class="msx-command">
+                    <a href="#" id="msxOppDetailFullLink" class="msx-command" data-sb-record-full-link>
                         <i class="bi bi-arrows-fullscreen"></i> Full Page
                     </a>
                     <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close opportunity"><i class="bi bi-x-lg"></i></button>
                 </div>
             </div>
             <div class="sb-dialog-body" id="msxOppDetailBody">
-                <p class="msx-message" role="status">Loading opportunity...</p>
+                <p class="msx-message" data-sb-record-loading role="status">Loading opportunity...</p>
+                <div data-sb-record-error hidden role="alert">
+                    <p>Could not load opportunity details.</p>
+                    <button type="button" class="msx-command" data-sb-record-retry>Retry</button>
+                </div>
+                <div data-sb-record-content></div>
             </div>
+            <div class="sb-dialog-footer"><span data-sb-record-status role="status"></span></div>
+        </div>
 </dialog>
 
 {% endblock %}
@@ -310,9 +318,24 @@ window.addEventListener('DOMContentLoaded', function() {
     const readVersions = {};
     let taskSaving = false;
     let restoring = false;
-    let opportunityRequest = null;
-    let opportunitySelection = null;
-    let opportunityHost = null;
+    const opportunityPreview = SBRecordDialog.create('msxOppDetailModal', {
+        loadUrl: id => `/api/opportunity/${id}/detail`,
+        fullUrl: id => `/opportunity/${id}`,
+        fragmentSelector: '[data-sb-opportunity-detail]',
+        identityAttribute: 'data-sb-opportunity-id',
+        mount: root => SBOpportunityWorkflow.activate(root),
+        statusText: 'Forecast comments and team changes save when submitted.',
+        busyText: 'Saving opportunity changes. Wait before leaving.',
+        discardText: 'Your forecast comment has not been saved. Keep editing, or discard it.',
+        errorText: 'Opportunity details unavailable. Retry or use Full Page.',
+        stateEvent: 'sb:record-state',
+        onSelection(snapshot) {
+            const link = document.getElementById('msxOppDetailMsxLink');
+            link.style.display = snapshot.msxUrl ? '' : 'none';
+            if (snapshot.msxUrl) link.href = snapshot.msxUrl;
+            else link.removeAttribute('href');
+        },
+    });
     let appliedScope = {seller: '', customer: '', search: ''};
     let readingPositions = {};
     let restoredFilters = null;
@@ -436,83 +459,6 @@ window.addEventListener('DOMContentLoaded', function() {
     function taskDraft() {
         return ['taskSubject', 'taskDescription', 'taskDueDate'].some(
             id => document.getElementById(id).value.trim());
-    }
-
-    function opportunityDirty() {
-        return opportunityHost && [...opportunityHost.querySelectorAll('textarea')].some(
-            field => field.value !== field.defaultValue);
-    }
-
-    function disposeOpportunity() {
-        opportunityRequest?.abort();
-        opportunityHost?.msxBridge.dispose();
-        opportunityHost = null;
-    }
-
-    function mountOpportunityBridge(host) {
-        const controller = new AbortController();
-        const timers = new Set();
-        let writes = 0;
-        const observers = [];
-        const scopedDocument = new Proxy(document, {
-            get(target, key) {
-                if (key === 'getElementById') return id => host.querySelector(`#${CSS.escape(id)}`);
-                if (key === 'querySelector' || key === 'querySelectorAll') {
-                    return selector => host[key](selector);
-                }
-                const value = Reflect.get(target, key);
-                return typeof value === 'function' ? value.bind(target) : value;
-            },
-        });
-        return {
-            document: scopedDocument,
-            get busy() { return writes > 0; },
-            fetch: async (url, options = {}) => {
-                const writing = options.method && options.method !== 'GET';
-                if (writing) writes++;
-                try {
-                    const response = await fetch(url, {...options, signal: controller.signal});
-                    if (writing) {
-                        const json = response.json.bind(response);
-                        response.json = async () => {
-                            try { return await json(); }
-                            finally { writes--; }
-                        };
-                    }
-                    return response;
-                } catch (error) {
-                    if (writing) writes--;
-                    throw error;
-                }
-            },
-            setTimeout: (callback, delay) => {
-                const id = window.setTimeout(() => {
-                    timers.delete(id);
-                    if (host.isConnected) callback();
-                }, delay);
-                timers.add(id);
-                return id;
-            },
-            bindTeam: (join, leave) => {
-                const bind = () => host.querySelectorAll('[onclick]').forEach(button => {
-                    const match = button.getAttribute('onclick').match(
-                        /^(joinDealTeam|leaveDealTeam)\((\d+)\)$/);
-                    if (!match) return;
-                    button.removeAttribute('onclick');
-                    button.addEventListener('click', () =>
-                        (match[1] === 'joinDealTeam' ? join : leave)(Number(match[2])));
-                });
-                bind();
-                const observer = new MutationObserver(bind);
-                observer.observe(host, {childList: true, subtree: true});
-                observers.push(observer);
-            },
-            dispose: () => {
-                controller.abort();
-                timers.forEach(id => window.clearTimeout(id));
-                observers.forEach(observer => observer.disconnect());
-            },
-        };
     }
 
     function allowContextChange() {
@@ -948,59 +894,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
     // ----- Opportunity Detail Modal -----
     function openOppDetail(oppId, oppName, msxUrl) {
-        const dialog = document.getElementById('msxOppDetailModal');
-        if (dialog.open && (opportunityDirty() || opportunityHost?.msxBridge.busy)) {
-            showToast('Finish the forecast comment before opening another opportunity.', 'warning');
-            return;
-        }
-        opportunitySelection = [oppId, oppName, msxUrl];
-        disposeOpportunity();
-        const controller = new AbortController();
-        opportunityRequest = controller;
-        document.getElementById('msxOppDetailTitle').textContent = oppName || 'Opportunity';
-
-        const msxLink = document.getElementById('msxOppDetailMsxLink');
-        if (msxUrl) { msxLink.href = msxUrl; msxLink.style.display = ''; }
-        else { msxLink.style.display = 'none'; }
-        document.getElementById('msxOppDetailFullLink').href = '/opportunity/' + oppId;
-
-        const bodyEl = document.getElementById('msxOppDetailBody');
-        bodyEl.innerHTML = '<p class="msx-message" role="status">Loading opportunity...</p>';
-        SBDialog.open(dialog);
-
-        fetch('/api/opportunity/' + oppId + '/detail', {signal: controller.signal})
-            .then(r => { if (!r.ok) throw new Error('Failed to load'); return r.text(); })
-            .then(html => {
-                if (controller.signal.aborted || !dialog.open) return;
-                const host = document.createElement('div');
-                host.dataset.msxOpportunityHost = '';
-                host.innerHTML = html;
-                host.msxBridge = mountOpportunityBridge(host);
-                opportunityHost = host;
-                bodyEl.replaceChildren(host);
-                host.querySelectorAll('script').forEach(oldScript => {
-                    const newScript = document.createElement('script');
-                    if (oldScript.src) { newScript.src = oldScript.src; }
-                    else {
-                        newScript.textContent = `(function(bridge) {
-                            const document = bridge.document;
-                            const fetch = bridge.fetch;
-                            const setTimeout = bridge.setTimeout;
-                            ${oldScript.textContent}
-                            if (typeof joinDealTeam === 'function') {
-                                bridge.bindTeam(joinDealTeam, leaveDealTeam);
-                            }
-                        })(document.querySelector('[data-msx-opportunity-host]').msxBridge);`;
-                    }
-                    oldScript.replaceWith(newScript);
-                });
-            })
-            .catch(error => {
-                if (controller.signal.aborted) return;
-                bodyEl.innerHTML = '<p class="msx-message msx-error" role="alert">Failed to load opportunity details. <button type="button" class="msx-command" id="retryOpportunity">Retry</button></p>';
-                document.getElementById('retryOpportunity').addEventListener('click',
-                    () => openOppDetail(...opportunitySelection));
-            });
+        return opportunityPreview.open({id: Number(oppId), title: oppName || 'Opportunity', msxUrl});
     }
 
     // ----- Tasks -----
@@ -1322,19 +1216,8 @@ window.addEventListener('DOMContentLoaded', function() {
             showToast('Task creation is still pending. Please wait.', 'warning');
         }
     });
-    const oppDialog = document.getElementById('msxOppDetailModal');
-    oppDialog.addEventListener('sb:dialog-before-close', event => {
-        if (opportunityDirty() || opportunityHost?.msxBridge.busy) {
-            event.preventDefault();
-            showToast('Finish the forecast comment or clear it before closing.', 'warning');
-        }
-    });
-    oppDialog.addEventListener('sb:dialog-closed', () => {
-        disposeOpportunity();
-        document.getElementById('msxOppDetailBody').replaceChildren();
-    });
     window.addEventListener('beforeunload', event => {
-        if (taskSaving || taskDraft() || opportunityDirty() || opportunityHost?.msxBridge.busy) {
+        if (taskSaving || taskDraft()) {
             event.preventDefault(); event.returnValue = '';
         }
         saveView();

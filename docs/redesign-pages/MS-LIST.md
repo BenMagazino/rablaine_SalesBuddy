@@ -1,5 +1,11 @@
 # Milestones directory, checkpoint 51
 
+## October 8 reading-width revision
+- Heading, commands and reading table share the centered 1152px root.
+- Live dark/light at 1559x1167: no horizontal overflow; shell/status remain full-width.
+- Private evidence: `width-workflow-milestones-{before,after,light-after}.png`.
+- Revision is uncommitted and awaiting review; existing checkpoint status is unchanged.
+
 - ID: MS-LIST; existing `/milestones`, actual template `milestones_list.html`.
 - Audited baseline: `a9682c55`, approved Tracker and one-row filter follow-up.
 - Status: VERIFY, user-approved October 7; committed locally as `c7fb7b19`.

@@ -14,7 +14,7 @@
 {% endif %}
 {% endblock %}
 {% block content %}
-<section class="sb-one-on-one-hub" data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}" aria-labelledby="hubTitle">
+<section class="sb-one-on-one-hub{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}" aria-labelledby="hubTitle">
     <header class="hub-header" data-sb-page-band>
         <h1 id="hubTitle">1:1 notes</h1>
         <p>Standing context, next-conversation agenda, and discussion history for each person.</p>

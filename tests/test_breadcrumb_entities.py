@@ -14,6 +14,7 @@ from app.models import (
     Opportunity, Partner, POD, Project, Seller, SolutionEngineer, Specialty, Territory, Topic,
 )
 from app.services.breadcrumb_entities import HANDLED_ENDPOINTS, get_entity_breadcrumbs
+from tests.breadcrumb_rendering import get_rendered_templates
 
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -83,31 +84,10 @@ def _rendered_page_templates():
             and decorator.func.attr == "route" for decorator in function.decorator_list
         )]
         for function in routes:
-            pending = [function]
-            visited = set()
-            while pending:
-                renderer = pending.pop()
-                if renderer.name in visited:
-                    continue
-                visited.add(renderer.name)
-                for call in ast.walk(renderer):
-                    if isinstance(call, ast.Call) and isinstance(call.func, ast.Name):
-                        helper = functions.get(call.func.id)
-                        if helper:
-                            pending.append(helper)
-                    if not (
-                        isinstance(call, ast.Call)
-                        and isinstance(call.func, ast.Name)
-                        and call.func.id == "render_template"
-                        and call.args
-                        and isinstance(call.args[0], ast.Constant)
-                        and isinstance(call.args[0].value, str)
-                    ):
-                        continue
-                    template = call.args[0].value
-                    source = (_ROOT / "templates" / template).read_text("utf-8")
-                    if re.search(r"""\{%\s*extends\s+['"]base\.html['"]\s*%\}""", source):
-                        result[f"{module}.{function.name}"] = template
+            for template in get_rendered_templates(tree, function.name):
+                source = (_ROOT / "templates" / template).read_text("utf-8")
+                if re.search(r"""\{%\s*extends\s+['"]base\.html['"]\s*%\}""", source):
+                    result[f"{module}.{function.name}"] = template
     return result
 
 

@@ -1,0 +1,70 @@
+/* Seller account coverage beside independently owned workstream reading. */
+.sb-seller-detail { --sd-context-inset: 18px; color: var(--sb-ui-ink); font: 13px/1.45 var(--sb-ui-font); }
+.sb-seller-detail *, .sb-seller-detail { box-sizing: border-box; }
+.sb-seller-detail [hidden] { display: none !important; }
+.sd-header { display: flex; align-items: center; gap: 20px; padding: 14px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.sd-header h1 { margin: 0; flex: 1; font-size: 20px; font-weight: 600; }
+.sd-commands { display: flex; align-items: center; gap: 6px; }
+.sd-commands .sb-dialog-button { display: inline-flex; align-items: center; gap: 6px; }
+.sb-seller-detail a.sb-dialog-button { text-decoration: none; }
+.sd-layout { display: grid; grid-template-columns: 355px minmax(0, 1fr); }
+.sd-context, .sd-work { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+.sd-context { border-right: 1px solid var(--sb-ui-line); background: var(--sb-ui-surface); }
+.sd-identity { margin: 0; padding: 16px var(--sd-context-inset) 10px; }
+.sd-identity > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; margin-bottom: 8px; }
+.sd-identity dt { color: var(--sb-ui-muted); font-weight: 400; font-size: 12px; }
+.sd-identity dd { margin: 0; overflow-wrap: anywhere; }
+.sd-identity a, .sd-table a { color: var(--sb-ui-accent); text-decoration: none; }
+.sd-identity a:hover, .sd-table a:hover { text-decoration: underline; }
+.sd-tag { display: inline-block; padding: 1px 5px; background: var(--sb-ui-selection); font-size: 11px; }
+.sd-territory { color: oklch(78% .09 210) !important; border: 1px solid var(--sb-ui-control-line); background: var(--sb-ui-context); }
+[data-bs-theme="light"] .sd-territory { color: oklch(42% .08 210) !important; }
+.sd-section-title { margin: 0; padding: 10px var(--sd-context-inset); border-block: 1px solid var(--sb-ui-line); font-size: 13px; font-weight: 600; }
+.sd-section-title span { margin-left: 6px; color: var(--sb-ui-muted); font-size: 12px; font-weight: 400; }
+.sd-customers, .sd-reading { min-height: 0; flex: 1; overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+.sd-tabs { display: flex; gap: 0; padding: 0 18px; border-bottom: 1px solid var(--sb-ui-line); }
+.sd-tabs button { padding: 12px 14px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--sb-ui-muted); font: inherit; cursor: pointer; }
+.sd-tabs button[aria-selected="true"] { color: var(--sb-ui-ink); border-bottom-color: var(--sb-ui-accent); }
+.sd-panel { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+.sd-panel-header { display: flex; align-items: center; gap: 10px; padding: 9px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.sd-panel-header p { margin: 0; flex: 1; color: var(--sb-ui-muted); font-size: 12px; }
+.sd-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; }
+.sd-table th, .sd-table td { padding: 9px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--sb-ui-grid-line); overflow-wrap: anywhere; }
+.sd-table th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); color: var(--sb-ui-muted); font-weight: 500; }
+.sd-table td { font-variant-numeric: tabular-nums; }
+.sd-table th:first-child { width: 35%; }
+#sdMilestones > .sd-reading > .sd-table:first-child th:first-child { width: 25%; }
+#sdMilestones > .sd-reading > .sd-table:first-child th:nth-child(2) { width: 18%; }
+#sdMilestones > .sd-reading > .sd-table:first-child th:nth-child(3) { width: 27%; }
+.sd-customers .sd-table th:first-child { width: 72%; }
+.sd-customers .sd-table :is(th, td) { padding: 7px 12px; }
+.sd-customers .sd-table :is(th, td):first-child { padding-inline-start: var(--sd-context-inset); }
+.sd-table small, .sd-alert small { display: block; color: var(--sb-ui-muted); font-size: 11px; margin-top: 3px; }
+.sd-table tbody tr:hover, .sd-alert:hover { background: var(--sb-ui-raised); }
+.sd-record { padding: 0; border: 0; background: transparent; color: var(--sb-ui-accent); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.sd-alert { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 18px; width: 100%; padding: 12px 24px; border: 0; border-bottom: 1px solid var(--sb-ui-grid-line); background: transparent; color: var(--sb-ui-ink); font: inherit; text-align: left; cursor: pointer; }
+.sd-alert > span:nth-child(2) { text-align: right; }
+.sd-recommendation { grid-column: 1 / -1; color: var(--sb-ui-muted); font-size: 12px; }
+.sd-alert:is([data-reviewed="actioned"], [data-reviewed="reviewed"], [data-reviewed="dismissed"]) { opacity: .65; }
+.sd-review-status { grid-column: 1 / -1; }
+.sd-muted, .sd-empty { color: var(--sb-ui-muted); }
+.sd-empty { margin: 0; padding: 20px 24px; }
+.sd-notice { margin: 0; padding: 8px 24px; color: var(--sb-ui-danger); border-bottom: 1px solid var(--sb-ui-line); }
+.sb-seller-detail [data-tone="danger"], .sd-danger { color: var(--sb-ui-danger); }
+.sb-seller-detail [data-tone="warning"] { color: var(--sb-ui-warning); }
+.sb-seller-detail [data-tone="success"] { color: var(--sb-ui-milestone-rail); }
+.sb-seller-detail [data-tone="accent"] { color: var(--sb-ui-accent); }
+[data-bs-theme="light"] .sb-seller-detail [data-tone="success"] { color: oklch(42% .10 160); }
+.sb-seller-detail :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.sd-full-view { width: min(1320px, calc(100vw - 48px)); max-width: none; }
+.sd-full-view .sb-dialog-body { padding: 0; }
+.sd-panel .sb-eng-controls { flex-wrap: wrap; padding: 10px 18px; }
+.sd-panel .sb-eng-controls > div { margin-right: 0; }
+.sd-panel .sb-eng-table { min-width: 870px; }
+.sd-panel .sb-eng-table th { width: auto; }
+.sd-panel .sb-eng-table th:first-child { width: 25%; }
+.sd-panel .sb-eng-table th:nth-child(2) { width: 19%; }
+.sd-panel .sb-eng-table th:nth-child(3) { width: 8%; }
+.sd-panel .sb-eng-table th:last-child { width: 4%; }
+.sd-panel .sb-eng-table th:nth-child(8) { width: 6%; }
+.sd-panel .sb-eng-table :is(th, td):nth-child(n+4) { padding-inline: 7px; }

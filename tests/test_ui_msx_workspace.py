@@ -13,6 +13,7 @@ def test_native_workspace_host(client, sample_data, query: str) -> None:
     soup = BeautifulSoup(response.data, "html.parser")
     assert "sb-page-frame" in soup.body["class"]
     root = soup.select_one("[data-sb-page-surface]")
+    assert "sb-directory-frame" in root["class"]
     assert root.select_one('a[href="/reports/milestone-tracker"]')
     assert len(root.select('[role="tab"]')) == 3
     assert len(root.select(".msx-reading")) == 3
@@ -24,6 +25,10 @@ def test_native_workspace_host(client, sample_data, query: str) -> None:
         assert dialog.name == "dialog"
         assert dialog.has_attr("aria-labelledby")
         assert dialog.select_one("[data-sb-dialog-close]")
+    opportunity_shell = soup.find(id="msxOppDetailModal").select_one(".sb-dialog-shell")
+    assert opportunity_shell.select_one(":scope > .sb-dialog-header")
+    assert opportunity_shell.select_one(":scope > .sb-dialog-body [data-sb-record-content]")
+    assert opportunity_shell.select_one(":scope > .sb-dialog-footer [data-sb-record-status]")
     assert not root.select(".card, .nav-tabs, .table-responsive, [data-bs-toggle]")
     assert len(soup.select('script[src="/static/js/ui-table-sort.js"]')) == 1
     assert len(soup.select('script[src="/static/js/ui-dialog.js"]')) == 1

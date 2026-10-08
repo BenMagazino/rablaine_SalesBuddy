@@ -1,0 +1,156 @@
+{% from 'partials/customer_favicon.html' import customer_favicon %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-seller-detail.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-engagements-directory.css') }}">
+<section class="sb-seller-detail" data-sb-seller-detail="{{ seller.id }}" data-sb-page-surface>
+    <header class="sd-header" data-sb-page-band>
+        <h1><i class="bi bi-person" aria-hidden="true"></i> {{ seller.name }}</h1>
+        <div class="sd-commands">
+            <a href="{{ url_for('one_on_one.seller_workspace', seller_id=seller.id) }}" class="sb-dialog-button"><i class="bi bi-journal-text" aria-hidden="true"></i> 1:1 Notes</a>
+            {% if not seller_mode %}
+            <button type="button" class="sb-dialog-button" onclick="activateSellerMode({{ seller.id }})"><i class="bi bi-eye" aria-hidden="true"></i> View as Seller</button>
+            {% endif %}
+            <a href="{{ url_for('customers.customer_create', seller_id=seller.id) }}" class="sb-dialog-button"><i class="bi bi-plus-circle" aria-hidden="true"></i> New Customer</a>
+            <a href="{{ url_for('sellers.seller_edit', id=seller.id) }}" class="sb-dialog-button"><i class="bi bi-pencil" aria-hidden="true"></i> Edit Seller</a>
+            {% if can_delete %}
+            <button type="button" class="sb-dialog-button sd-danger" data-sb-dialog="sellerDeleteDialog"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
+            {% endif %}
+        </div>
+    </header>
+    <p class="sd-notice" role="alert" data-sd-notice hidden></p>
+    <div class="sd-layout" data-sb-page-body>
+        <aside class="sd-context" aria-label="Seller coverage and customers">
+            <dl class="sd-identity">
+                {% if seller.alias %}<div><dt>Email</dt><dd><a href="mailto:{{ seller.alias }}@microsoft.com">{{ seller.alias }}@microsoft.com</a></dd></div>{% endif %}
+                {% if seller.seller_type %}<div><dt>Type</dt><dd>{{ seller.seller_type }}</dd></div>{% endif %}
+                {% set pods = [] %}
+                {% for territory in seller.territories %}
+                    {% if territory.pod and territory.pod not in pods %}{% set _ = pods.append(territory.pod) %}{% endif %}
+                {% endfor %}
+                <div><dt>POD</dt><dd>{% for pod in pods|sort(attribute='name') %}<a class="sd-tag sd-territory" href="{{ url_for('pods.pod_view', id=pod.id) }}"><i class="bi bi-diagram-2" aria-hidden="true"></i> {{ pod.name }}</a>{% else %}<span class="sd-muted">None</span>{% endfor %}</dd></div>
+                <div><dt>Territories</dt><dd>{% for territory in seller.territories|sort(attribute='name') %}<a class="sd-tag sd-territory" href="{{ url_for('territories.territory_view', id=territory.id) }}"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ territory.name }}</a>{% else %}<span class="sd-muted">None</span>{% endfor %}</dd></div>
+            </dl>
+            <h2 class="sd-section-title">Customers <span>{{ customers|length }}</span></h2>
+            <div class="sd-customers" data-sd-scroll="customers">
+                {% if customers %}
+                <table class="sd-table" data-sb-sortable data-sb-sort-key="seller-{{ seller.id }}-customers" data-sb-sort-default-column="1" data-sb-sort-default-direction="descending">
+                    <thead><tr><th scope="col" data-sb-sort-type="text" data-export-label="Customer">Customer</th><th scope="col" data-sb-sort-type="number" data-export-label="Last Note">Last Note</th></tr></thead>
+                    <tbody id="customerTableBody">
+                    {% for item in customers %}
+                        <tr data-customer-id="{{ item.customer.id }}">
+                            <td data-sb-sort-value="{{ item.customer.get_display_name() }}"><a href="{{ url_for('customers.customer_view', id=item.customer.id) }}" title="{{ item.customer.get_display_name() }}">{{ customer_favicon(item.customer) }} {{ item.customer.get_display_name() }}</a></td>
+                            <td data-sb-sort-value="{{ item.last_note.call_date.timestamp() if item.last_note else '' }}">{% if item.last_note %}<a href="{{ url_for('notes.note_view', id=item.last_note.id) }}">{{ item.last_note.call_date.strftime('%b %d') }}</a>{% else %}<span class="sd-muted">No notes</span>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}<p class="sd-empty">No customers assigned to this seller yet.</p>{% endif %}
+            </div>
+        </aside>
+        <div class="sd-work">
+            <nav class="sd-tabs" role="tablist" aria-label="Seller work">
+                <button type="button" id="sdMilestonesTab" role="tab" aria-controls="sdMilestones" aria-selected="true">Milestones</button>
+                <button type="button" id="sdRevenueTab" role="tab" aria-controls="sdRevenue" aria-selected="false" tabindex="-1">Revenue</button>
+                <button type="button" id="sdEngagementsTab" role="tab" aria-controls="sdEngagements" aria-selected="false" tabindex="-1">Engagements</button>
+            </nav>
+            <section class="sd-panel" id="sdMilestones" role="tabpanel" aria-labelledby="sdMilestonesTab">
+                <header class="sd-panel-header">
+                    <p>Uncommitted, on your team. Excludes Cancelled, Lost to Competitor and Hygiene/Duplicate.</p>
+                    {% if milestones %}<button type="button" class="sb-dialog-button" data-sb-dialog="milestonesModal"><i class="bi bi-arrows-fullscreen" aria-hidden="true"></i> Full View</button>{% endif %}
+                </header>
+                <div class="sd-reading" data-sd-scroll="milestones">
+                    {% set active = milestones|rejectattr('customer_commitment', 'equalto', 'Committed')|rejectattr('status', 'in', ['Cancelled', 'Lost to Competitor', 'Hygiene/Duplicate'])|list %}
+                    {% if active %}
+                    <table class="sd-table" data-sb-sortable data-sb-sort-key="seller-{{ seller.id }}-milestones">
+                        <thead><tr>{% for label, type in [('Milestone', 'text'), ('Customer', 'text'), ('Workload', 'text'), ('Status', 'text'), ('Due', 'date'), ('ACR/mo', 'number')] %}<th scope="col" data-sb-sort-type="{{ type }}" data-export-label="{{ label }}">{{ label }}</th>{% endfor %}</tr></thead>
+                        <tbody>{% for ms in active %}
+                            <tr data-milestone-id="{{ ms.id }}">
+                                <td data-sb-sort-value="{{ ms.title }}"><button class="sd-record" type="button" data-sd-milestone="{{ ms.id }}" data-title="{{ ms.title }}" data-status="{{ ms.status }}" data-url="{{ ms.url or '' }}">{{ ms.title }}</button></td>
+                                <td>{{ ms.customer.name if ms.customer else '' }}</td>
+                                <td>{{ ms.workload or '' }}</td>
+                                <td><span class="sd-tag" data-tone="{{ 'success' if ms.status == 'On Track' else 'warning' if ms.status == 'At Risk' else 'danger' }}">{{ ms.status }}</span></td>
+                                <td data-sb-sort-value="{{ ms.due_date.strftime('%Y-%m-%d') if ms.due_date else '' }}" data-tone="{{ 'danger' if ms.urgency == 'past_due' else 'warning' if ms.urgency == 'this_week' else '' }}">{% if ms.due_date %}{{ ms.due_date.strftime('%b %d') }}{% if ms.days_until_due is not none %}<small>{% if ms.days_until_due < 0 %}({{ -ms.days_until_due }}d){% elif ms.days_until_due == 0 %}(today){% else %}({{ ms.days_until_due }}d){% endif %}</small>{% endif %}{% endif %}</td>
+                                <td data-sb-sort-value="{{ ms.monthly_usage if ms.monthly_usage and ms.monthly_usage > 0 else '' }}">{% if ms.monthly_usage and ms.monthly_usage > 0 %}<span data-tone="success">${{ "{:,.0f}".format(ms.monthly_usage) }}/mo</span>{% endif %}</td>
+                            </tr>
+                        {% endfor %}</tbody>
+                    </table>
+                    {% elif not stale_milestones %}<p class="sd-empty">No active milestones</p>{% endif %}
+                    {% if stale_milestones %}
+                    <h2 class="sd-section-title" title="Milestones on your team with no forecast comment updates in 14+ days">Stale <span>{{ stale_milestones|length }}</span></h2>
+                    <table class="sd-table" data-sb-sortable data-sb-sort-key="seller-{{ seller.id }}-stale">
+                        <thead><tr>{% for label, type in [('Milestone', 'text'), ('Customer', 'text'), ('Workload', 'text'), ('Days stale', 'number'), ('ACR/mo', 'number')] %}<th scope="col" data-sb-sort-type="{{ type }}" data-export-label="{{ label }}">{{ label }}</th>{% endfor %}</tr></thead>
+                        <tbody>{% for ms in stale_milestones %}<tr data-stale-milestone-id="{{ ms.id }}">
+                            <td><button type="button" class="sd-record" data-sd-milestone="{{ ms.id }}" data-title="{{ ms.title or ms.opportunity_name or 'Milestone #' ~ ms.id }}" data-status="{{ ms.msx_status }}" data-url="{{ ms.url or '' }}">{{ ms.title or ms.opportunity_name or 'Milestone #' ~ ms.id }}</button></td>
+                            <td>{{ ms.customer.name if ms.customer else '' }}</td><td>{{ ms.workload or '' }}</td>
+                            <td data-sb-sort-value="{{ ms.days_since_comment if ms.days_since_comment is not none else '' }}">{% if ms.days_since_comment is not none %}<span data-tone="warning">{{ ms.days_since_comment }}d stale</span>{% endif %}</td>
+                            <td data-sb-sort-value="{{ ms.monthly_usage if ms.monthly_usage else '' }}">{% if ms.monthly_usage %}<span data-tone="success">{{ '${:,.0f}'.format(ms.monthly_usage) }}/mo</span>{% endif %}</td>
+                        </tr>{% endfor %}</tbody>
+                    </table>
+                    {% endif %}
+                </div>
+            </section>
+            <section class="sd-panel" id="sdRevenue" role="tabpanel" aria-labelledby="sdRevenueTab" hidden>
+                <header class="sd-panel-header"><p>Revenue alerts for this seller's customers.</p>{% if revenue_alerts %}<span id="sellerBucketFilterContainer"></span><button type="button" class="sb-dialog-button" data-sb-dialog="revenueModal"><i class="bi bi-arrows-fullscreen" aria-hidden="true"></i> Full View</button>{% endif %}</header>
+                <div class="sd-reading" data-sd-scroll="revenue">
+                    {% for alert in revenue_alerts %}
+                    <button type="button" class="sd-alert" data-bucket="{{ alert.bucket }}" data-sd-alert="{{ alert.id }}" data-customer="{{ alert.customer_name }}" data-reviewed="{{ alert.review_status or '' }}">
+                        <span><strong>{{ alert.customer_name }}</strong><small>{{ alert.bucket }}</small></span>
+                        <span><span class="sd-tag" data-tone="{{ 'danger' if alert.category == 'DECLINING' else 'warning' if alert.category == 'RECENT_DIP' else 'success' if alert.category == 'EXPANSION_OPPORTUNITY' else 'accent' if alert.category == 'VOLATILE' else '' }}">{% if alert.category == 'DECLINING' %}Declining{% elif alert.category == 'CHURNED' %}Inactive{% else %}{{ alert.category|replace('_', ' ')|title }}{% endif %}</span>{% if alert.dollars_at_risk and alert.dollars_at_risk > 0 %}<small data-tone="danger">${{ "{:,.0f}".format(alert.dollars_at_risk) }} at risk</small>{% endif %}</span>
+                        {% if alert.recommended_action and alert.recommended_action != 'NO ACTION' %}<span class="sd-recommendation"><i class="bi bi-arrow-right" aria-hidden="true"></i> {{ alert.recommended_action }}</span>{% endif %}
+                        {% if alert.review_status in ['reviewed', 'actioned', 'dismissed'] %}<small class="sd-review-status">{{ alert.review_status|title }}</small>{% endif %}
+                    </button>
+                    {% else %}<p class="sd-empty">No revenue insights yet</p>{% endfor %}
+                </div>
+            </section>
+            <section class="sd-panel sb-eng-directory" id="sdEngagements" role="tabpanel" aria-labelledby="sdEngagementsTab" hidden>
+                {% set eng_api_url = '/api/seller/' ~ seller.id ~ '/engagements' %}
+                {% set eng_auto_load = true %}
+                {% set eng_show_seller = false %}
+                {% set eng_native = true %}
+                {% set eng_seller_scope = true %}
+                {% set eng_body_id = 'engagementsBody' %}
+                {% set eng_count_id = 'engCount' %}
+                {% set eng_empty_msg = 'No engagements found for this seller.' %}
+                {% include 'partials/engagements_panel.html' %}
+                <div class="sd-reading sb-eng-reading" data-sd-scroll="engagements" id="engagementsBody"><p class="sd-empty" role="status">Loading engagements...</p></div>
+            </section>
+        </div>
+    </div>
+    {% if can_delete %}
+    <dialog class="sb-dialog" id="sellerDeleteDialog" aria-labelledby="sellerDeleteTitle">
+        <form class="sb-dialog-shell" method="POST" action="{{ url_for('sellers.seller_delete', id=seller.id) }}">
+            <header class="sb-dialog-header"><h2 id="sellerDeleteTitle">Delete {{ seller.name }}?</h2><button class="sb-dialog-close" type="button" data-sb-dialog-close aria-label="Cancel deletion">×</button></header>
+            <div class="sb-dialog-body"><p>Are you sure you want to delete this seller?</p></div>
+            <footer class="sb-dialog-footer"><p data-sd-delete-status role="status"></p><button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button><button type="submit" class="sb-dialog-button sd-danger">Delete</button></footer>
+        </form>
+    </dialog>
+    {% endif %}
+    {% if milestones %}
+    <dialog class="sb-dialog sd-full-view" id="milestonesModal" aria-labelledby="milestonesModalLabel" data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell">
+            <header class="sb-dialog-header"><h2 id="milestonesModalLabel">Milestone Tracker - {{ seller.name }}</h2><a class="sb-dialog-button" href="{{ url_for('milestones.milestone_tracker', seller=seller.id) }}">Full Page <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a><button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close Milestone Tracker">×</button></header>
+            <div class="sb-dialog-body">
+                {% set locked_seller = seller %}{% set summary = milestone_summary %}{% set areas = milestone_areas %}{% set quarters = milestone_quarters %}
+                {% include 'partials/milestone_tracker_content.html' %}
+            </div>
+        </div>
+    </dialog>
+    {% endif %}
+    {% if revenue_alerts %}
+    <dialog class="sb-dialog sb-revenue-full" id="revenueModal" aria-labelledby="revenueModalLabel" data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell">
+            <header class="sb-dialog-header"><div class="sb-dialog-heading"><div class="sb-dialog-eyebrow">Revenue</div><h2 id="revenueModalLabel">{{ seller.name }}</h2></div><span id="modalBucketFilterContainer"></span><a class="sb-dialog-button" href="{{ url_for('revenue.revenue_seller_view', seller_name=seller.name) }}">Full Page <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a><button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close Revenue Full View">×</button></header>
+            <div class="sb-dialog-body">
+                {% set alerts = revenue_alerts %}{% set summary = revenue_summary %}{% set alert_clickable = true %}{% set revenue_actions_sortable = false %}
+                {% include 'partials/revenue_alerts_content.html' %}
+            </div>
+            <footer class="sb-dialog-footer"><p data-sb-revenue-status role="status" aria-live="polite">Review changes save when you submit them.</p><button type="button" class="sb-dialog-button" data-sb-dialog-close>Close</button></footer>
+        </div>
+    </dialog>
+    {% with revenue_preview_parent='revenueModal' %}{% include 'partials/revenue_alert_preview.html' %}{% endwith %}
+    <script src="{{ url_for('static', filename='js/revenue-bucket-filter.js') }}"></script>
+    {% endif %}
+    <script src="{{ url_for('static', filename='js/ui-seller-detail.js') }}"></script>
+    <script>
+    window.copilotContext = {page: 'seller_view', seller_name: {{ seller.name|tojson }}};
+    </script>
+</section>

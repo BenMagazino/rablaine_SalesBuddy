@@ -1,11 +1,41 @@
 # RPT-GOALS: Connect Goals dashboard
 
+## Content consistency review
+
+Latest evidence: `consistency-reports-connect-goals-{before,after,light-after}.png`.
+Earlier captures below are preserved as superseded comparisons. The existing
+1344px frame and surface-backed reading ancestry are retained in both themes.
+Intentional command/context and semantic status fills remain unchanged.
+Complete measurements and source audit: private `consistency-reports-results.json`.
+
+## Creator width review correction, October 8, 2026
+
+- Widen the standalone dashboard from 1152px to the shared 1344px working region.
+- Preserve the approved graph, coverage panels, lanes, calculations and embed guard.
+- Live dark/light at 1559x1174: root 1344px, no document or reading overflow.
+- Private comparison: `review-connect-goals-wider-{before,after,light-after}.png`.
+- Earlier 1152px photos are superseded; revision remains uncommitted.
+- Combined nine-surface regression: 263 Python and 111 JavaScript tests pass.
+
 - Checkpoint: 41, `feature/ui-redesign`.
 - Audited product revision: `eb588a08`.
 - Status: VERIFY, technically checked and user-approved October 6, 2026.
 - Approved implementation committed locally as `706cf6ae`.
 - Layout decision: keep the admired dashboard, not a navigator/detail workbench.
 - Approved effort is about 45%; final whole-app reconciliation remains separate.
+
+## Readable-width follow-up, October 7, 2026
+
+- The approved dashboard composition is retained inside a centered 1152px standalone
+  work area. Heading, scope and dashboard align; navigation/context/status stay full-width.
+- Quarter graph, target markers, coverage panels, supporting lanes and monthly histories
+  retain their data and controls. Embedded surfaces do not opt in to the outer frame.
+- Actual dev desktop, unchanged 1559x1167: x=203.5, width=1152; shell width=1559.
+  Dark and light checks show no horizontal reading-region or document overflow.
+- Inspected private comparison: `width-report-reports-connect-goals-before.png`,
+  `width-report-reports-connect-goals-after.png` and its `light-after` counterpart.
+- Combined focused width/parity regression: 150 pytest and 178 Node tests pass.
+  This follow-up does not change prior approval status or authorize a commit.
 
 ## Contract and intentional change
 

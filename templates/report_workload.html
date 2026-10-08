@@ -16,7 +16,7 @@
 {% endblock %}
 {% block content %}
 {% set embedded = request.args.get('embed') %}
-<section class="sb-workload" data-sb-workload data-sb-page-surface
+<section class="sb-workload{% if not embedded %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-workload data-sb-page-surface
          data-embedded="{{ 'true' if embedded else 'false' }}" aria-labelledby="workloadTitle">
     <header class="sb-workload-header" data-sb-page-band>
         <div><h1 id="workloadTitle">Workload Report</h1>

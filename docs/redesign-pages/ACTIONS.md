@@ -1,5 +1,11 @@
 # ACTIONS: checkpoint 54
 
+## October 8 reading-width revision
+- Centered 1344px surface retains the approved divider-cell dashboard and independent queues.
+- Live dark/light at 1559x1167: no reading overflow; shell and bottom status stay full-width.
+- Private evidence: `width-workflow-actions-{before,after,light-after}.png`.
+- This revision is uncommitted and awaiting review; prior checkpoint approval is preserved.
+
 - Status: VERIFY, user-approved October 7, including all morning refinements.
 - Baseline: approved `4e57b1a6` plus preserved uncommitted checkpoint 53.
 - Approved batch effort: about 75%; strict DONE counters await final reconciliation.
@@ -105,3 +111,9 @@
 - Private comparison: `action-items-row-actions-before.png` /
   `action-items-row-actions-after.png`. Included in the approved batch.
 - Sort/row refinement Discord DM accepted: `1557423480864120985`.
+## October 8 content-background consistency
+
+- Full and embedded queue content use `--sb-ui-surface`; command and semantic tones remain.
+- Existing 1344px dashboard width, task meanings, ordering and controls are unchanged.
+- Evidence: `consistency-actions-{before,after,light-after}.png`.
+- Parent coordinates `test_ui_action_items.py` and `test_ui_workflow_consistency.py`.

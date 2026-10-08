@@ -1,5 +1,11 @@
 # ENG-FORM: New/Edit engagement forms
 
+## October 8 reading-width revision
+- Centered 1344px root preserves story and linked-record panes without horizontal overflow.
+- Both New/Edit verified live in dark/light at 1559x1167; pinned commands remain usable.
+- Private evidence: `width-workflow-engagement-{form,edit}-{before,after,light-after}.png`.
+- Revision awaits review and is uncommitted; prior checkpoint approval is preserved.
+
 - Inventory: ENG-NEW, ENG-EDIT. Checkpoint 56 VERIFY, user-approved October 7.
 - Audited baseline: approved HEAD `4e57b1a6` plus uncommitted checkpoints 53-55.
 - Approved batch effort: about 75%; implementation SHA is in the page tracker.
@@ -58,3 +64,9 @@
 - User approval pending. No live save/delete/remote-contact write was performed;
   their success/error/pending paths are isolated tests rather than live mutations.
 - One generic Discord DM accepted: `1557277001813983243`. No private content sent.
+## October 8 content-background consistency
+
+- Actual story editor and association-reading panes share `--sb-ui-surface`.
+- Existing 1344px frame, field values and contact/status/control tones are unchanged.
+- Evidence: `consistency-engagement-{form,edit}-{before,after,light-after}.png`.
+- Parent coordinates `test_ui_engagement_form.py` and `test_ui_workflow_consistency.py`.

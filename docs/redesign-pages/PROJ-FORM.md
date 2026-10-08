@@ -1,5 +1,11 @@
 # PROJ-FORM: manual New/Edit Project forms
 
+## October 8 reading-width revision
+- Shared New/Edit root uses centered 1152px; existing fields and pinned commands remain.
+- Both variants verified live dark/light at 1559x1167 without horizontal overflow.
+- Evidence: `width-workflow-project-{form,edit}-{before,after,light-after}.png`.
+- Revision is uncommitted and awaiting review; prior checkpoint approval is preserved.
+
 - Status: VERIFY, checkpoint 58, user-approved October 7.
 - Audited baseline: `4e57b1a6` plus checkpoints 53-57.
 - Approved batch effort: about 75%; implementation SHA is in the page tracker.

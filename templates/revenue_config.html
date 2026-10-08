@@ -30,7 +30,7 @@
 {% endmacro %}
 
 {% block content %}
-<section class="sb-revenue-workspace sb-revenue-config" data-sb-page-surface
+<section class="sb-revenue-workspace sb-revenue-config{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface
          data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          aria-labelledby="revenueConfigTitle">
     <header class="sb-revenue-page-header" data-sb-page-band>

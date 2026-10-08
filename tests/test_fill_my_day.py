@@ -9,6 +9,17 @@ from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 
+@pytest.fixture(autouse=True)
+def block_fill_day_remote_calls():
+    """Keep all enrichment and milestone writes isolated from real services."""
+    with patch('app.gateway_client.gateway_call', return_value={'topics': []}), \
+            patch('app.services.msx_api.get_milestones_by_account',
+                  return_value={'success': True, 'milestones': []}), \
+            patch('app.routes.notes.add_user_to_milestone_team',
+                  return_value={'success': True}):
+        yield
+
+
 class TestFillMyDayPage:
     """Tests for the Fill My Day page route."""
 

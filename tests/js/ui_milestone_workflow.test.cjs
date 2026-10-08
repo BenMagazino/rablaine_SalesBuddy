@@ -69,13 +69,22 @@ function harness() {
     };
     vm.runInNewContext(source, {window, document, SBDialog, AbortController, DOMException,
         CustomEvent: Event, console: {error: (...args) => errors.push(args), warn() {}}});
-    function root(standalone = false) {
+    function root(standalone = false, options = {}) {
         const root = new Element(), child = new Element(), field = new Element();
         const comment = new Element(), status = new Element(), form = new Element();
         const notice = new Element(), context = new Element(), forecast = new Element();
         root.standalone = standalone; root.dataset.sbMilestoneId = '880';
         context.dataset.sbMsReading = 'context'; forecast.dataset.sbMsReading = 'forecast';
         context.scrollTop = forecast.scrollTop = 0;
+        const spinner = options.restoreAfterRead ? {style: {display: ''}} : null;
+        if (spinner) {
+            let scroll = 0;
+            Object.defineProperty(forecast, 'scrollTop', {
+                get: () => scroll,
+                set: value => { scroll = spinner.style.display === 'none'
+                    ? value : Math.min(value, 100); },
+            });
+        }
         child.child = true; child.root = root;
         form.reset = () => { field.value = field.defaultValue; };
         child.querySelectorAll = () => [field];
@@ -83,14 +92,15 @@ function harness() {
         root.querySelectorAll = selector => selector === '[data-sb-ms-reading]'
             ? [context, forecast] : selector.startsWith('dialog') ? [child] : [comment];
         root.querySelector = selector => ({'#child': child, '#field': field,
-            '#newTaskModal': child, '[data-sb-ms-page-notice]': notice})[selector] || null;
+            '#newTaskModal': child, '[data-sb-ms-page-notice]': notice,
+            '#detailsSpinner': spinner})[selector] || null;
         root.contains = () => true;
         let scope;
         const api = window.SBMilestoneWorkflow.attach(root, value => {
             scope = value;
             return {};
-        });
-        return {root, child, field, comment, status, api, scope, context, forecast, notice};
+        }, options);
+        return {root, child, field, comment, status, api, scope, context, forecast, notice, spinner};
     }
     return {root, window, requests, errors, discard, confirm, description, SBDialog, Event,
         document, pageState,
@@ -130,6 +140,23 @@ test('standalone restores both reading regions without changing unrelated histor
     h.emit('pageshow'); h.flush();
     assert.equal(view.context.scrollTop, 240);
     assert.equal(view.forecast.scrollTop, 640);
+});
+
+test('opportunity Back keeps the original position until asynchronous comments restore height', () => {
+    const h = harness();
+    h.window.history.state.sbMilestoneReading = {
+        'opportunity-880': {context: 0, forecast: 620},
+    };
+    const view = h.root(true, {readingKey: 'opportunity-880', restoreAfterRead: true});
+    assert.equal(view.forecast.scrollTop, 100);
+    view.forecast.dispatchEvent(new h.Event('scroll'));
+    assert.equal(h.window.history.state.sbMilestoneReading['opportunity-880'].forecast, 620);
+    view.spinner.style.display = 'none';
+    view.root.dispatchEvent(new h.Event('sb:record-state'));
+    assert.equal(view.forecast.scrollTop, 620);
+    view.forecast.scrollTop = 300;
+    view.forecast.dispatchEvent(new h.Event('scroll'));
+    assert.equal(h.window.history.state.sbMilestoneReading['opportunity-880'].forecast, 300);
 });
 
 test('standalone Keep editing preserves comment and confirmed leave clears only its draft', () => {

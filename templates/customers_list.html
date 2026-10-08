@@ -37,7 +37,7 @@
 {% endmacro %}
 
 {% block content %}
-<section class="sb-cust-directory" data-sb-page-surface data-customer-directory data-sort="{{ sort_by }}" data-show-without-calls="{{ 'true' if show_customers_without_calls else 'false' }}" aria-labelledby="customersTitle">
+<section class="sb-cust-directory sb-directory-frame" data-sb-page-surface data-customer-directory data-sort="{{ sort_by }}" data-show-without-calls="{{ 'true' if show_customers_without_calls else 'false' }}" aria-labelledby="customersTitle">
     <header class="sb-cust-heading" data-sb-page-band>
         <h1 id="customersTitle">Customers</h1>
         <div><a href="{{ url_for('customers.customer_create') }}" class="sb-cust-command" title="Manual entry"><i class="bi bi-plus-circle" aria-hidden="true"></i> Manual</a>

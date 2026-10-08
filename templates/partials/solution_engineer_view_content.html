@@ -1,0 +1,54 @@
+{% macro heading(label, kind='text') %}<th scope="col" data-sb-sort-type="{{ kind }}" data-export-label="{{ label }}">{{ label }}</th>{% endmacro %}
+<section class="sb-se-detail sb-directory-frame sb-directory-frame-wide" data-se-detail="{{ solution_engineer.id }}" data-sb-page-surface aria-labelledby="seDetailTitle">
+    <header class="sed-header" data-sb-page-band>
+        <h1 id="seDetailTitle">{{ solution_engineer.name }}</h1>
+        <a class="sb-dialog-button" href="{{ url_for('solution_engineers.solution_engineer_edit', id=solution_engineer.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit Solution Engineer</a>
+        <button class="sb-dialog-button sed-danger" type="button" data-sb-dialog="seDeleteDialog"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
+    </header>
+    {% if solution_engineer.alias or solution_engineer.specialty %}
+    <dl class="sed-identity" data-sb-page-band>
+        {% if solution_engineer.alias %}<div><dt>Email</dt><dd><a href="mailto:{{ solution_engineer.alias }}@microsoft.com">{{ solution_engineer.alias }}@microsoft.com</a></dd></div>{% endif %}
+        {% if solution_engineer.specialty %}<div><dt>Specialty</dt><dd class="sed-specialty">{{ solution_engineer.specialty }}</dd></div>{% endif %}
+    </dl>
+    {% endif %}
+    <p class="sed-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="sed-layout" data-sb-page-body>
+        <section class="sed-cell" aria-labelledby="sePodsTitle">
+            <header class="sed-band"><h2 id="sePodsTitle">Assigned PODs</h2><span>{{ pods|length }}</span></header>
+            <div class="sed-reading" data-sed-scroll="pods" tabindex="0" aria-label="Assigned PODs">
+                {% if pods %}
+                <table class="sed-table" data-sb-sortable data-sb-sort-key="se-{{ solution_engineer.id }}-pods">
+                    <thead><tr>{{ heading('Name') }}</tr></thead>
+                    <tbody>{% for pod in pods %}
+                        <tr data-pod-id="{{ pod.id }}" data-sed-href="{{ url_for('pods.pod_view', id=pod.id) }}"><td data-sb-sort-value="{{ pod.name }}"><a href="{{ url_for('pods.pod_view', id=pod.id) }}"><i class="bi bi-diagram-2" aria-hidden="true"></i> {{ pod.name }}</a></td></tr>
+                    {% endfor %}</tbody>
+                </table>
+                {% else %}<p class="sed-empty">Not assigned to any PODs</p>{% endif %}
+            </div>
+        </section>
+        <section class="sed-cell" aria-labelledby="seTerritoriesTitle">
+            <header class="sed-band"><h2 id="seTerritoriesTitle">Territories</h2><span>{{ territories|length }} · Across assigned PODs</span></header>
+            <div class="sed-reading" data-sed-scroll="territories" tabindex="0" aria-label="POD-derived territories">
+                {% if territories %}
+                <table class="sed-table sed-territories" data-sb-sortable data-sb-sort-key="se-{{ solution_engineer.id }}-territories">
+                    <thead><tr>{{ heading('Name') }}{{ heading('Customers', 'number') }}</tr></thead>
+                    <tbody>{% for territory in territories %}
+                        <tr data-territory-id="{{ territory.id }}" data-sed-href="{{ url_for('territories.territory_view', id=territory.id) }}">
+                            <td data-sb-sort-value="{{ territory.name }}"><a class="sed-territory" href="{{ url_for('territories.territory_view', id=territory.id) }}" aria-label="View {{ territory.name }}"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ territory.name }}</a></td>
+                            <td data-sb-sort-value="{{ territory.customers|length }}">{{ territory.customers|length }} customers</td>
+                        </tr>
+                    {% endfor %}</tbody>
+                </table>
+                {% else %}<p class="sed-empty">{{ 'No territories in assigned PODs' if pods else 'Not assigned to any PODs' }}</p>{% endif %}
+            </div>
+        </section>
+    </div>
+    <dialog id="seDeleteDialog" class="sb-dialog sb-dialog--compact" aria-labelledby="seDeleteTitle" data-sb-backdrop-close="true">
+        <form class="sb-dialog-shell" method="POST" action="{{ url_for('solution_engineers.solution_engineer_delete', id=solution_engineer.id) }}">
+            <header class="sb-dialog-header"><h2 id="seDeleteTitle">Confirm Delete</h2><button class="sb-dialog-close" type="button" data-sb-dialog-close aria-label="Cancel deletion">×</button></header>
+            <div class="sb-dialog-body"><p>Are you sure you want to delete <strong>{{ solution_engineer.name }}</strong>?</p><p>This will remove the solution engineer from all POD associations.</p></div>
+            <footer class="sb-dialog-footer"><p data-sed-delete-status role="status"></p><button class="sb-dialog-button" type="button" data-sb-dialog-close autofocus>Cancel</button><button class="sb-dialog-button sed-danger" type="submit">Delete Solution Engineer</button></footer>
+        </form>
+    </dialog>
+</section>
+<script src="{{ url_for('static', filename='js/ui-se-detail.js') }}"></script>

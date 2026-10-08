@@ -1,10 +1,41 @@
 # MSX Workspace, checkpoint 49
 
+## Content consistency review
+
+Latest evidence: `consistency-reports-msx-workspace` and its `-milestones` and
+`-tasks` variants, each with Before, After and Light After. Earlier captures below
+are preserved as superseded comparisons. All three live modes retain 1344px and
+surface-backed reading ancestry. No sync or business-write action is exercised.
+Complete measurements and source audit: private `consistency-reports-results.json`.
+
+## Creator width review correction, October 8, 2026
+
+- Widen the standalone workspace from 1152px to the shared 1344px working region.
+- Preserve all tab populations, cache providers, filters, actions and embed-width guard.
+- Live dark/light at 1559x1174: root 1344px, no document or reading overflow.
+- Private comparison: `review-msx-workspace-wider-{before,after,light-after}.png`.
+- Earlier 1152px photos are superseded; revision remains uncommitted.
+- Actual populated tabs retain 1384 opportunities, 983 milestones and five tasks.
+- Combined nine-surface regression: 263 Python and 111 JavaScript tests pass.
+
 - ID: RPT-MSX. Route: `/reports/msx-workspace`, including all three tab URLs.
 - Template: `report_msx_workspace.html`; audited baseline `42c552c7`.
 - Status: VERIFY, user-approved October 6; committed locally as `3e6244eb`.
 - No push, merge or deployment authorized.
 - Approved effort estimate: about 56%; all strict DONE counters are unchanged.
+
+## Readable-width follow-up, October 7, 2026
+
+- All three tabbed lists now share a centered 1152px standalone heading/filter/content
+  frame. They are alternative reading regions, not a simultaneous three-pane workspace.
+- Long opportunity/milestone/customer text can wrap at unbroken tokens in the bounded
+  tables. Numeric values, dates, source numbers, team actions and every data column remain.
+- Actual dev desktop, unchanged 1559x1167: x=203.5, width=1152; full-width shell=1559.
+  Opportunities, milestones and tasks have no internal horizontal or document overflow.
+- Dark/light Before/After images inspected. Private names start
+  `width-report-reports-msx-workspace-`; the three explicit tab variants are retained.
+- Combined focused width/parity regression: 150 pytest and 178 Node tests pass.
+  Existing approval/checkpoint status and business-write contracts remain unchanged.
 
 ## Preserved product contracts
 
@@ -30,9 +61,11 @@
 - Back restores applied scope, unsubmitted search text, tab, task context, sorts and scroll.
 - Task failures retain fields; pending creation prevents dismissal and drafts protect scope.
 - Latest reads win, including stale failures; loading/error rows disable incompatible sorting.
-- Legacy opportunity content is intentionally retained until its entity redesign.
-  Its native host scopes IDs/requests, disposes retries and binds existing team handlers.
+- Checkpoint 89 migrates the complete opportunity body, not a simplified preview.
+  The shared record lifecycle scopes IDs/requests, disposes retries and retains team handlers.
   Forecast edits and pending writes protect dismissal/replacement; authored tables are untouched.
+  Header/status stay pinned around the scrollable body, including native nested Leave/Cancel.
+  This integration remains VERIFY: [Opportunity evidence](OPP-VIEW.md).
 
 ## Verification and review evidence
 

@@ -20,6 +20,7 @@ def test_frame_controls_assets_and_empty_state(client):
     """Empty directories retain creation, import and scoped sort commands."""
     root, soup = directory(client)
     assert "sb-page-frame" in soup.body["class"]
+    assert "sb-directory-frame" in root["class"]
     assert root.select_one(".sb-cust-reading[data-sb-page-body]")
     assert soup.select_one(".sb-page-status")
     assert [el["data-sort"] for el in root.select("button[data-sort]")] == [

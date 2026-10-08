@@ -67,6 +67,8 @@ def test_full_and_inline_dossier_preserve_values_links_order_and_commands(client
         assert len(root.select('script[src$="ui-project-detail.js"]')) == 1
         assert not root.select('.card, .btn, .modal, [data-bs-toggle], table')
     assert page.select_one('body.sb-page-frame')
+    assert page.select_one('.sb-project-page.sb-directory-frame-wide')
+    assert not inline.select('.sb-directory-frame')
     assert page.select_one('[aria-label="Project status"]')
     assert page.select_one('[data-project-back]')
     assert not inline.select('html, footer, [data-project-back]')

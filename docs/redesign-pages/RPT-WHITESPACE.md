@@ -1,5 +1,13 @@
 # RPT-WHITE: Whitespace Analysis
 
+## Content consistency review
+
+Latest evidence: `consistency-report-whitespace-{before,after,light-after}.png`.
+Earlier captures below are preserved as superseded comparisons. The matrix stays
+full width (1559px) and surface-backed. Semantic coverage fills, missing-topic
+indicators and real customer results are unchanged in both themes.
+Complete measurements and source audit: private `consistency-reports-results.json`.
+
 - Checkpoint: 38; status: VERIFY, user-approved October 6, 2026.
 - Route: `/reports/whitespace`, including `embed=1`.
 - Audited baseline: `175a0b0b`; approved revision committed as `fe758b9b`.

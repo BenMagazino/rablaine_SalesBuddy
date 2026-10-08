@@ -1,91 +1,84 @@
 {% extends "base.html" %}
-
 {% block title %}{{ 'Edit' if template else 'New' }} Template - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
 {% block extra_css %}
-<!-- Quill Rich Text Editor -->
 <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestone-form.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-task-editor.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-note-template-form.css') }}">
 {% endblock %}
-
+{% block footer %}
+<footer class="sb-page-status" aria-label="Template form status">
+    <span id="templateFormState">{{ 'Existing template' if template else 'New template' }}</span>
+    <span>Manual save · Template name and content required</span>
+</footer>
+{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-10 col-lg-8">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="mb-0">
-                <i class="bi bi-file-earmark-text"></i>
-                {{ 'Edit' if template else 'New' }} Template
-            </h1>
-            <a href="{{ url_for('main.preferences') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Settings
-            </a>
-        </div>
-
-        <form id="templateForm" method="POST"
-              action="{{ url_for('main.template_update', id=template.id) if template else url_for('main.template_save') }}">
-
-            <!-- Template Name -->
-            <div class="mb-3">
-                <label for="templateName" class="form-label">Template Name *</label>
-                <input type="text" class="form-control" id="templateName" name="name"
-                       value="{{ template.name if template else '' }}"
-                       placeholder="e.g. Standard Note" required maxlength="200">
+{% set posted = form_values is not none %}
+<form id="templateForm" method="POST" class="sb-milestone-form sb-template-form sb-directory-frame"
+      action="{{ url_for('main.template_update', id=template.id) if template else url_for('main.template_save') }}"
+      data-sb-page-surface data-form-key="{{ 'edit-' ~ template.id if template else 'new' }}"
+      data-posted="{{ 'true' if posted else 'false' }}" aria-labelledby="templateFormTitle">
+    <header class="mf-heading" data-sb-page-band>
+        <div><h1 id="templateFormTitle">{{ 'Edit' if template else 'New' }} Template</h1>
+        <p>Reusable rich-text content for customer and general notes.</p></div>
+        <a href="{{ url_for('main.preferences') }}" class="sb-dialog-button">Back to Settings</a>
+    </header>
+    <p id="templateFormNotice" class="mf-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="nt-reading" data-sb-page-body>
+        <section class="nt-fields" aria-label="Template content">
+            <div class="mf-field">
+                <label for="templateName">Template Name *</label>
+                <input type="text" id="templateName" name="name" required maxlength="200"
+                       placeholder="e.g. Standard Note"
+                       value="{{ form_values.get('name', '') if posted else template.name if template else '' }}">
             </div>
-
-            <!-- Content Editor -->
-            <div class="mb-3">
-                <label class="form-label">Content *</label>
-                <div id="editor" style="height: 400px;">{{ template.content|safe if template else '' }}</div>
-                <textarea name="content" id="content" style="display:none;"></textarea>
-                <div class="form-text">Design your template using the rich text editor. This content will be inserted into note forms.</div>
+            <div class="nt-content sb-task-rich">
+                <label id="templateContentLabel">Content *</label>
+                <div id="templateToolbar" aria-label="Template formatting">
+                    <select class="ql-header" aria-label="Heading">
+                        <option selected value="">Normal</option>
+                        <option value="1">Heading 1</option><option value="2">Heading 2</option>
+                        <option value="3">Heading 3</option>
+                    </select>
+                    <button type="button" class="ql-bold" aria-label="Bold"></button>
+                    <button type="button" class="ql-italic" aria-label="Italic"></button>
+                    <button type="button" class="ql-underline" aria-label="Underline"></button>
+                    <button type="button" class="ql-strike" aria-label="Strikethrough"></button>
+                    <button type="button" class="ql-list" value="ordered" aria-label="Numbered list"></button>
+                    <button type="button" class="ql-list" value="bullet" aria-label="Bullet list"></button>
+                    <button type="button" class="ql-indent" value="-1" aria-label="Decrease indent"></button>
+                    <button type="button" class="ql-indent" value="+1" aria-label="Increase indent"></button>
+                    <button type="button" class="ql-link" aria-label="Link"></button>
+                    <button type="button" class="ql-clean" aria-label="Clear formatting"></button>
+                </div>
+                <div id="editor"></div>
+                <textarea name="content" id="content" hidden>{{ form_values.get('content', '') if posted else template.content if template else '' }}</textarea>
+                <p id="templateContentHelp">Design your template using the rich text editor. This content will be inserted into note forms.</p>
             </div>
-
-            <!-- Actions -->
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-lg"></i> {{ 'Update' if template else 'Create' }} Template
-                </button>
-                <a href="{{ url_for('main.preferences') }}" class="btn btn-outline-secondary">Cancel</a>
-            </div>
-        </form>
+        </section>
     </div>
-</div>
+    <footer class="nt-commands" data-sb-page-band>
+        <span>Changes stay here until you save the template.</span>
+        <a href="{{ url_for('main.preferences') }}" class="sb-dialog-button" data-template-cancel>Cancel</a>
+        <button type="submit" id="templateFormSave" class="sb-dialog-button mf-save">
+            <i class="bi bi-check-lg" aria-hidden="true"></i> {{ 'Update' if template else 'Create' }} Template
+        </button>
+    </footer>
+</form>
+<dialog class="sb-dialog sb-dialog-compact" id="templateFormDiscard" aria-labelledby="templateFormDiscardTitle">
+    <header class="sb-dialog-header"><h2 id="templateFormDiscardTitle">Discard template changes?</h2></header>
+    <div class="sb-dialog-body"><p>These changes have not been saved. Keep editing, or discard them to continue.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="templateFormDiscardConfirm">Discard changes</button>
+    </footer>
+</dialog>
 {% endblock %}
-
 {% block extra_js %}
-<!-- Quill Rich Text Editor -->
 <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-<script>
-var quill = new Quill('#editor', {
-    theme: 'snow',
-    modules: {
-        toolbar: [
-            [{ 'header': [1, 2, 3, false] }],
-            ['bold', 'italic', 'underline', 'strike'],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            [{ 'indent': '-1'}, { 'indent': '+1' }],
-            ['link'],
-            ['clean']
-        ]
-    }
-});
-
-document.getElementById('templateForm').onsubmit = function(e) {
-    var content = document.getElementById('content');
-    content.value = quill.root.innerHTML;
-
-    // Check if content is empty
-    var tempDiv = document.createElement('div');
-    tempDiv.innerHTML = content.value;
-    var textContent = tempDiv.textContent || tempDiv.innerText || '';
-
-    if (textContent.trim().length === 0) {
-        e.preventDefault();
-        alert('Template content cannot be empty.');
-        quill.focus();
-        return false;
-    }
-
-    return true;
-};
-</script>
+<script src="{{ url_for('static', filename='js/ui-template-html.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-note-template-form.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-milestone-form.js') }}"></script>
 {% endblock %}

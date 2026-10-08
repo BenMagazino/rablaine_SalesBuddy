@@ -16,7 +16,7 @@
 
 {% block content %}
 {% set posted = request.method == 'POST' %}
-<form method="POST" id="customerForm" class="sb-milestone-form sb-customer-form"
+<form method="POST" id="customerForm" class="sb-milestone-form sb-customer-form sb-directory-frame"
       data-sb-page-surface data-form-key="{{ 'edit-' ~ customer.id if customer else 'new' }}{{ '-seller-' ~ seller_mode_seller.id if seller_mode and seller_mode_seller else '' }}"
       data-posted="{{ 'true' if posted else 'false' }}" aria-labelledby="customerFormTitle">
     <header class="mf-heading" data-sb-page-band>
@@ -305,6 +305,5 @@ if (!sellerDropdown || sellerDropdown.tagName !== 'SELECT') {
 </script>
 <script src="{{ url_for('static', filename='js/ui-milestone-form.js') }}"></script>
 {% endblock %}
-
 
 

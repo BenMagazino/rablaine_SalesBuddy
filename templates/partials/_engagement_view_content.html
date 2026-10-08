@@ -1,6 +1,6 @@
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-engagement-detail.css') }}">
-<section class="sb-engagement-view{% if show_header_actions %} sb-engagement-page{% endif %}"
+<section class="sb-engagement-view{% if show_header_actions %} sb-engagement-page sb-directory-frame sb-directory-frame-wide{% endif %}"
          data-sb-engagement-detail="{{ engagement.id }}"
          {% if show_header_actions %}data-sb-page-surface{% endif %}>
 <script src="{{ url_for('static', filename='js/ui-engagement-detail.js') }}"></script>

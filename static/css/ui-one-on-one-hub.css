@@ -6,7 +6,10 @@
 .hub-header h1 { margin: 0; font-size: 20px; font-weight: 600; }
 .hub-header p { margin: 4px 0 0; color: var(--sb-ui-muted); font-size: 12px; }
 .sb-one-on-one-hub .hub-workarea { display: grid; grid-template-columns: minmax(0, 1fr) 340px; overflow: hidden; }
-.hub-directory, .hub-launcher { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.hub-directory, .hub-launcher {
+    display: flex; flex-direction: column; min-width: 0; min-height: 0;
+    background: var(--sb-ui-surface);
+}
 .hub-launcher { border-left: 1px solid var(--sb-ui-line); }
 .hub-pane-header { display: flex; align-items: center; min-height: 65px; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); flex-shrink: 0; }
 .hub-pane-header h2 { margin: 0; font-size: 14px; font-weight: 600; }

@@ -1,0 +1,46 @@
+/* Territory roster and scoped activity share a continuous desktop reading surface. */
+.sb-territory-detail { color: var(--sb-ui-ink); font: 13px/1.45 var(--sb-ui-font); }
+.sb-territory-detail, .sb-territory-detail * { box-sizing: border-box; }
+.sb-territory-detail [hidden] { display: none !important; }
+.td-header { display: flex; align-items: center; gap: 20px; padding: 14px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.td-header h1 { flex: 1; margin: 0; font-size: 20px; font-weight: 600; overflow-wrap: anywhere; }
+.td-header .sb-dialog-button { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; flex-shrink: 0; }
+.td-pod { color: var(--sb-ui-accent); text-decoration: none; font-size: 12px; }
+.td-layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); }
+.td-roster, .td-work { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.td-roster { border-right: 1px solid var(--sb-ui-line); background: var(--sb-ui-surface); }
+.td-band { display: flex; align-items: center; gap: 12px; min-height: 49px; padding: 8px 18px; border-bottom: 1px solid var(--sb-ui-line); }
+.td-band h2 { flex: 1; margin: 0; font-size: 13px; font-weight: 600; }
+.td-band h2 span { margin-left: 5px; color: var(--sb-ui-muted); font-weight: 400; }
+.td-scope { margin: 0; padding: 8px 18px; color: var(--sb-ui-muted); font-size: 11px; border-bottom: 1px solid var(--sb-ui-line); }
+.td-reading { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+.td-records { max-width: 1050px; }
+.td-group { display: flex; align-items: center; gap: 10px; margin: 0; padding: 9px 18px; border-bottom: 1px solid var(--sb-ui-line); font-size: 12px; font-weight: 600; }
+.td-group span { color: var(--sb-ui-muted); font-size: 11px; font-weight: 400; }
+.td-group[data-type="growth"] { color: var(--sb-ui-milestone-rail); }
+.td-group[data-type="acquisition"] { color: var(--sb-ui-accent); }
+.td-records section + section { border-top: 1px solid var(--sb-ui-line); }
+.td-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; }
+.td-table :is(th, td) { padding: 7px 18px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--sb-ui-grid-line); overflow-wrap: anywhere; }
+.td-table th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); color: var(--sb-ui-muted); font-weight: 500; }
+.td-table th:first-child { width: 74%; }
+.td-roster .td-table th:first-child { width: 64%; }
+.td-roster .td-table :is(th, td) { padding: 7px 12px; }
+.td-table td:last-child { font-variant-numeric: tabular-nums; color: var(--sb-ui-muted); }
+.sb-territory-detail[data-td-mode="accounts"] .td-work .td-table :is(th, td):last-child { text-align: right; }
+.td-table a { color: var(--sb-ui-accent); text-decoration: none; }
+.td-table a.td-seller { display: inline-block; padding: 1px 5px; background: var(--sb-ui-selection); }
+.td-table tbody tr:hover { background: var(--sb-ui-raised); }
+.td-table a:hover, .td-pod:hover { text-decoration: underline; }
+.td-toggle { display: flex; align-items: center; margin: 0; padding: 0; border: 1px solid var(--sb-ui-control-line); flex-shrink: 0; }
+.td-toggle input, .td-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.td-toggle label { padding: 5px 10px; margin: 0; color: var(--sb-ui-muted); font-size: 12px; cursor: pointer; }
+.td-toggle input:checked + label { background: var(--sb-ui-selection); color: var(--sb-ui-ink); }
+.td-toggle input:focus-visible + label { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.td-toggle:has(input:disabled) label { opacity: .6; cursor: wait; }
+.td-save-status { color: var(--sb-ui-muted); font-size: 11px; }
+.td-save-status:empty { display: none; }
+.td-empty { margin: 0; padding: 20px 18px; color: var(--sb-ui-muted); }
+.td-notice { margin: 0; padding: 8px 24px; color: var(--sb-ui-danger); border-bottom: 1px solid var(--sb-ui-line); }
+.sb-territory-detail a:focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+[data-bs-theme="light"] .td-group[data-type="growth"] { color: oklch(42% .10 160); }

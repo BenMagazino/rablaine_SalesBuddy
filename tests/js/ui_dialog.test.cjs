@@ -242,8 +242,8 @@ function pageHelp(pathname) {
 
 test('contextual entries have unique routes, valid content and the current Hygiene help contract', () => {
     const help = pageHelp('/');
-    assert.equal(help.helpMap.length, 72);
-    assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 72);
+    assert.equal(help.helpMap.length, 82);
+    assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 82);
     for (const entry of [...help.helpMap, help.fallbackHelp]) {
         assert.equal(typeof entry.title, 'string');
         assert.ok(entry.title.trim().length > 0);
@@ -256,6 +256,16 @@ test('contextual entries have unique routes, valid content and the current Hygie
     assert.match(hygiene.body.innerHTML, /both queues/);
     assert.match(hygiene.body.innerHTML, /creation cannot be confirmed/);
     assert.match(hygiene.body.innerHTML, /Only confirmed notes/);
+});
+
+test('Fill My Day help preserves the existing route and explicit import/write semantics', () => {
+    const help = pageHelp('/fill-my-day?date=2026-10-07');
+    help.show();
+    assert.equal(help.title.textContent, 'Fill My Day');
+    assert.match(help.body.innerHTML, /WorkIQ meetings/);
+    assert.match(help.body.innerHTML, /immediate remote write/);
+    assert.match(help.body.innerHTML, /Save Note creates a local note/);
+    assert.doesNotMatch(help.body.innerHTML, /upcoming meetings|customer history/);
 });
 
 test('project dossier help stays distinct from native New and Edit form help', () => {
@@ -271,6 +281,21 @@ test('project dossier help stays distinct from native New and Edit form help', (
     }
 });
 
+test('topic New/Edit help is exact and does not shadow existing detail or directory help', () => {
+    for (const pathname of ['/topic/new', '/topic/3/edit', '/topic/3/edit/']) {
+        const form = pageHelp(pathname);
+        form.show();
+        assert.equal(form.title.textContent, 'Topic Form');
+        assert.match(form.body.innerHTML, /Nothing is saved while typing/);
+        assert.match(form.body.innerHTML, /New duplicates open the existing topic/);
+    }
+    for (const [pathname, title] of [['/topic/3', 'Topic Details'], ['/topics', 'Topics']]) {
+        const help = pageHelp(pathname);
+        help.show();
+        assert.equal(help.title.textContent, title);
+    }
+});
+
 test('contextual and fallback help use native dialogs without Bootstrap markup or APIs', () => {
     for (const [pathname, title] of [['/', 'Dashboard'], ['/unknown', 'Sales Buddy Help']]) {
         const help = pageHelp(pathname);
@@ -279,5 +304,113 @@ test('contextual and fallback help use native dialogs without Bootstrap markup o
         assert.deepEqual(help.calls, ['pageHelpModal']);
         assert.match(help.body.innerHTML, /Calendar|Keyboard|calendar/);
         assert.doesNotMatch(help.body.innerHTML, /class="[^"]*\b(?:badge|table-sm|bg-\w+|text-muted)\b/);
+    }
+});
+
+test('Opportunity detail help preserves explicit writes and unique contextual routes', () => {
+    const help = pageHelp('/opportunity/42');
+    help.show();
+    assert.equal(help.title.textContent, 'Opportunity Details');
+    for (const phrase of ['Back restores both reading regions', 'updates the local cache',
+        'ACR / mo', 'Leave defaults to Cancel', 'Keep editing or Discard',
+        'pending writes', 'notes, engagement and task workflows']) {
+        assert.ok(help.body.innerHTML.includes(phrase), phrase);
+    }
+    assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 82);
+});
+
+test('Partner forms retain two exact help entries and separate immediate creation from manual save', () => {
+    for (const [pathname, title] of [['/partners/new', 'New Partner'],
+        ['/partners/3/edit', 'Edit Partner'], ['/partners/3/edit/', 'Edit Partner']]) {
+        const help = pageHelp(pathname);
+        help.show();
+        assert.equal(help.title.textContent, title);
+        assert.match(help.body.innerHTML, /specialty immediately/);
+        assert.match(help.body.innerHTML, /manually saves/);
+        assert.match(help.body.innerHTML, /Contacts.*Partner Details/s);
+        assert.match(help.body.innerHTML, /without autosave/);
+    }
+    for (const [pathname, title] of [['/partners', 'Partners'],
+        ['/partners/3', 'Partner Details']]) {
+        const help = pageHelp(pathname);
+        help.show();
+        assert.equal(help.title.textContent, title);
+    }
+    assert.equal(pageHelp('/').helpMap.length, 82);
+});
+
+test('Partner detail help preserves contact, photo, sharing and explicit meeting review workflows', () => {
+    const help = pageHelp('/partners/3');
+    help.show();
+    assert.equal(help.title.textContent, 'Partner Details');
+    for (const phrase of ['Back restores independent sorting', 'manual saves',
+        'Set primary saves immediately', 'clipboard screenshots', 'saves the domain immediately',
+        'Import Selected', 'Cancel does not import', 'Try Again', 'explicit send']) {
+        assert.ok(help.body.innerHTML.includes(phrase), phrase);
+    }
+    assert.equal(pageHelp('/').helpMap.length, 82);
+});
+
+test('Specialties directory help preserves unique inventory and explains native sorting', () => {
+    const help = pageHelp('/specialties');
+    help.show();
+    assert.equal(help.title.textContent, 'Specialties');
+    for (const phrase of ['all specialties', 'partner counts', 'Edit', 'New Specialty',
+        'Sort Name, Description or Partners', 'Back restores', 'temporary',
+        'original database name order']) {
+        assert.ok(help.body.innerHTML.includes(phrase), phrase);
+    }
+    assert.equal(help.helpMap.length, 82);
+    assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 82);
+});
+
+test('Specialty New/Edit help preserves manual versus immediate writes and unique inventory', () => {
+    for (const path of ['/specialties/new', '/specialties/11/edit']) {
+        const help = pageHelp(path);
+        help.show();
+        assert.match(help.title.textContent, /Specialty Form/);
+        for (const phrase of ['Name is required', 'description is optional', 'save manually',
+            'ignoring case', 'partner associations', 'discard guard', 'Back restores',
+            'without autosave', 'retain your entries', 'create specialties immediately']) {
+            assert.ok(help.body.innerHTML.includes(phrase), phrase);
+        }
+        assert.equal(help.helpMap.length, 82);
+        assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 82);
+    }
+});
+
+test('Specialty detail help does not shadow forms and preserves relationship-safe deletion', () => {
+    for (const pathname of ['/specialties/6', '/specialties/6/']) {
+        const help = pageHelp(pathname);
+        help.show();
+        assert.equal(help.title.textContent, 'Specialty Details');
+        for (const phrase of ['all associated partners', 'contact and note counts',
+            'Sort Name, Contacts or Notes', 'Back restores', 'Cancel',
+            'not partners', 'rolls back']) assert.ok(help.body.innerHTML.includes(phrase), phrase);
+    }
+    assert.equal(pageHelp('/').helpMap.length, 82);
+});
+
+test('Notes directory help retains exact scope, paging and chronological reading', () => {
+    const help = pageHelp('/notes');
+    help.show();
+    assert.equal(help.title.textContent, 'Notes');
+    for (const phrase of ['All, Customer and General', 'Per page', 'Back restores',
+        'newest first', 'Seller mode', 'Nothing saves', 'not a sortable data table']) {
+        assert.ok(help.body.innerHTML.includes(phrase), phrase);
+    }
+    assert.equal(help.helpMap.length, 82);
+    assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 82);
+});
+
+test('Template New/Edit help stays unique and describes manual and insertion workflows', () => {
+    for (const path of ['/templates/new', '/templates/1/edit']) {
+        const help = pageHelp(path); help.show();
+        assert.equal(help.title.textContent, 'Note Template Form');
+        for (const phrase of ['Nothing saves', 'Create Template', 'Update Template',
+            'formatting toolbar', 'Cancel', 'Back restores', 'Failed saves',
+            'Replace or Add to top']) assert.ok(help.body.innerHTML.includes(phrase), phrase);
+        assert.equal(help.helpMap.length, 82);
+        assert.equal(new Set(help.helpMap.map(entry => String(entry.pattern))).size, 82);
     }
 });

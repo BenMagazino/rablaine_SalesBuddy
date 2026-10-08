@@ -28,6 +28,7 @@ def test_inventory(client, sample_data, editing):
     response = client.get(f'/customer/{customer.id}/edit' if editing else '/customer/new')
     soup = parse(response)
     form = soup.select_one('#customerForm')
+    assert 'sb-directory-frame' in form['class']
     assert response.status_code == 200
     assert form['method'] == 'POST' and not form.has_attr('action')
     assert {e['name'] for e in form.select('[name]')} == {

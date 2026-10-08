@@ -1,5 +1,11 @@
 # 1:1 workspace hub, checkpoint 46
 
+## October 8 reading-width revision
+- Standalone hub uses centered 1344px, preserving the 340px launcher and 790px table minimum.
+- Embedded hub does not opt in. Live dark/light at 1559x1167 has no reading overflow.
+- Evidence: `width-workflow-workspace-hub-{before,after,light-after}.png`.
+- Revision is uncommitted and awaiting review; existing checkpoint status is unchanged.
+
 - Route: `/one-on-one/`, including embed.
 - Baseline: approved product `acb97fb3`; live Before captured before editing.
 - Status: VERIFY, user-approved October 6; locally committed as `dead47b9`.
@@ -47,3 +53,9 @@
   `one-on-one-hub-light-after.png`. Images remain outside the repository.
 - Browser QA baselines/drafts cleared. No push, merge or deployment authorized.
 - Discord accepted the generic review-ready DM, message `1557196584733904897`.
+## October 8 content-background consistency
+
+- Directory and launcher reading panes explicitly share `--sb-ui-surface`.
+- Existing 1344px paired frame, selection, sorting and manual creation controls remain.
+- Evidence: `consistency-workspace-hub-{before,after,light-after}.png`.
+- Parent coordinates `test_ui_one_on_one_hub.py` and `test_ui_workflow_consistency.py`.

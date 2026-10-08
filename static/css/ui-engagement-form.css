@@ -8,7 +8,10 @@
 .ef-heading p { margin: 5px 0 0; font-size: 13px; color: var(--sb-ui-muted); }
 .sb-engagement-form a { color: var(--sb-ui-accent); }
 .sb-engagement-form .ef-work { display: grid; grid-template-columns: minmax(580px, 1.7fr) minmax(360px, 1fr); }
-.ef-reading { min-width: 0; overflow: auto; scrollbar-width: thin; padding: 24px; }
+.ef-reading {
+    min-width: 0; overflow: auto; scrollbar-width: thin; padding: 24px;
+    background: var(--sb-ui-surface);
+}
 .ef-story { border-right: 1px solid var(--sb-ui-line); }
 .ef-story > * { max-width: 840px; }
 .ef-title-row { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: 20px; }

@@ -1,5 +1,12 @@
 # Persistent 1:1 workspace, checkpoint 47
 
+## October 8 reading-width revision
+- Explicit standalone wrapper flag enables centered 1344px; embed/API fragment omit it.
+- Live dark/light at 1559x1167: standing notes and conversation keep independent scrolling.
+- Evidence: `width-workflow-workspace-{before,after,light-after}.png`.
+- Before is a width-only reconstruction on the same live record, explicitly labelled.
+- No notes or talking points edited. Revision is uncommitted and awaiting review.
+
 - Routes: `/one-on-one/<workspace_id>`, embed and the existing seller detail fragment.
 - Baseline: last approved hub `dead47b9`; Before captured before implementation.
 - Status: VERIFY, user-approved October 6; committed locally as `6ee2af6d`.
@@ -68,3 +75,10 @@
   height and scrolls content without moving the toolbar. Notes remain unchanged.
   Images: `one-on-one-workspace-height-before.png` and `one-on-one-workspace-height-after.png`.
 - One generic Discord review-ready DM accepted; message ID `1557211426064703549`.
+## October 8 content-background consistency
+
+- Standing-note and next-conversation panes use `--sb-ui-surface` in both themes.
+- Discussion-note and engagement composers use the same reading/editor surface.
+- Existing 1344px paired geometry, saved rich content and talking-point history remain.
+- Evidence: `consistency-workspace-{before,after,light-after}.png`.
+- Parent coordinates `test_ui_one_on_one_workspace.py` and `test_ui_workflow_consistency.py`.

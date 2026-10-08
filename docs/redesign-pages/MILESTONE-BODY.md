@@ -41,8 +41,9 @@ branches; and the original full-page Edit/MSX/Delete commands.
   inactive/unknown statuses, counts and additional-topic indicators use gray.
   Labels/icons and linked-tag hover/focus affordances remain. Note-body tags and
   status indicators outside the sidebar are unchanged.
-- Server and client forecast presentation opt in only for milestones.
-  Opportunities retain their legacy Bootstrap presentation. Shared sorting,
+- Server and client forecast presentation now opt in for milestones and opportunities.
+  Opportunity integration is checkpoint 89, VERIFY, documented in [OPP-VIEW](OPP-VIEW.md).
+  Shared sorting,
   reference links, local timestamps, rich-table/plain-text branches, handlers,
   identifiers and POST/PUT/DELETE payloads remain in one implementation.
 - Cached comment drafts transfer into the fresh form with focus preserved.
@@ -133,3 +134,10 @@ The user approved checkpoint 12 after testing its other functionality. Home dash
 styling is the next portion. Full page/fragment reconciliation, remaining global
 surfaces and theme-family persistence still require later work. DONE counts stay
 pages 0/90, helpers 0/24 and globals 5/17.
+## October 8 content-background consistency
+
+- Shared milestone roots and context/reading panes explicitly use `--sb-ui-surface`.
+- Existing 1344px standalone width and compact fragment geometry remain unchanged.
+- Semantic badges, forecast markup, hover states and task controls are preserved.
+- Evidence: `consistency-milestone-detail-{before,after,light-after}.png`.
+- Parent coordinates `test_ui_milestone_body.py` and `test_ui_workflow_consistency.py`.

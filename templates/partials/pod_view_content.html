@@ -1,0 +1,103 @@
+{% macro heading(label, kind='text') %}<th scope="col" data-sb-sort-type="{{ kind }}" data-export-label="{{ label }}">{{ label }}</th>{% endmacro %}
+<section id="podForm" class="sb-pod-detail sb-directory-frame sb-directory-frame-wide" data-pod-id="{{ pod.id }}" data-pod-detail data-sb-page-surface>
+    <header class="pd-header" data-sb-page-band>
+        <h1><i class="bi bi-diagram-2" aria-hidden="true"></i> {{ pod.name }}</h1>
+        <a class="sb-dialog-button" href="{{ url_for('pods.pod_edit', id=pod.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit POD</a>
+        <a class="sb-dialog-button" href="{{ url_for('pods.pods_list') }}" data-pod-back>All PODs</a>
+    </header>
+    <p id="podFormNotice" class="pd-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="pd-layout" data-sb-page-body>
+        <section class="pd-cell" aria-label="Territory and seller coverage">
+            <header class="pd-band"><h2>Coverage</h2><span>Territories and their unique sellers</span></header>
+            <div class="pd-reading" data-pd-scroll="coverage">
+                <section>
+                    <h3 class="pd-group">Territories in this POD <span>{{ territories|length }}</span></h3>
+                    {% if territories %}
+                    <table class="pd-table" data-sb-sortable data-sb-sort-key="pod-{{ pod.id }}-territories">
+                        <thead><tr>{{ heading('Name') }}{{ heading('Customers', 'number') }}</tr></thead>
+                        <tbody>{% for territory in territories %}
+                        <tr data-territory-id="{{ territory.id }}" data-pd-href="{{ url_for('territories.territory_view', id=territory.id) }}">
+                            <td data-sb-sort-value="{{ territory.name }}"><a class="pd-territory" href="{{ url_for('territories.territory_view', id=territory.id) }}" aria-label="View {{ territory.name }}"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ territory.name }}</a></td>
+                            <td data-sb-sort-value="{{ territory.customers|length }}">{{ territory.customers|length }} customers</td>
+                        </tr>{% endfor %}</tbody>
+                    </table>
+                    {% else %}<p class="pd-empty">No territories in this POD yet.</p>{% endif %}
+                </section>
+                <section>
+                    <h3 class="pd-group">Sellers in this POD <span>{{ sellers|length }}</span></h3>
+                    <p class="pd-scope">Customer counts include each seller's full coverage.</p>
+                    {% if sellers %}
+                    <table class="pd-table pd-sellers" data-sb-sortable data-sb-sort-key="pod-{{ pod.id }}-sellers">
+                        <thead><tr>{{ heading('Name') }}{{ heading('Email') }}{{ heading('Type') }}{{ heading('Customers', 'number') }}</tr></thead>
+                        <tbody>{% for seller in sellers %}
+                        <tr data-seller-id="{{ seller.id }}" data-pd-href="{{ url_for('sellers.seller_view', id=seller.id) }}">
+                            <td data-sb-sort-value="{{ seller.name }}"><a class="pd-seller" href="{{ url_for('sellers.seller_view', id=seller.id) }}" aria-label="View {{ seller.name }}"><i class="bi bi-person" aria-hidden="true"></i> {{ seller.name }}</a></td>
+                            <td data-sb-sort-value="{{ seller.alias ~ '@microsoft.com' if seller.alias else '' }}">{% if seller.alias %}<i class="bi bi-envelope" aria-hidden="true"></i> {{ seller.alias }}@microsoft.com{% endif %}</td>
+                            <td data-sb-sort-value="{{ seller.seller_type or '' }}">{% if seller.seller_type %}<span class="pd-role" data-type="{{ seller.seller_type|lower }}">{{ seller.seller_type }}</span>{% endif %}</td>
+                            <td data-sb-sort-value="{{ seller.customers|length }}">{{ seller.customers|length }} customers</td>
+                        </tr>{% endfor %}</tbody>
+                    </table>
+                    {% else %}<p class="pd-empty">No sellers in this POD yet.</p>{% endif %}
+                </section>
+            </div>
+        </section>
+        <section class="pd-cell pd-personnel" aria-label="POD engineers and territory specialists">
+            <header class="pd-band"><h2>Technical coverage</h2><span>POD engineers · Territory specialists</span></header>
+            <div class="pd-reading" data-pd-scroll="personnel" data-pod-assignment-reading>
+                <section>
+                    <h3 class="pd-group">Solution Engineers <span>{{ solution_engineers|length }}</span></h3>
+                    {% if solution_engineers %}
+                    <table class="pd-table pd-engineers" data-sb-sortable data-sb-sort-key="pod-{{ pod.id }}-engineers">
+                        <thead><tr>{{ heading('Name') }}{{ heading('Email') }}{{ heading('Specialty') }}</tr></thead>
+                        <tbody>{% for se in solution_engineers %}
+                        <tr data-se-id="{{ se.id }}" data-pd-href="{{ url_for('solution_engineers.solution_engineer_view', id=se.id) }}">
+                            <td data-sb-sort-value="{{ se.name }}"><a href="{{ url_for('solution_engineers.solution_engineer_view', id=se.id) }}" aria-label="View {{ se.name }}">{{ se.name }}</a></td>
+                            <td data-sb-sort-value="{{ se.alias ~ '@microsoft.com' if se.alias else '' }}">{% if se.alias %}<i class="bi bi-envelope" aria-hidden="true"></i> {{ se.alias }}@microsoft.com{% endif %}</td>
+                            <td data-sb-sort-value="{{ se.specialty or '' }}">{% if se.specialty %}<span class="pd-specialty">{{ se.specialty }}</span>{% endif %}</td>
+                        </tr>{% endfor %}</tbody>
+                    </table>
+                    {% else %}<p class="pd-empty">No solution engineers in this POD yet.</p>{% endif %}
+                </section>
+                {% if territory_dss_grouped %}
+                <section class="pd-specialists">
+                    <button class="pod-disclosure pd-group" id="podDssToggle" type="button" aria-expanded="true" aria-controls="dssCardBody"><span>Digital Solution Specialists</span><i class="bi bi-chevron-up" aria-hidden="true"></i></button>
+                    <div id="dssCardBody">
+                        {% for territory, specialties in territory_dss_grouped.items() %}
+                        <section class="pd-assignment-group">
+                            <h4><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ territory.name }}</h4>
+                            {% for spec, info in specialties.items() %}
+                            <div class="pd-assignment">
+                                {% if info.selected_id %}
+                                <span>{{ spec }}</span><span>{% for dss in info.dss_list if dss.id == info.selected_id %}<i class="bi bi-person" aria-hidden="true"></i> {{ dss.name }}{% endfor %}</span>
+                                {% elif info.dss_list|length == 1 %}
+                                <span>{{ spec }}</span><span><i class="bi bi-person" aria-hidden="true"></i> {{ info.dss_list[0].name }}</span>
+                                {% else %}
+                                <label for="dss-{{ territory.id }}-{{ loop.index }}">{{ spec }}</label>
+                                <div class="pod-choice">
+                                    <select id="dss-{{ territory.id }}-{{ loop.index }}" data-dss-territory="{{ territory.id }}" data-dss-specialty="{{ spec }}">
+                                        <option value="" disabled selected>Select a specialist</option>
+                                        {% for dss in info.dss_list %}<option value="{{ dss.id }}">{{ dss.name }}</option>{% endfor %}
+                                    </select>
+                                    <span class="pod-save-status" role="status" aria-live="polite"></span>
+                                    <button class="sb-dialog-button" type="button" data-dss-retry hidden>Retry</button>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </section>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</section>
+<dialog class="sb-dialog sb-dialog-compact" id="podFormDiscard" aria-labelledby="podFormDiscardTitle">
+    <header class="sb-dialog-header"><h2 id="podFormDiscardTitle">Discard unsaved assignments?</h2></header>
+    <div class="sb-dialog-body"><p>Some assignments have not saved. Keep editing to retry, or discard those changes to leave. Already saved assignments are not undone.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="podFormDiscardConfirm">Discard changes</button>
+    </footer>
+</dialog>

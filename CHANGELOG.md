@@ -10,6 +10,34 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/2/2026
 
+- Keep Settings navigation available when a Note Template save fails.
+- Review Fill My Day in a native workbench with explicit fetch/enrichment confirmation, unchanged meeting-to-note workflows, restored Back context, sortable unmatched meetings and visible task-category retry errors.
+- Read Opportunity details and workspace previews in native regions with complete cached/fresh context, sortable linked milestones, protected forecast drafts, restored Back context and explicit team/favorite actions.
+- Create and edit Note Templates in native manual forms with original rich formatting, persistent commands, protected drafts and retained failed entries; template insertion preserves trusted content while removing executable markup.
+- Search Notes in a native workbench with unchanged filters, seller scope, grouping and recent history, persistent search controls and restored reading position on Back.
+- Browse Notes in a native chronological stream with original fields, links and seller scope, persistent filters and pagination, accurate range/count status and restored reading position on Back.
+- Read Specialty details in native partner rows with unchanged descriptions, counts and links, sortable data, restored Back context and confirmed deletion with relationship-safe failure recovery.
+- Create and edit Specialties in native manual forms with unchanged fields, duplicate rules and partner links, protected drafts and retained entries when validation or saving fails.
+- Browse Specialties in compact native rows with unchanged descriptions, complete partner counts and New/detail/Edit links, sortable data and restored Back context.
+- Read Partner details in native working regions with sortable contacts and linked notes, guarded contact dialogs, clipboard photos, explicit meeting review/import and existing native sharing.
+- Create and edit Partners in native manual forms with original fields and associations, protected drafts, retained failed entries and explicitly separate immediate specialty creation.
+- Browse Partners in compact native rows with sortable data and restored Back context, plus native sharing/import reviews with original exports, explicit acceptance, protected cancellation and retained failed selections.
+- Read Topic details in a native tagged-note workbench with original relationships and previews, sortable data, restored Back context and confirmed deletion with failure recovery.
+- Create and edit Topics in native manual forms with original fields and redirects, protected drafts, retained failed entries and correctly empty optional descriptions.
+- Browse Topics in compact native rows with unchanged descriptions, note counts and links, sortable data, restored Back context and explicit saved default ordering with honest failure recovery.
+- Create and edit Internal Contacts in native manual forms with original fields and role suggestions, protected drafts, retained failed entries and explicit deletion confirmation.
+- Browse Internal Contacts in compact native rows with unchanged identities and roles, sortable data, restored Back context and explicit deletion confirmation with honest failure recovery.
+- Read Solution Engineer identity and POD-derived territory coverage in native cells with sortable records, restored Back context, original links and explicit deletion confirmation with honest failure recovery.
+- Edit Solution Engineers in the native desktop frame with original identity and POD choices, persistent Save/Cancel, guarded drafts and retained entries when validation or saving fails.
+- Browse Solution Engineers in compact native rows with unchanged identity and assignments, sortable data, original Edit commands and restored sorting and reading position on Back.
+- Read POD coverage in native divider-separated cells with complete rosters, customer counts, sortable records, restored Back context and guarded specialist assignment saves.
+- Edit POD specialist assignments in the native desktop frame with unchanged immediate saves, synced identity and coverage, retained failed choices, explicit retry and guarded navigation.
+- Read territory coverage in a native roster and activity workbench with preserved account/note scopes, sortable records, restored Back context and honest failures when saving the view preference.
+- Create and edit territories in native naming forms with persistent Save/Cancel, unchanged coverage relationships, guarded drafts and retained entries when validation or saving fails.
+- Browse Territories in compact native rows with linked coverage, unchanged customer counts and creation commands, sortable data headings and restored Back context.
+- Read seller coverage in native workstream tabs with complete milestone/revenue previews, compact engagement rows, sortable data, restored Back context and explicit deletion confirmation.
+- Create and edit sellers in native identity and coverage forms with persistent Save/Cancel, original territory choices, guarded drafts and retained entries when validation or saving fails.
+- Browse Sellers in the native desktop directory with compact type-grouped records, linked territories and customers, sortable latest-note lists, restored Back context and explicit role-dependent View as.
 - Read customers in native dossier tabs with full notes, linked pipeline and sortable revenue, persistent commands, restored Back context and protected manual context/contact edits.
 - Create and edit customers in native identity and ownership forms with persistent Save/Cancel, original seller and CSAM choices, protected drafts and retained entries when validation or saving fails.
 - Browse Customers in the native desktop directory with preserved seller scope, note filters, grouping, identity and ordering, sortable data headings, restored reading context and explicit guarded TPID imports.
@@ -735,3 +763,4 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Milestone sync scheduler with MWF schedule and startup catchup
 - Navbar customer search with `/` keyboard shortcut
 - UX navigation overhaul
+- Browse PODs in compact native roster rows with unchanged territory/SE counts and personnel, sortable data headings and restored Back context.

@@ -2,7 +2,6 @@
 
 import ast
 import inspect
-import textwrap
 from pathlib import Path
 
 import pytest
@@ -13,6 +12,7 @@ from jinja2 import nodes
 
 from app.services.breadcrumb_types import Breadcrumb
 from app.services.breadcrumbs import SYSTEM_ENDPOINTS, normalize_title
+from tests.breadcrumb_rendering import get_rendered_templates
 
 
 def inherits_base(app: Flask, template: str) -> bool:
@@ -35,21 +35,39 @@ def test_all_base_page_endpoints_have_declared_ancestry(app: Flask) -> None:
 
     declared = SYSTEM_ENDPOINTS | entities | reports
     pages = set()
+    modules = {}
     for endpoint, function in app.view_functions.items():
         if endpoint == "static":
             continue
-        tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
-        for call in ast.walk(tree):
-            if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Name):
-                continue
-            if call.func.id != "render_template" or not call.args:
-                continue
-            template = call.args[0]
-            if isinstance(template, ast.Constant) and isinstance(template.value, str):
-                if inherits_base(app, template.value):
-                    pages.add(endpoint)
+        module = inspect.getmodule(function)
+        assert module is not None, f"Cannot inspect route module: {endpoint}"
+        if module.__name__ not in modules:
+            modules[module.__name__] = ast.parse(inspect.getsource(module))
+        for template in get_rendered_templates(modules[module.__name__], function.__name__):
+            if inherits_base(app, template):
+                pages.add(endpoint)
     assert len(pages) >= 90
     assert not pages - declared, f"Missing canonical breadcrumb paths: {sorted(pages - declared)}"
+
+
+def test_static_renderer_discovery_follows_local_helpers_and_stops_cycles() -> None:
+    """Helper-rendered forms count while unrelated pages and dynamic names do not."""
+    tree = ast.parse("""
+def page():
+    return render_form()
+def render_form():
+    if failed:
+        return render_failure()
+    return render_template("form.html")
+def render_failure():
+    render_form()
+    render_template(template_name)
+    return render_template("failure.html")
+def unrelated():
+    return render_template("unrelated.html")
+""")
+    assert get_rendered_templates(tree, "page") == {"form.html", "failure.html"}
+    assert get_rendered_templates(tree, "unrelated") == {"unrelated.html"}
 
 
 @pytest.mark.parametrize("path, labels", [

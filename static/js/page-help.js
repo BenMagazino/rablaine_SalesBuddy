@@ -11,6 +11,18 @@ const PageHelp = (function () {
   // Use {id} as a placeholder for numeric path segments.
 
   const helpMap = [
+    { pattern: /^\/templates\/(?:new|\d+\/edit)$/, title: 'Note Template Form', content: `
+      <p>Create or edit reusable rich-text content for notes. Template name and
+      content are required. Nothing saves until Create Template or Update Template.</p>
+      <ul>
+        <li>Use headings, emphasis, lists, indentation, links and Clear formatting.
+        The formatting toolbar and manual commands stay visible while content scrolls.</li>
+        <li>Back to Settings and Cancel return to Settings. Unsaved changes are
+        guarded; browser Back restores this entry's draft and reading position.</li>
+        <li>Failed saves retain entries for correction and retry. Settings keeps
+        customer/general defaults separate; inserting a template into a note still
+        offers Replace or Add to top when that note already has content.</li>
+      </ul>` },
     { pattern: /^\/project\/\d+$/, title: 'Project Details', content: `
       <p>Read internal work, its description and dates, action items and linked notes.
       Edit, Delete and Back remain visible while the dossier scrolls.</p>
@@ -113,12 +125,19 @@ const PageHelp = (function () {
 
     // ── Notes ──
     { pattern: /^\/notes\/?$/, title: 'Notes', content: `
-      <p>All your call notes in one place. Each note captures what was discussed, which technologies came up, and who was involved.</p>
-      <h6>Tips</h6>
+      <p>Read your notes newest first, with customer identity, dates, short excerpts
+      and linked people, topics and work. Seller mode keeps its existing account scope.</p>
       <ul>
-        <li>Use the filters at the top to narrow by customer, seller, topic, or date range</li>
-        <li>Click a note title to view the full note with all details</li>
-        <li><strong>New Note</strong> — attach it to a customer and tag relevant topics</li>
+        <li>All, Customer and General filter the original note scope.
+        There are no seller, topic or date-range filters on this directory.</li>
+        <li>Per page remembers 25, 50, 100 or 200 locally. Changing it starts at
+        page one; pagination keeps the current filter and page size.</li>
+        <li>Click a date, excerpt or note row to open the full note. Relationship
+        links open their own records. Back restores this page's reading position.</li>
+        <li>The status rail shows the displayed range and total in the current scope.
+        This reading stream is chronological, not a sortable data table.</li>
+        <li>Use the shared New Note command, or Create your first note when empty,
+        to choose a customer or a General Note. Nothing saves from this directory.</li>
       </ul>
     `},
     { pattern: /^\/note\/new/, title: 'New Note', content: `
@@ -273,87 +292,287 @@ const PageHelp = (function () {
     { pattern: /^\/seller\/new/, title: 'New Seller', content: `
       <p>Add a new seller to your team. They'll appear as an option when creating notes.</p>
     `},
-    { pattern: /^\/seller\/\d+/, title: 'Seller Details', content: `
-      <p>This seller's profile — linked notes, customers, territory, and activity.</p>
+    { pattern: /^\/seller\/\d+\/?$/, title: 'Seller Details', content: `
+      <p>Customer coverage stays beside Milestones, Revenue and Engagements.
+      Customer and latest-note links retain their original destinations.</p>
+      <ul>
+        <li>Compact Milestones shows uncommitted, on-team records and a separate stale list. Full View opens the complete seller-locked tracker with its original filters and exports.</li>
+        <li>Revenue keeps your existing bucket selection. An alert opens its complete product history and review workflow; Full View keeps the broader alert list underneath.</li>
+        <li>Engagements includes Active and On Hold records only, with status, grouping, order and Favorites only controls. Favorite changes save immediately.</li>
+        <li>Data headings sort raw values both ways. Back restores the selected workstream, sorting and independent reading positions.</li>
+        <li>1:1 Notes opens the persistent workspace, creating it if needed. View as Seller changes your active role context. Delete is available only without customers and requires confirmation.</li>
+      </ul>
     `},
 
     // ── Territories ──
+    { pattern: /^\/territory\/(?:new|\d+\/edit)$/, title: 'Territory Form', content: `
+      <p>Name the region or segment used to organize coverage. Territory Name is
+      required; existing territories appear alphabetically to help avoid duplicates.</p>
+      <ul>
+        <li>Save Territory and Cancel stay visible while the form scrolls.
+        Cancel returns to Territories in both New and Edit.</li>
+        <li>There is no autosave. Leaving with changes offers a discard guard;
+        Back restores this entry's name and reading position.</li>
+        <li>Validation and failed saves retain your entries for correction and retry.
+        Creating a duplicate opens the existing territory; editing a duplicate
+        keeps you on the editor.</li>
+        <li>Renaming a territory does not change its POD, sellers, customers or
+        solution engineers.</li>
+      </ul>` },
     { pattern: /^\/territories\/?$/, title: 'Territories', content: `
       <p>Organize your customers and sellers by territory (region, segment, etc.).</p>
       <h6>Tips</h6>
       <ul>
+        <li>Sort Name, POD, Sellers or Customers in either direction. Back restores sorting and reading position.</li>
+        <li>Open a territory from its name or row; POD and seller links open their own details.</li>
+        <li>Customer counts use direct territory assignments. New Customer preselects that row's territory.</li>
         <li>Territories help filter and group across the app</li>
         <li>Assign territories to customers and sellers for better organization</li>
       </ul>
     `},
     { pattern: /^\/territory\/\d+/, title: 'Territory Details', content: `
-      <p>All customers and sellers in this territory, plus linked notes and activity.</p>
+      <p>Read the territory's seller roster beside Accounts or Recent Notes.</p>
+      <ul>
+        <li>Seller customer counts include each seller's full coverage. Accounts
+        include customers owned by Growth and Acquisition sellers assigned to
+        this territory, even when a customer's direct territory differs.</li>
+        <li>Recent Notes use direct customer territory and the last seven days.
+        Account note counts include all dates. Neither view uses personal seller filters.</li>
+        <li>Changing Recent Notes / Accounts explicitly saves your view preference
+        and reloads the page. A failed save keeps the current view and offers retry.</li>
+        <li>Sort Name, Customers, Notes or Note date in either direction.
+        Back restores sorting and each reading pane without changing the saved view.</li>
+        <li>POD, seller, account and note links open their original details.
+        Edit Territory opens the manual naming form without changing coverage relationships.</li>
+      </ul>
     `},
 
     // ── Topics ──
     { pattern: /^\/topics\/?$/, title: 'Topics', content: `
-      <p>Topics are the technologies and themes discussed in your calls (e.g., "Fabric", "Copilot Studio", "Migration").</p>
-      <h6>Tips</h6>
+      <p>Browse all technologies and themes tagged on notes, with their descriptions
+      and total note counts. Topic scope does not change with your seller role.</p>
       <ul>
-        <li>Tag notes with topics to make them searchable</li>
-        <li>Click a topic to see all notes where it was discussed</li>
-        <li>The AI can auto-suggest topics when you create a note</li>
+        <li>Open a name or row for its original topic details and associated notes.
+        New Topic opens the existing manual creation form.</li>
+        <li>Sort Name, Description or Notes in either direction. These header sorts
+        are temporary; Back restores your sorting and reading position.</li>
+        <li>Default explicitly saves alphabetical or most-notes ordering and reloads.
+        This resets the temporary sort. A failed save keeps the current order for retry.</li>
+        <li>Descriptions retain their original compact preview; hover for full text.
+        The AI can still suggest topics when you create a note.</li>
       </ul>
     `},
-    { pattern: /^\/topic\/\d+/, title: 'Topic Details', content: `
-      <p>All notes tagged with this topic, plus associated customers and sellers.</p>
+    { pattern: /^\/topic\/(?:new|\d+\/edit)\/?$/, title: 'Topic Form', content: `
+      <p>Name is required; description is optional. Save Topic manually saves both fields.
+      Nothing is saved while typing.</p>
+      <ul>
+        <li>Cancel returns to Topics. Unsaved navigation offers Keep editing or Discard changes.</li>
+        <li>Back restores this entry's draft and reading position. Failed saves retain your entries
+        for review and explicit retry.</li>
+        <li>New duplicates open the existing topic; Edit duplicates keep your entries in the form.</li>
+      </ul>
+    `},
+    { pattern: /^\/topic\/\d+\/?$/, title: 'Topic Details', content: `
+      <p>All notes tagged with this topic, across all dates and seller roles.
+      The full description and total tagged-note count remain available.</p>
+      <ul>
+        <li>Newest first is the default. Sort Name, Note date, Seller, Territory,
+        Topics or Partners in either direction. Back restores sorting and reading position.</li>
+        <li>View note opens the original note reader. Customer and relationship links
+        open their original details; note bodies and editing workflows are unchanged.</li>
+        <li>Edit Topic opens the existing manual form. Delete asks for confirmation
+        and removes the topic from associated notes without deleting the notes.
+        Cancel or Escape leaves everything unchanged; failed deletion retains associations.</li>
+      </ul>
     `},
 
     // ── Partners ──
     { pattern: /^\/partners\/?$/, title: 'Partners', content: `
-      <p>Your partner directory — ISVs, SIs, and other organizations you work with.</p>
-      <h6>Tips</h6>
+      <p>Browse all partner organizations with their original ratings, specialties,
+      contact counts and linked-note counts.</p>
       <ul>
-        <li>Rate partners (1-5 stars) based on your experience</li>
-        <li>Add <strong>specialties</strong> to track what each partner is good at</li>
-        <li>Add <strong>contacts</strong> with email and phone for quick reference</li>
-        <li><strong>Share Directory</strong> — send your partner list and saved details to another Sales Buddy user who is currently online (both users must be running Sales Buddy at the same time)</li>
+        <li>Sort Name, Rating, Specialties, Contacts or Notes in either direction.
+        Missing ratings stay last; zero is a real rating. Back restores sorting
+        and reading position. The initial order is still alphabetical.</li>
+        <li>Open a partner from its name or row, or follow a specialty directly.
+        New Partner and Manage Specialties keep their existing workflows.</li>
+        <li>Share Directory finds currently online teammates. Searching is local;
+        data is sent only after you choose a recipient and they accept.
+        Cancel or Escape clears the waiting share.</li>
+        <li>Incoming partner data opens a native review with New, Updated and
+        No Changes groups. Select All, Deselect All and Select New Only remain available.
+        Import Selected is the explicit save; Cancel discards the review.</li>
+        <li>Failed imports keep your selection for retry. Pending imports cannot
+        be dismissed or submitted twice. Sharing exports original partner fields,
+        not linked customer notes or contact photos.</li>
       </ul>
     `},
-    { pattern: /^\/partners\/new/, title: 'New Partner', content: `
-      <p>Add a new partner organization to your directory.</p>
-      <h6>Tips</h6>
+    { pattern: /^\/partners\/new\/?$/, title: 'New Partner', content: `
+      <p>Name is required. Website, specialties, rating and notes are optional.
+      Create Partner manually saves this organization and opens its details.</p>
       <ul>
-        <li>Add a <strong>website</strong> and we'll grab the favicon automatically</li>
-        <li>Tag relevant <strong>specialties</strong> so you can find them later</li>
-        <li>Add contacts — mark one as <strong>primary</strong> for quick access</li>
+        <li>Saving normalizes the website to its domain and fetches its favicon.</li>
+        <li>Search specialties; arrow keys or Tab cycle suggestions and Enter selects.
+        Create saves a specialty immediately, even if you cancel this partner.</li>
+        <li>Rating is optional. Clear removes the rating; Notes is plain text.</li>
+        <li>Cancel returns to Partners. Unsaved changes are guarded; Back restores
+        this entry's fields, specialty selection and reading position without autosave.</li>
+        <li>Failed saves retain entries for retry. Contacts are managed on Partner Details.</li>
       </ul>
     `},
-    { pattern: /^\/partners\/\d+\/edit/, title: 'Edit Partner', content: `
-      <p>Update this partner's details, contacts, specialties, and rating.</p>
+    { pattern: /^\/partners\/\d+\/edit\/?$/, title: 'Edit Partner', content: `
+      <p>Edit the original name, website, specialties, optional rating and plain-text notes.
+      Save Changes manually saves the partner. Contacts and linked notes are preserved.</p>
+      <ul>
+        <li>Select or remove specialties locally. Create saves a new specialty immediately,
+        independently of this partner's eventual Save or Cancel.</li>
+        <li>Changing the website refreshes its favicon on Save. Clear removes a rating,
+        not the partner's other information. Zero remains a valid existing rating.</li>
+        <li>Cancel returns to Partner Details. Unsaved changes are guarded; Back restores
+        fields, selections and reading position without autosave.</li>
+        <li>Pending writes block duplicate submission and leaving. Failed writes keep
+        entries for correction and retry. Contacts have separate controls on Partner Details.</li>
+      </ul>
     `},
     { pattern: /^\/partners\/\d+/, title: 'Partner Details', content: `
-      <p>Full profile for this partner — overview, contacts, specialties, and linked notes.</p>
-      <h6>Actions</h6>
+      <p>Read partner notes beside contacts and associated notes. Specialties open their existing partner lists.</p>
       <ul>
-        <li><strong>Share</strong> — send this partner to a teammate via Socket.IO</li>
-        <li><strong>Edit</strong> — update details, add contacts</li>
-        <li>Click specialties to see other partners with the same skills</li>
+        <li>Sort contact Name, Title, Email or Primary and linked-note Name or Note date
+        in either direction. Back restores independent sorting and reading positions.</li>
+        <li><strong>Edit</strong> opens the partner form. <strong>Add Contact</strong> and
+        contact Edit use manual saves; unsaved entries are guarded and failures retain input.
+        Set primary saves immediately. Delete commands require confirmation.</li>
+        <li>Contact photos support clipboard screenshots and immediate removal. Pending
+        writes block closing or switching contacts; failed requests can be retried.</li>
+        <li><strong>Auto-fill from Meetings</strong> searches WorkIQ. If a domain is needed,
+        Search Meetings saves the domain immediately, then searches. Review and edit notes,
+        select new specialties or new/updated contacts, then Import Selected. Existing notes
+        stay above the separator. Cancel does not import results; Try Again repeats the search.</li>
+        <li><strong>Share</strong> uses the existing native sharing review with explicit send,
+        recipient selection, cancellation and failure recovery.</li>
       </ul>
     `},
 
     // ── Specialties ──
+    { pattern: /^\/specialties\/\d+\/?$/, title: 'Specialty Details', content: `
+      <p>Read the full specialty description and all associated partners, with original
+      contact and note counts. Partner names and rows open Partner Details.</p>
+      <ul>
+        <li>Sort Name, Contacts or Notes in either direction. Back restores sorting
+        and both reading axes; the initial partner order remains alphabetical.</li>
+        <li>Edit opens the existing manual form. Delete opens a native confirmation;
+        Cancel keeps the specialty and every relationship unchanged.</li>
+        <li>Deletion removes only the specialty and its associations, not partners,
+        contacts or notes. Failed deletion rolls back and returns here with an error.</li>
+      </ul>
+    `},
+    { pattern: /^\/specialties\/(?:new|\d+\/edit)$/, title: 'Specialty Form', content: `
+      <p>Name is required; description is optional. Create Specialty and Save Changes
+      save manually, then open the specialty. Cancel returns to Specialties.</p>
+      <ul>
+        <li>Names and descriptions are trimmed on save. Names must be unique,
+        ignoring case; editing does not change the specialty's partner associations.</li>
+        <li>Save and Cancel stay visible. Leaving with changes opens a discard guard;
+        Back restores this entry's raw fields and reading position without autosave.</li>
+        <li>Validation or failed saves retain your entries for correction and retry.</li>
+        <li>Partner forms and the note's partner flyout create specialties immediately.
+        Those separate writes are not undone by cancelling a partner.</li>
+      </ul>
+    `},
     { pattern: /^\/specialties\/?$/, title: 'Specialties', content: `
-      <p>Manage the list of specialties that can be assigned to partners (e.g., "Migrations", "Purview", "Copilot Studio").</p>
+      <p>Browse all specialties with their descriptions and complete associated partner counts.</p>
+      <ul>
+        <li>Open a specialty from its name or row, or use Edit to change it. New Specialty creates a specialty through the existing manual form.</li>
+        <li>Sort Name, Description or Partners in either direction. Description is shown when at least one specialty has one; full descriptions are available on hover and in detail.</li>
+        <li>Back restores sorting and reading position. Header sorts are temporary, not saved preferences; the initial order remains the original database name order.</li>
+      </ul>
     `},
 
     // ── Pods & Solution Engineers ──
-    { pattern: /^\/pods\/?$/, title: 'Pods', content: `
-      <p>Pods are groups of sellers that work together. Great for organizing team coverage.</p>
+    { pattern: /^\/pods\/?$/, title: 'PODs', content: `
+      <p>Browse all PODs with their territory and SE counts, unique sellers and assigned solution engineers.</p>
+      <ul>
+        <li>Open a POD from its name or row. Seller and SE names retain their original roster scope.</li>
+        <li>Sort Name, Territories, SEs, Sellers or Solution Engineers in either direction. Back restores sorting and reading position.</li>
+        <li>The initial order remains alphabetical by POD name. POD membership is managed by the existing MSX sync, not a New POD command.</li>
+      </ul>
     `},
-    { pattern: /^\/pod\/\d+/, title: 'Pod Details', content: `
-      <p>Members of this pod and their collective activity.</p>
+    { pattern: /^\/pod\/\d+\/edit$/, title: 'Edit POD', content: `
+      <p>POD name, territories and solution engineers remain managed by MSX sync.</p>
+      <ul>
+        <li>Specialist choices remain grouped by territory and specialty.
+        A single specialist without an explicit preference is shown automatically.</li>
+        <li>Changing a choice saves that assignment immediately. None clears the preference.
+        There is no whole-POD submit or New POD workflow.</li>
+        <li>Failed saves retain the selection and offer Retry. Pending saves block
+        navigation; leaving failed drafts requires confirmation and never undoes saved assignments.</li>
+        <li>Back restores this entry's reading position and unsaved choices without
+        saving them. Back to POD opens the original POD details.</li>
+      </ul>
+    `},
+    { pattern: /^\/pod\/\d+$/, title: 'POD Details', content: `
+      <p>Read territory and seller coverage beside POD engineers and territory specialists.</p>
+      <ul>
+        <li>Territory customer counts use direct territory assignments. Seller counts
+        include each seller's full coverage; sellers appear once across this POD's territories.</li>
+        <li>Sort each record data heading in either direction. Back restores independent
+        reading positions, sorting and the specialist disclosure.</li>
+        <li>Only unselected multi-specialist assignments offer a choice here.
+        Selecting saves immediately and becomes a static name; Edit POD changes existing
+        preferences. Failed saves retain input with Retry and guarded navigation.</li>
+        <li>Territory, seller and engineer links open their original details.
+        POD identity and memberships remain managed by MSX sync.</li>
+      </ul>
+    `},
+    { pattern: /^\/internal-contacts\/(?:new|\d+\/edit)\/?$/, title: 'Internal Contact Form', content: `
+      <p>Name is required. Alias is optional and accepts the Microsoft alias or full
+      Microsoft email. Role is free text; the original suggestions are optional.</p>
+      <p>Create Contact or Save Changes saves explicitly and returns to Internal Contacts.
+      Cancel returns to the directory. Nothing autosaves; leaving unsaved changes asks
+      before discarding, and Back restores this entry's fields.</p>
+      <p>Required-name and Edit duplicate-alias errors retain your entries for correction.
+      Failed saves retain raw input for retry. Creating a duplicate alias opens the existing
+      contact with its saved identity, without replacing it with the attempted new entries.</p>
+      <p>On Edit, Delete opens a separate confirmation with Cancel selected.
+      Confirming deletes the saved contact without saving the draft; existing note
+      attendees retain its saved name and email.</p>
+    `},
+    { pattern: /^\/internal-contacts\/?$/, title: 'Internal Contacts', content: `
+      <p>Microsoft employees not tracked as sellers or solution engineers.</p>
+      <ul>
+        <li>Open a name or row to edit the contact. New Contact opens the existing creation form.</li>
+        <li>Sort Name, Alias or Role in either direction. Back restores sorting and reading position.</li>
+        <li>All contacts remain visible regardless of your role or seller mode. There are no directory filters.</li>
+        <li>Delete asks for confirmation and converts note attendee references to external attendees.
+        Cancel or Escape leaves the contact unchanged. A failed deletion keeps the original records.</li>
+      </ul>
     `},
     { pattern: /^\/solution-engineers\/?$/, title: 'Solution Engineers', content: `
-      <p>Your solution engineering team. SEs provide technical depth on customer calls.</p>
+      <p>All solution engineers, with their email, specialty and assigned PODs.</p>
+      <ul>
+        <li>Open an engineer's name or row to inspect their profile. Edit opens the existing editor.</li>
+        <li>Sort Name, Email, Specialty or PODs in either direction. Back restores sorting and reading position.</li>
+        <li>Unassigned engineers remain visible. This directory is not filtered by your role or seller mode.</li>
+      </ul>
+    `},
+    { pattern: /^\/solution-engineer\/\d+\/edit\/?$/, title: 'Edit Solution Engineer', content: `
+      <p>Edit the required name, optional Microsoft email alias, specialty and POD assignments.</p>
+      <p><strong>Save Solution Engineer</strong> saves explicitly and opens the existing detail page.
+      Cancel returns to the same engineer. Nothing autosaves; leaving unsubmitted changes asks
+      before discarding, and Back restores this form's fields and POD selections.</p>
+      <p>Validation and save failures keep your entries for correction or retry.
+      This form does not edit direct territory assignments or run MSX sync.</p>
     `},
     { pattern: /^\/solution-engineer\/\d+/, title: 'Solution Engineer Details', content: `
-      <p>This SE's profile — linked notes, customers, and specialties.</p>
+      <p>Identity, assigned PODs and the unique territories across those PODs.
+      Customer counts describe each territory's full coverage, not the engineer's direct
+      territory assignments. Opening this page does not sync or change assignments.</p>
+      <p>POD Name and territory Name/Customers headings sort both directions.
+      Each coverage cell scrolls independently; Back restores its sorting and reading
+      position. Email, POD and territory links keep their original destinations.</p>
+      <p>Edit opens the existing manual-save form. Delete asks for confirmation,
+      starts on Cancel and removes the engineer and POD associations only after submission.
+      A failed deletion preserves the record and reports the failure for retry.</p>
     `},
 
     // ── Milestones ──
@@ -497,6 +716,12 @@ const PageHelp = (function () {
         <li>Click any row to view milestone details</li>
         <li>The MSX icon opens the milestone directly in MSX</li>
       </ul>
+    `},
+    { pattern: /^\/opportunity\/\d+\/?$/, title: 'Opportunity Details', content: `
+      <p>Read complete opportunity details beside linked milestones and forecast comments. Back restores both reading regions and milestone sorting; customer and MSX links keep their original destinations.</p>
+      <p>Opening this page or its MSX Workspace preview reads fresh MSX details and comments and updates the local cache. Source and freshness stay visible; read failures retain cached information. No team, task or comment is saved merely by opening a detail.</p>
+      <p>Sort milestone Name, Workload, Status, ACR / mo or Due date both ways using raw values. Authored forecast tables are content, not sortable work lists.</p>
+      <p>Forecast Post, Edit and Delete, favorites and Join/Leave remain explicit writes. Leave defaults to Cancel. Unsaved comments offer Keep editing or Discard when leaving; pending writes must finish before closing or replacing a preview. Linked milestones retain their full notes, engagement and task workflows.</p>
     `},
     { pattern: /^\/milestone\/\d+/, title: 'Milestone Details', content: `
       <p>Review details, linked engagements, notes and tasks beside the forecast comments. Both reading regions scroll independently; Back restores each position while Open in MSX, Edit and Delete stay available.</p>
@@ -736,12 +961,15 @@ const PageHelp = (function () {
 
     // ── Search ──
     { pattern: /^\/search/, title: 'Search', content: `
-      <p>Full-text search across all your notes, customers, and engagements.</p>
-      <h6>Tips</h6>
+      <p>Search note content and combine the existing customer, seller, territory and topic filters. Search submits explicitly; changing a filter does not run a search.</p>
+      <h6>Scope and results</h6>
       <ul>
-        <li>Search by keyword, customer name, topic, or seller</li>
-        <li>Use filters to narrow results by type</li>
-        <li>Results are ranked by relevance</li>
+        <li>Search Text matches a case-insensitive substring of stored note content, not customer names or engagement stories.</li>
+        <li>Customer, Seller and Territory use customer ownership. Topics match any selected topic; hold Ctrl/Cmd to select several.</li>
+        <li>Results keep Seller / Customer grouping, with newest notes within each customer. Open a note to read its full body.</li>
+        <li>Seller mode keeps its seller scope, including after Clear Filters. General notes can match text or topics outside seller/customer/territory scope.</li>
+        <li>Clear Filters returns to Search. With no active criteria, Recently Viewed and Recently Updated retain their existing links and timestamps.</li>
+        <li>Back restores unsubmitted controls and reading position. There are no date filters, relevance ranking, pagination or exports on this page.</li>
       </ul>
     `},
 
@@ -757,11 +985,14 @@ const PageHelp = (function () {
 
     // ── Fill My Day ──
     { pattern: /^\/fill-my-day/, title: 'Fill My Day', content: `
-      <p>Meeting prep tool — quickly review customer context and past notes before your calls today.</p>
+      <p>Import external meetings for a selected date into customer notes.</p>
       <h6>Tips</h6>
       <ul>
-        <li>Syncs with your calendar to show upcoming meetings</li>
-        <li>Click a meeting to see relevant notes and customer history</li>
+        <li>Fetch Meetings requests WorkIQ meetings, matches customer names and nicknames, then runs summaries and AI enrichment.</li>
+        <li>Review note HTML, toggle suggested topics, and inspect the matched milestone. Unmatched meetings remain in a sortable disclosure.</li>
+        <li>Create Task in MSX is an immediate remote write. Save Note creates a local note and may join the milestone team. Neither happens automatically.</li>
+        <li>Done Editing applies HTML to this review, not to a saved note. Full Editor opens the original note form with customer and date.</li>
+        <li>Back restores the review without repeating requests. Fetching again replaces unsaved review edits after confirmation.</li>
       </ul>
     `},
 
