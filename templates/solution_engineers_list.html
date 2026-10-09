@@ -1,59 +1,45 @@
 {% extends "base.html" %}
-
 {% block title %}Solution Engineers - Sales Buddy{% endblock %}
-
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-tools"></i> Solution Engineers</h1>
-</div>
-
-{% if solution_engineers %}
-    <div class="list-group">
-        {% for se in solution_engineers %}
-            <div class="list-group-item">
-                <div class="d-flex w-100 justify-content-between align-items-start">
-                    <div class="flex-grow-1">
-                        <a href="{{ url_for('solution_engineers.solution_engineer_view', id=se.id) }}" class="text-decoration-none">
-                            <h5 class="mb-1">{{ se.name }}</h5>
-                        </a>
-                        {% if se.alias %}
-                            <p class="mb-1"><small class="text-muted"><i class="bi bi-envelope"></i> {{ se.alias }}@microsoft.com</small></p>
-                        {% endif %}
-                        <p class="mb-1">
-                            {% if se.specialty %}
-                                <span class="badge bg-info">{{ se.specialty }}</span>
-                            {% endif %}
-                            {% if se.pods %}
-                                {% for pod in se.pods|sort(attribute='name') %}
-                                    <span class="badge bg-primary"><i class="bi bi-diagram-2"></i> {{ pod.name }}</span>
-                                {% endfor %}
-                            {% else %}
-                                <span class="badge bg-secondary">No POD assigned</span>
-                            {% endif %}
-                        </p>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <a href="{{ url_for('solution_engineers.solution_engineer_edit', id=se.id) }}" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-pencil"></i> Edit
-                        </a>
-                    </div>
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-{% else %}
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> No solution engineers yet.
-    </div>
-{% endif %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-se-directory.css') }}">
 {% endblock %}
 
-
-
-
-
-
-
-
-
-
+{% block content %}
+<section class="sb-se-directory sb-directory-frame" data-sb-page-surface data-se-directory aria-labelledby="seTitle">
+    <header class="sb-se-heading" data-sb-page-band><h1 id="seTitle">Solution Engineers</h1></header>
+    <p class="sb-se-notice" role="alert" hidden></p>
+    <div class="sb-se-reading" data-sb-page-body tabindex="0" aria-label="Solution Engineer directory">
+        {% if solution_engineers %}
+        <table class="sb-se-table" data-sb-sortable data-sb-sort-key="se-directory">
+            <thead><tr>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Name">Name</th>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Email">Email</th>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Specialty">Specialty</th>
+                <th scope="col" data-sb-sort-type="text" data-export-label="PODs">PODs</th>
+                <th scope="col" data-export-label="Actions"><span class="sb-se-visually-hidden">Actions</span></th>
+            </tr></thead>
+            <tbody>{% for se in solution_engineers %}
+                <tr data-se-id="{{ se.id }}" data-se-href="{{ url_for('solution_engineers.solution_engineer_view', id=se.id) }}">
+                    <td data-sb-sort-value="{{ se.name }}"><a class="sb-se-name" href="{{ url_for('solution_engineers.solution_engineer_view', id=se.id) }}" aria-label="View {{ se.name }}">{{ se.name }}</a></td>
+                    <td data-sb-sort-value="{{ se.alias ~ '@microsoft.com' if se.alias else '' }}">{% if se.alias %}<span class="sb-se-email"><i class="bi bi-envelope" aria-hidden="true"></i> {{ se.alias }}@microsoft.com</span>{% endif %}</td>
+                    <td data-sb-sort-value="{{ se.specialty or '' }}">{% if se.specialty %}<span class="sb-se-specialty">{{ se.specialty }}</span>{% endif %}</td>
+                    <td data-sb-sort-value="{{ se.pods|sort(attribute='name')|map(attribute='name')|join(', ') }}"><div class="sb-se-pods">
+                        {% for pod in se.pods|sort(attribute='name') %}<span class="sb-se-pod"><i class="bi bi-diagram-2" aria-hidden="true"></i> {{ pod.name }}</span>
+                        {% else %}<span class="sb-se-unassigned">No POD assigned</span>{% endfor %}
+                    </div></td>
+                    <td class="sb-se-actions"><a class="sb-se-edit" href="{{ url_for('solution_engineers.solution_engineer_edit', id=se.id) }}" aria-label="Edit {{ se.name }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</a></td>
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}<p class="sb-se-empty"><i class="bi bi-info-circle" aria-hidden="true"></i> No solution engineers yet.</p>{% endif %}
+    </div>
+</section>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Solution Engineer directory status"><span>{{ solution_engineers|length }} Solution Engineers</span><span>All Solution Engineers</span></footer>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-se-directory.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,84 @@
+/* Task-shaped engagement story and customer associations in the desktop frame. */
+.sb-engagement-form { color-scheme: light; --ef-success: oklch(42% .10 160); --ef-partner: oklch(42% .10 300); }
+[data-sb-mode="dark"] .sb-engagement-form { color-scheme: dark; }
+[data-sb-mode="dark"] .sb-engagement-form { --ef-success: var(--sb-ui-milestone-rail); --ef-partner: oklch(82% .08 300); }
+.sb-engagement-form, .sb-engagement-form * { box-sizing: border-box; }
+.ef-heading { padding: 16px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.ef-heading h1 { margin: 0; font: 600 22px/1.3 var(--sb-ui-font); }
+.ef-heading p { margin: 5px 0 0; font-size: 13px; color: var(--sb-ui-muted); }
+.sb-engagement-form a { color: var(--sb-ui-accent); }
+.sb-engagement-form .ef-work { display: grid; grid-template-columns: minmax(580px, 1.7fr) minmax(360px, 1fr); }
+.ef-reading {
+    min-width: 0; overflow: auto; scrollbar-width: thin; padding: 24px;
+    background: var(--sb-ui-surface);
+}
+.ef-story { border-right: 1px solid var(--sb-ui-line); }
+.ef-story > * { max-width: 840px; }
+.ef-title-row { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: 20px; }
+.ef-outcome-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.ef-story h2, .ef-links h2 { margin: 0 0 12px; font: 600 15px/1.4 var(--sb-ui-font); }
+.ef-story h2 { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--sb-ui-grid-line); }
+.ef-field { margin-bottom: 20px; }
+.ef-field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+.ef-field label small { display: block; margin-top: 3px; font-size: 12px; font-weight: 400; color: var(--sb-ui-muted); }
+.ef-field input:not([type="hidden"]), .ef-field textarea, .ef-field select {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--sb-ui-control-line);
+    border-radius: 0; background: var(--sb-ui-context); color: var(--sb-ui-ink);
+    font: 14px/1.5 var(--sb-ui-font);
+}
+.ef-field textarea { resize: vertical; min-height: 76px; }
+.ef-field input::placeholder, .ef-field textarea::placeholder { color: var(--sb-ui-muted); opacity: .85; }
+.sb-engagement-form :is(input, textarea, select, button, a):focus-visible {
+    outline: 2px solid var(--sb-ui-accent); outline-offset: 2px;
+}
+.ef-field [aria-invalid="true"] { border-color: var(--sb-ui-danger); }
+.ef-money { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--sb-ui-muted); }
+.ef-money input { min-width: 0; }
+.ef-help { margin: 6px 0 0; color: var(--sb-ui-muted); font-size: 12px; line-height: 1.5; }
+.ef-contact-picker { position: relative; }
+.ef-contact-results {
+    position: absolute; top: 63px; left: 0; width: 100%; z-index: 10;
+    max-height: 240px; overflow: auto; border: 1px solid var(--sb-ui-control-line);
+    background: var(--sb-ui-context);
+}
+.ef-result {
+    display: block; width: 100%; padding: 7px 10px; border: 0; text-align: left;
+    background: var(--sb-ui-context); color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font);
+}
+button.ef-result { cursor: pointer; }
+.ef-result i { margin-right: 6px; }
+.ef-result[data-contact-type="customer_contact"] i, .ef-customer-add i { color: var(--ef-success); }
+.ef-result[data-contact-type="partner_contact"] i { color: var(--ef-partner); }
+.ef-result[data-contact-type="se"] i, .ef-result[data-contact-type="seller"] i { color: var(--sb-ui-accent); }
+.ef-result[data-contact-type="internal_contact"] i, .ef-internal-add i { color: var(--sb-ui-warning); }
+.ef-result:hover, .ef-result.enter-target { background: var(--sb-ui-selection); }
+.ef-contacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.ef-contact { display: inline-flex; align-items: center; gap: 6px; padding: 3px 6px; font-size: 12px; background: var(--sb-ui-raised); }
+.ef-contact[data-contact-type="customer_contact"] { color: var(--ef-success); }
+.ef-contact[data-contact-type="partner_contact"] { color: var(--ef-partner); }
+.ef-contact[data-contact-type="se"], .ef-contact[data-contact-type="seller"] { color: var(--sb-ui-accent); }
+.ef-contact[data-contact-type="internal_contact"] { color: var(--sb-ui-warning); }
+.ef-contact-remove { border: 0; padding: 0 3px; background: transparent; color: inherit; font-size: 17px; cursor: pointer; }
+.ef-link-group { margin-top: 22px; border-top: 1px solid var(--sb-ui-grid-line); padding-top: 14px; }
+.ef-link-group h3, .ef-danger h3 { margin: 0 0 10px; font: 600 13px/1.4 var(--sb-ui-font); }
+.ef-link-group h3 span { margin-left: 6px; color: var(--sb-ui-muted); font-weight: 400; }
+.ef-choices { max-height: 220px; overflow: auto; scrollbar-width: thin; }
+.ef-link-group:first-of-type .ef-choices:has([name="note_ids"]) { max-height: 300px; }
+.ef-choice { display: flex; align-items: flex-start; gap: 9px; padding: 7px 2px; cursor: pointer; font-size: 13px; line-height: 1.4; }
+.ef-choice input { flex-shrink: 0; margin-top: 3px; accent-color: var(--sb-ui-accent); }
+.ef-ms-status { display: inline-block; margin-left: 5px; padding: 1px 4px; color: var(--sb-ui-muted); background: var(--sb-ui-raised); font-size: 11px; }
+.ef-ms-status[data-status="On Track"] { color: var(--ef-success); }
+.ef-ms-status[data-status="At Risk"] { color: var(--sb-ui-warning); }
+.ef-ms-status[data-status="Blocked"] { color: var(--sb-ui-danger); }
+.ef-danger { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--sb-ui-grid-line); }
+.ef-danger h3, .ef-danger button { color: var(--sb-ui-danger); }
+.ef-danger p, .ef-empty { color: var(--sb-ui-muted); font-size: 12px; line-height: 1.5; }
+.ef-commands { display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-top: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }
+.ef-commands > span { flex: 1; color: var(--sb-ui-muted); font-size: 12px; }
+.ef-commands a { color: var(--sb-ui-ink); }
+.ef-save { background: var(--sb-ui-control-fill); border-color: var(--sb-ui-control-edge); color: var(--sb-ui-control-ink); }
+.ef-save:hover { background: var(--sb-ui-control-hover); }
+.ef-save:disabled { opacity: .6; cursor: wait; }
+.ef-notice { margin: 0; padding: 10px 24px; background: var(--sb-ui-danger-bg); color: var(--sb-ui-danger); font-size: 13px; border-bottom: 1px solid var(--sb-ui-line); }
+.ef-notice[hidden] { display: none; }
+.ef-work[aria-busy="true"] { pointer-events: none; }

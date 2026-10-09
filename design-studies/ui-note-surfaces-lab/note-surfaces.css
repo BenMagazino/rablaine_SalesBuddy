@@ -1,0 +1,17 @@
+[data-note-surface="quiet-blue"] {
+  --note-fill: oklch(40% .065 250);
+  --saved-note-hover: oklch(42% .075 250);
+}
+[data-note-surface="neutral"] {
+  --note-fill: oklch(32% .012 250);
+  --saved-note-hover: oklch(37% .035 250);
+}
+[data-theme="graphite-blue"][data-note-surface="neutral"] {
+  --note-fill: oklch(40% .012 250);
+  --saved-note-hover: oklch(42% .025 250);
+}
+.color-study .saved-note:hover,
+.color-study .saved-note.has-engagement:hover {
+  background: var(--saved-note-hover);
+  color: var(--meeting);
+}

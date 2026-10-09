@@ -1,101 +1,46 @@
 {% extends "base.html" %}
-
 {% block title %}Topics - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-topics-directory.css') }}">
+{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-tags"></i> Topics</h1>
-    <div class="d-flex align-items-center gap-2">
-        <button id="sortToggle" class="btn btn-outline-secondary btn-sm" title="Toggle sort order">
-            <i class="bi bi-sort-alpha-down"></i> <span id="sortLabel">By Notes</span>
-        </button>
-        <a href="{{ url_for('topics.topic_create') }}" class="btn btn-sm btn-primary">
-            <i class="bi bi-plus-circle"></i> New Topic
-        </a>
+<section class="sb-topics-directory sb-directory-frame" data-topics-directory data-default-by-notes="{{ 'true' if topic_sort_by_calls else 'false' }}" data-sb-page-surface aria-labelledby="topicsTitle">
+    <header class="topics-heading" data-sb-page-band>
+        <h1 id="topicsTitle">Topics</h1>
+        <div class="topics-commands">
+            <button class="sb-dialog-button" id="sortToggle" type="button" title="Toggle saved default order: alphabetical or most notes" aria-label="Toggle saved default order: alphabetical or most notes"><i class="bi {{ 'bi-sort-numeric-down' if topic_sort_by_calls else 'bi-sort-alpha-down' }}" aria-hidden="true"></i><span>Default: <span id="sortLabel">{{ 'By Notes' if topic_sort_by_calls else 'Alphabetical' }}</span></span></button>
+            <a class="sb-dialog-button topics-primary" href="{{ url_for('topics.topic_create') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i> New Topic</a>
+        </div>
+    </header>
+    <p class="topics-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="topics-reading" data-sb-page-body tabindex="0" aria-label="Topics directory">
+        {% if topics %}
+        {% set has_descriptions = topics|selectattr('description')|list|length > 0 %}
+        <table class="topics-table{{ ' topics-table-brief' if not has_descriptions else '' }}" data-sb-sortable data-sb-sort-key="topics-directory{{ '-brief' if not has_descriptions else '' }}">
+            <thead><tr>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Name">Name</th>
+                {% if has_descriptions %}<th scope="col" data-sb-sort-type="text" data-export-label="Description">Description</th>{% endif %}
+                <th scope="col" data-sb-sort-type="number" data-export-label="Notes">Notes</th>
+            </tr></thead>
+            <tbody>{% for topic in topics %}
+                <tr data-topic-id="{{ topic.id }}" data-topic-href="{{ url_for('topics.topic_view', id=topic.id) }}">
+                    <td data-sb-sort-value="{{ topic.name }}"><a class="topics-name" href="{{ url_for('topics.topic_view', id=topic.id) }}"><i class="bi bi-tag" aria-hidden="true"></i> {{ topic.name }}</a></td>
+                    {% if has_descriptions %}<td data-sb-sort-value="{{ topic.description or '' }}">{% if topic.description %}<span class="topics-description" title="{{ topic.description }}">{{ topic.description|truncate(150, true) }}</span>{% endif %}</td>{% endif %}
+                    <td class="topics-notes" data-sb-sort-value="{{ topic.notes|length }}">{{ topic.notes|length }} notes</td>
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}
+        <p class="topics-empty"><i class="bi bi-info-circle" aria-hidden="true"></i> No topics yet. <a href="{{ url_for('topics.topic_create') }}">Create your first topic</a>!</p>
+        {% endif %}
     </div>
-</div>
-
-{% if topics %}
-    <div class="list-group">
-        {% for topic in topics %}
-            <a href="{{ url_for('topics.topic_view', id=topic.id) }}" class="list-group-item list-group-item-action">
-                <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">{{ topic.name }}</h5>
-                    <small class="text-muted">{{ topic.notes|length }} notes</small>
-                </div>
-                {% if topic.description %}
-                    <p class="mb-1 text-muted">{{ topic.description|truncate(150, true) }}</p>
-                {% endif %}
-            </a>
-        {% endfor %}
-    </div>
-{% else %}
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> No topics yet. <a href="{{ url_for('topics.topic_create') }}">Create your first topic</a>!
-    </div>
-{% endif %}
+</section>
 {% endblock %}
-
+{% block footer %}
+<footer class="sb-page-status" aria-label="Topics directory status"><span>{{ topics|length }} Topics</span><span data-topics-status>All Topics</span></footer>
+{% endblock %}
 {% block extra_js %}
-<script>
-// Handle sort toggle
-document.addEventListener('DOMContentLoaded', function() {
-    const sortToggle = document.getElementById('sortToggle');
-    const sortLabel = document.getElementById('sortLabel');
-    
-    // Get current preference
-    fetch('/api/preferences/topic-sort')
-        .then(response => response.json())
-        .then(data => {
-            updateButtonLabel(data.topic_sort_by_calls);
-        });
-    
-    sortToggle.addEventListener('click', function() {
-        // Get current state
-        fetch('/api/preferences/topic-sort')
-            .then(response => response.json())
-            .then(data => {
-                const newSortByCalls = !data.topic_sort_by_calls;
-                
-                // Save new preference
-                return fetch('/api/preferences/topic-sort', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ topic_sort_by_calls: newSortByCalls })
-                });
-            })
-            .then(response => response.json())
-            .then(() => {
-                // Reload page to show new sort order
-                window.location.reload();
-            })
-            .catch(error => {
-                console.error('Error toggling sort preference:', error);
-                window.location.reload();
-            });
-    });
-    
-    function updateButtonLabel(sortByCalls) {
-        if (sortByCalls) {
-            sortLabel.textContent = 'By Notes';
-            sortToggle.querySelector('i').className = 'bi bi-sort-numeric-down';
-        } else {
-            sortLabel.textContent = 'Alphabetical';
-            sortToggle.querySelector('i').className = 'bi bi-sort-alpha-down';
-        }
-    }
-});
-</script>
+<script src="{{ url_for('static', filename='js/ui-topics-directory.js') }}"></script>
 {% endblock %}
-
-
-
-
-
-
-
-
-
-

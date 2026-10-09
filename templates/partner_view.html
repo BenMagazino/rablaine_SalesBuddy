@@ -1,732 +1,145 @@
 {% extends "base.html" %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 {% from 'partials/partner_favicon.html' import partner_favicon %}
+{% macro heading(label, kind='text') %}<th scope="col" data-sb-sort-type="{{ kind }}" data-export-label="{{ label }}">{{ label }}</th>{% endmacro %}
+{% macro close(label='Cancel') %}<button type="button" class="sb-dialog-button" data-sb-dialog-close>{{ label }}</button>{% endmacro %}
 {% block title %}{{ partner.name }} - Partners - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-partner-detail.css') }}">
+{% endblock %}
 {% block content %}
-<div class="container-fluid py-4">
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('partners.partners_list') }}">Partners</a></li>
-            <li class="breadcrumb-item active">{{ partner.name }}</li>
-        </ol>
-    </nav>
-
-    <div class="row mb-4">
-        <div class="col">
-            <h1>{{ partner_favicon(partner, size=32) }} {{ partner.name }}</h1>
-            <div class="mt-2">
-                {% if partner.rating is not none %}
-                <span class="me-3" title="{{ partner.rating }} out of 5 stars">
-                    {% for i in range(5) %}
-                        <i class="bi bi-star{{ '-fill text-warning' if i < partner.rating else ' text-muted' }}"></i>
-                    {% endfor %}
-                </span>
-                {% endif %}
-                {% for specialty in partner.specialties %}
-                <a href="{{ url_for('partners.specialty_view', id=specialty.id) }}" class="badge bg-warning text-dark text-decoration-none me-1">
-                    <i class="bi bi-star"></i> {{ specialty.name }}
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="col-auto">
-            <button class="btn btn-outline-info" id="scrapeBtn" onclick="startPartnerScrape()">
-                <i class="bi bi-magic"></i> Auto-fill from Meetings
-            </button>
-            <button class="btn btn-outline-primary btn-share"
-                    onclick="Share.openShareModal('partner', {{ partner.id }})"
-                    title="Share this partner with a teammate">
-                <i class="bi bi-share"></i> Share
-                <span class="badge bg-success rounded-pill share-online-count" style="display:none"></span>
-            </button>
-            <a href="{{ url_for('partners.partner_edit', id=partner.id) }}" class="btn btn-outline-primary">
-                <i class="bi bi-pencil"></i> Edit
-            </a>
-            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                <i class="bi bi-trash"></i> Delete
-            </button>
-        </div>
+<section class="sb-partner-detail sb-directory-frame sb-directory-frame-wide" data-partner-detail="{{ partner.id }}" data-sb-page-surface aria-labelledby="partnerTitle">
+    <header class="part-heading" data-sb-page-band>
+        <h1 id="partnerTitle">{{ partner_favicon(partner, size=24) }} {{ partner.name }}</h1>
+        <button type="button" class="sb-dialog-button" id="scrapeBtn">Auto-fill from Meetings</button>
+        <button type="button" class="sb-dialog-button btn-share" data-partner-share title="Share this partner with a teammate">Share <span class="share-online-count" style="display:none"></span></button>
+        <a class="sb-dialog-button" href="{{ url_for('partners.partner_edit', id=partner.id) }}">Edit</a>
+        <button type="button" class="sb-dialog-button part-danger" data-sb-dialog="deletePartnerDialog">Delete</button>
+    </header>
+    {% if partner.rating is not none or partner.specialties %}
+    <div class="part-context" data-sb-page-band>
+        {% if partner.rating is not none %}<span class="part-rating" aria-label="{{ partner.rating }} out of 5 stars" title="{{ partner.rating }} out of 5 stars">{% for i in range(5) %}<i class="bi bi-star{{ '-fill' if i < partner.rating else '' }}" aria-hidden="true"></i>{% endfor %}</span>{% endif %}
+        {% for specialty in partner.specialties %}<a href="{{ url_for('partners.specialty_view', id=specialty.id) }}"><i class="bi bi-star" aria-hidden="true"></i> {{ specialty.name }}</a>{% endfor %}
     </div>
-
-    <div class="row">
-        <!-- Left Column: Details -->
-        <div class="col-lg-6">
-            <!-- Notes -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-sticky"></i> Notes</h5>
-                </div>
-                <div class="card-body">
-                    {% if partner.overview %}
-                    <p class="mb-0" style="white-space: pre-wrap;">{{ partner.overview }}</p>
-                    {% else %}
-                    <p class="text-muted mb-0">No notes yet. <a href="{{ url_for('partners.partner_edit', id=partner.id) }}">Add notes</a></p>
-                    {% endif %}
-                </div>
+    {% endif %}
+    <p class="part-notice" id="partnerNotice" role="alert" hidden data-sb-page-band></p>
+    <div class="part-work" data-sb-page-body>
+        <section class="part-relationship" aria-label="Partner context">
+            <div class="part-overview" tabindex="0" aria-label="Partner notes">
+                <h2>Notes</h2>
+                {% if partner.overview %}<p>{{ partner.overview }}</p>{% else %}<p>No notes yet. <a href="{{ url_for('partners.partner_edit', id=partner.id) }}">Add notes</a></p>{% endif %}
             </div>
-
-            <!-- Contacts -->
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="bi bi-people"></i> Contacts</h5>
-                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addContactModal">
-                        <i class="bi bi-plus-lg"></i> Add
-                    </button>
-                </div>
-                <div class="card-body p-0">
-                    {% if partner.contacts %}
-                    <ul class="list-group list-group-flush">
-                        {% for contact in partner.contacts %}
-                        <li class="list-group-item d-flex align-items-center gap-2">
-                            <div class="contact-photo-wrap" data-contact-id="{{ contact.id }}" data-contact-type="partner"
-                                 {% if contact.photo_full_b64 %}data-full-src="data:image/png;base64,{{ contact.photo_full_b64 }}"{% endif %}
-                                 onclick="openContactPhotoModal(this)" title="Click to add/view photo"
-                                 style="width: 48px; height: 48px; min-width: 48px; border-radius: 50%; overflow: hidden; cursor: pointer; background: var(--sb-border); display: flex; align-items: center; justify-content: center;">
-                                {% if contact.photo_b64 %}
-                                    <img src="data:image/png;base64,{{ contact.photo_b64 }}" style="width: 100%; height: 100%; object-fit: cover;">
-                                {% else %}
-                                    <i class="bi bi-person-circle text-muted" style="font-size: 1.5rem;"></i>
-                                {% endif %}
-                            </div>
-                            <div class="flex-grow-1">
-                                <strong>{{ contact.name }}</strong>
-                                {% if contact.is_primary %}
-                                <span class="badge bg-primary ms-1">Primary</span>
-                                {% endif %}
-                                {% if contact.title %}
-                                <br><small class="text-muted">{{ contact.title }}</small>
-                                {% endif %}
-                                {% if contact.email %}
-                                <br><small class="text-muted"><a href="mailto:{{ contact.email }}">{{ contact.email }}</a></small>
-                                {% endif %}
-                            </div>
-                            <div class="d-flex gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Edit"
-                                        onclick="openEditContact({{ contact.id }}, '{{ contact.name|e }}', '{{ contact.title|default('', true)|e }}', '{{ contact.email|default('', true)|e }}', {{ 'true' if contact.is_primary else 'false' }})">
-                                    <i class="bi bi-pencil" style="font-size:0.75rem;"></i>
-                                </button>
-                                {% if not contact.is_primary %}
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" title="Set as primary"
-                                        onclick="document.getElementById('primaryForm{{ contact.id }}').submit()">
-                                    <i class="bi bi-star" style="font-size:0.75rem;"></i>
-                                </button>
-                                {% endif %}
-                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete"
-                                        onclick="if(confirm('Delete this contact?')) document.getElementById('deleteForm{{ contact.id }}').submit()">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                            {% if not contact.is_primary %}
-                            <form id="primaryForm{{ contact.id }}" action="{{ url_for('partners.contact_set_primary', partner_id=partner.id, contact_id=contact.id) }}" method="post" class="d-none"></form>
-                            {% endif %}
-                            <form id="deleteForm{{ contact.id }}" action="{{ url_for('partners.contact_delete', partner_id=partner.id, contact_id=contact.id) }}" method="post" class="d-none"></form>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                    <div class="p-3 text-center text-muted">
-                        No contacts yet
-                    </div>
-                    {% endif %}
-                </div>
+            <header class="part-band"><h2>Contacts <span>{{ partner.contacts|length }}</span></h2><button type="button" class="sb-dialog-button" id="addContactBtn">Add Contact</button></header>
+            <div class="part-contacts" tabindex="0" aria-label="Partner contacts">
+                {% if partner.contacts %}
+                <table data-sb-sortable data-sb-sort-key="partner-{{ partner.id }}-contacts">
+                    <thead><tr>{{ heading('Name') }}{{ heading('Title') }}{{ heading('Email') }}{{ heading('Primary', 'number') }}<th scope="col">Actions</th></tr></thead>
+                    <tbody>{% for contact in partner.contacts %}
+                    <tr data-contact-id="{{ contact.id }}">
+                        <td data-sb-sort-value="{{ contact.name }}"><div class="part-contact-name">
+                            <button type="button" class="contact-photo-wrap" data-contact-id="{{ contact.id }}" aria-label="Photo for {{ contact.name }}"
+                                {% if contact.photo_full_b64 %}data-full-src="data:image/png;base64,{{ contact.photo_full_b64 }}"{% endif %}>
+                                {% if contact.photo_b64 %}<img alt="" src="data:image/png;base64,{{ contact.photo_b64 }}">{% else %}<i class="bi bi-person-circle" aria-hidden="true"></i>{% endif %}
+                            </button><strong>{{ contact.name }}</strong></div></td>
+                        <td data-sb-sort-value="{{ contact.title or '' }}">{{ contact.title or '' }}</td>
+                        <td data-sb-sort-value="{{ contact.email or '' }}">{% if contact.email %}<a href="mailto:{{ contact.email }}">{{ contact.email }}</a>{% endif %}</td>
+                        <td data-sb-sort-value="{{ 1 if contact.is_primary else 0 }}">{% if contact.is_primary %}<span class="part-primary">Primary</span>{% endif %}</td>
+                        <td><div class="part-actions">
+                            <button class="sb-dialog-button" type="button" data-edit-contact="{{ contact.id }}" aria-label="Edit {{ contact.name }}">Edit</button>
+                            {% if not contact.is_primary %}<form method="post" action="{{ url_for('partners.contact_set_primary', partner_id=partner.id, contact_id=contact.id) }}" data-partner-write><button class="sb-dialog-button" type="submit" aria-label="Set {{ contact.name }} as primary">Set primary</button></form>{% endif %}
+                            <button class="sb-dialog-button part-danger" type="button" data-delete-contact="{{ contact.id }}" aria-label="Delete {{ contact.name }}">Delete</button>
+                        </div></td>
+                    </tr>{% endfor %}</tbody>
+                </table>
+                {% else %}<p class="part-empty">No contacts yet</p>{% endif %}
             </div>
-        </div>
-
-        <!-- Right Column: Notes -->
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-journal-text"></i> Associated Notes ({{ partner.notes|length }})</h5>
-                </div>
-                <div class="card-body p-0">
-                    {% if partner.notes %}
-                    <ul class="list-group list-group-flush">
-                        {% for call in partner.notes|sort(attribute='call_date', reverse=True) %}
-                        <li class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <a href="{{ url_for('notes.note_view', id=call.id) }}" class="text-decoration-none fw-bold">
-                                        {{ customer_favicon(call.customer) }} {{ call.customer.name }}
-                                    </a>
-                                    <br>
-                                    <small class="text-muted">{{ call.call_date.strftime('%b %d, %Y') }}{% if call.call_date.hour != 0 or call.call_date.minute != 0 %} {{ call.call_date.strftime('%I:%M %p') }}{% endif %}</small>
-                                </div>
-                            </div>
-                            <p class="mb-0 mt-1 text-muted small">{{ call.content|striptags|truncate(150, true) }}</p>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                    <div class="p-3 text-center text-muted">
-                        No notes associated with this partner yet
-                    </div>
-                    {% endif %}
-                </div>
+        </section>
+        <section class="part-note-region" aria-label="Associated notes">
+            <header class="part-band"><h2>Associated Notes <span>{{ partner.notes|length }}</span></h2><span>Newest first by default</span></header>
+            <div class="part-notes" tabindex="0" aria-label="Linked notes">
+                {% if partner.notes %}
+                <table data-sb-sortable data-sb-sort-key="partner-{{ partner.id }}-notes">
+                    <thead><tr>{{ heading('Name') }}{{ heading('Note date', 'number') }}</tr></thead>
+                    <tbody>{% for call in partner.notes|sort(attribute='call_date', reverse=True) %}
+                        <tr data-note-id="{{ call.id }}">
+                            <td data-sb-sort-value="{{ call.customer.name if call.customer else '' }}"><a href="{{ url_for('notes.note_view', id=call.id) }}">{% if call.customer %}{{ customer_favicon(call.customer) }} {{ call.customer.name }}{% else %}No Customer{% endif %}</a><p class="part-excerpt">{{ call.content|striptags|truncate(150, true) }}</p></td>
+                            <td data-sb-sort-value="{{ call.call_date.timestamp() }}">{{ call.call_date.strftime('%b %d, %Y') }}{% if call.call_date.hour != 0 or call.call_date.minute != 0 %} {{ call.call_date.strftime('%I:%M %p') }}{% endif %}</td>
+                        </tr>{% endfor %}</tbody>
+                </table>
+                {% else %}<p class="part-empty">No notes associated with this partner yet</p>{% endif %}
             </div>
-        </div>
+        </section>
     </div>
-</div>
-
-<!-- Add/Edit Contact Modal -->
-<div class="modal fade" id="addContactModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="contactForm" action="{{ url_for('partners.contact_new', partner_id=partner.id) }}" method="post">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="contactModalTitle">Add Contact</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="contact_name" class="form-label">Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="contact_name" name="contact_name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="contact_title" class="form-label">Title</label>
-                        <input type="text" class="form-control" id="contact_title" name="contact_title" placeholder="e.g. Solutions Architect">
-                    </div>
-                    <div class="mb-3">
-                        <label for="contact_email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="contact_email" name="contact_email">
-                    </div>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="is_primary" name="is_primary">
-                        <label class="form-check-label" for="is_primary">Set as primary contact</label>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="contactSubmitBtn">Add Contact</button>
-                </div>
-            </form>
+    <dialog id="addContactModal" class="sb-dialog sb-dialog-compact" aria-labelledby="contactModalTitle">
+        <form id="contactForm" class="sb-dialog-shell" method="post" action="{{ url_for('partners.contact_new', partner_id=partner.id) }}" data-partner-write>
+            <header class="sb-dialog-header"><h2 id="contactModalTitle">Add Contact</h2>{{ close() }}</header>
+            <div class="sb-dialog-body part-fields">
+                <label for="contact_name">Name *</label><input type="text" id="contact_name" name="contact_name" required autofocus>
+                <label for="contact_title">Title</label><input type="text" id="contact_title" name="contact_title" placeholder="e.g. Solutions Architect">
+                <label for="contact_email">Email</label><input type="email" id="contact_email" name="contact_email">
+                <label><input type="checkbox" id="is_primary" name="is_primary"> Set as primary contact</label>
+                <p id="contactFailure" role="alert" hidden></p>
+            </div>
+            <footer class="sb-dialog-footer">{{ close() }}<button type="submit" class="sb-dialog-button" id="contactSubmitBtn">Add Contact</button></footer>
+        </form>
+    </dialog>
+    <dialog id="deletePartnerDialog" class="sb-dialog sb-dialog-compact" aria-labelledby="deletePartnerTitle">
+        <form class="sb-dialog-shell" method="post" action="{{ url_for('partners.partner_delete', id=partner.id) }}" data-partner-write>
+            <header class="sb-dialog-header"><h2 id="deletePartnerTitle">Delete Partner</h2>{{ close() }}</header>
+            <div class="sb-dialog-body"><p>Are you sure you want to delete <strong>{{ partner.name }}</strong>?</p><p>This will remove the partner from all associated notes but will not delete the notes themselves.</p></div>
+            <footer class="sb-dialog-footer">{{ close() }}<button type="submit" class="sb-dialog-button part-danger">Delete Partner</button></footer>
+        </form>
+    </dialog>
+    <dialog id="deleteContactDialog" class="sb-dialog sb-dialog-compact" aria-labelledby="deleteContactTitle">
+        <form class="sb-dialog-shell" method="post" data-partner-write>
+            <header class="sb-dialog-header"><h2 id="deleteContactTitle">Delete Contact</h2>{{ close() }}</header>
+            <div class="sb-dialog-body"><p id="deleteContactText"></p></div>
+            <footer class="sb-dialog-footer">{{ close() }}<button type="submit" class="sb-dialog-button part-danger">Delete Contact</button></footer>
+        </form>
+    </dialog>
+    <dialog id="contactPhotoModal" class="sb-dialog sb-dialog-compact" aria-labelledby="contactPhotoTitle">
+        <div class="sb-dialog-shell">
+            <header class="sb-dialog-header"><h2 id="contactPhotoTitle">Contact Photo</h2>{{ close('Close') }}</header>
+            <div class="sb-dialog-body">
+                <img id="contactPhotoFull" alt="Contact photo" hidden>
+                <div id="contactPhotoPaste" tabindex="0">Click here, then Ctrl+V to paste a screenshot</div>
+                <p id="contactPhotoStatus" role="status"></p>
+            </div>
+            <footer class="sb-dialog-footer"><button type="button" class="sb-dialog-button part-danger" id="contactPhotoRemoveBtn" hidden>Remove</button>{{ close('Close') }}</footer>
         </div>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Delete Partner</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </dialog>
+    <dialog id="scrapeDomainModal" class="sb-dialog sb-dialog-compact" aria-labelledby="scrapeDomainTitle">
+        <form class="sb-dialog-shell" id="scrapeDomainForm">
+            <header class="sb-dialog-header"><h2 id="scrapeDomainTitle">Partner Domain</h2>{{ close() }}</header>
+            <div class="sb-dialog-body part-fields"><p>We'll search your meetings for attendees with this email domain. Searching saves a changed domain immediately.</p>
+                <label for="scrapeDomainInput">Email Domain</label><input type="text" id="scrapeDomainInput" placeholder="e.g. xoriant.com" autofocus>
+                <p id="scrapeDomainHint"></p><p id="scrapeDomainError" role="alert" hidden></p>
             </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete <strong>{{ partner.name }}</strong>?</p>
-                <p class="text-muted mb-0">This will remove the partner from all associated notes but will not delete the notes themselves.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ url_for('partners.partner_delete', id=partner.id) }}" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-danger">Delete Partner</button>
-                </form>
-            </div>
+            <footer class="sb-dialog-footer">{{ close() }}<button type="submit" class="sb-dialog-button" id="scrapeDomainConfirmBtn">Search Meetings</button></footer>
+        </form>
+    </dialog>
+    <dialog id="scrapeReviewModal" class="sb-dialog" aria-labelledby="scrapeReviewTitle">
+        <div class="sb-dialog-shell">
+            <header class="sb-dialog-header"><h2 id="scrapeReviewTitle">WorkIQ Results for {{ partner.name }}</h2>{{ close() }}</header>
+            <div class="sb-dialog-body part-review" id="scrapeReviewBody"></div>
+            <p id="scrapeReviewError" class="part-notice" role="alert" hidden></p>
+            <footer class="sb-dialog-footer"><button type="button" class="sb-dialog-button" id="scrapeRetryBtn">Try Again</button>{{ close() }}<button type="button" class="sb-dialog-button" id="scrapeApplyBtn">Import Selected</button></footer>
         </div>
-    </div>
-</div>
+    </dialog>
+    <dialog id="partnerDiscardDialog" class="sb-dialog sb-dialog-compact" aria-labelledby="partnerDiscardTitle">
+        <header class="sb-dialog-header"><h2 id="partnerDiscardTitle">Discard contact changes?</h2></header>
+        <div class="sb-dialog-body"><p>The contact has not been saved.</p></div>
+        <footer class="sb-dialog-footer">{{ close('Keep editing') }}<button type="button" class="sb-dialog-button" id="partnerDiscardConfirm">Discard changes</button></footer>
+    </dialog>
+</section>
+<script type="application/json" id="partnerDetailData">{{ {
+    'id': partner.id, 'name': partner.name, 'website': partner.website or '',
+    'overview': partner.overview, 'rating': partner.rating,
+    'specialty_ids': partner.specialties|map(attribute='id')|list,
+    'contacts': contact_data, 'failure': contact_failure
+}|tojson }}</script>
 {% endblock %}
-
-{% block extra_js %}
-<script>
-// --- Contact Photo Paste & View ---
-var _photoContactId = null;
-var _photoContactType = null;
-
-function openContactPhotoModal(el) {
-    _photoContactId = el.dataset.contactId;
-    _photoContactType = el.dataset.contactType;
-    var img = el.querySelector('img');
-    var fullView = document.getElementById('contactPhotoFull');
-    var pasteZone = document.getElementById('contactPhotoPaste');
-    var removeBtn = document.getElementById('contactPhotoRemoveBtn');
-    if (img && img.src) {
-        var fullSrc = el.dataset.fullSrc;
-        fullView.src = fullSrc || img.src;
-        fullView.style.display = 'block';
-        pasteZone.style.display = 'none';
-        removeBtn.style.display = '';
-    } else {
-        fullView.style.display = 'none';
-        pasteZone.style.display = 'flex';
-        removeBtn.style.display = 'none';
-    }
-    document.getElementById('contactPhotoStatus').textContent = '';
-    var modal = new bootstrap.Modal(document.getElementById('contactPhotoModal'));
-    document.getElementById('contactPhotoModal').addEventListener('shown.bs.modal', function handler() {
-        document.getElementById('contactPhotoPaste').focus();
-        document.getElementById('contactPhotoModal').removeEventListener('shown.bs.modal', handler);
-    });
-    modal.show();
-}
-
-var _photoModalOpen = false;
-window.addEventListener('load', function() {
-    var modal = document.getElementById('contactPhotoModal');
-    if (!modal) return;
-    modal.addEventListener('shown.bs.modal', function() { _photoModalOpen = true; });
-    modal.addEventListener('hidden.bs.modal', function() { _photoModalOpen = false; });
-    document.addEventListener('paste', function(e) {
-        if (!_photoModalOpen) return;
-        var items = (e.clipboardData || e.originalEvent.clipboardData).items;
-        for (var i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
-                e.preventDefault();
-                processContactPhoto(items[i].getAsFile());
-                return;
-            }
-        }
-    });
-});
-
-function processContactPhoto(blob) {
-    var status = document.getElementById('contactPhotoStatus');
-    status.textContent = 'Processing...';
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        saveContactPhoto(e.target.result.split(',')[1]);
-    };
-    reader.readAsDataURL(blob);
-}
-
-function saveContactPhoto(b64) {
-    var status = document.getElementById('contactPhotoStatus');
-    var url = '/api/' + _photoContactType.replace('customer', 'customer/contact/').replace('partner', 'partner/contact/') + _photoContactId + '/photo';
-    if (_photoContactType === 'customer') url = '/api/customer/contact/' + _photoContactId + '/photo';
-    else url = '/api/partner/contact/' + _photoContactId + '/photo';
-
-    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo_b64: b64 }) })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            status.textContent = 'Saved!';
-            var fullView = document.getElementById('contactPhotoFull');
-            fullView.src = 'data:image/png;base64,' + b64;
-            fullView.style.display = 'block';
-            document.getElementById('contactPhotoPaste').style.display = 'none';
-            document.getElementById('contactPhotoRemoveBtn').style.display = '';
-            var wrap = document.querySelector('.contact-photo-wrap[data-contact-id="' + _photoContactId + '"]');
-            if (wrap) {
-                wrap.innerHTML = '<img src="data:image/png;base64,' + data.photo_b64 + '" style="width: 100%; height: 100%; object-fit: cover;">';
-                wrap.dataset.fullSrc = 'data:image/png;base64,' + b64;
-            }
-            setTimeout(function() { status.textContent = ''; }, 2000);
-        } else { status.textContent = 'Failed to save'; }
-    })
-    .catch(function() { status.textContent = 'Error saving photo'; });
-}
-
-function removeContactPhoto() {
-    var url = _photoContactType === 'customer'
-        ? '/api/customer/contact/' + _photoContactId + '/photo'
-        : '/api/partner/contact/' + _photoContactId + '/photo';
-    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo_b64: null }) })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            var wrap = document.querySelector('.contact-photo-wrap[data-contact-id="' + _photoContactId + '"]');
-            if (wrap) wrap.innerHTML = '<i class="bi bi-person-circle text-muted" style="font-size: 1.5rem;"></i>';
-            bootstrap.Modal.getInstance(document.getElementById('contactPhotoModal')).hide();
-        }
-    });
-}
-
-var addContactUrl = "{{ url_for('partners.contact_new', partner_id=partner.id) }}";
-var editContactUrlBase = "/partners/{{ partner.id }}/contacts/";
-
-function openEditContact(contactId, name, title, email, isPrimary) {
-    document.getElementById('contactModalTitle').textContent = 'Edit Contact';
-    document.getElementById('contactSubmitBtn').textContent = 'Save Changes';
-    document.getElementById('contactForm').action = editContactUrlBase + contactId + '/edit';
-    document.getElementById('contact_name').value = name;
-    document.getElementById('contact_title').value = title;
-    document.getElementById('contact_email').value = email;
-    document.getElementById('is_primary').checked = isPrimary;
-    new bootstrap.Modal(document.getElementById('addContactModal')).show();
-}
-
-// Reset to "Add" mode when opening via the Add button
-document.getElementById('addContactModal').addEventListener('show.bs.modal', function(e) {
-    if (e.relatedTarget) {
-        document.getElementById('contactModalTitle').textContent = 'Add Contact';
-        document.getElementById('contactSubmitBtn').textContent = 'Add Contact';
-        document.getElementById('contactForm').action = addContactUrl;
-        document.getElementById('contact_name').value = '';
-        document.getElementById('contact_title').value = '';
-        document.getElementById('contact_email').value = '';
-        document.getElementById('is_primary').checked = false;
-    }
-});
-
-// ---- Partner WorkIQ Scrape ----
-var _scrapeData = null;
-var _partnerWebsite = {{ partner.website|tojson }};
-var _partnerContactEmails = [{% for c in partner.contacts %}{% if c.email %}'{{ c.email }}'{{ ', ' if not loop.last }}{% endif %}{% endfor %}];
-
-function _getDomainFromEmail(email) {
-    if (!email || email.indexOf('@') < 0) return null;
-    return email.split('@')[1].toLowerCase();
-}
-
-function _guessDomain() {
-    if (_partnerWebsite) return _partnerWebsite;
-    for (var i = 0; i < _partnerContactEmails.length; i++) {
-        var d = _getDomainFromEmail(_partnerContactEmails[i]);
-        if (d) return d;
-    }
-    return '';
-}
-
-function startPartnerScrape() {
-    var domain = _guessDomain();
-    if (_partnerWebsite) {
-        // Domain already on record - skip prompt, go straight to scrape
-        var btn = document.getElementById('scrapeBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Scanning meetings...';
-        fetch('/api/partners/{{ partner.id }}/scrape', { method: 'POST' })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-magic"></i> Auto-fill from Meetings';
-                if (!data.success) { alert(data.error || 'Scrape failed'); return; }
-                _scrapeData = data;
-                showScrapeReview(data);
-            })
-            .catch(function(err) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-magic"></i> Auto-fill from Meetings';
-                alert('Error: ' + err.message);
-            });
-        return;
-    }
-    // No website - prompt for domain
-    document.getElementById('scrapeDomainInput').value = domain;
-    var hint = document.getElementById('scrapeDomainHint');
-    if (domain) {
-        hint.textContent = 'Suggested from existing contact email. Edit if needed.';
-        hint.style.display = '';
-    } else {
-        hint.textContent = '';
-        hint.style.display = 'none';
-    }
-    document.getElementById('scrapeDomainError').style.display = 'none';
-    var modal = new bootstrap.Modal(document.getElementById('scrapeDomainModal'));
-    document.getElementById('scrapeDomainModal').addEventListener('shown.bs.modal', function handler() {
-        document.getElementById('scrapeDomainInput').focus();
-        document.getElementById('scrapeDomainInput').select();
-        document.getElementById('scrapeDomainModal').removeEventListener('shown.bs.modal', handler);
-    });
-    modal.show();
-}
-
-// Enter key in domain input triggers search (deferred - element is in modal below)
-document.addEventListener('DOMContentLoaded', function() {
-    var domainInput = document.getElementById('scrapeDomainInput');
-    if (domainInput) {
-        domainInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); confirmDomainAndScrape(); }
-        });
-    }
-});
-
-function confirmDomainAndScrape() {
-    var domain = document.getElementById('scrapeDomainInput').value.trim().toLowerCase();
-    if (!domain) {
-        document.getElementById('scrapeDomainError').textContent = 'Please enter a domain (e.g. xoriant.com)';
-        document.getElementById('scrapeDomainError').style.display = '';
-        return;
-    }
-    // Clean up domain
-    domain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-
-    var confirmBtn = document.getElementById('scrapeDomainConfirmBtn');
-    var domainInput = document.getElementById('scrapeDomainInput');
-    confirmBtn.disabled = true;
-    domainInput.disabled = true;
-    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving domain...';
-
-    // Save domain to partner if it changed
-    if (domain !== _partnerWebsite) {
-        fetch('/api/partners/{{ partner.id }}', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: {{ partner.name|tojson }},
-                website: domain,
-                overview: {{ partner.overview|tojson }},
-                rating: {{ partner.rating|tojson }},
-                specialty_ids: [{% for s in partner.specialties %}{{ s.id }}{{ ', ' if not loop.last }}{% endfor %}],
-                contacts: [{% for c in partner.contacts %}{ id: {{ c.id }}, name: {{ c.name|tojson }}, title: {{ (c.title or '')|tojson }}, email: {{ (c.email or '')|tojson }}, is_primary: {{ 'true' if c.is_primary else 'false' }} }{{ ', ' if not loop.last }}{% endfor %}]
-            })
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.error) {
-                confirmBtn.disabled = false;
-                domainInput.disabled = false;
-                confirmBtn.innerHTML = '<i class="bi bi-search"></i> Search Meetings';
-                document.getElementById('scrapeDomainError').textContent = data.error;
-                document.getElementById('scrapeDomainError').style.display = '';
-                return;
-            }
-            _partnerWebsite = domain;
-            runScrape(confirmBtn);
-        })
-        .catch(function(err) {
-            confirmBtn.disabled = false;
-            domainInput.disabled = false;
-            confirmBtn.innerHTML = '<i class="bi bi-search"></i> Search Meetings';
-            document.getElementById('scrapeDomainError').textContent = 'Failed to save domain: ' + err.message;
-            document.getElementById('scrapeDomainError').style.display = '';
-        });
-    } else {
-        runScrape(confirmBtn);
-    }
-}
-
-function runScrape(confirmBtn) {
-    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Scanning meetings...';
-
-    fetch('/api/partners/{{ partner.id }}/scrape', { method: 'POST' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            confirmBtn.disabled = false;
-            confirmBtn.innerHTML = '<i class="bi bi-search"></i> Search Meetings';
-            bootstrap.Modal.getInstance(document.getElementById('scrapeDomainModal')).hide();
-
-            if (!data.success) {
-                alert(data.error || 'Scrape failed');
-                return;
-            }
-            _scrapeData = data;
-            showScrapeReview(data);
-        })
-        .catch(function(err) {
-            confirmBtn.disabled = false;
-            confirmBtn.innerHTML = '<i class="bi bi-search"></i> Search Meetings';
-            alert('Error: ' + err.message);
-        });
-}
-
-function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-function showScrapeReview(data) {
-    var body = document.getElementById('scrapeReviewBody');
-    var html = '';
-
-    // Summary
-    html += '<p class="text-muted small mb-3"><i class="bi bi-info-circle"></i> Found data from ' +
-        (data.meetings_found || 0) + ' meeting(s). Uncheck anything you don\'t want to import.</p>';
-
-    // Notes
-    if (data.overview) {
-        var existingNotes = {{ partner.overview|tojson }};
-        var combinedText = existingNotes ? (existingNotes.trim() + '\n\n---\n\n' + data.overview) : data.overview;
-        html += '<div class="card mb-3"><div class="card-body py-2">';
-        html += '<div class="d-flex align-items-start gap-2">';
-        html += '<input type="checkbox" class="form-check-input mt-1 flex-shrink-0" id="scrapeOverview" checked style="min-width: 1em;">';
-        html += '<div class="flex-grow-1">';
-        html += '<strong>Notes</strong>';
-        if (existingNotes) {
-            html += '<small class="text-muted d-block mb-1">Your existing notes are preserved above the separator. Edit as needed.</small>';
-        }
-        html += '<textarea class="form-control form-control-sm mt-1" id="scrapeOverviewText" rows="6">' + esc(combinedText) + '</textarea>';
-        html += '</div></div></div></div>';
-    }
-
-    // Specialties
-    if (data.specialties && data.specialties.length > 0) {
-        html += '<h6 class="mb-2"><i class="bi bi-star"></i> Specialties</h6>';
-        html += '<div class="d-flex flex-wrap gap-2 mb-3">';
-        data.specialties.forEach(function(s, i) {
-            var badge = s.is_new ? 'bg-success' : 'bg-secondary';
-            var label = s.is_new ? 'new' : 'already added';
-            html += '<label class="d-flex align-items-center gap-1" style="cursor:pointer;">';
-            html += '<input type="checkbox" class="form-check-input scrape-specialty" data-idx="' + i + '" ' +
-                (s.is_new ? 'checked' : '') + (s.is_new ? '' : ' disabled') + '>';
-            html += '<span class="badge ' + badge + '">' + esc(s.name) + '</span>';
-            if (!s.is_new) html += '<small class="text-muted">(' + label + ')</small>';
-            html += '</label>';
-        });
-        html += '</div>';
-    }
-
-    // Contacts
-    if (data.contacts && data.contacts.length > 0) {
-        html += '<h6 class="mb-2"><i class="bi bi-people"></i> Contacts</h6>';
-        html += '<div class="list-group mb-3">';
-        data.contacts.forEach(function(c, i) {
-            var checked = c.is_new || c.has_updates;
-            var disabled = !c.is_new && !c.has_updates;
-            html += '<label class="list-group-item d-flex align-items-start gap-2" style="cursor:pointer;">';
-            html += '<input type="checkbox" class="form-check-input mt-1 scrape-contact" data-idx="' + i + '" ' +
-                (checked ? 'checked' : '') + (disabled ? ' disabled' : '') + '>';
-            html += '<div class="flex-grow-1">';
-            html += '<strong>' + esc(c.name) + '</strong>';
-            if (c.title) html += ' <small class="text-muted">- ' + esc(c.title) + '</small>';
-            if (c.email) html += '<br><small class="text-muted">' + esc(c.email) + '</small>';
-            if (!c.is_new && !c.has_updates) {
-                html += '<br><small class="text-muted">(already exists, no new data)</small>';
-            } else if (!c.is_new && c.has_updates) {
-                html += '<br><small class="text-success"><i class="bi bi-arrow-up-circle"></i> ' +
-                    c.updates.join(', ') + '</small>';
-            } else {
-                html += '<br><small class="text-success"><i class="bi bi-plus-circle"></i> New contact</small>';
-            }
-            html += '</div></label>';
-        });
-        html += '</div>';
-    }
-
-    if (!data.overview && (!data.specialties || data.specialties.length === 0) &&
-        (!data.contacts || data.contacts.length === 0)) {
-        html += '<div class="text-center py-4"><i class="bi bi-inbox display-4 text-muted"></i>';
-        html += '<p class="mt-2 text-muted">No results came back this time. WorkIQ can be inconsistent - it may return results on a second attempt.</p>';
-        html += '<button type="button" class="btn btn-primary" onclick="retryScrape()"><i class="bi bi-arrow-clockwise"></i> Try Again</button></div>';
-    }
-
-    body.innerHTML = html;
-    new bootstrap.Modal(document.getElementById('scrapeReviewModal')).show();
-}
-
-function retryScrape() {
-    var body = document.getElementById('scrapeReviewBody');
-    body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Scanning meetings again...</p></div>';
-    fetch('/api/partners/{{ partner.id }}/scrape', { method: 'POST' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (!data.success) { alert(data.error || 'Scrape failed'); return; }
-            _scrapeData = data;
-            showScrapeReview(data);
-        })
-        .catch(function(err) { alert('Error: ' + err.message); });
-}
-
-function applyScrapeResults() {
-    if (!_scrapeData) return;
-    var payload = { contacts: [], specialties: [], overview: null };
-
-    // Notes
-    var overviewCb = document.getElementById('scrapeOverview');
-    var overviewText = document.getElementById('scrapeOverviewText');
-    if (overviewCb && overviewCb.checked && overviewText && overviewText.value.trim()) {
-        payload.overview = overviewText.value.trim();
-    }
-
-    // Specialties
-    document.querySelectorAll('.scrape-specialty:checked:not(:disabled)').forEach(function(cb) {
-        var idx = parseInt(cb.dataset.idx);
-        payload.specialties.push(_scrapeData.specialties[idx].name);
-    });
-
-    // Contacts
-    document.querySelectorAll('.scrape-contact:checked:not(:disabled)').forEach(function(cb) {
-        var idx = parseInt(cb.dataset.idx);
-        payload.contacts.push(_scrapeData.contacts[idx]);
-    });
-
-    var btn = document.getElementById('scrapeApplyBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
-
-    fetch('/api/partners/{{ partner.id }}/scrape/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('scrapeReviewModal')).hide();
-            window.location.reload();
-        } else {
-            alert(data.error || 'Failed to save');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-circle"></i> Import Selected';
-        }
-    })
-    .catch(function(err) {
-        alert('Error: ' + err.message);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-circle"></i> Import Selected';
-    });
-}
-</script>
-
-<!-- Contact Photo Modal -->
-<div class="modal fade" id="contactPhotoModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content">
-            <div class="modal-header py-2">
-                <h6 class="modal-title"><i class="bi bi-camera"></i> Contact Photo</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <img id="contactPhotoFull" src="" style="max-width: 100%; max-height: 300px; border-radius: 8px; display: none;">
-                <div id="contactPhotoPaste" class="border rounded p-4 text-muted" tabindex="0" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 120px; cursor: pointer; outline: none;">
-                    <i class="bi bi-clipboard-plus" style="font-size: 2rem;"></i>
-                    <div class="small mt-2">Click here, then Ctrl+V to paste a screenshot</div>
-                </div>
-                <div id="contactPhotoStatus" class="small text-success mt-2"></div>
-            </div>
-            <div class="modal-footer py-1">
-                <button type="button" class="btn btn-sm btn-outline-danger" id="contactPhotoRemoveBtn" onclick="removeContactPhoto()" style="display: none;">
-                    <i class="bi bi-trash"></i> Remove
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Domain Prompt Modal -->
-<div class="modal fade" id="scrapeDomainModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-globe"></i> Partner Domain</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted small">We'll search your meetings for attendees with this email domain.</p>
-                <div class="mb-2">
-                    <label for="scrapeDomainInput" class="form-label">Email Domain</label>
-                    <input type="text" class="form-control" id="scrapeDomainInput" placeholder="e.g. xoriant.com">
-                    <small class="text-muted" id="scrapeDomainHint" style="display:none;"></small>
-                    <small class="text-danger" id="scrapeDomainError" style="display:none;"></small>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="scrapeDomainConfirmBtn" onclick="confirmDomainAndScrape()">
-                    <i class="bi bi-search"></i> Search Meetings
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Scrape Review Modal -->
-<div class="modal fade" id="scrapeReviewModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-magic"></i> WorkIQ Results for {{ partner.name }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="scrapeReviewBody">
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="scrapeApplyBtn" onclick="applyScrapeResults()">
-                    <i class="bi bi-check-circle"></i> Import Selected
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+{% block footer %}<footer class="sb-page-status" aria-label="Partner status"><span>{{ partner.contacts|length }} contacts · {{ partner.notes|length }} associated notes</span><span id="partnerDetailState">All linked notes · Manual contact save</span></footer>{% endblock %}
+{% block extra_js %}<script src="{{ url_for('static', filename='js/ui-partner-detail.js') }}"></script>{% endblock %}

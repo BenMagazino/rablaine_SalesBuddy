@@ -1,0 +1,98 @@
+    <!-- Guided Product Tour (triggered once after first wizard dismissal) -->
+    <script defer>
+    window.addEventListener('load', function() {
+        if (localStorage.getItem('salesbuddy_start_tour') !== '1') return;
+        if (typeof driver === 'undefined') return;
+        localStorage.removeItem('salesbuddy_start_tour');
+
+        // Small delay so the page is fully rendered
+        setTimeout(function() {
+            const tourDriver = driver.js.driver({
+                showProgress: true,
+                animate: true,
+                overlayColor: 'rgba(0, 0, 0, 0.65)',
+                popoverClass: 'salesbuddy-tour',
+                nextBtnText: 'Next',
+                prevBtnText: 'Back',
+                doneBtnText: 'Got it!',
+                onDestroyStarted: function() {
+                    // Mark tour as completed in localStorage and database
+                    localStorage.setItem('salesbuddy_tour_completed', '1');
+                    fetch('/api/preferences/guided-tour-complete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    }).catch(function(err) {
+                        console.error('Failed to save tour completion:', err);
+                    });
+                    tourDriver.destroy();
+                },
+                steps: [
+                    {
+                        element: '#navCustomers',
+                        popover: {
+                            title: 'Customers',
+                            description: 'See all your customers in one place. You can group by seller to quickly find who owns what.',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#navSellers',
+                        popover: {
+                            title: 'Sellers',
+                            description: 'View all your sellers and access their profile page, the central hub for each seller\'s customers and activity.',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#navPods',
+                        popover: {
+                            title: 'PODs',
+                            description: 'See your POD(s) including sellers, territories, and SEs along with their roles.',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#navMilestones',
+                        popover: {
+                            title: 'Milestone Tracker',
+                            description: 'Import and audit your milestones here. Shout out <a href="https://aka.ms/easymsx" target="_blank">aka.ms/easymsx</a>',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#navRevenue',
+                        popover: {
+                            title: 'Revenue Analyzer',
+                            description: 'Import your customers\' revenue data to auto-identify trends and actionable signals in the data.',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#navQuickLookup',
+                        popover: {
+                            title: 'Customer Search',
+                            description: 'Type a customer name to jump to their page. Use / to focus from anywhere.',
+                            side: 'bottom',
+                            align: 'end'
+                        }
+                    },
+                    {
+                        element: '#navNewNote',
+                        popover: {
+                            title: 'New Note',
+                            description: 'Create a new note. Prompts for the customer name and can pull data from WorkIQ.',
+                            side: 'bottom',
+                            align: 'end'
+                        }
+                    }
+                ]
+            });
+            tourDriver.drive();
+        }, 500);
+    });
+    </script>

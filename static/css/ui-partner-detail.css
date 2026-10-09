@@ -1,0 +1,55 @@
+.sb-partner-detail { color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); }
+.sb-partner-detail * { box-sizing: border-box; }
+.sb-partner-detail [hidden] { display: none !important; }
+.part-heading, .part-context, .part-band, .part-actions { display: flex; align-items: center; gap: 8px; }
+.part-heading { padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.part-heading h1 { flex: 1; font-size: 20px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+.part-heading a { text-decoration: none; }
+.part-heading .share-online-count { margin-left: 4px; }
+.part-context { padding: 8px 24px; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--sb-ui-line); }
+.part-context a, .part-rating { color: var(--sb-ui-warning); }
+.sb-partner-detail .part-work { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); overflow: hidden; }
+.part-relationship, .part-note-region { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.part-relationship { border-right: 1px solid var(--sb-ui-line); }
+.part-overview { flex: 0 1 auto; max-height: 32%; overflow: auto; padding: 16px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.part-overview h2, .part-band h2 { font-size: 14px; margin: 0; font-weight: 600; }
+.part-overview p { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.part-band { padding: 8px 24px; border-bottom: 1px solid var(--sb-ui-line); justify-content: space-between; }
+.part-band span { color: var(--sb-ui-muted); font-size: 12px; }
+.part-band h2 span { margin-left: 8px; }
+.part-contacts, .part-notes { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+.sb-partner-detail table { width: 100%; border-collapse: collapse; }
+.sb-partner-detail :is(th, td) { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--sb-ui-grid-line); overflow-wrap: anywhere; }
+.sb-partner-detail th { position: sticky; top: 0; background: var(--sb-ui-context); z-index: 1; color: var(--sb-ui-muted); font-weight: 500; font-size: 12px; }
+.part-contacts table { min-width: 760px; table-layout: fixed; }
+.part-contacts th { white-space: nowrap; }
+.part-contacts th:first-child { width: 22%; }
+.part-contacts th:nth-child(2) { width: 29%; }
+.part-contacts th:nth-child(3) { width: 23%; }
+.part-contacts th:nth-child(4) { width: 9%; }
+.part-contacts th:last-child { width: 17%; }
+.part-notes table { min-width: 400px; }
+.part-notes td:first-child { width: 72%; }
+.part-notes td:last-child { color: var(--sb-ui-muted); font-variant-numeric: tabular-nums; }
+.part-excerpt { color: var(--sb-ui-muted); margin: 5px 0 0; }
+.part-contact-name { display: flex; align-items: center; gap: 8px; min-width: 125px; }
+.contact-photo-wrap { width: 36px; height: 36px; flex: 0 0 36px; border: 1px solid var(--sb-ui-line); border-radius: 50%; overflow: hidden; padding: 0; background: var(--sb-ui-raised); color: var(--sb-ui-muted); cursor: pointer; }
+.contact-photo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.part-primary { color: var(--sb-ui-accent); font-size: 12px; }
+.part-actions { align-items: flex-start; flex-wrap: wrap; }
+.part-actions form { margin: 0; }
+.part-actions .sb-dialog-button { padding: 3px 6px; font-size: 11px; white-space: nowrap; }
+.part-empty, .part-notice { margin: 0; padding: 12px 24px; }
+.part-danger, .part-notice, #contactFailure, #scrapeDomainError { color: var(--sb-ui-danger); }
+.part-fields { display: grid; gap: 8px; }
+.sb-partner-detail .sb-dialog-header h2 { flex: 1; }
+.part-fields input:not([type=checkbox]), .part-review textarea { width: 100%; border: 1px solid var(--sb-ui-line); background: var(--sb-ui-surface); color: var(--sb-ui-ink); border-radius: 4px; padding: 7px 10px; font: inherit; }
+.part-fields input[type=checkbox], .part-review input { accent-color: var(--sb-ui-accent); }
+.part-review section { padding: 12px 0; border-bottom: 1px solid var(--sb-ui-line); }
+.part-review label { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; overflow-wrap: anywhere; }
+.part-review small { display: block; color: var(--sb-ui-muted); }
+.part-review h3 { font-size: 14px; margin: 0 0 6px; }
+#scrapeReviewModal { width: min(760px, calc(100vw - 64px)); }
+#contactPhotoFull { display: block; max-width: 100%; max-height: 300px; margin: auto; }
+#contactPhotoPaste { padding: 30px 12px; border: 1px dashed var(--sb-ui-line); text-align: center; color: var(--sb-ui-muted); }
+.sb-partner-detail :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }

@@ -1,175 +1,104 @@
 {% extends "base.html" %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
-
 {% block title %}Analytics - Sales Buddy{% endblock %}
-
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-administration.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Analytics scope">
+    <span>{{ total_calls }} notes · {{ total_customers }} portfolio customers</span>
+    <span>Topics: last 90 days · Seller activity: this month</span>
+</footer>
+{% endblock %}
 {% block content %}
-<h1 class="mb-4"><i class="bi bi-graph-up"></i> Analytics & Insights</h1>
-
-<!-- Key Metrics -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-primary mb-0">{{ calls_this_week }}</h3>
-                <p class="text-muted mb-0">Notes This Week</p>
-                <small class="text-muted">{{ calls_this_month }} this month</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-success mb-0">{{ customers_called_this_week }}</h3>
-                <p class="text-muted mb-0">Customers This Week</p>
-                <small class="text-muted">{{ customers_called_this_month }} this month</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-info mb-0">{{ total_calls }}</h3>
-                <p class="text-muted mb-0">Total Notes</p>
-                <small class="text-muted">All time</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-warning mb-0">{{ total_customers }}</h3>
-                <p class="text-muted mb-0">Total Customers</p>
-                <small class="text-muted">In your portfolio</small>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <!-- Call Frequency Trend -->
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Note Frequency Trend</h5>
-            </div>
-            <div class="card-body">
+<section class="sb-administration sb-admin-analytics sb-directory-frame sb-directory-frame-wide"
+         data-sb-page-surface aria-labelledby="analyticsTitle">
+    <header class="sb-admin-page-heading" data-sb-page-band>
+        <h1 id="analyticsTitle">Analytics & Insights</h1>
+        <span>Activity, coverage and follow-up</span>
+    </header>
+    <dl class="sb-admin-stat-strip" data-sb-page-band>
+        <div><dt>Notes This Week</dt><dd>{{ calls_this_week }}</dd>
+            <small>{{ calls_this_month }} this month</small></div>
+        <div><dt>Customers This Week</dt><dd>{{ customers_called_this_week }}</dd>
+            <small>{{ customers_called_this_month }} this month</small></div>
+        <div><dt>Total Notes</dt><dd>{{ total_calls }}</dd><small>All time</small></div>
+        <div><dt>Total Customers</dt><dd>{{ total_customers }}</dd><small>In your portfolio</small></div>
+    </dl>
+    <div class="sb-admin-analytics-workspace" data-sb-page-body data-sb-page-pair="activity-follow-up">
+        <div class="sb-admin-analytics-pane" data-sb-page-pane tabindex="0" role="region" aria-label="Activity trends">
+            <section class="sb-admin-section">
+                <header class="sb-admin-section-heading"><h2>Note Frequency Trend</h2></header>
                 {% if weekly_calls %}
-                    <div class="mb-3">
-                        {% for week in weekly_calls %}
-                            <div class="d-flex align-items-center mb-2">
-                                <div style="width: 120px;" class="text-muted small">{{ week.week_label }}</div>
-                                <div class="progress flex-grow-1 mx-2" style="height: 25px;">
-                                    {% set max_count = weekly_calls|map(attribute='count')|max %}
-                                    {% set width = (week.count / max_count * 100) if max_count > 0 else 0 %}
-                                    <div class="progress-bar bg-primary" style="width: {{ width }}%;">
-                                        {{ week.count }}
-                                    </div>
-                                </div>
-                            </div>
-                        {% endfor %}
+                <div class="sb-admin-section-content">
+                    {% set max_count = weekly_calls|map(attribute='count')|max %}
+                    {% for week in weekly_calls %}
+                    <div class="sb-admin-trend-row">
+                        <span>{{ week.week_label }}</span>
+                        <div class="sb-admin-progress" role="img"
+                             aria-label="{{ week.week_label }}: {{ week.count }} notes">
+                            <div class="sb-admin-progress-fill"
+                                 style="width: {{ (week.count / max_count * 100) if max_count > 0 else 0 }}%"></div>
+                        </div>
+                        <strong>{{ week.count }}</strong>
                     </div>
-                {% else %}
-                    <p class="text-muted">No note data yet. Start logging notes to see trends!</p>
-                {% endif %}
-            </div>
+                    {% endfor %}
+                </div>
+                {% else %}<p class="sb-admin-help">No note data yet. Start logging notes to see trends!</p>{% endif %}
+            </section>
+            <section class="sb-admin-section">
+                <header class="sb-admin-section-heading"><h2>Most Discussed Topics</h2>
+                    <span class="sb-admin-help">Last 90 days</span></header>
+                {% for topic in top_topics %}
+                <div class="sb-admin-list-row">
+                    <a href="{{ url_for('topics.topic_view', id=topic.id) }}" class="sb-admin-tag sb-admin-bg-warning">
+                        <i class="bi bi-tag" aria-hidden="true"></i> {{ topic.name }}</a>
+                    <span>{{ topic.call_count }} notes</span>
+                </div>
+                {% else %}<p class="sb-admin-help">No topics tracked yet. Add topics to notes to see insights!</p>{% endfor %}
+            </section>
+            <section class="sb-admin-section">
+                <header class="sb-admin-section-heading"><h2>Seller Activity</h2>
+                    <span class="sb-admin-help">Notes this month</span></header>
+                {% for seller in seller_activity %}
+                <div class="sb-admin-list-row">
+                    <a href="{{ url_for('sellers.seller_view', id=seller.id) }}" class="sb-admin-tag sb-admin-bg-primary">
+                        <i class="bi bi-person" aria-hidden="true"></i> {{ seller.name }}</a>
+                    <span>{{ seller.call_count }} notes</span>
+                </div>
+                {% else %}<p class="sb-admin-help">No seller activity this month.</p>{% endfor %}
+            </section>
         </div>
-    </div>
-
-    <!-- Most Discussed Topics -->
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-tags"></i> Most Discussed Topics</h5>
-            </div>
-            <div class="card-body">
-                {% if top_topics %}
-                    <div class="list-group list-group-flush">
-                        {% for topic in top_topics %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                                <a href="{{ url_for('topics.topic_view', id=topic.id) }}" class="text-decoration-none">
-                                    <i class="bi bi-tag"></i> {{ topic.name }}
-                                </a>
-                                <span class="badge bg-warning text-dark">{{ topic.call_count }} notes</span>
-                            </div>
-                        {% endfor %}
-                    </div>
-                    <small class="text-muted">Last 90 days</small>
-                {% else %}
-                    <p class="text-muted">No topics tracked yet. Add topics to notes to see insights!</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <!-- Customers Needing Attention -->
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-exclamation-triangle text-warning"></i> Customers Needing Attention</h5>
-            </div>
-            <div class="card-body">
+        <div class="sb-admin-analytics-pane" data-sb-page-pane tabindex="0" role="region" aria-label="Customer follow-up">
+            <section class="sb-admin-section">
+                <header class="sb-admin-section-heading"><h2>Customers Needing Attention</h2></header>
                 {% if customers_needing_attention %}
-                    <p class="text-muted small mb-3">No notes in 90+ days or never contacted</p>
-                    <div class="list-group list-group-flush">
-                        {% for customer in customers_needing_attention %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                                <div>
-                                    <a href="{{ url_for('customers.customer_view', id=customer.id) }}" class="text-decoration-none">
-                                        {{ customer_favicon(customer) }} {{ customer.name }}
-                                    </a>
-                                    {% if customer.seller %}
-                                        <br>
-                                        <small class="text-muted">
-                                            <i class="bi bi-person"></i> {{ customer.seller.name }}
-                                        </small>
-                                    {% endif %}
-                                </div>
-                                <a href="{{ url_for('notes.note_create', customer_id=customer.id) }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-plus"></i> New Note
-                                </a>
-                            </div>
-                        {% endfor %}
+                <p class="sb-admin-help">No notes in 90+ days or never contacted</p>
+                {% for customer in customers_needing_attention %}
+                <div class="sb-admin-list-row">
+                    <div>
+                        <a href="{{ url_for('customers.customer_view', id=customer.id) }}">
+                            {{ customer_favicon(customer) }} {{ customer.name }}</a>
+                        {% if customer.seller %}
+                        <div><a href="{{ url_for('sellers.seller_view', id=customer.seller.id) }}"
+                                class="sb-admin-tag sb-admin-bg-primary">
+                            <i class="bi bi-person" aria-hidden="true"></i> {{ customer.seller.name }}</a></div>
+                        {% endif %}
                     </div>
-                    {% if total_customers > 10 %}
-                        <small class="text-muted d-block mt-2">Showing top 10 of {{ total_customers }} customers</small>
-                    {% endif %}
-                {% else %}
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle"></i> Great job! You've engaged with all your customers recently.
-                    </div>
+                    <a href="{{ url_for('notes.note_create', customer_id=customer.id) }}"
+                       class="sb-admin-command"><i class="bi bi-plus" aria-hidden="true"></i> New Note</a>
+                </div>
+                {% endfor %}
+                {% if total_customers > 10 %}
+                <p class="sb-admin-help">Showing top 10 of {{ total_customers }} customers</p>
                 {% endif %}
-            </div>
+                {% else %}
+                <p class="sb-admin-notice">Great job! You've engaged with all your customers recently.</p>
+                {% endif %}
+            </section>
         </div>
     </div>
-
-    <!-- Seller Activity -->
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-people"></i> Seller Activity</h5>
-            </div>
-            <div class="card-body">
-                {% if seller_activity %}
-                    <p class="text-muted small mb-3">Notes per seller this month</p>
-                    <div class="list-group list-group-flush">
-                        {% for seller in seller_activity %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                                <a href="{{ url_for('sellers.seller_view', id=seller.id) }}" class="text-decoration-none">
-                                    <i class="bi bi-person"></i> {{ seller.name }}
-                                </a>
-                                <span class="badge bg-primary">{{ seller.call_count }} notes</span>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="text-muted">No seller data yet. Assign sellers to customers to track activity!</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
+</section>
 {% endblock %}

@@ -1,43 +1,77 @@
 {% extends "base.html" %}
-
 {% block title %}Milestones - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestones-directory.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Milestones directory status">
+    <span>{{ milestones|length }} milestone{{ 's' if milestones|length != 1 else '' }} · Customer-linked records</span>
+    <span>Default: newest added first · Local cache</span>
+</footer>
+{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Milestones</h1>
-    <a href="{{ url_for('milestones.milestone_create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> New Milestone
-    </a>
-</div>
-
-{% if milestones %}
-<div class="card">
-    <div class="list-group list-group-flush">
-        {% for milestone in milestones %}
-        <a href="{{ url_for('milestones.milestone_view', id=milestone.id) }}" 
-           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-            <div>
-                <div class="fw-bold">
-                    <i class="bi bi-flag"></i>
-                    {% if milestone.title %}
-                        {{ milestone.title }}
-                    {% else %}
-                        <span class="text-muted">Untitled Milestone</span>
-                    {% endif %}
-                </div>
-                <small class="text-muted text-truncate d-block" style="max-width: 500px;">
-                    {{ milestone.url }}
-                </small>
-            </div>
-            <span class="badge bg-secondary">{{ milestone.notes|length }} call{{ 's' if milestone.notes|length != 1 else '' }}</span>
-        </a>
-        {% endfor %}
+<section class="sb-milestones-directory sb-directory-frame" data-sb-page-surface
+         data-sb-report-key="milestones-directory" aria-labelledby="milestonesTitle">
+    <header class="md-heading" data-sb-page-band>
+        <div>
+            <h1 id="milestonesTitle">Milestones</h1>
+            <p>Open a milestone to review its linked calls and tasks.</p>
+        </div>
+        <nav class="md-commands" aria-label="Milestone commands">
+            <a href="{{ url_for('milestones.milestone_tracker') }}" class="md-command">
+                <i class="bi bi-layout-text-sidebar" aria-hidden="true"></i> Milestone Tracker
+            </a>
+            <a href="{{ url_for('milestones.milestone_create') }}" class="md-command is-primary">
+                <i class="bi bi-plus-circle" aria-hidden="true"></i> New Milestone
+            </a>
+        </nav>
+    </header>
+    <p class="md-notice" data-sb-report-context-notice data-sb-page-band role="alert" hidden></p>
+    <div class="md-reading" data-sb-page-body tabindex="0" role="region"
+         aria-label="Milestones directory">
+        {% if milestones %}
+        <table class="md-table" data-sb-sortable data-sb-sort-key="milestones-directory">
+            <caption class="md-caption">Customer-linked milestones and associated call counts</caption>
+            <colgroup><col class="md-title-column"><col><col class="md-calls-column"></colgroup>
+            <thead>
+                <tr>
+                    <th scope="col" data-sb-sort-type="text" data-export-label="Milestone">Milestone</th>
+                    <th scope="col" data-sb-sort-type="text" data-export-label="Source URL">Source URL</th>
+                    <th scope="col" data-sb-sort-type="number" data-export-label="Calls">Calls</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for milestone in milestones %}
+                {% set detail_url = url_for('milestones.milestone_view', id=milestone.id) %}
+                <tr data-milestone-id="{{ milestone.id }}">
+                    <td data-sb-sort-value="{{ milestone.title or 'Untitled Milestone' }}">
+                        <a class="md-title" href="{{ detail_url }}">
+                            <i class="bi bi-flag" aria-hidden="true"></i>
+                            <span>{{ milestone.title or 'Untitled Milestone' }}</span>
+                        </a>
+                    </td>
+                    <td data-sb-sort-value="{{ milestone.url }}">
+                        <a class="md-source" href="{{ detail_url }}" title="{{ milestone.url }}">{{ milestone.url }}</a>
+                    </td>
+                    <td class="md-calls" data-sb-sort-value="{{ milestone.notes|length }}">
+                        <a href="{{ detail_url }}">{{ milestone.notes|length }} call{{ 's' if milestone.notes|length != 1 else '' }}</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="md-empty">
+            <h2>No milestones yet</h2>
+            <p>Milestones are created automatically when you add a milestone URL to a note,
+                or you can <a href="{{ url_for('milestones.milestone_create') }}">create one manually</a>.</p>
+        </div>
+        {% endif %}
     </div>
-</div>
-{% else %}
-<div class="alert alert-info">
-    <i class="bi bi-info-circle"></i> No milestones yet. Milestones are created automatically when you add a milestone URL to a note, 
-    or you can <a href="{{ url_for('milestones.milestone_create') }}" class="alert-link">create one manually</a>.
-</div>
-{% endif %}
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-revenue-reports.js') }}"></script>
 {% endblock %}

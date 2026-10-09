@@ -4,6 +4,68 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
+test('project pending writes and rejected drafts prevent inline detail replacement', async () => {
+    const h = harness();
+    let disposed = 0;
+    const project = {_projectDetail: {
+        isBusy: () => true, isDirty: () => true, dispose: () => disposed++,
+    }};
+    h.elements.managerWorkBody.project = project;
+    h.sellerNotes();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests.length, 0);
+    assert.equal(disposed, 0);
+    project._projectDetail.isBusy = () => false;
+    h.sellerNotes();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests.length, 0);
+    assert.equal(disposed, 0);
+    project._projectDetail.isDirty = () => false;
+    h.sellerNotes();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests.length, 1);
+    assert.equal(disposed, 1);
+});
+
+test('project parent close disposes scoped guards and clears only its loaded content', () => {
+    const h = harness();
+    let disposed = 0;
+    h.elements.managerWorkBody.project = {
+        _projectDetail: {dispose: () => disposed++}, querySelectorAll: () => [],
+    };
+    h.elements.managerWorkBody.children.push({id: 'old'});
+    h.elements.managerWorkModal['sb:dialog-closed']({target: {id: 'managerWorkModal'}});
+    assert.equal(disposed, 1);
+    assert.deepEqual(h.elements.managerWorkBody.children, []);
+});
+
+test('a failed workspace flush protects the existing detail from replacement', async () => {
+    const h = harness();
+    let disposed = false;
+    h.window.SBOneOnOneWorkspace = {
+        root: {isConnected: true}, flush: async () => { throw new Error('Offline'); },
+        dispose() { disposed = true; },
+    };
+    h.sellerNotes();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests.length, 0);
+    assert.equal(disposed, false);
+});
+
+test('successful workspace flush disposes old editor timers before a new detail read', async () => {
+    const h = harness();
+    const sequence = [];
+    h.window.SBOneOnOneWorkspace = {
+        root: {isConnected: true}, flush: async () => { sequence.push('flush'); },
+        dispose() { sequence.push('dispose'); },
+    };
+    h.sellerNotes();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(sequence, ['flush', 'dispose']);
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.requests[0].url, '/api/seller/12/one-on-one/detail');
+});
+
 function classes(initial = []) {
     const values = new Set(initial);
     return {
@@ -37,6 +99,9 @@ function harness(workloadFilter = null) {
     const activePickers = [];
     const timers = new Map();
     const requests = [];
+    const dialogs = [];
+    const navigations = [];
+    const sortMounts = [];
     let nextTimer = 0;
     const field = {dataset: {itemId: '7'}};
     const input = {
@@ -46,7 +111,7 @@ function harness(workloadFilter = null) {
         attributes: {},
         setAttribute(name, value) { this.attributes[name] = value; },
         removeAttribute(name) { delete this.attributes[name]; },
-        closest: () => field,
+        closest: selector => selector === '.talking-points-field' ? field : null,
         focus() {},
     };
     field.querySelector = () => input;
@@ -59,7 +124,7 @@ function harness(workloadFilter = null) {
         'managerWorkBody',
     ]) {
         elements[name] = {
-            dataset: {}, classList: classes(['d-none']), textContent: '', focus() {},
+            dataset: {}, classList: classes(['sb-hidden']), textContent: '', focus() {},
             children: [],
             replaceChildren() { this.children = []; },
             append(...children) { this.children.push(...children); },
@@ -88,7 +153,10 @@ function harness(workloadFilter = null) {
         return button;
     }
     const root = {
-        addEventListener: (name, callback) => { events[name] = callback; },
+        addEventListener: (name, callback) => {
+            const previous = events[name];
+            events[name] = previous ? event => { previous(event); callback(event); } : callback;
+        },
         querySelector(selector) {
             if (selector === '.talking-points.is-invalid') {
                 return input.classList.contains('is-invalid') ? input : null;
@@ -98,22 +166,30 @@ function harness(workloadFilter = null) {
             }
             return field.dataset.dirty === 'true' ? field : null;
         },
-        querySelectorAll: selector => selector === '.work-picker:not(.d-none)'
+        querySelectorAll: selector => selector === '.work-picker:not(.sb-hidden)'
             ? activePickers : field.dataset.dirty === 'true' ? [field] : [],
     };
     const context = {
         document: {
             getElementById: name => name === 'managerReport' ? root : elements[name],
+            querySelector: () => elements.managerWorkBody.project || null,
             querySelectorAll: () => [],
             createElement(tag) {
                 return node(tag);
             },
         },
-        bootstrap: {Modal: {getOrCreateInstance: () => ({show() {}, hide() {}})}},
+        SBDialog: {
+            open(dialog) { dialogs.push({action: 'open', dialog}); },
+            close(dialog) { dialogs.push({action: 'close', dialog}); },
+        },
+        console: {error() {}},
+        confirm: () => false,
         AbortController,
         URLSearchParams,
         Intl,
         window: {
+            SBTableSort: {mount(root) { sortMounts.push(root); }},
+            location: {assign(href) { navigations.push(href); }},
             addEventListener(name, callback) { windowEvents[name] = callback; },
             getSelection: () => ({toString: () => ''}),
         },
@@ -146,7 +222,15 @@ function harness(workloadFilter = null) {
         __dirname, '..', '..', 'static', 'js', 'manager_one_on_one.js',
     ), 'utf8'), context);
     return {
-        field, input, requests, elements,
+        field, input, requests, elements, dialogs, navigations, sortMounts,
+        fullPage() {
+            const event = {
+                currentTarget: {href: '/one-on-one/42'}, prevented: false,
+                preventDefault() { this.prevented = true; },
+            };
+            const pending = elements.managerWorkFullLink.click(event);
+            return {event, pending};
+        },
         edit(value) { input.value = value; events.input({target: input}); },
         blur() { events.focusout({target: input}); },
         fireTimers() {
@@ -174,7 +258,7 @@ function harness(workloadFilter = null) {
                 target: elements.managerPointsModal, prevented: false,
                 preventDefault() { this.prevented = true; },
             };
-            elements.managerPointsModal['hide.bs.modal'](event);
+            elements.managerPointsModal['sb:dialog-before-close'](event);
             return event;
         },
         window: context.window,
@@ -250,6 +334,188 @@ async function settle() {
     for (let count = 0; count < 20; count++) await Promise.resolve();
 }
 
+test('native Points close waits for the pending save before closing', async () => {
+    const ui = harness();
+    ui.edit('Pending conversation');
+    assert.equal(ui.closePoints().prevented, true);
+    assert.equal(ui.dialogs.length, 0);
+    ui.requests[0].finish();
+    await settle();
+    assert.equal(ui.dialogs.at(-1).action, 'close');
+    assert.equal(ui.dialogs.at(-1).dialog, ui.elements.managerPointsModal);
+    assert.equal(ui.field.dataset.dirty, 'false');
+});
+
+test('Full Page waits for workspace edits and preserves the inline workspace on failure', async () => {
+    const ui = harness();
+    ui.window.SBOneOnOneWorkspace = {
+        root: {isConnected: true}, hasPendingEdits: () => true,
+        async flush() { throw Error('Save failed'); },
+    };
+    const failed = ui.fullPage();
+    await failed.pending;
+    assert.equal(failed.event.prevented, true);
+    assert.equal(ui.navigations.length, 0);
+    assert.equal(ui.elements.reportError.classList.contains('sb-hidden'), false);
+    ui.window.SBOneOnOneWorkspace.flush = async () => {};
+    await ui.fullPage().pending;
+    assert.deepEqual(ui.navigations, ['/one-on-one/42']);
+});
+
+test('initiative writes protect unrelated form drafts and retain failed submitted edits', async () => {
+    const full = fs.readFileSync(path.join(
+        __dirname, '..', '..', 'static', 'js', 'manager_one_on_one.js',
+    ), 'utf8');
+    const source = 'async function mutate(button, action) {' +
+        full.split('async function mutate(button, action) {')[1].split('function cell(')[0];
+    const form = {};
+    const control = {disabled: false};
+    const drafts = new Set([form]);
+    const errors = [];
+    let reloads = 0, actions = 0;
+    const history = {state: {sbTableSort: {keep: true}}, replaceState(state) {
+        assert.equal(state, this.state);
+    }};
+    const context = {
+        saving: false, formDrafts: drafts, history,
+        root: {querySelectorAll: () => [control], querySelector: () => null},
+        errorBox: {classList: classes()}, flushTalkingPoints: async () => {},
+        window: {}, showError(error) { errors.push(error.message); },
+        location: {reload() { reloads++; }},
+    };
+    vm.runInNewContext(source, context);
+    const button = {disabled: false, closest: selector => selector === '.section-form'
+        ? form : {id: 'section-1'}};
+    const unrelated = {};
+    drafts.add(unrelated);
+    await context.mutate(button, async () => { actions++; });
+    assert.equal(actions, 0);
+    assert.match(errors.at(-1), /other initiative edits/);
+    assert.equal(control.disabled, false);
+    drafts.delete(unrelated);
+    await context.mutate(button, async () => { throw Error('Database unavailable'); });
+    assert.equal(drafts.has(form), true);
+    assert.equal(reloads, 0);
+    await context.mutate(button, async () => { actions++; });
+    assert.equal(drafts.has(form), false);
+    assert.equal(reloads, 1);
+    assert.equal(control.disabled, false);
+});
+
+test('native work close restores the parent context and aborts a pending detail read', () => {
+    const ui = harness();
+    const original = {page: 'initiative_tracker'};
+    ui.window.copilotContext = original;
+    ui.projectRow();
+    ui.window.copilotContext = {page: 'project'};
+    ui.workModalEvent('sb:dialog-closed', 'managerWorkModal');
+    assert.equal(ui.window.copilotContext, original);
+    assert.equal(ui.requests[0].options.signal.aborted, true);
+});
+
+test('candidate sorters exclude selection and use raw ISO dates and unrounded ACR', async () => {
+    const ui = harness();
+    const picker = ui.picker();
+    picker.type('milestone');
+    ui.requests[0].finish(true, undefined, {results: [{
+        id: 8, title: 'Quarter work', customer_name: 'Customer', status: 'On Track',
+        commitment: 'Uncommitted', due_date: '2026-12-15', acr: 1234.56,
+    }]});
+    await settle();
+    const table = picker.parts['.candidate-results'].children[0];
+    assert.equal(ui.sortMounts.length, 1);
+    assert.equal(table.attributes['data-sb-sort-key'], 'initiative-candidates-2');
+    const headers = table.children[1].children[0].children;
+    assert.deepEqual(headers.map(th => th.attributes['data-sb-sort-type']),
+        [undefined, 'text', 'text', 'text', 'date', 'number']);
+    const cells = table.children[2].children[0].children;
+    assert.equal(cells[4].attributes['data-sb-sort-value'], '2026-12-15');
+    assert.equal(cells[5].attributes['data-sb-sort-value'], '1234.56');
+});
+
+test('embedded workspace native host waits for saves and retains drafts on failure', async () => {
+    const source = fs.readFileSync(path.join(
+        __dirname, '..', '..', 'templates', 'partials', 'one_on_one_workspace_content.html',
+    ), 'utf8').split('let closingWorkspace = false;')[1].split('{% endif %}')[0];
+    function host(failure) {
+        const listeners = {};
+        const parent = {addEventListener: (name, callback) => { listeners[name] = callback; }};
+        const calls = [];
+        vm.runInNewContext(`let closingWorkspace = false;${source}`, {
+            parentModal: parent, nativeParent: true,
+            parentClosingEvent: 'sb:dialog-before-close', parentClosedEvent: 'sb:dialog-closed',
+            workspaceRoot: {isConnected: true}, hasPendingEdits: () => true,
+            workspaceController: {dispose() { calls.push('dispose'); }},
+            flushEdits: async () => { calls.push('flush'); if (failure) throw Error('Offline'); },
+            SBDialog: {close(dialog, reason) {
+                assert.equal(dialog, parent); assert.equal(reason, 'saved'); calls.push('close');
+            }},
+            alert() { calls.push('notice'); },
+        });
+        const event = {target: parent, preventDefault() { calls.push('prevent'); }};
+        listeners['sb:dialog-before-close'](event);
+        return {calls, closed() { listeners['sb:dialog-closed'](event); }};
+    }
+    const success = host(false);
+    const failed = host(true);
+    await settle();
+    assert.deepEqual(success.calls, ['prevent', 'flush', 'close']);
+    success.closed();
+    assert.equal(success.calls.at(-1), 'dispose');
+    assert.deepEqual(failed.calls, ['prevent', 'flush', 'notice']);
+});
+
+test('Back waits for picker results before restoring scroll and never overwrites saved context', async () => {
+    const full = fs.readFileSync(path.join(
+        __dirname, '..', '..', 'static', 'js', 'manager_one_on_one.js',
+    ), 'utf8');
+    const source = 'const reading = document.getElementById(\'initiativeReading\');' +
+        full.split("const reading = document.getElementById('initiativeReading');")[1]
+            .split('})();')[0];
+    const events = {};
+    const pending = [];
+    const reading = {scrollTop: 0, addEventListener() {}};
+    const type = {value: ''}, query = {value: ''};
+    const picker = {
+        id: 'picker-1', dataset: {}, classList: classes(['sb-hidden']),
+        matches: selector => ['.it-editor', '.work-picker'].includes(selector),
+        querySelector: selector => selector.startsWith('select') ? type
+            : selector.startsWith('input') ? query : {scrollTop: 0},
+        querySelectorAll: () => [],
+    };
+    const history = {state: {sbInitiatives: {
+        top: 120, editors: ['picker-1'], pickers: [{
+            id: 'picker-1', source: 'u2c', type: 'milestone', q: 'SQL', selected: [], top: 0,
+        }],
+    }}, replaceState(value) { this.state = value; }};
+    const context = {
+        document: {getElementById: id => id === 'initiativeReading' ? reading : picker},
+        root: {querySelectorAll: selector => selector.startsWith('[aria-controls')
+            ? [{setAttribute() {}}] : [picker]},
+        history, window: {addEventListener(name, callback) { events[name] = callback; }},
+        showError(error) { throw error; },
+        search() {
+            context.saveReading();
+            return new Promise(resolve => pending.push(resolve));
+        },
+    };
+    vm.runInNewContext(source, context);
+    events.pageshow();
+    assert.equal(history.state.sbInitiatives.top, 120);
+    assert.equal(query.value, 'SQL');
+    assert.equal(type.value, 'milestone');
+    assert.equal(picker.dataset.source, 'u2c');
+    assert.equal(pending.length, 2);
+    pending[1]();
+    await settle();
+    assert.equal(reading.scrollTop, 120);
+    pending[0]();
+    await settle();
+    assert.equal(reading.scrollTop, 120);
+    context.saveReading();
+    assert.equal(history.state.sbInitiatives.top, 120);
+});
+
 test('typing is debounced and a successful autosave clears pending state', async () => {
     const ui = harness();
     ui.edit('Progress');
@@ -261,7 +527,7 @@ test('typing is debounced and a successful autosave clears pending state', async
     ui.requests[0].finish();
     await settle();
     assert.equal(ui.field.dataset.dirty, 'false');
-    assert.equal(ui.elements.talkingPointsState.textContent, '');
+    assert.equal(ui.elements.talkingPointsState.textContent, 'Points save automatically');
 });
 
 test('edits during an in-flight save are serialized and the latest value wins', async () => {
@@ -289,15 +555,15 @@ test('a failed save stays dirty and exposes a retry that clears the error on suc
     await settle();
     assert.equal(ui.field.dataset.dirty, 'true');
     assert.equal(ui.input.attributes['aria-invalid'], 'true');
-    assert.equal(ui.elements.reportError.classList.contains('d-none'), false);
-    assert.equal(ui.elements.retryTalkingPoints.classList.contains('d-none'), false);
+    assert.equal(ui.elements.reportError.classList.contains('sb-hidden'), false);
+    assert.equal(ui.elements.retryTalkingPoints.classList.contains('sb-hidden'), false);
     ui.retry();
     assert.equal(ui.requests.length, 2);
     ui.requests[1].finish();
     await settle();
     assert.equal(ui.field.dataset.dirty, 'false');
     assert.equal(ui.input.attributes['aria-invalid'], undefined);
-    assert.equal(ui.elements.reportError.classList.contains('d-none'), true);
+    assert.equal(ui.elements.reportError.classList.contains('sb-hidden'), true);
 });
 
 test('leaving a field saves immediately without a duplicate debounce request', async () => {
@@ -382,7 +648,7 @@ test('a failed archive keeps the saved current block and exposes its error in th
     await settle();
     assert.equal(ui.input.value, 'Keep this agenda');
     assert.equal(ui.input.disabled, false);
-    assert.equal(ui.elements.pointsModalError.classList.contains('d-none'), false);
+    assert.equal(ui.elements.pointsModalError.classList.contains('sb-hidden'), false);
     assert.equal(ui.elements.discussPoints.disabled, false);
 });
 
@@ -396,14 +662,21 @@ test('closing with unsaved points flushes immediately and stays open on failure'
     await settle();
     assert.equal(ui.field.dataset.dirty, 'true');
     assert.equal(ui.input.value, 'Do not lose this');
-    assert.equal(ui.elements.pointsModalError.classList.contains('d-none'), false);
+    assert.equal(ui.elements.pointsModalError.classList.contains('sb-hidden'), false);
 });
 
 test('a nested work modal closing does not reset the visible detail context', () => {
     const ui = harness();
     ui.window.copilotContext = {page: 'engagement_view'};
-    ui.workModalEvent('hidden.bs.modal', 'taskEditModal');
+    ui.workModalEvent('sb:dialog-closed', 'taskEditModal');
     assert.equal(ui.window.copilotContext.page, 'engagement_view');
+});
+
+test('native detail activation no longer relocates legacy framework modals', () => {
+    const source = fs.readFileSync(path.join(
+        __dirname, '..', '..', 'static', 'js', 'manager_one_on_one.js',
+    ), 'utf8');
+    assert.doesNotMatch(source, /\bbootstrap\.|\.bs\.modal|workspaceParentModal/);
 });
 
 test('seller notes fetch the shared workspace fragment without navigation', async () => {
@@ -436,68 +709,14 @@ test('project rows open the shared work modal using the project fragment', async
     assert.equal(ui.elements.managerWorkBody.innerHTML, '<div>Complete seller workspace</div>');
 });
 
-test('project task dialogs wait for the parent transition and restore the project modal', () => {
-    function modal(initialClasses) {
-        const listeners = new Map();
-        return {
-            classList: classes(initialClasses), isConnected: true, dataset: {},
-            addEventListener(name, callback, options = {}) {
-                const entries = listeners.get(name) || [];
-                listeners.set(name, [...entries, {callback, once: options.once}]);
-            },
-            removeEventListener(name, callback) {
-                listeners.set(name, (listeners.get(name) || []).filter(
-                    entry => entry.callback !== callback,
-                ));
-            },
-            emit(name, event = {}) {
-                for (const entry of [...(listeners.get(name) || [])]) {
-                    if (entry.once) this.removeEventListener(name, entry.callback);
-                    entry.callback(event);
-                }
-            },
-        };
-    }
-    const parent = modal(['show']);
-    parent.id = 'managerWorkModal';
-    const task = modal([]);
-    let transitioning = true;
-    let hideCount = 0;
-    let taskShowCount = 0;
-    let disposeCount = 0;
-    const source = fs.readFileSync(path.join(
+test('project fragments mount the scoped native task controller without a legacy parent transition', () => {
+    const fragment = fs.readFileSync(path.join(
         __dirname, '..', '..', 'templates', 'partials', 'project_view_content.html',
-    ), 'utf8').split('{% if parent_modal_id is defined %}')[1].split('{% endif %}')[0]
-        .replace('{{ parent_modal_id|tojson }}', '"managerWorkModal"');
-    vm.runInNewContext(source, {
-        document: {
-            getElementById: id => id === parent.id ? parent : task,
-            body: {appendChild() {}},
-        },
-        bootstrap: {Modal: {
-            getInstance: () => ({dispose() { disposeCount++; }}),
-            getOrCreateInstance: element => element === parent ? {
-                hide() { hideCount++; if (!transitioning) parent.classList.remove('show'); },
-                show() { parent.classList.add('show'); },
-            } : {show() { taskShowCount++; task.classList.add('show'); }},
-        }},
-    });
-    let prevented = false;
-    task.emit('show.bs.modal', {preventDefault() { prevented = true; }});
-    assert.equal(prevented, true);
-    assert.equal(taskShowCount, 0);
-    transitioning = false;
-    parent.emit('shown.bs.modal');
-    assert.equal(hideCount, 2);
-    assert.equal(parent.classList.contains('show'), false);
-    parent.emit('hidden.bs.modal');
-    assert.equal(taskShowCount, 1);
-    assert.equal(disposeCount, 1);
-    task.classList.remove('show');
-    task.emit('hidden.bs.modal');
-    parent.emit('shown.bs.modal');
-    assert.equal(parent.classList.contains('show'), true);
-    assert.equal(hideCount, 2);
+    ), 'utf8');
+    assert.match(fragment, /data-project-parent="{{ parent_modal_id }}"/);
+    assert.match(fragment, /SBProjectDetail.mount\(document.currentScript.closest/);
+    assert.match(fragment, /partials\/_action_item_detail_modal.html/);
+    assert.doesNotMatch(fragment, /bootstrap|shown.bs.modal|appendChild\(taskModal\)/);
 });
 
 test('project selection resets U2C source and displays projects without customer or ACR', async () => {
@@ -506,7 +725,7 @@ test('project selection resets U2C source and displays projects without customer
     picker.source('u2c');
     picker.type('project');
     assert.equal(picker.dataset.source, 'search');
-    assert.equal(picker.parts['.milestone-source'].classList.contains('d-none'), true);
+    assert.equal(picker.parts['.milestone-source'].classList.contains('sb-hidden'), true);
     assert.match(ui.requests[1].url, /type=project&source=search/);
     assert.equal(
         picker.parts['.candidate-search'].elements.q.placeholder,
@@ -570,7 +789,7 @@ test('a late assisted response cannot overwrite a subsequent engagement search',
     ui.requests[0].finish(true, undefined, u2cPayload());
     await settle();
     assert.equal(picker.parts['.picker-status'].textContent, message);
-    assert.equal(picker.parts['.milestone-source'].classList.contains('d-none'), true);
+    assert.equal(picker.parts['.milestone-source'].classList.contains('sb-hidden'), true);
 });
 
 test('missing snapshots show their explicit message, without a results table', async () => {

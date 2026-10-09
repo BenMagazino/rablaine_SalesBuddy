@@ -1,0 +1,46 @@
+.sb-revenue-import [hidden] { display: none !important; }
+.sb-page-frame .sb-revenue-import .sb-revenue-page-header { padding-inline: 24px; }
+.sb-import-sync { background: var(--sb-ui-selection); border-color: var(--sb-ui-control-line); }
+.sb-import-sync-band { padding: 8px 24px; border-bottom: 1px solid var(--sb-ui-line); position: relative; }
+.sb-import-sync-band > p { display: inline; margin: 0; color: var(--sb-ui-muted); font-size: 12px; }
+.sb-import-sync-band progress { display: block; width: min(600px, 100%); height: 8px; margin: 10px 0 6px; accent-color: var(--sb-ui-accent); }
+.sb-import-sync-band #syncText { margin: 0; font-size: 12px; }
+.sb-import-sync-band #syncResults { padding-top: 8px; font-size: 12px; }
+.sb-import-sync-band #syncResults p { margin: 0 0 4px; }
+.sb-revenue-import [data-tone="danger"] { color: var(--sb-ui-danger); }
+.sb-revenue-import [data-tone="positive"] { color: var(--sb-ui-milestone-rail); }
+.sb-revenue-import #bucketNotice { padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); color: var(--sb-ui-warning); }
+.sb-revenue-import #bucketNotice h2 { margin: 0 0 6px; font-size: 14px; }
+.sb-revenue-import #bucketNotice p { margin: 4px 0; font-size: 12px; }
+.sb-import-workarea { display: grid; grid-template-columns: minmax(0, 1fr) 290px 360px; }
+.sb-revenue-import[data-has-buckets="false"] .sb-import-workarea { grid-template-columns: minmax(0, 1fr) 340px; }
+.sb-import-workarea:has(> .sb-import-buckets[hidden]) { grid-template-columns: minmax(0, 1fr) 340px; }
+.sb-import-pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.sb-import-pane + .sb-import-pane { border-left: 1px solid var(--sb-ui-line); }
+.sb-import-pane-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-import-pane-header h2 { margin: 0; font: 600 14px/1.5 var(--sb-ui-font); }
+.sb-import-pane-header span { color: var(--sb-ui-muted); font-size: 11px; white-space: nowrap; }
+.sb-import-reading { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
+.sb-import-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sb-import-table :is(th, td) { padding: 9px 16px; border-bottom: 1px solid var(--sb-ui-grid-line); vertical-align: top; }
+.sb-import-table th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); color: var(--sb-ui-muted); font-weight: 500; white-space: nowrap; }
+.sb-import-table tbody tr:hover { background: var(--sb-ui-control-hover); }
+.sb-import-history th:first-child { width: 24%; }
+.sb-import-history th:nth-child(2) { width: 37%; }
+.sb-import-table [data-sb-sort-type="number"], .sb-import-table td[data-sb-sort-value] { font-variant-numeric: tabular-nums; }
+.sb-import-history :is(th, td):nth-child(n+3), .sb-import-months :is(th, td):last-child { text-align: right; }
+.sb-import-empty { margin: 0; padding: 24px 16px; color: var(--sb-ui-muted); }
+.sb-import-empty h3 { font-size: 14px; color: var(--sb-ui-ink); }
+.sb-import-bucket-explanation { margin: 12px 16px; font-size: 12px; color: var(--sb-ui-muted); }
+.sb-import-buckets #bucketPickerList { flex: 1; display: flex; min-height: 0; margin: 0 16px; }
+.sb-import-buckets .sb-bucket-inline { display: flex; flex: 1; flex-direction: column; min-height: 0; font-size: 12px; color-scheme: light; }
+[data-sb-mode="dark"] .sb-import-buckets .sb-bucket-inline { color-scheme: dark; }
+.sb-import-buckets .sb-bucket-inline p { margin: 8px 0 0; font-size: 12px; }
+.sb-import-buckets .sb-bucket-inline :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 1px; }
+.sb-import-buckets .sb-bucket-heading { display: none; }
+.sb-import-buckets .sb-bucket-list { flex: 1; min-height: 0; max-height: none; overflow: auto; }
+.sb-import-buckets [data-sb-import-bucket-status] { margin: 8px 16px; font-size: 12px; }
+.sb-import-buckets [data-sb-import-bucket-retry] { align-self: start; margin: 0 16px 12px; }
+.sb-revenue-import[data-embedded="true"] .sb-import-workarea { display: block; }
+.sb-revenue-import[data-embedded="true"] .sb-import-pane { border-left: 0; margin-top: 16px; }
+.sb-revenue-import[data-embedded="true"] .sb-import-buckets .sb-bucket-list { max-height: 300px; }

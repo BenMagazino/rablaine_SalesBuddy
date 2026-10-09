@@ -2,100 +2,122 @@
 
 {% block title %}Settings - Sales Buddy{% endblock %}
 
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10 col-xl-8">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="mb-0"><i class="bi bi-gear"></i> Settings</h1>
-        </div>
 
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-dialog.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-table-sort.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-administration.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Page status">
+    <span>Preferences apply to this Sales Buddy installation</span>
+    <span>Toggles save immediately · Prompt and defaults save separately</span>
+</footer>
+{% endblock %}
+
+{% block content %}
+<script src="{{ url_for('static', filename='js/ui-admin-panel.js') }}"></script>
+
+<section class="sb-administration sb-admin-settings sb-directory-frame" data-sb-page-surface>
+<header class="sb-admin-page-heading" data-sb-page-band>
+    <h1>Settings</h1>
+    <span>Appearance, dashboard and writing preferences</span>
+</header>
+<div class="sb-admin-reading" data-sb-page-body tabindex="0" role="region" aria-label="settings content">
+
+<div class="sb-admin-grid sb-admin-justify-content-center">
+    <div class="sb-admin-col-lg-10 sb-admin-col-xl-8">
         <!-- Appearance -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-palette"></i> Appearance</h5>
+        <section class="sb-admin-section sb-admin-mb-4">
+            <div class="sb-admin-section-heading">
+                <h5 class="sb-admin-mb-0"><i class="bi bi-palette"></i> Appearance</h5>
             </div>
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="small text-nowrap" style="cursor: pointer;" onclick="document.getElementById('settingsDarkModeSwitch').click()"><i class="bi bi-sun-fill text-warning"></i> Light</span>
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" role="switch" id="settingsDarkModeSwitch" style="width: 3em; height: 1.5em;" {{ 'checked' if dark_mode else '' }}>
-                    </div>
-                    <span class="small text-nowrap" style="cursor: pointer;" onclick="document.getElementById('settingsDarkModeSwitch').click()"><i class="bi bi-moon-fill"></i> Dark</span>
+            <div class="sb-admin-section-content">
+                <div class="sb-admin-check">
+                    <label class="sb-theme-switch" for="settingsDarkModeSwitch">
+                        <span><i class="bi bi-sun-fill" aria-hidden="true"></i> Light</span>
+                        <input class="sb-theme-switch-input" type="checkbox" role="switch"
+                               id="settingsDarkModeSwitch" aria-label="Dark appearance"
+                               {{ 'checked' if dark_mode else '' }}>
+                        <span><i class="bi bi-moon-fill" aria-hidden="true"></i> Dark</span>
+                    </label>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- Dashboard -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-house"></i> Dashboard</h5>
+        <section class="sb-admin-section sb-admin-mb-4">
+            <div class="sb-admin-section-heading">
+                <h5 class="sb-admin-mb-0"><i class="bi bi-house"></i> Dashboard</h5>
             </div>
-            <div class="card-body">
+            <div class="sb-admin-section-content">
                 {% include 'partials/_dashboard_settings.html' %}
             </div>
-        </div>
+        </section>
 
         <!-- WorkIQ Settings -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-robot"></i> WorkIQ Settings</h5>
+        <section class="sb-admin-section sb-admin-mb-4">
+            <div class="sb-admin-section-heading">
+                <h5 class="sb-admin-mb-0"><i class="bi bi-robot"></i> WorkIQ Settings</h5>
             </div>
-            <div class="card-body">
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" id="connectImpactSwitch" {{ 'checked' if pref and pref.workiq_connect_impact else '' }}>
-                    <label class="form-check-label" for="connectImpactSwitch">
+            <div class="sb-admin-section-content">
+                <div class="sb-admin-check sb-admin-switch sb-admin-mb-3">
+                    <input class="sb-admin-checkbox" type="checkbox" id="connectImpactSwitch" {{ 'checked' if pref and pref.workiq_connect_impact else '' }}>
+                    <label class="sb-admin-check-label" for="connectImpactSwitch">
                         <strong>Extract Connect & Engagement Signals</strong>
                     </label>
-                    <div><small class="text-muted">When enabled, WorkIQ summaries include customer impact signals for Connect self-evaluations and engagement data points (key individuals, technical problems, business impact, etc.) for the Generate feature.</small></div>
+                    <div><small class="sb-admin-text-muted">When enabled, WorkIQ summaries include customer impact signals for Connect self-evaluations and engagement data points (key individuals, technical problems, business impact, etc.) for the Generate feature.</small></div>
                 </div>
                 <div>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="sb-admin-d-flex sb-admin-justify-content-between sb-admin-align-items-center sb-admin-mb-2">
                         <div>
-                            <h6 class="mb-1">Meeting Summary Prompt</h6>
-                            <small class="text-muted">Customize how WorkIQ summarizes your meetings. Use <code>{title}</code> and <code>{date}</code> as placeholders.</small>
+                            <label class="sb-admin-label" for="workiqPrompt">Meeting Summary Prompt</label>
+                            <small class="sb-admin-text-muted">Customize how WorkIQ summarizes your meetings. Use <code>{title}</code> and <code>{date}</code> as placeholders.</small>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="resetPromptBtn" title="Reset to default prompt">
+                        <button type="button" class="sb-admin-command sb-admin-btn-sm sb-admin-btn-outline-secondary" id="resetPromptBtn" title="Reset to default prompt">
                             <i class="bi bi-arrow-counterclockwise"></i> Reset
                         </button>
                     </div>
-                    <textarea class="form-control" id="workiqPrompt" rows="4" placeholder="Enter your custom meeting summary prompt...">{{ workiq_prompt or default_workiq_prompt }}</textarea>
-                    <div class="d-flex justify-content-between align-items-center mt-2">
-                        <small class="text-muted" id="promptStatus"></small>
-                        <button type="button" class="btn btn-sm btn-primary" id="savePromptBtn">
+                    <textarea class="sb-admin-field" id="workiqPrompt" rows="4" placeholder="Enter your custom meeting summary prompt...">{{ workiq_prompt or default_workiq_prompt }}</textarea>
+                    <div class="sb-admin-d-flex sb-admin-justify-content-between sb-admin-align-items-center sb-admin-mt-2">
+                        <small class="sb-admin-text-muted" id="promptStatus"></small>
+                        <button type="button" class="sb-admin-command sb-admin-btn-sm sb-admin-btn-primary" id="savePromptBtn">
                             <i class="bi bi-check-lg"></i> Save Prompt
                         </button>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- MSX Auto-Writeback -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-cloud-upload"></i> MSX Auto-Writeback</h5>
+        <section class="sb-admin-section sb-admin-mb-4">
+            <div class="sb-admin-section-heading">
+                <h5 class="sb-admin-mb-0"><i class="bi bi-cloud-upload"></i> MSX Auto-Writeback</h5>
             </div>
-            <div class="card-body">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="msxAutoWritebackSwitch" {{ 'checked' if pref and pref.msx_auto_writeback else '' }}>
-                    <label class="form-check-label" for="msxAutoWritebackSwitch">
+            <div class="sb-admin-section-content">
+                <div class="sb-admin-check sb-admin-switch">
+                    <input class="sb-admin-checkbox" type="checkbox" id="msxAutoWritebackSwitch" {{ 'checked' if pref and pref.msx_auto_writeback else '' }}>
+                    <label class="sb-admin-check-label" for="msxAutoWritebackSwitch">
                         Automatically sync to MSX milestones and opportunities
                     </label>
-                    <div><small class="text-muted">When enabled, saving a note or engagement will automatically post an AI-generated summary to linked MSX milestones (SE mode) or opportunities (DSS mode). When disabled, you can still manually post, edit, and delete comments on milestones and opportunities.</small></div>
+                    <div><small class="sb-admin-text-muted">When enabled, saving a note or engagement will automatically post an AI-generated summary to linked MSX milestones (SE mode) or opportunities (DSS mode). When disabled, you can still manually post, edit, and delete comments on milestones and opportunities.</small></div>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- WorkIQ Settings -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> Note Templates</h5>
+        <section class="sb-admin-section sb-admin-mb-4">
+            <div class="sb-admin-section-heading">
+                <h5 class="sb-admin-mb-0"><i class="bi bi-file-earmark-text"></i> Note Templates</h5>
             </div>
-            <div class="card-body">
+            <div class="sb-admin-section-content">
                 {% if templates %}
                 <!-- Template selector -->
-                <div class="mb-3">
-                    <label for="templateSelect" class="form-label">Template</label>
-                    <select class="form-select" id="templateSelect">
+                <div class="sb-admin-mb-3">
+                    <label for="templateSelect" class="sb-admin-label">Template</label>
+                    <select class="sb-admin-field" id="templateSelect">
                         <option value="">Select a template...</option>
                         {% for t in templates %}
                         <option value="{{ t.id }}">{{ t.name }}</option>
@@ -104,21 +126,21 @@
                 </div>
 
                 <!-- Action buttons -->
-                <div class="d-flex gap-2 mb-4">
-                    <a href="#" class="btn btn-outline-primary" id="viewEditBtn" style="pointer-events: none; opacity: 0.5;">
+                <div class="sb-admin-d-flex sb-admin-gap-2 sb-admin-mb-4">
+                    <a href="#" class="sb-admin-command sb-admin-btn-outline-primary" id="viewEditBtn" style="pointer-events: none; opacity: 0.5;">
                         <i class="bi bi-pencil"></i> View / Edit
                     </a>
-                    <a href="{{ url_for('main.template_create') }}" class="btn btn-outline-success">
+                    <a href="{{ url_for('main.template_create') }}" class="sb-admin-command sb-admin-btn-outline-success">
                         <i class="bi bi-plus-circle"></i> Create New
                     </a>
-                    <button type="button" class="btn btn-outline-danger" id="deleteBtn" disabled>
+                    <button type="button" class="sb-admin-command sb-admin-btn-outline-danger" id="deleteBtn" disabled>
                         <i class="bi bi-trash"></i> Delete
                     </button>
                 </div>
                 {% else %}
-                <p class="text-muted mb-3">No templates yet.</p>
-                <div class="mb-4">
-                    <a href="{{ url_for('main.template_create') }}" class="btn btn-outline-success">
+                <p class="sb-admin-text-muted sb-admin-mb-3">No templates yet.</p>
+                <div class="sb-admin-mb-4">
+                    <a href="{{ url_for('main.template_create') }}" class="sb-admin-command sb-admin-btn-outline-success">
                         <i class="bi bi-plus-circle"></i> Create New Template
                     </a>
                 </div>
@@ -126,160 +148,70 @@
 
                 <!-- Defaults -->
                 <hr>
-                <h6 class="mb-3"><i class="bi bi-star"></i> Default Templates</h6>
-                <form method="POST" action="{{ url_for('main.api_save_default_templates') }}">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label for="defaultCustomer" class="form-label">Customer notes</label>
-                            <select class="form-select" id="defaultCustomer" name="default_template_customer_id">
+                <h6 class="sb-admin-mb-3"><i class="bi bi-star"></i> Default Templates</h6>
+                <form id="defaultTemplatesForm" method="POST" action="{{ url_for('main.api_save_default_templates') }}">
+                    <div class="sb-admin-grid sb-admin-g-3 sb-admin-mb-3">
+                        <div class="sb-admin-col-md-6">
+                            <label for="defaultCustomer" class="sb-admin-label">Customer notes</label>
+                            <select class="sb-admin-field" id="defaultCustomer" name="default_template_customer_id">
                                 <option value="">None</option>
+                                {% if default_template_values and default_template_values.default_template_customer_id and default_template_values.default_template_customer_id|int not in templates|map(attribute='id')|list %}
+                                <option value="{{ default_template_values.default_template_customer_id }}" selected>Unavailable template ({{ default_template_values.default_template_customer_id }})</option>
+                                {% endif %}
                                 {% for t in templates %}
-                                <option value="{{ t.id }}" {{ 'selected' if pref and pref.default_template_customer_id == t.id else '' }}>{{ t.name }}</option>
+                                <option value="{{ t.id }}" {{ 'selected' if (default_template_values and default_template_values.default_template_customer_id == t.id|string) or (not default_template_values and pref and pref.default_template_customer_id == t.id) else '' }}>{{ t.name }}</option>
                                 {% endfor %}
                             </select>
-                            <div class="form-text">Auto-populated when creating a new customer note</div>
+                            <div class="sb-admin-help">Auto-populated when creating a new customer note</div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="defaultNoncustomer" class="form-label">Non-customer notes</label>
-                            <select class="form-select" id="defaultNoncustomer" name="default_template_noncustomer_id">
+                        <div class="sb-admin-col-md-6">
+                            <label for="defaultNoncustomer" class="sb-admin-label">Non-customer notes</label>
+                            <select class="sb-admin-field" id="defaultNoncustomer" name="default_template_noncustomer_id">
                                 <option value="">None</option>
+                                {% if default_template_values and default_template_values.default_template_noncustomer_id and default_template_values.default_template_noncustomer_id|int not in templates|map(attribute='id')|list %}
+                                <option value="{{ default_template_values.default_template_noncustomer_id }}" selected>Unavailable template ({{ default_template_values.default_template_noncustomer_id }})</option>
+                                {% endif %}
                                 {% for t in templates %}
-                                <option value="{{ t.id }}" {{ 'selected' if pref and pref.default_template_noncustomer_id == t.id else '' }}>{{ t.name }}</option>
+                                <option value="{{ t.id }}" {{ 'selected' if (default_template_values and default_template_values.default_template_noncustomer_id == t.id|string) or (not default_template_values and pref and pref.default_template_noncustomer_id == t.id) else '' }}>{{ t.name }}</option>
                                 {% endfor %}
                             </select>
-                            <div class="form-text">Auto-populated when creating a new general note</div>
+                            <div class="sb-admin-help">Auto-populated when creating a new general note</div>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="sb-admin-command sb-admin-btn-primary">
                         <i class="bi bi-check-lg"></i> Save Defaults
                     </button>
                 </form>
             </div>
-        </div>
+        </section>
     </div>
 </div>
 
 <!-- Delete Template Confirmation Modal -->
-<div class="modal fade" id="deleteTemplateModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Delete Template</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<dialog class="sb-dialog sb-admin-dialog" id="deleteTemplateModal" aria-labelledby="deleteTemplateTitle">
+    <div class="sb-admin-dialog-frame">
+        <div class="sb-admin-dialog-content">
+            <div class="sb-dialog-header">
+                <h5 class="sb-dialog-title" id="deleteTemplateTitle">Delete Template</h5>
+                <button type="button" class="sb-admin-close" data-sb-dialog-close aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="sb-dialog-body">
                 Are you sure you want to delete the template "<strong id="deleteTemplateName"></strong>"?
                 This cannot be undone.
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <div class="sb-dialog-footer">
+                <button type="button" class="sb-admin-command sb-admin-btn-secondary" data-sb-dialog-close>Cancel</button>
                 <form id="deleteTemplateForm" method="POST">
-                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Delete</button>
+                    <button type="submit" class="sb-admin-command sb-admin-btn-danger"><i class="bi bi-trash"></i> Delete</button>
                 </form>
             </div>
         </div>
     </div>
-</div>
+</dialog>
+</div></section>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-// Dark mode toggle
-document.getElementById('settingsDarkModeSwitch').addEventListener('change', function() {
-    const darkMode = this.checked;
-    fetch('/api/preferences/dark-mode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dark_mode: darkMode })
-    }).then(() => {
-        document.documentElement.setAttribute('data-bs-theme', darkMode ? 'dark' : 'light');
-    });
-});
-
-// WorkIQ Connect Impact Toggle
-document.getElementById('connectImpactSwitch').addEventListener('change', function() {
-    fetch('/api/preferences/workiq-connect-impact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workiq_connect_impact: this.checked })
-    });
-});
-
-// MSX Auto-Writeback Toggle
-document.getElementById('msxAutoWritebackSwitch').addEventListener('change', function() {
-    fetch('/api/preferences/msx-auto-writeback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ msx_auto_writeback: this.checked })
-    });
-});
-
-// WorkIQ Prompt Save/Reset
-const savePromptBtn = document.getElementById('savePromptBtn');
-const resetPromptBtn = document.getElementById('resetPromptBtn');
-const workiqPrompt = document.getElementById('workiqPrompt');
-const promptStatus = document.getElementById('promptStatus');
-const defaultPrompt = {{ default_workiq_prompt|tojson }};
-
-savePromptBtn.addEventListener('click', function() {
-    fetch('/api/preferences/workiq-prompt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workiq_summary_prompt: workiqPrompt.value.trim() })
-    }).then(r => r.json()).then(data => {
-        promptStatus.textContent = 'Saved!';
-        promptStatus.className = 'text-success small';
-        setTimeout(() => { promptStatus.textContent = ''; }, 2000);
-    });
-});
-
-resetPromptBtn.addEventListener('click', function() {
-    if (confirm('Reset to the default prompt?')) {
-        workiqPrompt.value = defaultPrompt;
-        fetch('/api/preferences/workiq-prompt', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ workiq_summary_prompt: '' })
-        }).then(() => {
-            promptStatus.textContent = 'Reset!';
-            promptStatus.className = 'text-success small';
-            setTimeout(() => { promptStatus.textContent = ''; }, 2000);
-        });
-    }
-});
-
-// Template management
-const templateSelect = document.getElementById('templateSelect');
-const viewEditBtn = document.getElementById('viewEditBtn');
-const deleteBtn = document.getElementById('deleteBtn');
-
-if (templateSelect) {
-    templateSelect.addEventListener('change', function() {
-        const id = this.value;
-        if (id) {
-            viewEditBtn.href = '/templates/' + id + '/edit';
-            viewEditBtn.style.pointerEvents = 'auto';
-            viewEditBtn.style.opacity = '1';
-            deleteBtn.disabled = false;
-        } else {
-            viewEditBtn.href = '#';
-            viewEditBtn.style.pointerEvents = 'none';
-            viewEditBtn.style.opacity = '0.5';
-            deleteBtn.disabled = true;
-        }
-    });
-
-    deleteBtn.addEventListener('click', function() {
-        const id = templateSelect.value;
-        const name = templateSelect.options[templateSelect.selectedIndex].text;
-        if (!id) return;
-
-        document.getElementById('deleteTemplateName').textContent = name;
-        document.getElementById('deleteTemplateForm').action = '/api/templates/' + id + '/delete';
-
-        var modal = new bootstrap.Modal(document.getElementById('deleteTemplateModal'));
-        modal.show();
-    });
-}
-</script>
+<script id="sbSettingsConfig" type="application/json">{{ {'defaultPrompt': default_workiq_prompt}|tojson }}</script>
+<script src="{{ url_for('static', filename='js/ui-settings.js') }}"></script>
 {% endblock %}

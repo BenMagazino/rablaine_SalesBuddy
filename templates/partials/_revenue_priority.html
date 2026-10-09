@@ -1,0 +1,3 @@
+{% macro priority_tone(score) -%}
+{{ 'danger' if score >= 80 else 'warning' if score >= 60 else 'accent' if score >= 40 else 'neutral' }}
+{%- endmacro %}

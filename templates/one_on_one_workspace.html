@@ -1,6 +1,19 @@
 {% extends "base.html" %}
 {% block title %}1:1 Notes - {{ workspace.person_name }} - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="1:1 workspace status">
+    <span>{{ workspace.person_type }} workspace · {{ active_items|length }} queued · {{ discussed_items|length }} discussed</span>
+    <span>Standing notes and talking points autosave</span>
+</footer>
+{% endif %}
+{% endblock %}
 
 {% block content %}
+{% set workspace_width_bounded = not request.args.get('embed') %}
 {% include 'partials/one_on_one_workspace_content.html' %}
 {% endblock %}

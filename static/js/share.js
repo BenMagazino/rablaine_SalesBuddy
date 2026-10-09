@@ -18,10 +18,46 @@ const Share = (function () {
   let pendingItemId = null;      // set when sharing a single partner or note
   let pendingRecipientEmail = null;
   let _pendingImport = null;     // {partners: [...], sender_name: str} awaiting user review
+  let importing = false;
+  let sending = false;
+  let dialogsBound = false;
+  let previewing = false;
+
+  function _bindDialogs() {
+    if (dialogsBound) return;
+    dialogsBound = true;
+    const shareDialog = document.getElementById('shareModal');
+    const importDialog = document.getElementById('shareImportReviewModal');
+    shareDialog.addEventListener('sb:dialog-before-close', event => {
+      if (sending) event.preventDefault();
+    });
+    shareDialog.addEventListener('sb:dialog-closed', _resetShareState);
+    importDialog.addEventListener('sb:dialog-before-close', event => {
+      if (importing) event.preventDefault();
+    });
+    importDialog.addEventListener('sb:dialog-closed', () => { _pendingImport = null; });
+    window.addEventListener('beforeunload', event => {
+      if (!importing && !sending) return;
+      event.preventDefault();
+      event.returnValue = '';
+    });
+    document.addEventListener('click', event => {
+      if ((importing || sending) && event.target.closest('a[href]')) event.preventDefault();
+    }, true);
+  }
+
+  async function _readResponse(resp) {
+    const data = await resp.json();
+    if (!resp.ok || data.success === false) {
+      throw new Error(data.error || `Request failed (HTTP ${resp.status}).`);
+    }
+    return data;
+  }
 
   // ── Connection ──────────────────────────────────────────────────────
 
   async function init() {
+    _bindDialogs();
     try {
       const resp = await fetch('/api/share/connection-info');
       if (!resp.ok) return;
@@ -47,6 +83,11 @@ const Share = (function () {
         connected = false;
         onlineUsers = [];
         _updateBadges();
+        if (!sending && pendingRecipientEmail) {
+          _resetShareState();
+          _renderOnlineList();
+          _showToast('Sharing disconnected. No data was sent.', 'warning');
+        }
       });
 
       // Not on the allowlist — hide sharing UI entirely
@@ -75,6 +116,7 @@ const Share = (function () {
       socket.on('share_declined', (data) => {
         _showToast(`${data.recipient_name} declined the share.`, 'warning');
         _resetShareState();
+        window.SBDialog.close('shareModal', 'declined');
       });
 
       // Incoming shared data
@@ -91,6 +133,7 @@ const Share = (function () {
       socket.on('share_error', (data) => {
         _showToast(data.error || 'Share error', 'danger');
         _resetShareState();
+        if (!sending) window.SBDialog.close('shareModal', 'error');
       });
 
     } catch (e) {
@@ -101,6 +144,8 @@ const Share = (function () {
   // ── Share initiation ────────────────────────────────────────────────
 
   function openShareModal(type, itemId) {
+    _bindDialogs();
+    if (sending || importing) return;
     pendingShareType = type || 'directory';
     pendingItemId = (type === 'partner' || type === 'note') ? (itemId || null) : null;
 
@@ -110,12 +155,11 @@ const Share = (function () {
     }
 
     _renderOnlineList();
-    const modal = new bootstrap.Modal(document.getElementById('shareModal'));
-    modal.show();
+    window.SBDialog.open('shareModal');
   }
 
   function sendShareRequest(recipientEmail) {
-    if (!socket || !connected) return;
+    if (!socket || !connected || pendingRecipientEmail || !pendingShareType) return;
 
     pendingRecipientEmail = recipientEmail;
     const recipient = onlineUsers.find(u => u.email === recipientEmail);
@@ -123,10 +167,9 @@ const Share = (function () {
     // Update modal to show "waiting" state
     const body = document.getElementById('shareModalBody');
     body.innerHTML = `
-      <div class="text-center py-4">
-        <div class="spinner-border text-primary mb-3" role="status"></div>
+      <div class="sb-share-waiting" role="status">
         <p>Waiting for <strong>${_esc(recipient?.name || 'recipient')}</strong> to accept...</p>
-        <button class="btn btn-sm btn-outline-secondary" onclick="Share.cancelShare()">Cancel</button>
+        <button class="sb-dialog-button" onclick="Share.cancelShare()">Cancel</button>
       </div>
     `;
 
@@ -138,24 +181,30 @@ const Share = (function () {
   }
 
   function cancelShare() {
+    if (sending) return;
     _resetShareState();
-    bootstrap.Modal.getInstance(document.getElementById('shareModal'))?.hide();
+    window.SBDialog.close('shareModal', 'cancel');
   }
 
   // ── Sending data ────────────────────────────────────────────────────
 
   async function _sendShareData(recipientEmail) {
+    if (sending || !pendingShareType || recipientEmail !== pendingRecipientEmail) return;
     // Capture and clear state atomically to prevent duplicate sends.
     const shareType = pendingShareType;
     const itemId = pendingItemId;
     _resetShareState();
 
     if (!shareType) return;
+    sending = true;
 
     try {
       if (shareType === 'note' && itemId) {
         const resp = await fetch(`/api/share/note/${itemId}`);
-        const data = await resp.json();
+        const data = await _readResponse(resp);
+        if (!data.note || typeof data.note !== 'object' || !connected) {
+          throw new Error('Note export unavailable or sharing disconnected.');
+        }
         socket.emit('share_data', {
           recipient_email: recipientEmail,
           share_type: 'note',
@@ -164,7 +213,10 @@ const Share = (function () {
         _showToast('Note shared successfully!', 'success');
       } else if (shareType === 'partner' && itemId) {
         const resp = await fetch(`/api/share/partner/${itemId}`);
-        const data = await resp.json();
+        const data = await _readResponse(resp);
+        if (!data.partner || typeof data.partner !== 'object' || !connected) {
+          throw new Error('Partner export unavailable or sharing disconnected.');
+        }
         socket.emit('share_data', {
           recipient_email: recipientEmail,
           share_type: 'partner',
@@ -173,8 +225,11 @@ const Share = (function () {
         _showToast('Sent 1 partner successfully!', 'success');
       } else if (shareType === 'directory') {
         const resp = await fetch('/api/share/directory');
-        const data = await resp.json();
+        const data = await _readResponse(resp);
         const partners = data.partners;
+        if (!Array.isArray(partners) || !connected) {
+          throw new Error('Directory export unavailable or sharing disconnected.');
+        }
         socket.emit('share_data', {
           recipient_email: recipientEmail,
           share_type: 'directory',
@@ -186,7 +241,8 @@ const Share = (function () {
     } catch (e) {
       _showToast('Failed to send share data: ' + e.message, 'danger');
     }
-    bootstrap.Modal.getInstance(document.getElementById('shareModal'))?.hide();
+    sending = false;
+    window.SBDialog.close('shareModal', 'sent');
   }
 
   // ── Receiving data ──────────────────────────────────────────────────
@@ -196,7 +252,7 @@ const Share = (function () {
       // Note import
       const customerName = data.note.customer?.name || 'General';
       _showToast(
-        `Receiving note for ${_esc(customerName)} from ${_esc(data.sender_name)}...`,
+        `Receiving note for ${customerName} from ${data.sender_name}...`,
         'info',
       );
       try {
@@ -208,14 +264,14 @@ const Share = (function () {
             sender_name: data.sender_name,
           }),
         });
-        const result = await resp.json();
+        const result = await _readResponse(resp);
         if (result.success) {
           // Show what was created (seller, customer, etc.)
           if (result.created && result.created.length > 0) {
             _showToast(`Created: ${result.created.join(', ')}`, 'info');
           }
           const msg = result.customer_name
-            ? `Note imported for ${_esc(result.customer_name)}!`
+            ? `Note imported for ${result.customer_name}!`
             : 'Note imported!';
           _showToast(msg, 'success');
           // Reload if on notes list or note view
@@ -233,10 +289,16 @@ const Share = (function () {
     }
 
     // Partner directory / single partner import — show preview modal
+    if (previewing || _pendingImport || importing) {
+      _showToast('Finish or cancel the current partner review before accepting another share.',
+        'warning');
+      return;
+    }
+    previewing = true;
     const partners = data.partners || [];
     const count = partners.length;
     _showToast(
-      `Received ${count} partner${count !== 1 ? 's' : ''} from ${_esc(data.sender_name)}. Reviewing...`,
+      `Received ${count} partner${count !== 1 ? 's' : ''} from ${data.sender_name}. Reviewing...`,
       'info',
     );
 
@@ -249,15 +311,22 @@ const Share = (function () {
           sender_name: data.sender_name,
         }),
       });
-      const result = await resp.json();
+      const result = await _readResponse(resp);
       if (result.success) {
         _pendingImport = { partners: partners, sender_name: data.sender_name };
-        _showImportReviewModal(result.previews, data.sender_name);
+        const sourceIndices = partners.map((partner, index) => ({partner, index}))
+          .filter(entry => (entry.partner.name || '').trim()).map(entry => entry.index);
+        _showImportReviewModal(result.previews.map((preview, index) => ({
+          ...preview, source_index: sourceIndices[index],
+        })), data.sender_name);
       } else {
         _showToast('Preview failed: ' + (result.error || 'unknown error'), 'danger');
       }
     } catch (e) {
+      _pendingImport = null;
       _showToast('Preview failed: ' + e.message, 'danger');
+    } finally {
+      previewing = false;
     }
   }
 
@@ -278,47 +347,59 @@ const Share = (function () {
     if (!container) {
       container = document.createElement('div');
       container.id = 'shareOfferContainer';
-      container.className = 'position-fixed bottom-0 end-0 p-3';
-      container.style.zIndex = '1090';
+      container.className = 'sb-share-offers';
       document.body.appendChild(container);
     }
 
     const offerId = 'offer-' + Date.now();
     container.innerHTML = `
-      <div id="${offerId}" class="toast show border-primary" role="alert"
-           style="min-width: 350px;">
-        <div class="toast-header bg-primary text-white">
-          <i class="bi bi-share me-2"></i>
-          <strong class="me-auto">Share</strong>
-          <button type="button" class="btn-close btn-close-white" 
-                  onclick="Share.declineOffer('${_esc(data.sender_email)}', '${offerId}')"></button>
+      <div id="${offerId}" class="sb-share-offer" role="alert">
+        <div class="sb-share-offer-heading">
+          <strong>Share</strong>
+          <button type="button" class="sb-dialog-close" data-share-decline aria-label="Decline share"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
         </div>
-        <div class="toast-body">
-          <p class="mb-2">
+        <div>
+          <p>
             <strong>${_esc(data.sender_name)}</strong> wants to share ${typeLabel} with you.
           </p>
-          <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-success" 
-                    onclick="Share.acceptOffer('${_esc(data.sender_email)}', '${offerId}')">
-              <i class="bi bi-check-lg"></i> Accept
+          <div class="sb-share-commands">
+            <button class="sb-dialog-button" data-share-accept>
+              Accept
             </button>
-            <button class="btn btn-sm btn-outline-secondary"
-                    onclick="Share.declineOffer('${_esc(data.sender_email)}', '${offerId}')">
+            <button class="sb-dialog-button" data-share-decline>
               Decline
             </button>
           </div>
         </div>
       </div>
     `;
+    container.querySelector('[data-share-accept]').addEventListener('click',
+      () => acceptOffer(data.sender_email, offerId));
+    container.querySelectorAll('[data-share-decline]').forEach(button =>
+      button.addEventListener('click', () => declineOffer(data.sender_email, offerId)));
   }
 
   function acceptOffer(senderEmail, offerId) {
+    if (!socket || !connected) {
+      _showToast('Sharing disconnected. Reconnect before accepting a share.', 'warning');
+      return;
+    }
+    if (previewing || _pendingImport || importing) {
+      _showToast('Finish or cancel the current partner review before accepting another share.',
+        'warning');
+      return;
+    }
     socket.emit('share_accept', { sender_email: senderEmail });
     document.getElementById(offerId)?.remove();
-    _showToast('Accepted — waiting for data...', 'info');
+    _showToast('Accepted, waiting for data...', 'info');
   }
 
   function declineOffer(senderEmail, offerId) {
+    if (!socket || !connected) {
+      document.getElementById(offerId)?.remove();
+      _showToast('Sharing disconnected. The offer was dismissed locally.', 'warning');
+      return;
+    }
     socket.emit('share_decline', { sender_email: senderEmail });
     document.getElementById(offerId)?.remove();
   }
@@ -328,11 +409,11 @@ const Share = (function () {
   function _renderOnlineList() {
     const body = document.getElementById('shareModalBody');
     if (!body) return;
+    if (pendingRecipientEmail || sending) return;
 
     if (onlineUsers.length === 0) {
       body.innerHTML = `
-        <div class="text-center text-muted py-4">
-          <i class="bi bi-people fs-1 d-block mb-2"></i>
+        <div class="sb-share-empty">
           <p>No teammates online right now.</p>
           <small>They need to be running Sales Buddy with a valid sign-in.</small>
         </div>
@@ -342,25 +423,28 @@ const Share = (function () {
 
     // Search box + user list
     body.innerHTML = `
-      <div class="mb-3">
-        <input type="text" class="form-control" id="shareUserSearch"
-               placeholder="Search by name or email..." autocomplete="off">
+      <div class="sb-share-search">
+        <label for="shareUserSearch">Find a teammate</label>
+        <input type="search" class="sb-field" id="shareUserSearch"
+               placeholder="Search by name or email..." autocomplete="off" autofocus>
       </div>
-      <div class="list-group" id="shareUserList">
+      <div class="sb-share-list" id="shareUserList">
         ${onlineUsers.map(u => `
-          <button class="list-group-item list-group-item-action d-flex align-items-center share-user-item"
+          <button class="sb-share-user share-user-item"
                   data-name="${_esc(u.name.toLowerCase())}" data-email="${_esc(u.email.toLowerCase())}"
-                  onclick="Share.sendShareRequest('${_esc(u.email)}')">
-            <i class="bi bi-person-circle fs-4 me-3 text-success"></i>
+                  data-share-email="${_esc(u.email)}">
+            <i class="bi bi-person-circle" aria-hidden="true"></i>
             <div>
-              <div class="fw-semibold">${_esc(u.name)}</div>
-              <small class="text-muted">${_esc(u.email)}</small>
+              <strong>${_esc(u.name)}</strong>
+              <small>${_esc(u.email)}</small>
             </div>
-            <i class="bi bi-send ms-auto text-primary"></i>
+            <i class="bi bi-send" aria-hidden="true"></i>
           </button>
         `).join('')}
       </div>
     `;
+    body.querySelectorAll('[data-share-email]').forEach(button =>
+      button.addEventListener('click', () => sendShareRequest(button.dataset.shareEmail)));
 
     // Wire up search filtering
     const searchInput = document.getElementById('shareUserSearch');
@@ -368,7 +452,7 @@ const Share = (function () {
       const q = this.value.toLowerCase();
       document.querySelectorAll('.share-user-item').forEach(item => {
         const match = item.dataset.name.includes(q) || item.dataset.email.includes(q);
-        item.style.display = match ? '' : 'none';
+        item.hidden = !match;
       });
     });
     searchInput?.focus();
@@ -403,6 +487,7 @@ const Share = (function () {
   // ── Import review modal ───────────────────────────────────────────
 
   function _showImportReviewModal(previews, senderName) {
+    _bindDialogs();
     const body = document.getElementById('shareImportReviewBody');
     if (!body) return;
 
@@ -410,34 +495,34 @@ const Share = (function () {
     const updates = previews.filter(p => p.action === 'update' && p.has_changes);
     const noChanges = previews.filter(p => p.action === 'update' && !p.has_changes);
 
-    let html = `<p class="text-muted mb-3">From <strong>${_esc(senderName)}</strong> — ${previews.length} partner${previews.length !== 1 ? 's' : ''}</p>`;
+    let html = `<p class="sb-share-summary">From <strong>${_esc(senderName)}</strong>, ${previews.length} partner${previews.length !== 1 ? 's' : ''}</p>`;
 
-    html += '<div class="mb-2 d-flex flex-wrap gap-2">';
-    html += '<button class="btn btn-sm btn-outline-secondary" onclick="Share.toggleAllImport(true)">Select All</button>';
-    html += '<button class="btn btn-sm btn-outline-secondary" onclick="Share.toggleAllImport(false)">Deselect All</button>';
+    html += '<div class="sb-share-commands">';
+    html += '<button class="sb-dialog-button" onclick="Share.toggleAllImport(true)">Select All</button>';
+    html += '<button class="sb-dialog-button" onclick="Share.toggleAllImport(false)">Deselect All</button>';
     if (creates.length > 0) {
-      html += '<button class="btn btn-sm btn-outline-success" onclick="Share.selectNewOnly()"><i class="bi bi-plus-circle me-1"></i>Select New Only</button>';
+      html += '<button class="sb-dialog-button" onclick="Share.selectNewOnly()">Select New Only</button>';
     }
     html += '</div>';
 
-    html += '<div class="list-group">';
+    html += '<div class="sb-share-list">';
 
     if (creates.length > 0) {
-      html += `<div class="list-group-item bg-light fw-semibold text-success"><i class="bi bi-plus-circle"></i> New (${creates.length})</div>`;
+      html += `<h3 class="sb-share-group">New (${creates.length})</h3>`;
       for (const p of creates) {
         html += _importRowCreate(p);
       }
     }
 
     if (updates.length > 0) {
-      html += `<div class="list-group-item bg-light fw-semibold text-primary"><i class="bi bi-arrow-repeat"></i> Updated (${updates.length})</div>`;
+      html += `<h3 class="sb-share-group">Updated (${updates.length})</h3>`;
       for (const p of updates) {
         html += _importRowUpdate(p);
       }
     }
 
     if (noChanges.length > 0) {
-      html += `<div class="list-group-item bg-light fw-semibold text-muted"><i class="bi bi-dash-circle"></i> No Changes (${noChanges.length})</div>`;
+      html += `<h3 class="sb-share-group">No Changes (${noChanges.length})</h3>`;
       for (const p of noChanges) {
         html += _importRowNoChange(p);
       }
@@ -445,51 +530,51 @@ const Share = (function () {
 
     html += '</div>';
     body.innerHTML = html;
+    document.getElementById('shareImportStatus').textContent = '';
     _updateImportBtnCount();
 
-    const modal = new bootstrap.Modal(document.getElementById('shareImportReviewModal'));
-    modal.show();
+    window.SBDialog.open('shareImportReviewModal');
   }
 
   function _stars(n) {
-    return n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '';
+    return n !== null && n !== undefined ? '★'.repeat(n) + '☆'.repeat(5 - n) : '';
   }
 
   function _importRowCreate(p) {
     const inc = p.incoming || {};
     let details = '';
 
-    if (inc.website) details += `<div><i class="bi bi-globe me-1"></i>${_esc(inc.website)}</div>`;
-    if (inc.rating) details += `<div><i class="bi bi-star-fill me-1 text-warning"></i>${_stars(inc.rating)}</div>`;
+    if (inc.website) details += `<div>Website: ${_esc(inc.website)}</div>`;
+    if (inc.rating !== null && inc.rating !== undefined) details += `<div>Rating: ${_stars(inc.rating)}</div>`;
     if (inc.specialties && inc.specialties.length) {
-      details += '<div><i class="bi bi-tag me-1"></i>' +
-        inc.specialties.map(s => `<span class="badge bg-warning text-dark me-1">${_esc(s)}</span>`).join('') + '</div>';
+      details += '<div>Specialties: ' +
+        inc.specialties.map(s => `<span class="sb-share-specialty">${_esc(s)}</span>`).join(', ') + '</div>';
     }
     if (inc.contacts && inc.contacts.length) {
-      details += '<div class="mt-1">';
+      details += '<div>';
       for (const c of inc.contacts) {
-        const primary = c.is_primary ? ' <span class="badge bg-info">primary</span>' : '';
-        details += `<div><i class="bi bi-person me-1"></i>${_esc(c.name || '')}${c.email ? ' &lt;' + _esc(c.email) + '&gt;' : ''}${primary}</div>`;
+        const primary = c.is_primary ? ' <span class="sb-share-label">primary</span>' : '';
+        details += `<div>${_esc(c.name || '')}${c.email ? ' &lt;' + _esc(c.email) + '&gt;' : ''}${primary}</div>`;
       }
       details += '</div>';
     }
     if (inc.overview) {
       const short = inc.overview.length > 120 ? inc.overview.substring(0, 120) + '…' : inc.overview;
-      details += `<div class="mt-1 fst-italic text-muted"><i class="bi bi-chat-quote me-1"></i>${_esc(short)}</div>`;
+      details += `<div class="sb-share-overview" title="${_esc(inc.overview)}">${_esc(short)}</div>`;
     }
-    if (inc.favicon_b64) details += '<div><i class="bi bi-image me-1"></i>favicon included</div>';
+    if (inc.favicon_b64) details += '<div>Favicon included</div>';
 
     return `
-      <div class="list-group-item">
-        <div class="d-flex align-items-start gap-2">
-          <input type="checkbox" class="form-check-input mt-1 share-import-check" data-action="create"
-                 value="${_esc(p.name)}" checked onchange="Share.updateImportBtnCount()">
-          <div class="flex-grow-1">
-            <span class="fw-semibold">${_esc(p.name)}</span>
-            <span class="badge bg-success ms-1">New</span>
-            <div class="small mt-1">${details || '<span class="text-muted">Name only</span>'}</div>
+      <div class="sb-share-import-row">
+        <label class="sb-share-import-choice">
+          <input type="checkbox" class="share-import-check" data-action="create"
+                 value="${p.source_index}" checked onchange="Share.updateImportBtnCount()">
+          <div>
+            <strong>${_esc(p.name)}</strong>
+            <span class="sb-share-label">New</span>
+            <div class="sb-share-details">${details || 'Name only'}</div>
           </div>
-        </div>
+        </label>
       </div>
     `;
   }
@@ -498,55 +583,56 @@ const Share = (function () {
     const ch = p.changes || {};
     let details = '';
 
-    if (ch.website) details += `<div><i class="bi bi-globe me-1"></i>Website: ${_esc(ch.website)}</div>`;
-    if (ch.rating) details += `<div><i class="bi bi-star-fill me-1 text-warning"></i>Rating: ${_stars(ch.rating)}</div>`;
-    if (ch.favicon) details += '<div><i class="bi bi-image me-1"></i>New favicon</div>';
+    if (ch.website) details += `<div>Website: ${_esc(ch.website)}</div>`;
+    if (ch.rating !== undefined && ch.rating !== null) details += `<div>Rating: ${_stars(ch.rating)}</div>`;
+    if (ch.favicon) details += '<div>New favicon</div>';
     if (ch.specialties && ch.specialties.length) {
-      details += '<div><i class="bi bi-tag me-1"></i>New: ' +
-        ch.specialties.map(s => `<span class="badge bg-warning text-dark me-1">${_esc(s)}</span>`).join('') + '</div>';
+      details += '<div>New specialties: ' +
+        ch.specialties.map(s => `<span class="sb-share-specialty">${_esc(s)}</span>`).join(', ') + '</div>';
     }
     if (ch.contacts && ch.contacts.length) {
-      details += '<div class="mt-1"><i class="bi bi-person-plus me-1"></i>New contacts:</div>';
+      details += '<div>New contacts:</div>';
       for (const c of ch.contacts) {
-        details += `<div class="ms-3"><i class="bi bi-person me-1"></i>${_esc(c.name || '')}${c.email ? ' &lt;' + _esc(c.email) + '&gt;' : ''}</div>`;
+        details += `<div>${_esc(c.name || '')}${c.email ? ' &lt;' + _esc(c.email) + '&gt;' : ''}</div>`;
       }
     }
     if (ch.overview) {
       const short = ch.overview.length > 120 ? ch.overview.substring(0, 120) + '…' : ch.overview;
-      details += `<div class="mt-1 fst-italic text-muted"><i class="bi bi-chat-quote me-1"></i>${_esc(short)}</div>`;
+      details += `<div class="sb-share-overview" title="${_esc(ch.overview)}">${_esc(short)}</div>`;
     }
 
     return `
-      <div class="list-group-item">
-        <div class="d-flex align-items-start gap-2">
-          <input type="checkbox" class="form-check-input mt-1 share-import-check" data-action="update"
-                 value="${_esc(p.name)}" checked onchange="Share.updateImportBtnCount()">
-          <div class="flex-grow-1">
-            <span class="fw-semibold">${_esc(p.name)}</span>
-            <span class="badge bg-primary ms-1">Update</span>
-            <div class="small mt-1">${details}</div>
+      <div class="sb-share-import-row">
+        <label class="sb-share-import-choice">
+          <input type="checkbox" class="share-import-check" data-action="update"
+                 value="${p.source_index}" checked onchange="Share.updateImportBtnCount()">
+          <div>
+            <strong>${_esc(p.name)}</strong>
+            <span class="sb-share-label">Update</span>
+            <div class="sb-share-details">${details}</div>
           </div>
-        </div>
+        </label>
       </div>
     `;
   }
 
   function _importRowNoChange(p) {
     return `
-      <div class="list-group-item">
-        <div class="d-flex align-items-start gap-2">
-          <input type="checkbox" class="form-check-input mt-1 share-import-check" data-action="update"
-                 value="${_esc(p.name)}" onchange="Share.updateImportBtnCount()">
-          <div class="flex-grow-1">
-            <span class="fw-semibold text-muted">${_esc(p.name)}</span>
-            <span class="badge bg-secondary ms-1">No changes</span>
+      <div class="sb-share-import-row">
+        <label class="sb-share-import-choice">
+          <input type="checkbox" class="share-import-check" data-action="update"
+                 value="${p.source_index}" onchange="Share.updateImportBtnCount()">
+          <div>
+            <strong>${_esc(p.name)}</strong>
+            <span class="sb-share-label">No changes</span>
           </div>
-        </div>
+        </label>
       </div>
     `;
   }
 
   function selectNewOnly() {
+    if (importing) return;
     document.querySelectorAll('.share-import-check').forEach(cb => {
       cb.checked = cb.dataset.action === 'create';
     });
@@ -558,39 +644,43 @@ const Share = (function () {
     const btn = document.getElementById('shareImportConfirmBtn');
     if (btn) {
       btn.textContent = `Import Selected (${checked})`;
-      btn.disabled = checked === 0;
+      btn.disabled = importing || checked === 0;
     }
   }
 
   function toggleAllImport(selectAll) {
+    if (importing) return;
     document.querySelectorAll('.share-import-check').forEach(cb => { cb.checked = selectAll; });
     _updateImportBtnCount();
   }
 
   async function confirmImport() {
-    if (!_pendingImport) return;
+    if (!_pendingImport || importing) return;
 
-    // Get selected partner names
-    const selectedNames = new Set();
+    // Preview names may be canonical matches, so select by original payload identity.
+    const selectedIndices = new Set();
     document.querySelectorAll('.share-import-check:checked').forEach(cb => {
-      selectedNames.add(cb.value);
+      selectedIndices.add(Number(cb.value));
     });
 
-    if (selectedNames.size === 0) {
+    if (selectedIndices.size === 0) {
       _showToast('No partners selected.', 'warning');
       return;
     }
 
-    // Filter to only selected partners
-    const selectedPartners = _pendingImport.partners.filter(p =>
-      selectedNames.has((p.name || '').trim())
+    const selectedPartners = _pendingImport.partners.filter((p, index) =>
+      selectedIndices.has(index)
     );
 
     const btn = document.getElementById('shareImportConfirmBtn');
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Importing...';
+      btn.textContent = 'Importing...';
     }
+    importing = true;
+    const status = document.getElementById('shareImportStatus');
+    status.textContent = 'Importing selected partners...';
+    document.querySelectorAll('.share-import-check').forEach(cb => { cb.disabled = true; });
 
     try {
       const resp = await fetch('/api/share/receive', {
@@ -601,8 +691,9 @@ const Share = (function () {
           sender_name: _pendingImport.sender_name,
         }),
       });
-      const result = await resp.json();
-      bootstrap.Modal.getInstance(document.getElementById('shareImportReviewModal'))?.hide();
+      const result = await _readResponse(resp);
+      importing = false;
+      window.SBDialog.close('shareImportReviewModal', 'imported');
       _pendingImport = null;
 
       if (result.success) {
@@ -617,37 +708,33 @@ const Share = (function () {
         _showToast('Import failed: ' + (result.error || 'unknown error'), 'danger');
       }
     } catch (e) {
+      status.textContent = 'Import failed: ' + e.message + ' Your selection is retained. Retry or Cancel.';
       _showToast('Import failed: ' + e.message, 'danger');
+    } finally {
+      importing = false;
+      document.querySelectorAll('.share-import-check').forEach(cb => { cb.disabled = false; });
+      _updateImportBtnCount();
     }
   }
 
   function _showToast(message, type) {
-    // Reuse Bootstrap toast pattern
     let container = document.getElementById('shareToastContainer');
     if (!container) {
       container = document.createElement('div');
       container.id = 'shareToastContainer';
-      container.className = 'position-fixed top-0 end-0 p-3';
-      container.style.zIndex = '1100';
+      container.className = 'sb-share-toasts';
       document.body.appendChild(container);
     }
 
-    const colors = {
-      success: 'bg-success text-white',
-      danger: 'bg-danger text-white',
-      warning: 'bg-warning text-dark',
-      info: 'bg-info text-dark',
-    };
-
     const toast = document.createElement('div');
-    toast.className = `toast show ${colors[type] || 'bg-secondary text-white'}`;
+    toast.className = 'sb-share-toast';
+    toast.dataset.state = type;
     toast.setAttribute('role', 'alert');
-    toast.style.minWidth = '300px';
     toast.innerHTML = `
-      <div class="toast-body d-flex align-items-center">
-        <span class="flex-grow-1">${message}</span>
-        <button type="button" class="btn-close btn-close-white ms-2"
-                onclick="this.closest('.toast').remove()"></button>
+      <div class="sb-share-toast-body">
+        <span>${_esc(message)}</span>
+        <button type="button" class="sb-dialog-close" aria-label="Dismiss notification"
+                onclick="this.closest('.sb-share-toast').remove()"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
       </div>
     `;
     container.appendChild(toast);
@@ -657,7 +744,7 @@ const Share = (function () {
   function _esc(str) {
     const d = document.createElement('div');
     d.textContent = str || '';
-    return d.innerHTML;
+    return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function getOnlineCount() {
@@ -690,3 +777,4 @@ const Share = (function () {
     updateImportBtnCount: _updateImportBtnCount,
   };
 })();
+window.Share = Share;

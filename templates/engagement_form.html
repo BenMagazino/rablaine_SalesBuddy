@@ -2,240 +2,179 @@
 
 {% block title %}{{ 'Edit' if engagement else 'New' }} Engagement - {{ customer.get_display_name() }} - Sales Buddy{% endblock %}
 
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-engagement-form.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Engagement form status">
+    <span id="engagementFormState">{{ 'Existing engagement' if engagement else 'New engagement' }}</span>
+    <span>Manual save · Title required · Customer associations only</span>
+</footer>
+{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1 class="mb-0">{{ 'Edit' if engagement else 'New' }} Engagement</h1>
-        <small class="text-muted">
-            for <a href="{{ url_for('customers.customer_view', id=customer.id) }}">{{ customer.get_display_name() }}</a>
-        </small>
-    </div>
-</div>
-
-<form method="POST">
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Engagement Details</h5>
+{% set posted = request.method == 'POST' %}
+{% macro field_value(name) -%}
+{{ request.form.get(name, '') if posted else (engagement|attr(name) or '') if engagement else '' }}
+{%- endmacro %}
+{% set icons = {'customer_contact': 'bi-person-circle', 'partner_contact': 'bi-building', 'se': 'bi-tools', 'seller': 'bi-person', 'internal_contact': 'bi-person-badge', 'external': 'bi-person-dash'} %}
+<div class="sb-engagement-form sb-directory-frame sb-directory-frame-wide" data-sb-page-surface>
+    <header class="ef-heading" data-sb-page-band>
+        <h1 id="engagementFormTitle">{{ 'Edit' if engagement else 'New' }} Engagement</h1>
+        <p>for <a href="{{ url_for('customers.customer_view', id=customer.id) }}">{{ customer.get_display_name() }}</a></p>
+    </header>
+    <p id="engagementFormNotice" class="ef-notice" data-sb-page-band role="alert" hidden></p>
+    <form method="POST" id="engagementForm" class="ef-work" data-sb-page-body
+          data-form-key="{{ 'edit-' ~ engagement.id if engagement else 'new-' ~ customer.id }}"
+          data-posted="{{ 'true' if posted else 'false' }}" aria-labelledby="engagementFormTitle">
+        <section class="ef-story ef-reading" aria-label="Engagement details and story">
+            <div class="ef-title-row">
+                <div class="ef-field">
+                    <label for="title">Title *</label>
+                    <input type="text" id="title" name="title" value="{{ field_value('title') }}"
+                           required autofocus placeholder="e.g., Azure Migration Phase 2">
                 </div>
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-8">
-                            <label for="title" class="form-label">Title *</label>
-                            <input type="text" class="form-control" id="title" name="title"
-                                   value="{{ engagement.title if engagement else '' }}" required autofocus
-                                   placeholder="e.g., Azure Migration Phase 2">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="status" class="form-label">Status</label>
-                            <select class="form-select" id="status" name="status">
-                                {% for s in ['Active', 'On Hold', 'Won', 'Lost'] %}
-                                <option value="{{ s }}" {% if engagement and engagement.status == s %}selected{% endif %}>{{ s }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-
-                    <h6 class="text-muted mt-4 mb-3"><i class="bi bi-journal-text"></i> The Story</h6>
-
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Key Individuals
-                            <small class="text-muted fw-normal ms-1">"I've been working with..."</small>
-                        </label>
-                        <div class="d-flex gap-2 align-items-center">
-                            <input type="text" class="form-control flex-grow-1" id="contact_search"
-                                   placeholder="Search contacts to add..." autocomplete="off">
-                        </div>
-                        <div id="contact_dropdown" class="list-group mt-1" style="display: none; position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto; width: calc(66% - 3rem);"></div>
-                        <div id="selected_contacts" class="mt-2 d-flex flex-wrap gap-2">
-                            {% if engagement and engagement.contacts %}
-                                {% for c in engagement.contacts %}
-                                    <span class="badge d-flex align-items-center
-                                        {% if c.person_type == 'customer_contact' %}bg-success
-                                        {% elif c.person_type == 'partner_contact' %}bg-purple
-                                        {% elif c.person_type == 'se' %}bg-info
-                                        {% elif c.person_type == 'seller' %}bg-primary
-                                        {% elif c.person_type == 'internal_contact' %}bg-warning text-dark
-                                        {% else %}bg-secondary{% endif %}"
-                                        data-contact-type="{{ c.person_type }}"
-                                        data-contact-id="{{ c.ref_id or '' }}">
-                                        <i class="bi {% if c.person_type == 'customer_contact' %}bi-person-circle
-                                            {% elif c.person_type == 'partner_contact' %}bi-building
-                                            {% elif c.person_type == 'se' %}bi-tools
-                                            {% elif c.person_type == 'seller' %}bi-person
-                                            {% elif c.person_type == 'internal_contact' %}bi-person-badge
-                                            {% else %}bi-person-dash{% endif %} me-1"></i>
-                                        {{ c.display_name }}
-                                        <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 0.6rem;" onclick="removeContact(this)"></button>
-                                        <input type="hidden" name="contact_types" value="{{ c.person_type }}">
-                                        <input type="hidden" name="contact_ref_ids" value="{{ c.ref_id or '' }}">
-                                        {% if c.person_type == 'external' %}
-                                        <input type="hidden" name="contact_ext_names" value="{{ c.external_name or '' }}">
-                                        <input type="hidden" name="contact_ext_emails" value="{{ c.external_email or '' }}">
-                                        {% endif %}
-                                    </span>
-                                {% endfor %}
+                <div class="ef-field">
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        {% for s in ['Active', 'On Hold', 'Won', 'Lost'] %}
+                        <option value="{{ s }}" {% if (request.form.get('status', 'Active') if posted else engagement.status if engagement else 'Active') == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <h2>The Story</h2>
+            <div class="ef-field ef-contact-picker">
+                <label for="contact_search">Key Individuals <small>"I've been working with..."</small></label>
+                <input type="text" id="contact_search" placeholder="Search contacts to add..." autocomplete="off"
+                       aria-controls="contact_dropdown" aria-describedby="contactSaveHelp">
+                <p id="contactSaveHelp" class="ef-help">Selecting existing people stays in this form. Adding a new contact saves that person immediately.</p>
+                <div id="contact_dropdown" class="ef-contact-results" style="display: none;"></div>
+                <div id="selected_contacts" class="ef-contacts">
+                    {% for c in form_contacts %}
+                    <span class="ef-contact" data-contact-type="{{ c.person_type }}" data-contact-id="{{ c.ref_id or '' }}">
+                        <i class="bi {{ icons.get(c.person_type, 'bi-person-dash') }}" aria-hidden="true"></i>
+                        {{ c.display_name }}
+                        <button type="button" class="ef-contact-remove" aria-label="Remove {{ c.display_name }}" onclick="removeContact(this)">×</button>
+                        <input type="hidden" name="contact_types" value="{{ c.person_type }}">
+                        <input type="hidden" name="contact_ref_ids" value="{{ c.ref_id or '' }}">
+                        {% if c.person_type == 'external' %}
+                        <input type="hidden" name="contact_ext_names" value="{{ c.external_name or '' }}">
+                        <input type="hidden" name="contact_ext_emails" value="{{ c.external_email or '' }}">
+                        {% endif %}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="ef-field">
+                <label for="technical_problem">Technical/Business Problem <small>"...they have run into..."</small></label>
+                <textarea id="technical_problem" name="technical_problem" rows="3"
+                          placeholder="What problem or challenge are they facing?">{{ field_value('technical_problem') }}</textarea>
+            </div>
+            <div class="ef-field">
+                <label for="business_impact">Business Process/Strategy Impact <small>"...and it's impacting..."</small></label>
+                <textarea id="business_impact" name="business_impact" rows="3"
+                          placeholder="How is this problem impacting their business?">{{ field_value('business_impact') }}</textarea>
+            </div>
+            <div class="ef-field">
+                <label for="solution_resources">Solution Resources <small>"We are addressing the Opportunity with..."</small></label>
+                <textarea id="solution_resources" name="solution_resources" rows="3"
+                          placeholder="What Azure services/solutions are we proposing?">{{ field_value('solution_resources') }}</textarea>
+            </div>
+            <div class="ef-outcome-row">
+                <div class="ef-field">
+                    <label for="estimated_acr">Estimated $ACR (monthly) <small>"...which will result in..."</small></label>
+                    <div class="ef-money"><span>$</span><input type="number" id="estimated_acr" name="estimated_acr"
+                         value="{{ field_value('estimated_acr') }}" placeholder="500" min="0" step="1"><span>/mo</span></div>
+                </div>
+                <div class="ef-field">
+                    <label for="target_date">Target Date/Timeline <small>"...by..."</small></label>
+                    <input type="date" id="target_date" name="target_date"
+                           value="{{ request.form.get('target_date', '') if posted else engagement.target_date.strftime('%Y-%m-%d') if engagement and engagement.target_date else '' }}">
+                </div>
+            </div>
+        </section>
+        <aside class="ef-links ef-reading" aria-label="Linked customer work">
+            <h2>Linked customer work</h2>
+            <p class="ef-help">Keep the thread connected to its notes and MSX records.</p>
+            {% for field, heading, records in [('note_ids', 'Link Notes', customer_notes), ('opportunity_ids', 'Link Opportunities', opportunities), ('milestone_ids', 'Link Milestones', milestones)] %}
+            {% if records %}
+            <section class="ef-link-group">
+                <h3>{{ heading }} <span>{{ records|length }}</span></h3>
+                <div class="ef-choices" data-link-field="{{ field }}">
+                    {% for item in records %}
+                    {% set checked = (item.id|string in request.form.getlist(field)) if posted else (engagement and item in (engagement.notes if field == 'note_ids' else engagement.opportunities if field == 'opportunity_ids' else engagement.milestones)) %}
+                    <label class="ef-choice" for="{{ field }}_{{ item.id }}">
+                        <input type="checkbox" name="{{ field }}" value="{{ item.id }}" id="{{ field }}_{{ item.id }}"
+                               {% if checked %}checked{% endif %}>
+                        <span>
+                            {% if field == 'note_ids' %}
+                            <strong>{{ item.call_date.strftime('%b %d, %Y') }}</strong> - {{ item.content|striptags|truncate(60) }}
+                            {% elif field == 'opportunity_ids' %}
+                            {{ item.name|truncate(50) }}
+                            {% else %}
+                            {{ item.display_text|truncate(50) }}
+                            {% if item.msx_status %}<small class="ef-ms-status" data-status="{{ item.msx_status }}">{{ item.msx_status }}</small>{% endif %}
                             {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="technical_problem" class="form-label">
-                            Technical/Business Problem
-                            <small class="text-muted fw-normal ms-1">"...they have run into..."</small>
-                        </label>
-                        <textarea class="form-control" id="technical_problem" name="technical_problem"
-                                  rows="3" placeholder="What problem or challenge are they facing?">{{ engagement.technical_problem or '' if engagement else '' }}</textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="business_impact" class="form-label">
-                            Business Process/Strategy Impact
-                            <small class="text-muted fw-normal ms-1">"...and it's impacting..."</small>
-                        </label>
-                        <textarea class="form-control" id="business_impact" name="business_impact"
-                                  rows="3" placeholder="How is this problem impacting their business?">{{ engagement.business_impact or '' if engagement else '' }}</textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="solution_resources" class="form-label">
-                            Solution Resources
-                            <small class="text-muted fw-normal ms-1">"We are addressing the Opportunity with..."</small>
-                        </label>
-                        <textarea class="form-control" id="solution_resources" name="solution_resources"
-                                  rows="3" placeholder="What Azure services/solutions are we proposing?">{{ engagement.solution_resources or '' if engagement else '' }}</textarea>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="estimated_acr" class="form-label">
-                                Estimated $ACR (monthly)
-                                <br><small class="text-muted fw-normal">"...which will result in..."</small>
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" id="estimated_acr" name="estimated_acr"
-                                       value="{{ engagement.estimated_acr or '' if engagement else '' }}"
-                                       placeholder="500" min="0" step="1">
-                                <span class="input-group-text">/mo</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="target_date" class="form-label">
-                                Target Date/Timeline
-                                <br><small class="text-muted fw-normal">"...by..."</small>
-                            </label>
-                            <input type="date" class="form-control" id="target_date" name="target_date"
-                                   value="{{ engagement.target_date.strftime('%Y-%m-%d') if engagement and engagement.target_date else '' }}">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            {% if customer_notes %}
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-journal-text"></i> Link Notes</h5>
-                </div>
-                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                    {% for note in customer_notes %}
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="note_ids"
-                               value="{{ note.id }}" id="note_{{ note.id }}"
-                               {% if engagement and note in engagement.notes %}checked{% endif %}>
-                        <label class="form-check-label small" for="note_{{ note.id }}">
-                            <strong>{{ note.call_date.strftime('%b %d, %Y') }}</strong>
-                            - {{ note.content|striptags|truncate(60) }}
-                        </label>
-                    </div>
+                        </span>
+                    </label>
                     {% endfor %}
                 </div>
-            </div>
+            </section>
             {% endif %}
-
-            {% if opportunities %}
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Link Opportunities</h5>
-                </div>
-                <div class="card-body" style="max-height: 200px; overflow-y: auto;">
-                    {% for opp in opportunities %}
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="opportunity_ids"
-                               value="{{ opp.id }}" id="opp_{{ opp.id }}"
-                               {% if engagement and opp in engagement.opportunities %}checked{% endif %}>
-                        <label class="form-check-label small" for="opp_{{ opp.id }}">
-                            {{ opp.name|truncate(50) }}
-                        </label>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+            {% endfor %}
+            {% if not customer_notes and not opportunities and not milestones %}
+            <p class="ef-empty">No customer notes, opportunities or milestones to link yet.</p>
             {% endif %}
-
-            {% if milestones %}
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-flag"></i> Link Milestones</h5>
-                </div>
-                <div class="card-body" style="max-height: 200px; overflow-y: auto;">
-                    {% for ms in milestones %}
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="milestone_ids"
-                               value="{{ ms.id }}" id="ms_{{ ms.id }}"
-                               {% if engagement and ms in engagement.milestones %}checked{% endif %}>
-                        <label class="form-check-label small" for="ms_{{ ms.id }}">
-                            {{ ms.display_text|truncate(50) }}
-                            {% if ms.msx_status %}
-                            <span class="badge {% if ms.msx_status == 'On Track' %}bg-success{% elif ms.msx_status == 'At Risk' %}bg-warning text-dark{% elif ms.msx_status == 'Blocked' %}bg-danger{% else %}bg-secondary{% endif %} ms-1">{{ ms.msx_status }}</span>
-                            {% endif %}
-                        </label>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+            {% if engagement %}
+            <section class="ef-danger">
+                <h3>Danger Zone</h3>
+                <p>Deleting this engagement will NOT delete any linked notes, opportunities, or milestones. It only removes the engagement thread.</p>
+                <button type="button" class="sb-dialog-button" id="engagementDeleteOpen">Delete Engagement</button>
+            </section>
             {% endif %}
-        </div>
-    </div>
-
-    <div class="d-flex justify-content-between mb-4">
-        <button type="submit" class="btn btn-primary">
-            <i class="bi bi-check-circle"></i> {{ 'Save Changes' if engagement else 'Create Engagement' }}
+        </aside>
+    </form>
+    <footer class="ef-commands" data-sb-page-band>
+        <span>Changes stay here until you save the engagement.</span>
+        <a href="{{ url_for('customers.customer_view', id=customer.id) }}" class="sb-dialog-button" id="engagementFormCancel">Cancel</a>
+        <button type="submit" form="engagementForm" class="sb-dialog-button ef-save" id="engagementFormSave">
+            <i class="bi bi-check-lg" aria-hidden="true"></i> {{ 'Save Changes' if engagement else 'Create Engagement' }}
         </button>
-        <a href="{{ url_for('customers.customer_view', id=customer.id) }}" class="btn btn-secondary">
-            <i class="bi bi-x-circle"></i> Cancel
-        </a>
-    </div>
-</form>
-
-{% if engagement %}
-<div class="card border-danger mb-4">
-    <div class="card-body">
-        <h6 class="text-danger mb-2">Danger Zone</h6>
-        <p class="small text-muted mb-2">Deleting this engagement will NOT delete any linked notes, opportunities, or milestones. It only removes the engagement thread.</p>
-        <form method="POST" action="{{ url_for('engagements.engagement_delete', id=engagement.id) }}"
-              onsubmit="return confirm('Delete engagement &quot;{{ engagement.title }}&quot;? This cannot be undone.');">
-            <button type="submit" class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-trash"></i> Delete Engagement
-            </button>
-        </form>
-    </div>
+    </footer>
 </div>
+<dialog class="sb-dialog sb-dialog-compact" id="engagementFormDiscard" aria-labelledby="engagementFormDiscardTitle">
+    <header class="sb-dialog-header"><h2 id="engagementFormDiscardTitle">Discard engagement changes?</h2></header>
+    <div class="sb-dialog-body"><p>These changes have not been saved. Keep editing, or discard them to continue.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="engagementFormDiscardConfirm">Discard changes</button>
+    </footer>
+</dialog>
+{% if engagement %}
+<dialog class="sb-dialog sb-dialog-compact" id="engagementDeleteDialog" aria-labelledby="engagementDeleteTitle">
+    <header class="sb-dialog-header"><h2 id="engagementDeleteTitle">Delete engagement?</h2></header>
+    <div class="sb-dialog-body"><p>Delete engagement "{{ engagement.title }}"? This cannot be undone.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Cancel</button>
+        <form method="POST" action="{{ url_for('engagements.engagement_delete', id=engagement.id) }}" id="engagementDeleteForm">
+            <button type="submit" class="sb-dialog-button">Delete Engagement</button>
+        </form>
+    </footer>
+</dialog>
 {% endif %}
 
 <script>
 function escHtml(text) {
     var div = document.createElement('div');
     div.textContent = text;
-    return div.innerHTML;
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function removeContact(btn) {
-    btn.closest('.badge').remove();
+    btn.closest('.ef-contact').remove();
+    document.getElementById('engagementForm').dispatchEvent(new Event('change', {bubbles: true}));
 }
 
 // ---- Contact Search & Add ----
@@ -250,6 +189,17 @@ function removeContact(btn) {
     var selectedIndex = -1;
     var customerId = {{ customer.id }};
     var _engEmailDomains = null;  // lazy-loaded
+    function contactPending(value) {
+        document.getElementById('engagementForm').dispatchEvent(
+            new CustomEvent('sb:engagement-contact-pending', {detail: value}));
+    }
+    function contactError(error) {
+        console.error('Could not add engagement contact.', error);
+        document.getElementById('engagementForm').dispatchEvent(
+            new CustomEvent('sb:engagement-contact-error', {
+                detail: 'Could not add the contact. Your search is retained. Please try again.'
+            }));
+    }
 
     function _ensureDomains(cb) {
         if (_engEmailDomains !== null) { cb(); return; }
@@ -299,14 +249,6 @@ function removeContact(btn) {
         return false;
     }
 
-    var colorMap = {
-        'customer_contact': 'bg-success',
-        'partner_contact': 'bg-purple',
-        'se': 'bg-info',
-        'seller': 'bg-primary',
-        'internal_contact': 'bg-warning text-dark',
-        'external': 'bg-secondary'
-    };
     var iconMap = {
         'customer_contact': 'bi-person-circle',
         'partner_contact': 'bi-building',
@@ -319,7 +261,7 @@ function removeContact(btn) {
     function addContact(type, id, name, email) {
         if (type !== 'external' && isAlreadyAdded(type, id)) return;
         var badge = document.createElement('span');
-        badge.className = 'badge d-flex align-items-center ' + (colorMap[type] || 'bg-secondary');
+        badge.className = 'ef-contact';
         badge.dataset.contactType = type;
         badge.dataset.contactId = String(id || '');
         var hiddenInputs = '<input type="hidden" name="contact_types" value="' + type + '">' +
@@ -329,9 +271,9 @@ function removeContact(btn) {
                 '<input type="hidden" name="contact_ext_emails" value="' + escHtml(email || '') + '">';
         }
         badge.innerHTML =
-            '<i class="bi ' + (iconMap[type] || 'bi-person') + ' me-1"></i>' +
+            '<i class="bi ' + (iconMap[type] || 'bi-person') + '" aria-hidden="true"></i>' +
             escHtml(name) +
-            '<button type="button" class="btn-close btn-close-white ms-2" style="font-size: 0.6rem;" onclick="removeContact(this)"></button>' +
+            '<button type="button" class="ef-contact-remove" aria-label="Remove ' + escHtml(name) + '" onclick="removeContact(this)">×</button>' +
             hiddenInputs;
         container.appendChild(badge);
         searchInput.value = '';
@@ -339,6 +281,7 @@ function removeContact(btn) {
         currentResults = [];
         selectedIndex = -1;
         searchInput.focus();
+        document.getElementById('engagementForm').dispatchEvent(new Event('change', {bubbles: true}));
     }
 
     function renderDropdown() {
@@ -351,13 +294,13 @@ function removeContact(btn) {
             var detected = _detectEngContactType(q);
             // "Add as customer contact" button (shown unless detected as internal)
             if (detected !== 'internal') {
-                addButtons.push({action: 'add-customer-contact', cls: 'text-success-emphasis',
-                    label: '<i class="bi bi-building me-1"></i>Add <strong>' + escHtml(q) + '</strong> as customer contact'});
+                addButtons.push({action: 'add-customer-contact', cls: 'ef-customer-add',
+                    label: '<i class="bi bi-building"></i>Add <strong>' + escHtml(q) + '</strong> as customer contact'});
             }
             // "Add as internal contact" button (shown unless detected as customer)
             if (detected !== 'customer') {
-                addButtons.push({action: 'add-internal', cls: 'text-warning-emphasis',
-                    label: '<i class="bi bi-person-badge me-1"></i>Add <strong>' + escHtml(q) + '</strong> as internal contact'});
+                addButtons.push({action: 'add-internal', cls: 'ef-internal-add',
+                    label: '<i class="bi bi-person-badge"></i>Add <strong>' + escHtml(q) + '</strong> as internal contact'});
             }
         }
         var totalItems = filtered.length + addButtons.length;
@@ -365,28 +308,28 @@ function removeContact(btn) {
             selectedIndex = totalItems > 0 ? 0 : -1;
         }
         if (filtered.length === 0 && addButtons.length === 0) {
-            dropdown.innerHTML = '<div class="list-group-item text-muted small">No matches</div>';
+            dropdown.innerHTML = '<div class="ef-result ef-help">No matches</div>';
             dropdown.style.display = 'block';
             selectedIndex = -1;
             return;
         }
         var html = '';
         if (filtered.length === 0 && addButtons.length > 0) {
-            html += '<div class="list-group-item text-muted small">No matches</div>';
+            html += '<div class="ef-result ef-help">No matches</div>';
         }
         html += filtered.map(function(r, idx) {
             var active = (idx === selectedIndex) ? ' enter-target' : '';
-            return '<button type="button" class="list-group-item list-group-item-action small py-1' + active + '" data-idx="' + idx + '">' +
-                '<i class="bi ' + r.icon + ' text-' + r.color + ' me-1"></i>' +
-                '<span class="fw-semibold">' + escHtml(r.name) + '</span>' +
-                (r.detail ? ' <span class="text-muted">- ' + escHtml(r.detail) + '</span>' : '') +
-                (r.email ? ' <span class="text-muted small">(' + escHtml(r.email) + ')</span>' : '') +
+            return '<button type="button" class="ef-result' + active + '" data-contact-type="' + escHtml(r.type) + '" data-idx="' + idx + '">' +
+                '<i class="bi ' + r.icon + '" aria-hidden="true"></i>' +
+                '<strong>' + escHtml(r.name) + '</strong>' +
+                (r.detail ? ' <span class="ef-help">- ' + escHtml(r.detail) + '</span>' : '') +
+                (r.email ? ' <span class="ef-help">(' + escHtml(r.email) + ')</span>' : '') +
                 '</button>';
         }).join('');
         addButtons.forEach(function(ab, i) {
             var globalIdx = filtered.length + i;
             var active = (globalIdx === selectedIndex) ? ' enter-target' : '';
-            html += '<button type="button" class="list-group-item list-group-item-action small py-1 ' + ab.cls + active + '" data-action="' + ab.action + '">' +
+            html += '<button type="button" class="ef-result ' + ab.cls + active + '" data-action="' + ab.action + '">' +
                 ab.label + '</button>';
         });
         dropdown.innerHTML = html;
@@ -488,17 +431,18 @@ function removeContact(btn) {
                 payload.email = q;
                 payload.name = q.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
             }
+            contactPending(true);
             fetch('/api/customer/' + customerId + '/contacts', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload),
             })
-            .then(function(r) { return r.json(); })
+            .then(function(r) { if (!r.ok) throw new Error('Contact HTTP ' + r.status); return r.json(); })
             .then(function(data) {
                 if (data.id) {
                     addContact('customer_contact', data.id, data.name, data.email || null);
-                }
-            });
+                } else { throw new Error('Contact was not created'); }
+            }).catch(contactError).finally(function() { contactPending(false); });
             return;
         }
 
@@ -516,18 +460,19 @@ function removeContact(btn) {
             } else {
                 payload.name = q;
             }
+            contactPending(true);
             fetch('/api/internal-contacts', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload),
             })
-            .then(function(r) { return r.json(); })
+            .then(function(r) { if (!r.ok) throw new Error('Contact HTTP ' + r.status); return r.json(); })
             .then(function(data) {
                 if (data.success && data.contact) {
                     addContact('internal_contact', data.contact.id, data.contact.name,
                                data.contact.alias ? data.contact.alias + '@microsoft.com' : null);
-                }
-            });
+                } else { throw new Error('Contact was not created'); }
+            }).catch(contactError).finally(function() { contactPending(false); });
             return;
         }
 
@@ -546,7 +491,7 @@ function removeContact(btn) {
         var btn = e.target.closest('[data-idx]');
         if (btn) {
             selectedIndex = parseInt(btn.dataset.idx);
-            dropdown.querySelectorAll('.list-group-item').forEach(function(el) { el.classList.remove('enter-target'); });
+            dropdown.querySelectorAll('.ef-result').forEach(function(el) { el.classList.remove('enter-target'); });
             btn.classList.add('enter-target');
             return;
         }
@@ -556,7 +501,7 @@ function removeContact(btn) {
             var allActions = dropdown.querySelectorAll('[data-action]');
             var actionIdx = Array.prototype.indexOf.call(allActions, actionBtn);
             selectedIndex = filtered.length + actionIdx;
-            dropdown.querySelectorAll('.list-group-item').forEach(function(el) { el.classList.remove('enter-target'); });
+            dropdown.querySelectorAll('.ef-result').forEach(function(el) { el.classList.remove('enter-target'); });
             actionBtn.classList.add('enter-target');
         }
     });
@@ -569,4 +514,7 @@ function removeContact(btn) {
     });
 })();
 </script>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-engagement-form.js') }}"></script>
 {% endblock %}

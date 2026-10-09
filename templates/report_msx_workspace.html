@@ -1,204 +1,208 @@
 {% extends "base.html" %}
 
 {% block title %}MSX Workspace - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-msx-workspace.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="MSX workspace status">
+    <span>Local MSX cache · Use Milestone Sync for fresh data</span>
+    <span id="workspaceStatus" role="status" aria-live="polite">Loading cached records...</span>
+</footer>
+{% endblock %}
 
 {% block content %}
-<style>
-    .opp-expand i { transition: transform 0.2s ease; display: inline-block; }
-    .opp-expand.expanded i { transform: rotate(90deg); }
-</style>
-
-<div class="d-flex justify-content-between align-items-start mb-3">
+<div class="sb-msx-workspace{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface>
+<header class="msx-heading" data-sb-page-band>
     <div>
-        <h2><i class="bi bi-grid-3x3 text-primary"></i> MSX Workspace</h2>
-        <p class="text-muted mb-0">
+        <h2>MSX Workspace</h2>
+        <p>
             Browse opportunities, milestones, and tasks from your synced MSX data.
-            Run a <a href="/reports/milestone-tracker">Milestone Sync</a> to pull fresh data from MSX.
         </p>
     </div>
-</div>
+    <a class="msx-command" href="/reports/milestone-tracker"><i class="bi bi-arrow-repeat"></i> Milestone Sync</a>
+</header>
 
 <!-- Filters -->
-<div class="card mb-3">
-    <div class="card-body py-2">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
+<div class="msx-scope" data-sb-page-band>
+        <div class="msx-controls">
             {% if user_role != 'dss' %}
-            <label class="small text-muted fw-semibold mb-0">Seller:</label>
-            <select id="filterSeller" class="form-select form-select-sm" style="width: 180px;">
+            <label for="filterSeller">Seller</label>
+            <select id="filterSeller" class="msx-input">
                 <option value="">All Sellers</option>
                 {% for s in sellers %}
                 <option value="{{ s.id }}">{{ s.name }}</option>
                 {% endfor %}
             </select>
             {% endif %}
-            <label class="small text-muted fw-semibold mb-0">Customer:</label>
-            <select id="filterCustomer" class="form-select form-select-sm" style="width: 220px;">
+            <label for="filterCustomer">Customer</label>
+            <select id="filterCustomer" class="msx-input">
                 <option value="">All Customers</option>
                 {% for c in customers %}
                 <option value="{{ c.id }}" data-seller-id="{{ c.seller_id or '' }}">{{ c.name }}</option>
                 {% endfor %}
             </select>
-            <input type="text" id="filterSearch" class="form-control form-control-sm" style="width: 220px;" placeholder="Search by name, number, owner...">
-            <button id="btnApplyFilters" class="btn btn-sm btn-primary"><i class="bi bi-funnel"></i> Apply</button>
-            <button id="btnClearFilters" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg"></i> Clear</button>
-            <span id="resultCount" class="text-muted small ms-auto"></span>
+            <input type="search" id="filterSearch" class="msx-input msx-search" aria-label="Search cached records" placeholder="Search by name, number, owner...">
+            <button id="btnApplyFilters" class="msx-command is-primary"><i class="bi bi-funnel"></i> Apply</button>
+            <button id="btnClearFilters" class="msx-command">Clear</button>
         </div>
-    </div>
 </div>
 
 <!-- Tabs -->
-<ul class="nav nav-tabs mb-3" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="opps-tab" data-bs-toggle="tab" data-bs-target="#oppsPane" type="button" role="tab">
-            <i class="bi bi-briefcase"></i> Opportunities <span class="badge bg-secondary ms-1" id="oppCount">-</span>
+<div class="msx-tabs" data-sb-page-band>
+<ul role="tablist" aria-label="MSX records">
+    <li role="presentation">
+        <button class="msx-tab active" id="opps-tab" data-msx-pane="oppsPane" aria-controls="oppsPane" aria-selected="true" type="button" role="tab">
+            <i class="bi bi-briefcase"></i> Opportunities <span id="oppCount">-</span>
         </button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="ms-tab" data-bs-toggle="tab" data-bs-target="#msPane" type="button" role="tab">
-            <i class="bi bi-flag"></i> Milestones <span class="badge bg-secondary ms-1" id="msCount">-</span>
+    <li role="presentation">
+        <button class="msx-tab" id="ms-tab" data-msx-pane="msPane" aria-controls="msPane" aria-selected="false" tabindex="-1" type="button" role="tab">
+            <i class="bi bi-flag"></i> Milestones <span id="msCount">-</span>
         </button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasksPane" type="button" role="tab">
-            <i class="bi bi-check2-square"></i> Tasks <span class="badge bg-secondary ms-1" id="taskCount">-</span>
+    <li role="presentation">
+        <button class="msx-tab" id="tasks-tab" data-msx-pane="tasksPane" aria-controls="tasksPane" aria-selected="false" tabindex="-1" type="button" role="tab">
+            <i class="bi bi-check2-square"></i> Tasks <span id="taskCount">-</span>
         </button>
     </li>
 </ul>
+<span id="resultCount"></span>
+</div>
 
-<div class="tab-content">
+<div class="msx-content" data-sb-page-body>
     <!-- Opportunities Tab -->
-    <div class="tab-pane fade show active" id="oppsPane" role="tabpanel">
+    <div class="msx-pane active" id="oppsPane" role="tabpanel" aria-labelledby="opps-tab">
         <!-- Opportunity-specific filters -->
-        <div class="d-flex gap-2 mb-2 flex-wrap align-items-center">
-            <select id="oppStatusFilter" class="form-select form-select-sm" style="width: 150px;">
+        <div class="msx-controls msx-subscope">
+            <select id="oppStatusFilter" class="msx-input" aria-label="Opportunity state">
                 <option value="open" selected>Open</option>
                 <option value="">All States</option>
                 <option value="won">Won</option>
                 <option value="lost">Lost</option>
             </select>
-            <select id="oppTeamFilter" class="form-select form-select-sm" style="width: 170px;">
+            <select id="oppTeamFilter" class="msx-input" aria-label="Deal team membership">
                 <option value="">All Team Status</option>
                 <option value="on">On Deal Team</option>
                 <option value="off">Not On Deal Team</option>
             </select>
         </div>
-        <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle" id="oppsTable">
+        <div class="msx-reading" id="oppsReading" tabindex="0" aria-label="Opportunities reading region">
+            <table class="msx-table" id="oppsTable">
                 <thead>
                     <tr>
-                        <th style="width: 30px;"></th>
-                        <th class="sortable" data-sort="name">Opportunity <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable" data-sort="number">Number <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable" data-sort="customer_name">Customer <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable" data-sort="owner_name">Owner <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable text-nowrap" data-sort="estimated_close_date">Close Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable text-end text-nowrap" data-sort="estimated_value">ACR <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="text-end text-nowrap">Team</th>
+                        <th aria-label="Expand details"></th>
+                        <th data-sort="name" data-sb-sort-type="text" data-export-label="Opportunity">Opportunity</th>
+                        <th data-sort="number" data-sb-sort-type="text" data-export-label="Number">Number</th>
+                        <th data-sort="customer_name" data-sb-sort-type="text" data-export-label="Customer">Customer</th>
+                        <th data-sort="owner_name" data-sb-sort-type="text" data-export-label="Owner">Owner</th>
+                        <th data-sort="estimated_close_date" data-sb-sort-type="date" data-export-label="Close Date">Close Date</th>
+                        <th data-sort="estimated_value" data-sb-sort-type="number" data-export-label="ACR">ACR</th>
+                        <th data-sort="on_deal_team" data-sb-sort-type="number" data-export-label="Team">Team</th>
                     </tr>
                 </thead>
                 <tbody id="oppsBody">
-                    <tr><td colspan="8" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>
+                    <tr data-sb-sort-fixed><td colspan="8" class="msx-message">Loading cached opportunities...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
     <!-- Milestones Tab -->
-    <div class="tab-pane fade" id="msPane" role="tabpanel">
+    <div class="msx-pane" id="msPane" role="tabpanel" aria-labelledby="ms-tab" hidden>
         <!-- Milestone-specific filters -->
-        <div class="d-flex gap-2 mb-2 flex-wrap align-items-center">
-            <div class="dropdown" id="msStatusFilterWrap">
-                <button class="btn btn-outline-secondary btn-sm dropdown-toggle text-start" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" style="width: 220px; font-size: 0.875rem;" id="msStatusBtn">Status</button>
-                <ul class="dropdown-menu" style="min-width: 220px;">
-                    <li><button class="dropdown-item small" type="button" id="msStatusAll">Select All</button></li>
-                    <li><button class="dropdown-item small" type="button" id="msStatusNone">Clear All</button></li>
-                    <li><hr class="dropdown-divider my-1"></li>
-                    <li><label class="dropdown-item small py-1"><input class="form-check-input me-2 ms-status-cb" type="checkbox" value="On Track" checked> On Track</label></li>
-                    <li><label class="dropdown-item small py-1"><input class="form-check-input me-2 ms-status-cb" type="checkbox" value="At Risk" checked> At Risk</label></li>
-                    <li><label class="dropdown-item small py-1"><input class="form-check-input me-2 ms-status-cb" type="checkbox" value="Blocked" checked> Blocked</label></li>
-                    <li><label class="dropdown-item small py-1"><input class="form-check-input me-2 ms-status-cb" type="checkbox" value="Completed"> Completed</label></li>
-                    <li><label class="dropdown-item small py-1"><input class="form-check-input me-2 ms-status-cb" type="checkbox" value="Cancelled"> Cancelled</label></li>
-                    <li><label class="dropdown-item small py-1"><input class="form-check-input me-2 ms-status-cb" type="checkbox" value="Lost to Competitor"> Lost to Competitor</label></li>
+        <div class="msx-controls msx-subscope">
+            <details class="msx-status-picker" id="msStatusFilterWrap">
+                <summary id="msStatusBtn">Status</summary>
+                <ul class="msx-status-menu">
+                    <li class="msx-controls"><button class="msx-command" type="button" id="msStatusAll">Select All</button>
+                    <button class="msx-command" type="button" id="msStatusNone">Clear All</button></li>
+                    {% for status in ['On Track', 'At Risk', 'Blocked', 'Completed', 'Cancelled', 'Lost to Competitor'] %}
+                    <li><label><input class="ms-status-cb" type="checkbox" value="{{ status }}" {% if loop.index <= 3 %}checked{% endif %}> {{ status }}</label></li>
+                    {% endfor %}
                 </ul>
-            </div>
-            <select id="msTeamFilter" class="form-select form-select-sm" style="width: 160px;">
+            </details>
+            <select id="msTeamFilter" class="msx-input" aria-label="Milestone team membership">
                 <option value="">All Team Status</option>
                 <option value="on">On My Team</option>
                 <option value="off">Not On My Team</option>
             </select>
-            <select id="msOppFilter" class="form-select form-select-sm" style="width: 220px;">
+            <select id="msOppFilter" class="msx-input" aria-label="Milestone opportunity">
                 <option value="">All Opportunities</option>
             </select>
-            <select id="msWorkloadFilter" class="form-select form-select-sm" style="width: 200px;">
+            <select id="msWorkloadFilter" class="msx-input" aria-label="Workload area">
                 <option value="">All Areas</option>
             </select>
         </div>
-        <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle" id="msTable">
+        <div class="msx-reading" id="msReading" tabindex="0" aria-label="Milestones reading region">
+            <table class="msx-table" id="msTable">
                 <thead>
                     <tr>
-                        <th style="width: 30px;"></th>
-                        <th class="sortable" data-sort="title">Milestone <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable" data-sort="number">Number <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable" data-sort="status">Status <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable" data-sort="customer_name">Customer <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable" data-sort="opportunity_name">Opportunity <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable" data-sort="workload">Workload <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable text-nowrap" data-sort="due_date">Due Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th class="sortable text-nowrap" data-sort="monthly_usage">ACR/mo <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                        <th>Team</th>
+                        <th aria-label="View milestone tasks"></th>
+                        <th data-sort="title" data-sb-sort-type="text" data-export-label="Milestone">Milestone</th>
+                        <th data-sort="number" data-sb-sort-type="text" data-export-label="Number">Number</th>
+                        <th data-sort="status" data-sb-sort-type="text" data-export-label="Status">Status</th>
+                        <th data-sort="customer_name" data-sb-sort-type="text" data-export-label="Customer">Customer</th>
+                        <th data-sort="opportunity_name" data-sb-sort-type="text" data-export-label="Opportunity">Opportunity</th>
+                        <th data-sort="workload" data-sb-sort-type="text" data-export-label="Workload">Workload</th>
+                        <th data-sort="due_date" data-sb-sort-type="date" data-export-label="Due Date">Due Date</th>
+                        <th data-sort="monthly_usage" data-sb-sort-type="number" data-export-label="ACR/mo">ACR/mo</th>
+                        <th data-sort="on_my_team" data-sb-sort-type="number" data-export-label="Team">Team</th>
                     </tr>
                 </thead>
                 <tbody id="msBody">
-                    <tr><td colspan="10" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>
+                    <tr data-sb-sort-fixed><td colspan="10" class="msx-message">Loading cached milestones...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
     <!-- Tasks Tab -->
-    <div class="tab-pane fade" id="tasksPane" role="tabpanel">
-        <div id="tasksContent">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small" id="taskContext"></span>
-                <button class="btn btn-sm btn-success d-none" id="btnCreateTask" data-bs-toggle="modal" data-bs-target="#createTaskModal">
+    <div class="msx-pane" id="tasksPane" role="tabpanel" aria-labelledby="tasks-tab" hidden>
+        <div id="tasksContent" class="msx-task-content">
+            <div class="msx-controls msx-subscope">
+                <span id="taskContext">Open tasks from your local MSX cache</span>
+                <button class="msx-command is-primary sb-hidden" id="btnCreateTask" data-sb-dialog="createTaskModal">
                     <i class="bi bi-plus-lg"></i> Create Task
                 </button>
+                <button class="msx-command sb-hidden" id="btnBackToMilestones">
+                    <i class="bi bi-arrow-left"></i> Back to Milestones
+                </button>
             </div>
-            <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle" id="tasksTable">
+            <div class="msx-reading" id="tasksReading" tabindex="0" aria-label="Tasks reading region">
+                <table class="msx-table" id="tasksTable">
                     <thead>
                         <tr>
-                            <th>Subject</th>
-                            <th>Category</th>
-                            <th>Due Date</th>
-                            <th>Milestone</th>
-                            <th style="width: 140px;" class="text-end">Actions</th>
+                            <th data-sb-sort-type="text" data-export-label="Subject">Subject</th>
+                            <th data-sb-sort-type="text" data-export-label="Category">Category</th>
+                            <th data-sb-sort-type="date" data-export-label="Due Date">Due Date</th>
+                            <th data-sb-sort-type="text" data-export-label="Milestone">Milestone</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="tasksBody"></tbody>
                 </table>
             </div>
-            <button class="btn btn-outline-primary d-none mt-2" id="btnBackToMilestones">
-                <i class="bi bi-arrow-left"></i> Back to Milestones
-            </button>
         </div>
+    </div>
     </div>
 </div>
 
 <!-- Opportunity Detail Collapse Template (hidden, cloned per row) -->
 <template id="oppDetailTpl">
-    <tr class="opp-detail">
+    <tr class="opp-detail" data-sb-sort-fixed>
         <td colspan="8">
-            <div class="p-2 ps-4 small">
-                <div class="row">
-                    <div class="col-md-4"><strong>Description:</strong> <span class="opp-desc text-muted">-</span></div>
-                    <div class="col-md-4"><strong>Customer Need:</strong> <span class="opp-need text-muted">-</span></div>
-                    <div class="col-md-4"><strong>Compete Threat:</strong> <span class="opp-compete text-muted">-</span></div>
+            <div class="msx-inline-detail">
+                <div class="msx-detail-fields">
+                    <div><strong>Description:</strong> <span class="opp-desc">-</span></div>
+                    <div><strong>Customer Need:</strong> <span class="opp-need">-</span></div>
+                    <div><strong>Compete Threat:</strong> <span class="opp-compete">-</span></div>
                 </div>
-                <div class="mt-1">
-                    <a class="opp-msx-link btn btn-sm btn-outline-secondary" href="#" target="_blank"><i class="bi bi-box-arrow-up-right"></i> Open in MSX</a>
-                    <button class="opp-sb-link btn btn-sm btn-outline-primary" data-opp-id=""><i class="bi bi-eye"></i> View Details</button>
+                <div class="msx-controls">
+                    <a class="opp-msx-link msx-command" href="#" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Open in MSX</a>
+                    <button class="opp-sb-link msx-command" data-opp-id=""><i class="bi bi-eye"></i> View Details</button>
                 </div>
             </div>
         </td>
@@ -206,108 +210,80 @@
 </template>
 
 <!-- Create Task Modal -->
-<div class="modal fade" id="createTaskModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-plus-lg"></i> Create Task</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<dialog class="sb-dialog msx-task-dialog" id="createTaskModal" aria-labelledby="createTaskTitle">
+            <div class="sb-dialog-header">
+                <h2 id="createTaskTitle">Create Task</h2>
+                <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close task editor"><i class="bi bi-x-lg"></i></button>
             </div>
-            <div class="modal-body">
+            <div class="sb-dialog-body msx-task-fields">
                 <input type="hidden" id="taskMilestoneId">
-                <div class="mb-3">
-                    <label class="form-label">Milestone</label>
-                    <input type="text" class="form-control form-control-sm" id="taskMilestoneName" readonly>
+                <div>
+                    <label for="taskMilestoneName">Milestone</label>
+                    <input type="text" class="msx-input" id="taskMilestoneName" readonly>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Category</label>
-                    <select class="form-select form-select-sm" id="taskCategory">
+                <div>
+                    <label for="taskCategory">Category</label>
+                    <select class="msx-input" id="taskCategory">
                         {% for cat in task_categories %}
                         <option value="{{ cat.value }}" data-hva="{{ cat.is_hva|lower }}">{{ cat.label }}{% if cat.is_hva %} (HVA){% endif %}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Subject</label>
-                    <input type="text" class="form-control form-control-sm" id="taskSubject" maxlength="200">
+                <div>
+                    <label for="taskSubject">Subject</label>
+                    <input type="text" class="msx-input" id="taskSubject" maxlength="200">
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-control form-control-sm" id="taskDescription" rows="3"></textarea>
+                <div>
+                    <label for="taskDescription">Description</label>
+                    <textarea class="msx-input" id="taskDescription" rows="3"></textarea>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Due Date</label>
-                    <input type="date" class="form-control form-control-sm" id="taskDueDate">
+                <div>
+                    <label for="taskDueDate">Due Date</label>
+                    <input type="date" class="msx-input" id="taskDueDate">
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success btn-sm" id="btnSubmitTask"><i class="bi bi-check-lg"></i> Create</button>
-            </div>
-        </div>
-    </div>
+            <div class="sb-dialog-footer">
+                <span id="taskEditorStatus" role="status">Draft stays here until created.</span>
+                <button type="button" class="msx-command" data-sb-dialog-close>Cancel</button>
+                <button type="button" class="msx-command is-primary" id="btnSubmitTask"><i class="bi bi-check-lg"></i> Create</button>
+    </dialog>
 </div>
 
 <!-- Milestone Detail Modal -->
-<div class="modal fade" id="msxMilestoneDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1200px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
-                    <h5 class="modal-title mb-0 text-truncate" style="min-width: 0;"><i class="bi bi-flag"></i> <span id="msxMsDetailTitle">Loading...</span></h5>
-                    <span id="msxMsDetailBadge"></span>
-                </div>
-                <div class="d-flex gap-2 flex-shrink-0 ms-2">
-                    <a href="#" id="msxMsDetailMsxLink" target="_blank" class="btn btn-outline-success btn-sm text-nowrap" style="display:none;">
-                        <i class="bi bi-box-arrow-up-right"></i> Open in MSX
-                    </a>
-                    <a href="#" id="msxMsDetailFullLink" class="btn btn-outline-secondary btn-sm text-nowrap">
-                        <i class="bi bi-arrows-fullscreen"></i> Full Page
-                    </a>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-            </div>
-            <div class="modal-body p-3" id="msxMsDetailBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <!-- Opportunity Detail Modal -->
-<div class="modal fade" id="msxOppDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1200px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
-                    <h5 class="modal-title mb-0 text-truncate" style="min-width: 0;"><i class="bi bi-briefcase"></i> <span id="msxOppDetailTitle">Loading...</span></h5>
-                </div>
-                <div class="d-flex gap-2 flex-shrink-0 ms-2">
-                    <a href="#" id="msxOppDetailMsxLink" target="_blank" class="btn btn-outline-success btn-sm text-nowrap" style="display:none;">
+<dialog class="sb-dialog msx-opportunity-dialog" id="msxOppDetailModal" aria-labelledby="msxOppDetailTitle">
+        <div class="sb-dialog-shell">
+            <div class="sb-dialog-header">
+                    <h2 id="msxOppDetailTitle" data-sb-record-title>Opportunity</h2>
+                <div class="msx-controls">
+                    <a href="#" id="msxOppDetailMsxLink" target="_blank" rel="noopener" class="msx-command" style="display:none;">
                         <i class="bi bi-box-arrow-up-right"></i> Open in MSX
                     </a>
-                    <a href="#" id="msxOppDetailFullLink" class="btn btn-outline-secondary btn-sm text-nowrap">
+                    <a href="#" id="msxOppDetailFullLink" class="msx-command" data-sb-record-full-link>
                         <i class="bi bi-arrows-fullscreen"></i> Full Page
                     </a>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close opportunity"><i class="bi bi-x-lg"></i></button>
                 </div>
             </div>
-            <div class="modal-body p-3" id="msxOppDetailBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status"></div>
+            <div class="sb-dialog-body" id="msxOppDetailBody">
+                <p class="msx-message" data-sb-record-loading role="status">Loading opportunity...</p>
+                <div data-sb-record-error hidden role="alert">
+                    <p>Could not load opportunity details.</p>
+                    <button type="button" class="msx-command" data-sb-record-retry>Retry</button>
                 </div>
+                <div data-sb-record-content></div>
             </div>
+            <div class="sb-dialog-footer"><span data-sb-record-status role="status"></span></div>
         </div>
-    </div>
-</div>
+</dialog>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
-(function() {
+window.addEventListener('DOMContentLoaded', function() {
     'use strict';
 
     // State
@@ -336,6 +312,161 @@
     const msTeamFilter = document.getElementById('msTeamFilter');
     const msOppFilter = document.getElementById('msOppFilter');
     const msWorkloadFilter = document.getElementById('msWorkloadFilter');
+    const sorts = new Map();
+    const headers = new Map(['oppsTable', 'msTable', 'tasksTable'].map(id =>
+        [id, document.getElementById(id).tHead.cloneNode(true)]));
+    const readVersions = {};
+    let taskSaving = false;
+    let restoring = false;
+    const opportunityPreview = SBRecordDialog.create('msxOppDetailModal', {
+        loadUrl: id => `/api/opportunity/${id}/detail`,
+        fullUrl: id => `/opportunity/${id}`,
+        fragmentSelector: '[data-sb-opportunity-detail]',
+        identityAttribute: 'data-sb-opportunity-id',
+        mount: root => SBOpportunityWorkflow.activate(root),
+        statusText: 'Forecast comments and team changes save when submitted.',
+        busyText: 'Saving opportunity changes. Wait before leaving.',
+        discardText: 'Your forecast comment has not been saved. Keep editing, or discard it.',
+        errorText: 'Opportunity details unavailable. Retry or use Full Page.',
+        stateEvent: 'sb:record-state',
+        onSelection(snapshot) {
+            const link = document.getElementById('msxOppDetailMsxLink');
+            link.style.display = snapshot.msxUrl ? '' : 'none';
+            if (snapshot.msxUrl) link.href = snapshot.msxUrl;
+            else link.removeAttribute('href');
+        },
+    });
+    let appliedScope = {seller: '', customer: '', search: ''};
+    let readingPositions = {};
+    let restoredFilters = null;
+
+    async function readRecords(kind, params) {
+        const version = readVersions[kind] = (readVersions[kind] || 0) + 1;
+        try {
+            const response = await fetch(`/api/reports/msx-workspace/${kind}?${params}`);
+            if (!response.ok) throw new Error(`Cached ${kind} HTTP ${response.status}`);
+            const payload = await response.json();
+            if (!Array.isArray(payload[kind])) throw new Error(`Invalid cached ${kind} response`);
+            return version === readVersions[kind] ? payload : null;
+        } catch (error) {
+            if (version !== readVersions[kind]) return null;
+            throw error;
+        }
+    }
+
+    function scopeParams() {
+        const params = new URLSearchParams();
+        if (appliedScope.customer) params.set('customer_id', appliedScope.customer);
+        else if (appliedScope.seller) params.set('seller_id', appliedScope.seller);
+        if (appliedScope.search) params.set('search', appliedScope.search);
+        return params;
+    }
+
+    function updateCounts() {
+        const tab = document.querySelector('.msx-tab.active').id;
+        const count = document.getElementById(
+            tab === 'opps-tab' ? 'oppCount' : tab === 'ms-tab' ? 'msCount' : 'taskCount'
+        ).textContent;
+        resultCount.textContent = `${count} ${tab === 'opps-tab' ? 'opportunities' :
+            tab === 'ms-tab' ? 'milestones' : 'tasks'}`;
+        document.getElementById('workspaceStatus').textContent = resultCount.textContent;
+    }
+
+    function mountSort(id) {
+        const table = document.getElementById(id);
+        const previous = sorts.get(id)?.state;
+        const replacement = table.cloneNode(false);
+        replacement.append(headers.get(id).cloneNode(true), table.tBodies[0]);
+        replacement.dataset.sbSortable = '';
+        replacement.dataset.sbSortKey = `msx-${id}`;
+        // Keep the exact legacy default order; explicit header sorting uses the shared sorter.
+        table.replaceWith(replacement);
+        // Expansion rows are transient read-only disclosures, just as in the original sorter.
+        replacement.addEventListener('click', event => {
+            if (!event.target.closest('[data-sb-table-sort]')) return;
+            replacement.querySelectorAll('.opp-detail').forEach(row => row.remove());
+            replacement.querySelectorAll('.opp-expand').forEach(btn => {
+                btn.classList.remove('expanded');
+                btn.setAttribute('aria-expanded', 'false');
+            });
+        }, true);
+        const sorter = SBTableSort.create(replacement);
+        if (previous) sorter.restore(previous);
+        sorts.set(id, sorter);
+        replacement.addEventListener('click', event => {
+            if (!event.target.closest('[data-sb-table-sort]')) return;
+            const state = sorter.state;
+            const field = replacement.tHead.rows[0].cells[state.column].dataset.sort;
+            if (id === 'oppsTable') {
+                oppSortField = field; oppSortDir = state.direction === 'ascending' ? 'asc' : 'desc';
+                localStorage.setItem('msxWsOppSort', JSON.stringify({f: field, d: oppSortDir}));
+            } else if (id === 'msTable') {
+                msSortField = field; msSortDir = state.direction === 'ascending' ? 'asc' : 'desc';
+                localStorage.setItem('msxWsMsSort', JSON.stringify({f: field, d: msSortDir}));
+            }
+            saveView();
+        });
+        updateCounts();
+    }
+
+    function disableSort(id) {
+        document.getElementById(id).querySelectorAll('[data-sb-table-sort]').forEach(
+            button => button.disabled = true);
+    }
+
+    function showTab(id, remember = true) {
+        const target = document.getElementById(id);
+        if (!target?.dataset.msxPane) return;
+        if (!restoring) {
+            const current = document.querySelector('.msx-pane.active .msx-reading');
+            readingPositions[current.id] = [current.scrollTop, current.scrollLeft];
+        }
+        document.querySelectorAll('.msx-tab').forEach(tab => {
+            const active = tab === target;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-selected', String(active));
+            tab.tabIndex = active ? 0 : -1;
+            const pane = document.getElementById(tab.dataset.msxPane);
+            pane.hidden = !active;
+            pane.classList.toggle('active', active);
+        });
+        const reading = document.querySelector('.msx-pane.active .msx-reading');
+        const [top, left] = readingPositions[reading.id] || [0, 0];
+        reading.scrollTop = top; reading.scrollLeft = left;
+        updateCounts();
+        if (remember) {
+            localStorage.setItem('msxWorkspaceTab', id);
+            saveView();
+        }
+    }
+
+    const fields = ['filterSeller', 'filterCustomer', 'filterSearch', 'oppStatusFilter',
+        'oppTeamFilter', 'msTeamFilter', 'msOppFilter', 'msWorkloadFilter'];
+    function saveView() {
+        if (restoring) return;
+        const values = Object.fromEntries(fields.map(id => [id, document.getElementById(id)?.value]));
+        const reading = document.querySelector('.msx-pane.active .msx-reading');
+        readingPositions[reading.id] = [reading.scrollTop, reading.scrollLeft];
+        history.replaceState({...history.state, sbMsxWorkspace: {
+            values, appliedScope, positions: readingPositions,
+            statuses: [...msStatusFilter.querySelectorAll('.ms-status-cb:checked')]
+                .map(cb => cb.value), tab: document.querySelector('.msx-tab.active').id,
+            milestoneId: filteredMilestoneId, milestoneTitle: filteredMilestoneTitle,
+            milestoneMsxId: document.getElementById('taskMilestoneId').value,
+        }}, '');
+    }
+
+    function taskDraft() {
+        return ['taskSubject', 'taskDescription', 'taskDueDate'].some(
+            id => document.getElementById(id).value.trim());
+    }
+
+    function allowContextChange() {
+        if (!taskSaving && !taskDraft()) return true;
+        showToast('Finish the task draft or clear its fields before changing milestone scope.', 'warning');
+        SBDialog.open('createTaskModal');
+        return false;
+    }
 
     // ----- Seller → Customer dropdown filtering -----
     function filterCustomerBySeller(sellerId) {
@@ -366,10 +497,10 @@
     }
 
     function escHtml(str) {
-        if (!str) return '';
+        if (str == null) return '';
         const d = document.createElement('div');
         d.textContent = str;
-        return d.innerHTML;
+        return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     function updateMsStatusBtnLabel() {
@@ -383,77 +514,72 @@
     }
 
     function showToast(msg, type) {
-        type = type || 'success';
-        const id = 'toast-' + Date.now();
-        const html = `<div id="${id}" class="toast align-items-center text-bg-${type} border-0 show" role="alert">
-            <div class="d-flex"><div class="toast-body">${escHtml(msg)}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>`;
-        let container = document.getElementById('toastContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toastContainer';
-            container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-            container.style.zIndex = '1090';
-            document.body.appendChild(container);
-        }
-        container.insertAdjacentHTML('beforeend', html);
-        setTimeout(() => { const el = document.getElementById(id); if (el) el.remove(); }, 4000);
+        const notice = document.createElement('div');
+        notice.className = 'msx-feedback';
+        notice.setAttribute('role', type === 'danger' ? 'alert' : 'status');
+        notice.textContent = msg;
+        const close = document.createElement('button');
+        close.className = 'msx-command';
+        close.textContent = 'Dismiss';
+        close.addEventListener('click', () => notice.remove());
+        notice.append(' ', close);
+        document.body.append(notice);
+        document.getElementById('taskEditorStatus').textContent = msg;
+        if (type !== 'danger') setTimeout(() => notice.remove(), 5000);
     }
 
     // Team toggle button helpers - single button that swaps icon on hover when on-team
     function dealTeamBtn(id, onTeam) {
         if (onTeam) {
-            return `<button type="button" class="btn btn-sm btn-success team-toggle on-team deal-team-toggle" data-id="${id}" data-on-team="1" title="On deal team (click to leave)"><i class="bi bi-people-fill icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
+            return `<button type="button" class="msx-command msx-team on-team deal-team-toggle" data-id="${id}" data-on-team="1" title="On deal team (click to leave)" aria-label="Leave deal team"><i class="bi bi-people-fill icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
         }
-        return `<button type="button" class="btn btn-sm btn-outline-success team-toggle deal-team-toggle" data-id="${id}" data-on-team="0" title="Join deal team"><i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
+        return `<button type="button" class="msx-command msx-team deal-team-toggle" data-id="${id}" data-on-team="0" title="Join deal team" aria-label="Join deal team"><i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
     }
 
     function msTeamBtn(id, onTeam) {
         if (onTeam) {
-            return `<button type="button" class="btn btn-sm btn-success team-toggle on-team ms-team-toggle" data-id="${id}" data-on-team="1" title="On milestone team (click to leave)"><i class="bi bi-people-fill icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
+            return `<button type="button" class="msx-command msx-team on-team ms-team-toggle" data-id="${id}" data-on-team="1" title="On milestone team (click to leave)" aria-label="Leave milestone team"><i class="bi bi-people-fill icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
         }
-        return `<button type="button" class="btn btn-sm btn-outline-success team-toggle ms-team-toggle" data-id="${id}" data-on-team="0" title="Join milestone team"><i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
+        return `<button type="button" class="msx-command msx-team ms-team-toggle" data-id="${id}" data-on-team="0" title="Join milestone team" aria-label="Join milestone team"><i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
     }
 
     function statusBadge(status) {
         const cls = {
-            'On Track': 'bg-success', 'At Risk': 'bg-warning text-dark', 'Blocked': 'bg-danger',
-            'Completed': 'bg-secondary', 'Cancelled': 'bg-dark', 'Lost to Competitor': 'bg-dark',
-            'Hygiene/Duplicate': 'bg-dark',
+            'On Track': 'is-success', 'At Risk': 'is-warning', 'Blocked': 'is-danger',
         };
-        return `<span class="badge ${cls[status] || 'bg-secondary'}">${escHtml(status || 'Unknown')}</span>`;
+        return `<span class="msx-tag ${cls[status] || ''}">${escHtml(status || 'Unknown')}</span>`;
     }
 
     function urgencyClass(urgency) {
-        return {'past_due': 'text-danger fw-bold', 'this_week': 'text-warning fw-semibold', 'this_month': ''}[urgency] || '';
+        return {'past_due': 'msx-danger', 'this_week': 'msx-warning'}[urgency] || '';
     }
 
     // ----- Opportunities -----
     async function loadOpportunities() {
-        const params = new URLSearchParams();
-        if (filterCustomer.value) params.set('customer_id', filterCustomer.value);
-        else if (filterSeller && filterSeller.value) params.set('seller_id', filterSeller.value);
-        if (filterSearch.value) params.set('search', filterSearch.value);
+        const params = scopeParams();
         if (oppStatusFilter.value) params.set('status', oppStatusFilter.value);
         if (oppTeamFilter.value) params.set('team', oppTeamFilter.value);
 
-        document.getElementById('oppsBody').innerHTML = '<tr><td colspan="8" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>';
+        disableSort('oppsTable');
+        document.getElementById('oppsBody').innerHTML = '<tr data-sb-sort-fixed><td colspan="8" class="msx-message">Loading cached opportunities...</td></tr>';
 
         try {
-            const resp = await fetch(`/api/reports/msx-workspace/opportunities?${params}`);
-            const data = await resp.json();
+            const data = await readRecords('opportunities', params);
+            if (!data) return;
             oppsData = data.opportunities || [];
             document.getElementById('oppCount').textContent = oppsData.length;
             renderOpportunities();
         } catch (e) {
-            document.getElementById('oppsBody').innerHTML = `<tr><td colspan="8" class="text-center text-danger py-3">Error loading opportunities: ${escHtml(e.message)}</td></tr>`;
+            document.getElementById('oppsBody').innerHTML = `<tr data-sb-sort-fixed><td colspan="8" class="msx-message msx-error">Error loading opportunities: ${escHtml(e.message)}. Use Apply to retry.</td></tr>`;
+            document.getElementById('workspaceStatus').textContent = 'Opportunities could not be loaded';
         }
     }
 
     function renderOpportunities() {
         const tbody = document.getElementById('oppsBody');
         if (!oppsData.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No opportunities found</td></tr>';
+            tbody.innerHTML = '<tr data-sb-sort-fixed><td colspan="8" class="msx-message">No opportunities found. Change your scope or Clear the filters.</td></tr>';
+            mountSort('oppsTable');
             return;
         }
 
@@ -467,24 +593,24 @@
                 return oppSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
             });
         }
-        updateSortIndicators('oppsPane', oppSortField, oppSortDir);
 
         let html = '';
         for (const opp of sorted) {
             html += `<tr class="opp-row" data-id="${opp.id}" data-msx-id="${escHtml(opp.msx_id || '')}">
-                <td><button class="btn btn-sm btn-link p-0 opp-expand" title="Expand"><i class="bi bi-chevron-right"></i></button></td>
-                <td>${escHtml(opp.name)}</td>
-                <td class="text-nowrap"><code>${escHtml(opp.number || '-')}</code></td>
+                <td><button class="msx-command opp-expand" title="Expand" aria-label="Expand opportunity details" aria-expanded="false"><i class="bi bi-chevron-right"></i></button></td>
+                <td data-sb-sort-value="${escHtml(opp.name)}">${escHtml(opp.name)}</td>
+                <td><code>${escHtml(opp.number || '-')}</code></td>
                 <td>${escHtml(opp.customer_name || '-')}</td>
                 <td>${escHtml(opp.owner_name || '-')}</td>
-                <td class="text-nowrap">${escHtml(opp.estimated_close_date || '-')}</td>
-                <td class="text-end text-nowrap">${fmt$(opp.estimated_value)}${opp.acr_from_milestones ? '<span class="text-muted ms-1" title="Calculated from milestone ACR/mo" style="font-size:.7em;vertical-align:super">*</span>' : ''}</td>
-                <td class="text-end text-nowrap">
+                <td class="msx-date" data-sb-sort-value="${escHtml((opp.estimated_close_date || '').slice(0, 10))}">${escHtml(opp.estimated_close_date || '-')}</td>
+                <td class="msx-number" data-sb-sort-value="${opp.estimated_value ?? ''}">${fmt$(opp.estimated_value)}${opp.acr_from_milestones ? '<span class="msx-tag" title="Calculated from milestone ACR/mo">*</span>' : ''}</td>
+                <td class="msx-number" data-sb-sort-value="${Number(opp.on_deal_team)}">
                     ${dealTeamBtn(opp.id, opp.on_deal_team)}
                 </td>
             </tr>`;
         }
         tbody.innerHTML = html;
+        mountSort('oppsTable');
 
         // Expand handlers
         tbody.querySelectorAll('.opp-expand').forEach(btn => {
@@ -494,9 +620,11 @@
                 if (existing && existing.classList.contains('opp-detail')) {
                     existing.remove();
                     this.classList.remove('expanded');
+                    this.setAttribute('aria-expanded', 'false');
                     return;
                 }
                 this.classList.add('expanded');
+                this.setAttribute('aria-expanded', 'true');
                 const id = parseInt(row.dataset.id);
                 const opp = oppsData.find(o => o.id === id);
                 if (!opp) return;
@@ -507,7 +635,7 @@
                 if (opp.msx_url) {
                     tpl.querySelector('.opp-msx-link').href = opp.msx_url;
                 } else {
-                    tpl.querySelector('.opp-msx-link').classList.add('d-none');
+                    tpl.querySelector('.opp-msx-link').classList.add('sb-hidden');
                 }
                 tpl.querySelector('.opp-sb-link').dataset.oppId = opp.id;
                 tpl.querySelector('.opp-sb-link').dataset.oppName = opp.name || '-';
@@ -531,7 +659,7 @@
                     if (onTeam && !confirm('Leave this deal team?')) return;
                     const cell = this.closest('td');
                     this.disabled = true;
-                    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                    this.textContent = '...';
                     const url = onTeam ? '/api/msx/leave-deal-team' : '/api/msx/join-deal-team';
                     try {
                         const resp = await fetch(url, {
@@ -546,6 +674,7 @@
                             const opp = oppsData.find(o => o.id === parseInt(oppId));
                             if (opp) opp.on_deal_team = newState;
                             cell.innerHTML = dealTeamBtn(oppId, newState);
+                            cell.dataset.sbSortValue = Number(newState);
                             bindDealTeamToggle(cell);
                         } else {
                             showToast(result.error || 'Failed', 'danger');
@@ -569,30 +698,30 @@
 
     // ----- Milestones -----
     async function loadMilestones() {
-        const params = new URLSearchParams();
-        if (filterCustomer.value) params.set('customer_id', filterCustomer.value);
-        else if (filterSeller && filterSeller.value) params.set('seller_id', filterSeller.value);
-        if (filterSearch.value) params.set('search', filterSearch.value);
+        const params = scopeParams();
         if (msTeamFilter.value) params.set('team', msTeamFilter.value);
 
         // Checkbox-based status filter
         const selectedStatuses = Array.from(msStatusFilter.querySelectorAll('.ms-status-cb:checked')).map(cb => cb.value);
         if (selectedStatuses.length) params.set('status', selectedStatuses.join(','));
 
-        if (msOppFilter.value) params.set('opportunity_id', msOppFilter.value);
+        const opportunityFilter = restoredFilters?.msOppFilter || msOppFilter.value;
+        if (opportunityFilter) params.set('opportunity_id', opportunityFilter);
 
-        document.getElementById('msBody').innerHTML = '<tr><td colspan="10" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>';
+        disableSort('msTable');
+        document.getElementById('msBody').innerHTML = '<tr data-sb-sort-fixed><td colspan="10" class="msx-message">Loading cached milestones...</td></tr>';
 
         try {
-            const resp = await fetch(`/api/reports/msx-workspace/milestones?${params}`);
-            const data = await resp.json();
+            const data = await readRecords('milestones', params);
+            if (!data) return;
             msData = data.milestones || [];
             document.getElementById('msCount').textContent = msData.length;
-            renderMilestones();
             populateOppFilter();
             populateWorkloadFilter();
+            renderMilestones();
         } catch (e) {
-            document.getElementById('msBody').innerHTML = `<tr><td colspan="10" class="text-center text-danger py-3">Error: ${escHtml(e.message)}</td></tr>`;
+            document.getElementById('msBody').innerHTML = `<tr data-sb-sort-fixed><td colspan="10" class="msx-message msx-error">Error: ${escHtml(e.message)}. Use Apply to retry.</td></tr>`;
+            document.getElementById('workspaceStatus').textContent = 'Milestones could not be loaded';
         }
     }
 
@@ -601,7 +730,7 @@
         msData.forEach(m => {
             if (m.opportunity_id && m.opportunity_name) opps[m.opportunity_id] = m.opportunity_name;
         });
-        const current = msOppFilter.value;
+        const current = restoredFilters?.msOppFilter || msOppFilter.value;
         msOppFilter.innerHTML = '<option value="">All Opportunities</option>';
         Object.entries(opps).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
             msOppFilter.innerHTML += `<option value="${id}">${escHtml(name)}</option>`;
@@ -612,7 +741,8 @@
     function populateWorkloadFilter() {
         const areas = new Set();
         msData.forEach(m => { if (m.workload_area) areas.add(m.workload_area); });
-        const current = msWorkloadFilter.value || localStorage.getItem('msxWsMsWorkload') || '';
+        const current = restoredFilters?.msWorkloadFilter || msWorkloadFilter.value ||
+            localStorage.getItem('msxWsMsWorkload') || '';
         msWorkloadFilter.innerHTML = '<option value="">All Areas</option>';
         [...areas].sort((a, b) => a.localeCompare(b)).forEach(a => {
             msWorkloadFilter.innerHTML += `<option value="${escHtml(a)}">${escHtml(a)}</option>`;
@@ -627,7 +757,8 @@
         const filtered = areaFilter ? msData.filter(m => m.workload_area === areaFilter) : msData;
         document.getElementById('msCount').textContent = filtered.length;
         if (!filtered.length) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No milestones found</td></tr>';
+            tbody.innerHTML = '<tr data-sb-sort-fixed><td colspan="10" class="msx-message">No milestones found. Change your scope or Clear the filters.</td></tr>';
+            mountSort('msTable');
             return;
         }
 
@@ -640,31 +771,31 @@
                 return msSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
             });
         }
-        updateSortIndicators('msPane', msSortField, msSortDir);
 
         let html = '';
         for (const ms of sorted) {
             const dueCls = urgencyClass(ms.due_date_urgency);
             html += `<tr class="ms-row" data-id="${ms.id}" data-msx-id="${escHtml(ms.msx_id || '')}">
                 <td>
-                    <button class="btn btn-sm btn-link p-0 ms-tasks-btn" title="View tasks for this milestone" data-msx-id="${escHtml(ms.msx_id || '')}" data-title="${escHtml(ms.title || ms.number || '')}">
+                    <button class="msx-command ms-tasks-btn" title="View tasks for this milestone" aria-label="View milestone tasks" data-msx-id="${escHtml(ms.msx_id || '')}" data-title="${escHtml(ms.title || ms.number || '')}">
                         <i class="bi bi-list-task"></i>
                     </button>
                 </td>
                 <td><a href="#" class="ms-detail-link" data-ms-id="${ms.id}" data-ms-title="${escHtml(ms.title || '-')}" data-ms-status="${escHtml(ms.status || '')}" data-ms-url="${escHtml(ms.url || '')}">${escHtml(ms.title || '-')}</a></td>
-                <td class="text-nowrap"><code>${escHtml(ms.number || '-')}</code></td>
+                <td><code>${escHtml(ms.number || '-')}</code></td>
                 <td>${statusBadge(ms.status)}</td>
                 <td>${escHtml(ms.customer_name || '-')}</td>
                 <td>${escHtml(ms.opportunity_name || '-')}</td>
                 <td>${escHtml(ms.workload || '-')}</td>
-                <td class="text-nowrap ${dueCls}">${escHtml(ms.due_date || '-')}</td>
-                <td class="text-end">${ms.monthly_usage != null ? fmt$(ms.monthly_usage) : '-'}</td>
-                <td class="text-end text-nowrap">
+                <td class="msx-date ${dueCls}" data-sb-sort-value="${escHtml(ms.due_date || '')}">${escHtml(ms.due_date || '-')}</td>
+                <td class="msx-number" data-sb-sort-value="${ms.monthly_usage ?? ''}">${ms.monthly_usage != null ? fmt$(ms.monthly_usage) : '-'}</td>
+                <td class="msx-number" data-sb-sort-value="${Number(ms.on_my_team)}">
                     ${msTeamBtn(ms.id, ms.on_my_team)}
                 </td>
             </tr>`;
         }
         tbody.innerHTML = html;
+        mountSort('msTable');
 
         // Task view for single milestone
         tbody.querySelectorAll('.ms-tasks-btn').forEach(btn => {
@@ -673,26 +804,30 @@
                 const msId = this.closest('tr').dataset.id;
                 const title = this.dataset.title;
                 if (!msxId) return;
+                if (!allowContextChange()) return;
                 document.getElementById('taskContext').textContent = 'Tasks for: ' + title;
                 document.getElementById('taskMilestoneId').value = msxId;
                 document.getElementById('taskMilestoneName').value = title;
                 filteredMilestoneId = msId;
                 filteredMilestoneTitle = title;
-                document.getElementById('btnCreateTask').classList.remove('d-none');
-                document.getElementById('btnBackToMilestones').classList.remove('d-none');
+                document.getElementById('btnCreateTask').classList.remove('sb-hidden');
+                document.getElementById('btnBackToMilestones').classList.remove('sb-hidden');
                 // Load tasks filtered to this milestone
                 const params = new URLSearchParams();
                 params.set('milestone_id', msId);
-                fetch('/api/reports/msx-workspace/tasks?' + params.toString())
-                    .then(r => r.json())
+                readRecords('tasks', params)
                     .then(data => {
+                        if (!data) return;
                         tasksData = data.tasks || [];
                         document.getElementById('taskCount').textContent = tasksData.length;
                         renderTasks();
+                    }).catch(error => {
+                        document.getElementById('tasksBody').innerHTML =
+                            `<tr data-sb-sort-fixed><td colspan="5" class="msx-message msx-error">${escHtml(error.message)}. Select the milestone task icon to retry.</td></tr>`;
                     });
                 // Switch to tasks tab
                 const tasksTab = document.getElementById('tasks-tab');
-                bootstrap.Tab.getOrCreateInstance(tasksTab).show();
+                showTab(tasksTab.id);
             });
         });
 
@@ -707,7 +842,7 @@
                     if (onTeam && !confirm('Leave this milestone team?')) return;
                     const cell = this.closest('td');
                     this.disabled = true;
-                    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                    this.textContent = '...';
                     const url = onTeam ? '/api/msx/leave-milestone-team' : '/api/msx/join-milestone-team';
                     try {
                         const resp = await fetch(url, {
@@ -722,6 +857,7 @@
                             const ms = msData.find(m => m.id === parseInt(msId));
                             if (ms) ms.on_my_team = newState;
                             cell.innerHTML = msTeamBtn(msId, newState);
+                            cell.dataset.sbSortValue = Number(newState);
                             bindMsTeamToggle(cell);
                         } else {
                             showToast(result.error || 'Failed', 'danger');
@@ -752,124 +888,65 @@
     }
 
     // ----- Milestone Detail Modal -----
-    let msxMsModal = null;
     function openMsxMilestoneDetail(msId, title, status, msxUrl) {
-        if (!msxMsModal) {
-            msxMsModal = new bootstrap.Modal(document.getElementById('msxMilestoneDetailModal'));
-        }
-        document.getElementById('msxMsDetailTitle').textContent = title;
-
-        const badgeEl = document.getElementById('msxMsDetailBadge');
-        if (status) {
-            const cls = {'On Track':'bg-success','At Risk':'bg-warning text-dark','Blocked':'bg-danger','Completed':'bg-info'}[status] || 'bg-secondary';
-            badgeEl.innerHTML = `<span class="badge ${cls}">${escHtml(status)}</span>`;
-        } else {
-            badgeEl.innerHTML = '';
-        }
-
-        const msxLink = document.getElementById('msxMsDetailMsxLink');
-        if (msxUrl) { msxLink.href = msxUrl; msxLink.style.display = ''; }
-        else { msxLink.style.display = 'none'; }
-        document.getElementById('msxMsDetailFullLink').href = '/milestone/' + msId;
-
-        const bodyEl = document.getElementById('msxMsDetailBody');
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>';
-        msxMsModal.show();
-
-        fetch('/api/milestone/' + msId + '/detail')
-            .then(r => { if (!r.ok) throw new Error('Failed to load'); return r.text(); })
-            .then(html => {
-                bodyEl.innerHTML = html;
-                bodyEl.querySelectorAll('script').forEach(oldScript => {
-                    const newScript = document.createElement('script');
-                    if (oldScript.src) { newScript.src = oldScript.src; }
-                    else { newScript.textContent = '(function(){' + oldScript.textContent + '})();'; }
-                    oldScript.replaceWith(newScript);
-                });
-            })
-            .catch(() => {
-                bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load milestone details.</div>';
-            });
+        return SBMilestonePreview.open(msId, title, status, msxUrl);
     }
 
     // ----- Opportunity Detail Modal -----
-    let msxOppModal = null;
     function openOppDetail(oppId, oppName, msxUrl) {
-        if (!msxOppModal) {
-            msxOppModal = new bootstrap.Modal(document.getElementById('msxOppDetailModal'));
-        }
-        document.getElementById('msxOppDetailTitle').textContent = oppName || 'Opportunity';
-
-        const msxLink = document.getElementById('msxOppDetailMsxLink');
-        if (msxUrl) { msxLink.href = msxUrl; msxLink.style.display = ''; }
-        else { msxLink.style.display = 'none'; }
-        document.getElementById('msxOppDetailFullLink').href = '/opportunity/' + oppId;
-
-        const bodyEl = document.getElementById('msxOppDetailBody');
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>';
-        msxOppModal.show();
-
-        fetch('/api/opportunity/' + oppId + '/detail')
-            .then(r => { if (!r.ok) throw new Error('Failed to load'); return r.text(); })
-            .then(html => {
-                bodyEl.innerHTML = html;
-                bodyEl.querySelectorAll('script').forEach(oldScript => {
-                    const newScript = document.createElement('script');
-                    if (oldScript.src) { newScript.src = oldScript.src; }
-                    else { newScript.textContent = '(function(){' + oldScript.textContent + '})();'; }
-                    oldScript.replaceWith(newScript);
-                });
-            })
-            .catch(() => {
-                bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load opportunity details.</div>';
-            });
+        return opportunityPreview.open({id: Number(oppId), title: oppName || 'Opportunity', msxUrl});
     }
 
     // ----- Tasks -----
     async function loadTasks() {
-        const params = new URLSearchParams();
-        if (filterCustomer.value) params.set('customer_id', filterCustomer.value);
-        else if (filterSeller && filterSeller.value) params.set('seller_id', filterSeller.value);
-        if (filterSearch.value) params.set('search', filterSearch.value);
+        const params = scopeParams();
 
-        document.getElementById('tasksBody').innerHTML = '<tr><td colspan="5" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Loading tasks...</td></tr>';
+        disableSort('tasksTable');
+        document.getElementById('tasksBody').innerHTML = '<tr data-sb-sort-fixed><td colspan="5" class="msx-message">Loading cached tasks...</td></tr>';
+        if (filteredMilestoneId) {
+            params.delete('customer_id'); params.delete('seller_id'); params.delete('search');
+            params.set('milestone_id', filteredMilestoneId);
+        }
 
         try {
-            const resp = await fetch('/api/reports/msx-workspace/tasks?' + params.toString());
-            const data = await resp.json();
+            const data = await readRecords('tasks', params);
+            if (!data) return;
             tasksData = data.tasks || [];
             document.getElementById('taskCount').textContent = tasksData.length;
             renderTasks();
         } catch (e) {
-            document.getElementById('tasksBody').innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Error: ${escHtml(e.message)}</td></tr>`;
+            document.getElementById('tasksBody').innerHTML = `<tr data-sb-sort-fixed><td colspan="5" class="msx-message msx-error">Error: ${escHtml(e.message)}. Use Apply to retry.</td></tr>`;
+            document.getElementById('workspaceStatus').textContent = 'Tasks could not be loaded';
         }
     }
 
     function renderTasks() {
         const tbody = document.getElementById('tasksBody');
         if (!tasksData.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No tasks found</td></tr>';
+            tbody.innerHTML = '<tr data-sb-sort-fixed><td colspan="5" class="msx-message">No tasks found in this scope.</td></tr>';
+            mountSort('tasksTable');
             return;
         }
 
         let html = '';
         for (const t of tasksData) {
             const catLabel = t.task_category_name || 'Unknown';
-            const hvaBadge = t.is_hva ? ' <span class="badge bg-info text-dark">HVA</span>' : '';
+            const hvaBadge = t.is_hva ? ' <span class="msx-tag is-warning">HVA</span>' : '';
             html += `<tr data-task-id="${escHtml(t.task_id)}">
-                <td>${escHtml(t.subject)}${hvaBadge}</td>
+                <td data-sb-sort-value="${escHtml(t.subject)}">${escHtml(t.subject)}${hvaBadge}</td>
                 <td>${escHtml(catLabel)}</td>
-                <td class="text-nowrap">${t.due_date ? escHtml(t.due_date.substring(0, 10)) : '-'}</td>
-                <td class="text-nowrap">${escHtml(t.milestone_title || findMilestoneTitle(t.milestone_msx_id))}</td>
-                <td class="text-end">
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-success close-task-btn" data-task-id="${escHtml(t.task_id)}" title="Close Task"><i class="bi bi-check-lg"></i></button>
-                        <a href="${escHtml(t.task_url || '#')}" target="_blank" class="btn btn-outline-secondary" title="Open in MSX"><i class="bi bi-box-arrow-up-right"></i></a>
+                <td class="msx-date" data-sb-sort-value="${escHtml((t.due_date || '').slice(0, 10))}">${t.due_date ? escHtml(t.due_date.substring(0, 10)) : '-'}</td>
+                <td>${escHtml(t.milestone_title || findMilestoneTitle(t.milestone_msx_id))}</td>
+                <td>
+                    <div class="msx-controls">
+                        <button class="msx-command close-task-btn" data-task-id="${escHtml(t.task_id)}" title="Close Task" aria-label="Close task"><i class="bi bi-check-lg"></i></button>
+                        <a href="${escHtml(t.task_url || '#')}" target="_blank" rel="noopener" class="msx-command" title="Open in MSX" aria-label="Open task in MSX"><i class="bi bi-box-arrow-up-right"></i></a>
                     </div>
                 </td>
             </tr>`;
         }
         tbody.innerHTML = html;
+        mountSort('tasksTable');
 
         // Close task handlers
         tbody.querySelectorAll('.close-task-btn').forEach(btn => {
@@ -877,17 +954,14 @@
                 if (!confirm('Close this task?')) return;
                 const taskId = this.dataset.taskId;
                 this.disabled = true;
-                this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                this.textContent = '...';
                 try {
                     const resp = await fetch(`/api/msx/task/${taskId}/close`, {method: 'POST'});
                     const result = await resp.json();
                     if (result.success) {
-                        const row = this.closest('tr');
-                        row.style.transition = 'opacity 0.3s';
-                        row.style.opacity = '0';
-                        setTimeout(() => row.remove(), 300);
                         tasksData = tasksData.filter(t => t.task_id !== taskId);
                         document.getElementById('taskCount').textContent = tasksData.length;
+                        renderTasks();
                         showToast('Task closed');
                     } else {
                         showToast(result.error || 'Failed to close task', 'danger');
@@ -929,7 +1003,8 @@
         }
 
         this.disabled = true;
-        this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating...';
+        taskSaving = true;
+        this.textContent = 'Creating...';
 
         try {
             const body = {
@@ -948,16 +1023,17 @@
             const result = await resp.json();
             if (result.success) {
                 showToast('Task created');
-                bootstrap.Modal.getInstance(document.getElementById('createTaskModal')).hide();
                 document.getElementById('taskSubject').value = '';
                 document.getElementById('taskDescription').value = '';
                 document.getElementById('taskDueDate').value = '';
+                taskSaving = false;
+                SBDialog.close('createTaskModal', 'saved');
                 // Reload tasks keeping milestone filter if active
                 if (filteredMilestoneId) {
                     const p = new URLSearchParams();
                     p.set('milestone_id', filteredMilestoneId);
-                    const r = await fetch('/api/reports/msx-workspace/tasks?' + p.toString());
-                    const d = await r.json();
+                    const d = await readRecords('tasks', p);
+                    if (!d) return;
                     tasksData = d.tasks || [];
                     document.getElementById('taskCount').textContent = tasksData.length;
                     renderTasks();
@@ -970,44 +1046,10 @@
         } catch (e) {
             showToast('Error: ' + e.message, 'danger');
         } finally {
+            taskSaving = false;
             this.disabled = false;
             this.innerHTML = '<i class="bi bi-check-lg"></i> Create';
         }
-    });
-
-    // ----- Sort indicator helper -----
-    function updateSortIndicators(paneId, sortField, sortDir) {
-        const pane = document.getElementById(paneId);
-        if (!pane) return;
-        pane.querySelectorAll('.sortable').forEach(th => {
-            const icon = th.querySelector('i');
-            if (!icon) return;
-            if (th.dataset.sort === sortField) {
-                icon.className = sortDir === 'asc' ? 'bi bi-sort-up small text-info' : 'bi bi-sort-down small text-info';
-            } else {
-                icon.className = 'bi bi-arrow-down-up text-muted small';
-            }
-        });
-    }
-
-    // ----- Sorting -----
-    document.querySelectorAll('.sortable').forEach(th => {
-        th.style.cursor = 'pointer';
-        th.addEventListener('click', function() {
-            const field = this.dataset.sort;
-            const activePane = document.querySelector('.tab-pane.active');
-            if (activePane.id === 'oppsPane') {
-                if (oppSortField === field) { oppSortDir = oppSortDir === 'asc' ? 'desc' : 'asc'; }
-                else { oppSortField = field; oppSortDir = 'asc'; }
-                localStorage.setItem('msxWsOppSort', JSON.stringify({f: oppSortField, d: oppSortDir}));
-                renderOpportunities();
-            } else if (activePane.id === 'msPane') {
-                if (msSortField === field) { msSortDir = msSortDir === 'asc' ? 'desc' : 'asc'; }
-                else { msSortField = field; msSortDir = 'asc'; }
-                localStorage.setItem('msxWsMsSort', JSON.stringify({f: msSortField, d: msSortDir}));
-                renderMilestones();
-            }
-        });
     });
 
     function clearMilestoneContext() {
@@ -1016,20 +1058,25 @@
         document.getElementById('taskContext').textContent = '';
         document.getElementById('taskMilestoneId').value = '';
         document.getElementById('taskMilestoneName').value = '';
-        document.getElementById('btnCreateTask').classList.add('d-none');
-        document.getElementById('btnBackToMilestones').classList.add('d-none');
+        document.getElementById('btnCreateTask').classList.add('sb-hidden');
+        document.getElementById('btnBackToMilestones').classList.add('sb-hidden');
     }
 
     // ----- Filter events -----
-    function applyAll() {
+    async function applyAll() {
+        if (!restoring && !allowContextChange()) return;
+        if (!restoring) appliedScope = {
+            seller: filterSeller?.value || '', customer: filterCustomer.value,
+            search: filterSearch.value,
+        };
         clearMilestoneContext();
-        loadOpportunities();
-        loadMilestones();
-        loadTasks();
+        await Promise.all([loadOpportunities(), loadMilestones(), loadTasks()]);
+        saveView();
     }
 
     btnApply.addEventListener('click', applyAll);
     btnClear.addEventListener('click', () => {
+        if (!allowContextChange()) return;
         if (filterSeller) { filterSeller.value = ''; filterCustomerBySeller(''); }
         filterCustomer.value = '';
         filterSearch.value = '';
@@ -1048,6 +1095,10 @@
         localStorage.removeItem('msxWsOppSort');
         localStorage.removeItem('msxWsMsSort');
         localStorage.removeItem('msxWsMsWorkload');
+        sorts.clear();
+        const saved = {...history.state?.sbTableSort};
+        ['oppsTable', 'msTable', 'tasksTable'].forEach(id => delete saved[`msx-${id}`]);
+        history.replaceState({...history.state, sbTableSort: saved}, '');
         applyAll();
     });
 
@@ -1070,17 +1121,20 @@
 
     // Back to milestones button
     document.getElementById('btnBackToMilestones').addEventListener('click', () => {
-        bootstrap.Tab.getOrCreateInstance(document.getElementById('ms-tab')).show();
+        showTab('ms-tab');
     });
 
     // ----- Update result count on tab switch + persist active tab -----
-    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
-        tab.addEventListener('shown.bs.tab', function() {
-            const active = document.querySelector('.tab-pane.active');
-            if (active.id === 'oppsPane') resultCount.textContent = oppsData.length ? oppsData.length + ' opportunities' : '';
-            else if (active.id === 'msPane') resultCount.textContent = msData.length ? msData.length + ' milestones' : '';
-            else if (active.id === 'tasksPane') resultCount.textContent = tasksData.length ? tasksData.length + ' tasks' : '';
-            localStorage.setItem('msxWorkspaceTab', this.id);
+    const tabs = [...document.querySelectorAll('[data-msx-pane]')];
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => showTab(tab.id));
+        tab.addEventListener('keydown', event => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const index = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+                (tabs.indexOf(tab) + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+            showTab(tabs[index].id);
+            tabs[index].focus();
         });
     });
 
@@ -1091,10 +1145,7 @@
     if (targetTab && targetTab !== 'opps-tab') {
         const tabEl = document.getElementById(targetTab);
         if (tabEl) {
-            // Bootstrap is loaded with defer - wait for it
-            window.addEventListener('load', () => {
-                new bootstrap.Tab(tabEl).show();
-            });
+            showTab(tabEl.id, false);
         }
     }
 
@@ -1111,8 +1162,70 @@
     // Set initial button label
     updateMsStatusBtnLabel();
 
-    // Auto-load data on page open
-    applyAll();
-})();
+    async function restoreView() {
+        const view = history.state?.sbMsxWorkspace;
+        restoring = true;
+        try {
+            if (view) {
+                appliedScope = view.appliedScope || {
+                    seller: view.values.filterSeller || '', customer: view.values.filterCustomer,
+                    search: view.values.filterSearch,
+                };
+                readingPositions = view.positions || {};
+                restoredFilters = view.values;
+                fields.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && view.values[id] !== undefined) el.value = view.values[id];
+                });
+                filterCustomerBySeller(filterSeller?.value || '');
+                msStatusFilter.querySelectorAll('.ms-status-cb').forEach(cb =>
+                    cb.checked = view.statuses.includes(cb.value));
+                updateMsStatusBtnLabel();
+                showTab(view.tab, false);
+            }
+            await applyAll();
+            restoredFilters = null;
+            if (view?.milestoneId) {
+                filteredMilestoneId = view.milestoneId;
+                filteredMilestoneTitle = view.milestoneTitle;
+                document.getElementById('taskMilestoneId').value = view.milestoneMsxId;
+                document.getElementById('taskMilestoneName').value = view.milestoneTitle;
+                document.getElementById('taskContext').textContent = 'Tasks for: ' + view.milestoneTitle;
+                document.getElementById('btnCreateTask').classList.remove('sb-hidden');
+                document.getElementById('btnBackToMilestones').classList.remove('sb-hidden');
+                await loadTasks();
+            }
+            if (view) {
+                for (const [id, [top, left]] of Object.entries(view.positions)) {
+                    const el = document.getElementById(id);
+                    el.scrollTop = top; el.scrollLeft = left;
+                }
+            }
+        } finally {
+            restoring = false;
+        }
+    }
+    fields.forEach(id => document.getElementById(id)?.addEventListener('input', saveView));
+    document.querySelectorAll('.msx-reading').forEach(el => el.addEventListener('scroll', () => {
+        if (!el.closest('.msx-pane').hidden) saveView();
+    }));
+    msStatusFilter.addEventListener('change', saveView);
+    document.getElementById('createTaskModal').addEventListener('sb:dialog-before-close', event => {
+        if (taskSaving) {
+            event.preventDefault();
+            showToast('Task creation is still pending. Please wait.', 'warning');
+        }
+    });
+    window.addEventListener('beforeunload', event => {
+        if (taskSaving || taskDraft()) {
+            event.preventDefault(); event.returnValue = '';
+        }
+        saveView();
+    });
+    window.addEventListener('pagehide', saveView);
+    window.addEventListener('pageshow', event => { if (event.persisted) restoreView(); });
+    window.addEventListener('popstate', restoreView);
+    restoreView();
+});
 </script>
 {% endblock %}

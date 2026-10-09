@@ -5,23 +5,23 @@
 {% block extra_head %}
 <style>
   .metric-card { margin-bottom: 1.25rem; }
-  .metric-card .card-header { font-weight: 600; }
+  .metric-card .sb-admin-section-heading { font-weight: 600; }
 
   /* Make table headers readable in BOTH light and dark themes by leaning
-     on Bootstrap's CSS vars instead of hardcoding colors. */
+     on the approved native theme tokens instead of hardcoding colors. */
   .metric-table { font-size: 0.875rem; margin-bottom: 0; }
   .metric-table thead th {
-    background-color: var(--bs-tertiary-bg);
-    color: var(--bs-body-color);
+    background-color: var(--sb-ui-context);
+    color: var(--sb-ui-ink);
     font-weight: 600;
-    border-bottom: 2px solid var(--bs-border-color);
+    border-bottom: 2px solid var(--sb-ui-line);
   }
-  .metric-table tbody td { color: var(--bs-body-color); }
+  .metric-table tbody td { color: var(--sb-ui-ink); }
 
   .metric-error {
-    background: var(--bs-warning-bg-subtle, #fff8e1);
-    border: 1px solid var(--bs-warning-border-subtle, #ffe0b2);
-    color: var(--bs-warning-text-emphasis, #6d4c00);
+    background: var(--sb-ui-warning-bg, #fff8e1);
+    border: 1px solid var(--sb-ui-warning, #ffe0b2);
+    color: var(--sb-ui-warning, #6d4c00);
     padding: 0.5rem 0.75rem;
     border-radius: 4px;
     font-size: 0.85rem;
@@ -43,37 +43,61 @@
     margin-bottom: 1rem;
     font-size: 1rem;
   }
-  .probe-status-banner.healthy { background: var(--bs-success-bg-subtle, #d4edda); color: var(--bs-success-text-emphasis, #155724); border: 1px solid var(--bs-success-border-subtle, #c3e6cb); }
-  .probe-status-banner.outage  { background: var(--bs-danger-bg-subtle, #f8d7da);  color: var(--bs-danger-text-emphasis, #721c24);  border: 1px solid var(--bs-danger-border-subtle, #f5c6cb); }
+  .probe-status-banner.healthy { background: var(--sb-ui-selection, #d4edda); color: var(--sb-ui-accent, #155724); border: 1px solid var(--sb-ui-line, #c3e6cb); }
+  .probe-status-banner.outage  { background: var(--sb-ui-danger-bg, #f8d7da);  color: var(--sb-ui-danger, #721c24);  border: 1px solid var(--sb-ui-danger, #f5c6cb); }
   .probe-status-banner.no-data,
-  .probe-status-banner.unknown { background: var(--bs-secondary-bg-subtle, #e2e3e5); color: var(--bs-secondary-text-emphasis, #383d41); border: 1px solid var(--bs-border-color, #d6d8db); }
-  .probe-status-banner.loading { background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); border: 1px dashed var(--bs-border-color); }
+  .probe-status-banner.unknown { background: var(--sb-ui-context, #e2e3e5); color: var(--sb-ui-muted, #383d41); border: 1px solid var(--sb-ui-line, #d6d8db); }
+  .probe-status-banner.loading { background: var(--sb-ui-context); color: var(--sb-ui-muted); border: 1px dashed var(--sb-ui-line); }
 
   .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 
-  .card-loading {
-    color: var(--bs-secondary-color);
+  .sb-admin-loading {
+    color: var(--sb-ui-muted);
     font-size: 0.875rem;
     padding: 0.5rem 0;
   }
-  .card-loading .spinner-border { width: 1rem; height: 1rem; border-width: .15em; vertical-align: -2px; margin-right: 6px; }
+  .sb-admin-loading .sb-admin-busy { width: 1rem; height: 1rem; border-width: .15em; vertical-align: -2px; margin-right: 6px; }
 </style>
 {% endblock %}
 
+
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-dialog.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-table-sort.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-administration.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Page status">
+    <span>Sales Buddy · Local administration and insights</span>
+    <span>Read-only until you choose an action</span>
+</footer>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-start mb-3">
+<script src="{{ url_for('static', filename='js/ui-admin-panel.js') }}"></script>
+
+<section class="sb-administration sb-admin-metrics sb-directory-frame" data-sb-page-surface>
+<header class="sb-admin-page-heading" data-sb-page-band>
+    <h1>Metrics</h1>
+    <span>Live App Insights · Independent data sources</span>
+</header>
+<div class="sb-admin-reading" data-sb-page-body tabindex="0" role="region" aria-label="metrics content">
+
+<div class="sb-admin-d-flex sb-admin-justify-content-between sb-admin-align-items-start sb-admin-mb-3">
   <div>
-    <h2><i class="bi bi-graph-up"></i> Metrics</h2>
-    <p class="text-muted mb-0 small">
+
+    <p class="sb-admin-text-muted sb-admin-mb-0 sb-admin-small">
       Live App Insights data from the <code>NoteHelper_Telemetry</code> workspace.
       Authentication uses your <code>az login</code> credential. Cards load
       independently; if one shows a 403, grant your account read on the
       App Insights resource.
     </p>
   </div>
-  <div class="btn-group" role="group" aria-label="Time range">
+  <div class="sb-admin-btn-group" role="group" aria-label="Time range">
     {% for d in [1, 7, 30, 90] %}
-      <a href="?days={{ d }}" class="btn btn-sm {{ 'btn-primary' if d == days else 'btn-outline-secondary' }}">
+      <a href="?days={{ d }}" class="sb-admin-command sb-admin-btn-sm {{ 'sb-admin-btn-primary' if d == days else 'sb-admin-btn-outline-secondary' }}">
         {{ d }}d
       </a>
     {% endfor %}
@@ -81,79 +105,79 @@
 </div>
 
 <!-- 1. DAU card (top of page - this is the headline metric) -->
-<div class="card metric-card">
-  <div class="card-header">Daily active users</div>
-  <div class="card-body">
-    <div data-card="dau" data-render="dau_line" class="card-loading">
-      <span class="spinner-border" role="status"></span>Loading...
+<section class="sb-admin-section metric-card">
+  <div class="sb-admin-section-heading">Daily active users</div>
+  <div class="sb-admin-section-content">
+    <div data-card="dau" data-render="dau_line" class="sb-admin-loading">
+      <span class="sb-admin-busy" role="status"></span>Loading...
     </div>
   </div>
-</div>
+</section>
 
 <!-- 2. WorkIQ uptime card -->
-<div class="card metric-card">
-  <div class="card-header d-flex align-items-center justify-content-between">
+<section class="sb-admin-section metric-card">
+  <div class="sb-admin-section-heading sb-admin-d-flex sb-admin-align-items-center sb-admin-justify-content-between">
     <span><i class="bi bi-activity"></i> WorkIQ uptime</span>
-    <small class="text-muted">last {{ days }}d</small>
+    <small class="sb-admin-text-muted">last {{ days }}d</small>
   </div>
-  <div class="card-body">
+  <div class="sb-admin-section-content">
     <div id="workiq-summary" class="probe-status-banner loading">
-      <span class="spinner-border spinner-border-sm" role="status"></span>
+      <span class="sb-admin-busy sb-admin-busy-small" role="status"></span>
       Loading WorkIQ status...
     </div>
-    <h6 class="text-muted mb-2">Hourly uptime</h6>
-    <div data-card="workiq_uptime" data-render="workiq_uptime" class="card-loading">
-      <span class="spinner-border" role="status"></span>Loading...
+    <h6 class="sb-admin-text-muted sb-admin-mb-2">Hourly uptime</h6>
+    <div data-card="workiq_uptime" data-render="workiq_uptime" class="sb-admin-loading">
+      <span class="sb-admin-busy" role="status"></span>Loading...
     </div>
-    <div class="small text-muted mt-1">
+    <div class="sb-admin-small sb-admin-text-muted sb-admin-mt-1">
       <span class="legend-dot" style="background:#28a745"></span>OK
-      <span class="legend-dot ms-2" style="background:#dc3545"></span>Server down
-      <span class="legend-dot ms-2" style="background:#e9ecef"></span>No data
+      <span class="legend-dot sb-admin-ms-2" style="background:#dc3545"></span>Server down
+      <span class="legend-dot sb-admin-ms-2" style="background:#e9ecef"></span>No data
     </div>
     <hr>
-    <h6 class="text-muted mb-2">Parser failures</h6>
-    <div class="small text-muted mb-2">
+    <h6 class="sb-admin-text-muted sb-admin-mb-2">Parser failures</h6>
+    <div class="sb-admin-small sb-admin-text-muted sb-admin-mb-2">
       Each row is a WorkIQ call site whose response we couldn't parse.
       Non-zero rows mean the LLM output drifted and that parser needs updating.
     </div>
-    <div data-card="workiq_parse_failures" class="card-loading">
-      <span class="spinner-border" role="status"></span>Loading...
+    <div data-card="workiq_parse_failures" class="sb-admin-loading">
+      <span class="sb-admin-busy" role="status"></span>Loading...
     </div>
   </div>
-</div>
+</section>
 
 <!-- 3. MSX Account Teams probe -->
-<div class="card metric-card">
-  <div class="card-header d-flex align-items-center justify-content-between">
+<section class="sb-admin-section metric-card">
+  <div class="sb-admin-section-heading sb-admin-d-flex sb-admin-align-items-center sb-admin-justify-content-between">
     <span><i class="bi bi-shield-check"></i> MSX Account Teams probe</span>
-    <small class="text-muted">last {{ days }}d</small>
+    <small class="sb-admin-text-muted">last {{ days }}d</small>
   </div>
-  <div class="card-body">
+  <div class="sb-admin-section-content">
     <div id="probe-summary" class="probe-status-banner loading">
-      <span class="spinner-border spinner-border-sm" role="status"></span>
+      <span class="sb-admin-busy sb-admin-busy-small" role="status"></span>
       Loading probe status...
     </div>
-    <div class="row">
-      <div class="col-md-4">
-        <h6 class="text-muted mb-2">Result counts</h6>
-        <div data-card="probe_status" class="card-loading">
-          <span class="spinner-border" role="status"></span>Loading...
+    <div class="sb-admin-grid">
+      <div class="sb-admin-col-md-4">
+        <h6 class="sb-admin-text-muted sb-admin-mb-2">Result counts</h6>
+        <div data-card="probe_status" class="sb-admin-loading">
+          <span class="sb-admin-busy" role="status"></span>Loading...
         </div>
       </div>
-      <div class="col-md-8">
-        <h6 class="text-muted mb-2">Hourly timeline</h6>
-        <div data-card="probe_timeline" data-render="probe_timeline" class="card-loading">
-          <span class="spinner-border" role="status"></span>Loading...
+      <div class="sb-admin-col-md-8">
+        <h6 class="sb-admin-text-muted sb-admin-mb-2">Hourly timeline</h6>
+        <div data-card="probe_timeline" data-render="probe_timeline" class="sb-admin-loading">
+          <span class="sb-admin-busy" role="status"></span>Loading...
         </div>
       </div>
     </div>
     <hr>
-    <h6 class="text-muted mb-2">Recent probe events</h6>
-    <div data-card="probe_recent" class="card-loading">
-      <span class="spinner-border" role="status"></span>Loading...
+    <h6 class="sb-admin-text-muted sb-admin-mb-2">Recent probe events</h6>
+    <div data-card="probe_recent" class="sb-admin-loading">
+      <span class="sb-admin-busy" role="status"></span>Loading...
     </div>
   </div>
-</div>
+</section>
 
 {% set ported_cards = [
   ('installs_by_role', 'Installs by role (last 30d)', None),
@@ -168,15 +192,16 @@
 ] %}
 
 {% for key, title, render_mode in ported_cards %}
-<div class="card metric-card">
-  <div class="card-header">{{ title }}</div>
-  <div class="card-body">
-    <div data-card="{{ key }}"{% if render_mode %} data-render="{{ render_mode }}"{% endif %} class="card-loading">
-      <span class="spinner-border" role="status"></span>Loading...
+<section class="sb-admin-section metric-card">
+  <div class="sb-admin-section-heading">{{ title }}</div>
+  <div class="sb-admin-section-content">
+    <div data-card="{{ key }}"{% if render_mode %} data-render="{{ render_mode }}"{% endif %} class="sb-admin-loading">
+      <span class="sb-admin-busy" role="status"></span>Loading...
     </div>
   </div>
-</div>
+</section>
 {% endfor %}
+</div></section>
 {% endblock %}
 
 {% block extra_js %}
@@ -184,6 +209,7 @@
 <script>
 (function() {
   const DAYS = {{ days }};
+  let dauChart = null;
 
   function escapeHtml(v) {
     if (v === null || v === undefined) return '';
@@ -193,7 +219,7 @@
   }
 
   function renderError(msg) {
-    return `<div class="metric-error"><i class="bi bi-exclamation-triangle"></i> ${escapeHtml(msg)}</div>`;
+    return `<div class="metric-error" role="alert"><i class="bi bi-exclamation-triangle"></i> ${escapeHtml(msg)}</div>`;
   }
 
   function renderAuthRequired() {
@@ -205,11 +231,11 @@
       ? window.Share.isShareEnabled()
       : false;
     const button = allowed ? `
-        <div class="mt-2">
-          <button type="button" class="btn btn-sm btn-warning" data-action="metrics-sign-in">
+        <div class="sb-admin-mt-2">
+          <button type="button" class="sb-admin-command sb-admin-btn-sm sb-admin-btn-warning" data-action="metrics-sign-in">
             <i class="bi bi-box-arrow-in-right"></i> Sign in to BlaineCorp
           </button>
-          <span class="signin-status text-muted small ms-2"></span>
+          <span class="signin-status sb-admin-text-muted sb-admin-small sb-admin-ms-2"></span>
         </div>` : '';
     return `
       <div class="metric-error" data-state="auth-required">
@@ -218,19 +244,24 @@
       </div>`;
   }
 
-  function renderTable(rows) {
+  function renderTable(rows, cardId) {
     if (!rows || rows.length === 0) {
-      return '<p class="text-muted small mb-0">No data in window.</p>';
+      return '<p class="sb-admin-text-muted sb-admin-small sb-admin-mb-0">No data in window.</p>';
     }
     const cols = Object.keys(rows[0]);
-    const head = cols.map(c => `<th>${escapeHtml(c)}</th>`).join('');
+    const types = cols.map(c => rows.every(r => r[c] == null ||
+      typeof r[c] === 'number') ? 'number' : 'text');
+    const head = cols.map((c, i) =>
+      `<th data-sb-sort-type="${types[i]}">${escapeHtml(c)}</th>`).join('');
     const body = rows.map(r => {
-      const cells = cols.map(c => `<td>${escapeHtml(r[c])}</td>`).join('');
+      const cells = cols.map(c =>
+        `<td data-sb-sort-value="${escapeHtml(r[c])}">${escapeHtml(r[c])}</td>`).join('');
       return `<tr>${cells}</tr>`;
     }).join('');
     return `
-      <div class="table-responsive">
-        <table class="table table-sm table-hover metric-table">
+      <div class="sb-admin-table-region">
+        <table class="sb-admin-table sb-admin-table-sm sb-admin-table-hover metric-table"
+               data-sb-sort-key="metrics-${escapeHtml(cardId)}">
           <thead><tr>${head}</tr></thead>
           <tbody>${body}</tbody>
         </table>
@@ -239,7 +270,7 @@
 
   function renderProbeTimeline(rows) {
     if (!rows || rows.length === 0) {
-      return '<p class="text-muted small mb-0">No probe events yet in this window.</p>';
+      return '<p class="sb-admin-text-muted sb-admin-small sb-admin-mb-0">No probe events yet in this window.</p>';
     }
     const cells = rows.map(r => {
       const result = r.result || 'error';
@@ -247,8 +278,8 @@
       return `<div class="probe-bar-cell ${escapeHtml(result)}" title="${tip}"></div>`;
     }).join('');
     return `
-      <div class="probe-bar mb-2">${cells}</div>
-      <div class="small text-muted">
+      <div class="probe-bar sb-admin-mb-2">${cells}</div>
+      <div class="sb-admin-small sb-admin-text-muted">
         <span class="legend-dot" style="background:#28a745;"></span> ok
         <span class="legend-dot" style="background:#dc3545; margin-left:8px;"></span> outage
         <span class="legend-dot" style="background:#adb5bd; margin-left:8px;"></span> no token
@@ -263,7 +294,7 @@
     banner.className = 'probe-status-banner ' + (summary.state || 'unknown');
     banner.innerHTML = `
       <strong>${escapeHtml(summary.label)}</strong>
-      <div class="small">${escapeHtml(summary.detail)}</div>
+      <div class="sb-admin-small">${escapeHtml(summary.detail)}</div>
     `;
   }
 
@@ -309,7 +340,7 @@
       }
       cells.push(`<div class="probe-bar-cell ${cls}" title="${escapeHtml(tip)}"></div>`);
     }
-    return `<div class="probe-bar mb-2">${cells.join('')}</div>`;
+    return `<div class="probe-bar sb-admin-mb-2">${cells.join('')}</div>`;
   }
 
   function renderWorkIQSummary(rows) {
@@ -329,25 +360,25 @@
     banner.className = 'probe-status-banner ' + state;
     banner.innerHTML = `
       <strong>${escapeHtml(pct)}% uptime</strong>
-      <div class="small">${escapeHtml(r.ok)} ok / ${escapeHtml(down)} server_down across ${escapeHtml(r.total)} calls</div>
+      <div class="sb-admin-small">${escapeHtml(r.ok)} ok / ${escapeHtml(down)} server_down across ${escapeHtml(r.total)} calls</div>
     `;
   }
 
-  // Read theme-aware colors from the active Bootstrap CSS variables so
+  // Read theme-aware colors from the active native theme tokens so
   // the chart matches light/dark mode without us hardcoding hex values.
   function themeColors() {
     const css = getComputedStyle(document.body);
     return {
-      text:    css.getPropertyValue('--bs-body-color').trim() || '#333',
-      muted:   css.getPropertyValue('--bs-secondary-color').trim() || '#6c757d',
-      grid:    css.getPropertyValue('--bs-border-color').trim() || '#dee2e6',
-      bg:      css.getPropertyValue('--bs-body-bg').trim() || '#fff',
+      text:    css.getPropertyValue('--sb-ui-ink').trim() || '#333',
+      muted:   css.getPropertyValue('--sb-ui-muted').trim() || '#6c757d',
+      grid:    css.getPropertyValue('--sb-ui-line').trim() || '#dee2e6',
+      bg:      css.getPropertyValue('--sb-ui-surface').trim() || '#fff',
     };
   }
 
   function renderDauLine(el, rows) {
     if (!rows || rows.length === 0) {
-      el.innerHTML = '<p class="text-muted small mb-0">No data in window.</p>';
+      el.innerHTML = '<p class="sb-admin-text-muted sb-admin-small sb-admin-mb-0">No data in window.</p>';
       return;
     }
     // Pivot rows into {date -> {role -> DAU}} so we can build a labeled
@@ -405,7 +436,8 @@
     el.innerHTML = '<div style="position:relative; height:260px;"><canvas></canvas></div>';
     const canvas = el.querySelector('canvas');
     const colors = themeColors();
-    new Chart(canvas, {
+    if (dauChart) dauChart.destroy();
+    dauChart = new Chart(canvas, {
       type: 'line',
       data: { labels, datasets },
       options: {
@@ -438,6 +470,25 @@
     });
   }
 
+  new MutationObserver(() => {
+    if (!dauChart) return;
+    const colors = themeColors();
+    dauChart.data.datasets[0].borderColor = colors.text;
+    dauChart.data.datasets[0].backgroundColor = colors.text;
+    dauChart.options.plugins.legend.labels.color = colors.text;
+    for (const axis of Object.values(dauChart.options.scales)) {
+      axis.ticks.color = colors.muted;
+      axis.grid.color = colors.grid;
+    }
+    dauChart.update('none');
+  }).observe(document.documentElement, {attributes: true, attributeFilter: ['data-sb-mode']});
+
+  function probeUnavailable(message) {
+    const banner = document.getElementById('probe-summary');
+    banner.className = 'probe-status-banner unknown';
+    banner.textContent = message;
+  }
+
   function loadCard(el) {
     const cardId = el.getAttribute('data-card');
     const renderMode = el.getAttribute('data-render');
@@ -455,21 +506,24 @@
         } else if (renderMode === 'dau_line') {
           renderDauLine(el, data.rows);
         } else {
-          el.innerHTML = renderTable(data.rows);
+          el.innerHTML = renderTable(data.rows, cardId);
         }
         if (data.summary) {
           renderProbeSummary(data.summary);
+        } else if (cardId === 'probe_status' && (data.error || data.auth_required)) {
+          probeUnavailable(data.error || 'Sign in to view probe status.');
         }
       })
       .catch(err => {
         el.innerHTML = renderError('Network error: ' + err.message);
+        if (cardId === 'probe_status') probeUnavailable('Could not load probe status. ' + err.message);
       });
   }
 
   function reloadAllCards() {
     document.querySelectorAll('[data-card]').forEach(el => {
-      el.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Loading...';
-      el.classList.add('card-loading');
+      el.innerHTML = '<span class="sb-admin-busy sb-admin-busy-small" role="status"></span> Loading...';
+      el.classList.add('sb-admin-loading');
     });
     document.querySelectorAll('[data-card]').forEach(loadCard);
   }
@@ -551,7 +605,11 @@
         }
       }
     })
-    .catch(() => {});
+    .catch(error => {
+      const banner = document.getElementById('workiq-summary');
+      banner.className = 'probe-status-banner unknown';
+      banner.textContent = 'Could not load WorkIQ uptime. ' + error.message;
+    });
 })();
 </script>
 {% endblock %}

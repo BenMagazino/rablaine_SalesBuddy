@@ -11,7 +11,8 @@
 // app), so a single `git pull` updates the app logic in both worlds. Electron
 // itself only needs updating when this shell code changes.
 
-const { app, BrowserWindow, Tray, Menu, shell, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, dialog, nativeTheme } = require('electron');
+const { statusScreenUrl: renderStatusScreen } = require('./status-screen');
 const { spawn, execFile, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -73,6 +74,7 @@ let isQuitting = false;
 let isUpdating = false;
 let isBooting = true;
 let restartTimer = null;
+let updateStatus = {};
 
 // Launch flags. --startup = an automatic launch (login autostart / installer
 // warm-up): honor the start-minimized preference. --minimized = force hidden
@@ -370,21 +372,10 @@ function runStep(file, args, cwd) {
 
 // Replace the window contents with a lightweight splash so the user isn't
 // staring at a dead backend while we pull/reinstall or rebuild the shell.
-function statusScreenUrl(title, subtitle) {
-  const h1 = title || 'Updating Sales Buddy';
-  const p = subtitle || 'Pulling the latest version. The app will restart automatically.';
-  const html =
-    '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    'body{font-family:Segoe UI,system-ui,sans-serif;background:#0d1117;color:#e6edf3;' +
-    'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
-    'height:100vh;margin:0}.s{width:42px;height:42px;border:4px solid #30363d;' +
-    'border-top-color:#2f81f7;border-radius:50%;animation:spin 1s linear infinite;' +
-    'margin-bottom:22px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-weight:600;' +
-    'font-size:20px;margin:0 0 8px}p{color:#8b949e;margin:0}</style></head><body>' +
-    '<div class=\"s\"></div><h1>' + h1 + '</h1>' +
-    '<p>' + p + '</p>' +
-    '</body></html>';
-  return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+function statusScreenUrl(title, subtitle, theme) {
+  return renderStatusScreen(title, subtitle, theme || {
+    mode: nativeTheme && !nativeTheme.shouldUseDarkColors ? 'light' : 'dark',
+  });
 }
 
 function loadWindowUrl(win, url) {
@@ -394,9 +385,11 @@ function loadWindowUrl(win, url) {
 }
 
 function showUpdatingScreen(title, subtitle) {
+  updateStatus = { title, subtitle };
   ensureWindow();
-  const data = statusScreenUrl(title, subtitle);
-  for (const w of windows) loadWindowUrl(w, data);
+  buildAppMenu();
+  refreshTrayMenu();
+  for (const w of windows) loadWindowUrl(w, statusScreenUrl(title, subtitle, w._sbTheme));
 }
 
 // True when `cmd` resolves on PATH. Used to confirm git is reachable BEFORE we
@@ -425,6 +418,8 @@ async function runUpdate(trigger, rebuildAfter = false) {
   if (!commandAvailable('git')) {
     log('Update aborted: git not found on PATH; leaving current version running');
     isUpdating = false;
+    buildAppMenu();
+    refreshTrayMenu();
     dialog.showErrorBox(
       'Sales Buddy Update',
       'Git was not found, so the update could not run.\n\n' +
@@ -447,6 +442,8 @@ async function runUpdate(trigger, rebuildAfter = false) {
     // tree, and drops the local churn for a dirty one.
     await runStep('git', ['fetch', 'origin', 'main'], REPO_ROOT);
     await runStep('git', ['reset', '--hard', 'origin/main'], REPO_ROOT);
+    showUpdatingScreen('Installing the update',
+      'Updating app dependencies. Sales Buddy will restart automatically when this finishes.');
     await runStep(
       PYTHON, ['-m', 'pip', 'install', '-q', '-r', 'requirements.txt'], REPO_ROOT
     );
@@ -460,6 +457,7 @@ async function runUpdate(trigger, rebuildAfter = false) {
       return;
     }
     log('Update complete; relaunching');
+    showUpdatingScreen('Restarting Sales Buddy', 'The update is ready. Opening your workspace again.');
     isQuitting = true;
     relaunchVisible();
     app.exit(0);
@@ -467,6 +465,8 @@ async function runUpdate(trigger, rebuildAfter = false) {
     const msg = (e && e.message) || String(e);
     log(`Update failed: ${msg}`);
     isUpdating = false;
+    buildAppMenu();
+    refreshTrayMenu();
     // Bring the backend back up FIRST, then tell the user. showErrorBox is a
     // blocking modal - if we showed it before restarting, the app would sit dead
     // behind the dialog the whole time the user reads it.
@@ -736,7 +736,9 @@ function openNewWindow(url) {
   const win = new BrowserWindow(WINDOW_OPTS);
   windows.add(win);
   configureWindow(win);
-  loadWindowUrl(win, isBooting ? statusScreenUrl(
+  loadWindowUrl(win, isUpdating ? statusScreenUrl(
+    updateStatus.title, updateStatus.subtitle
+  ) : isBooting ? statusScreenUrl(
     'Starting Sales Buddy', 'Waiting for the local backend. This window will open automatically.'
   ) : (url || BASE_URL));
   win.once('ready-to-show', () => win.show());
@@ -763,6 +765,12 @@ function ensureWindow() {
 // the close-to-tray-on-last-window rule.
 function configureWindow(win) {
   const wc = win.webContents;
+  wc.on('did-finish-load', () => {
+    if (!/^https?:/.test(safeUrl(wc)) || !wc.executeJavaScript) return;
+    wc.executeJavaScript(
+      '({mode:document.documentElement.dataset.sbMode,family:document.documentElement.dataset.sbFamily})'
+    ).then((theme) => { win._sbTheme = theme; }).catch(() => {});
+  });
   let cancelRecovery = null;
   let recoveryTimer = null;
   const stopRecovery = () => {
@@ -786,7 +794,8 @@ function configureWindow(win) {
     stopRecovery();
     loadWindowUrl(win, statusScreenUrl(
       'Reconnecting to Sales Buddy',
-      'The local backend is unavailable. Retrying automatically. Help > Open Logs Folder has details.'
+      'The local backend is unavailable. Retrying automatically. Help > Open Logs Folder has details.',
+      win._sbTheme
     ));
     recoveryTimer = setTimeout(() => {
       recoveryTimer = null;
@@ -907,9 +916,11 @@ function buildAppMenu() {
         },
         { label: 'Open in Browser', click: () => shell.openExternal(BASE_URL) },
         { type: 'separator' },
-        { label: 'Check for Updates...', click: () => checkForUpdates(true) },
+        { label: 'Check for Updates...', enabled: !isUpdating,
+          click: () => checkForUpdates(true) },
         {
           label: 'Restart Backend',
+          enabled: !isUpdating,
           click: () => {
             stopStack();
             startStack();
@@ -1025,18 +1036,24 @@ function showWindow() {
 function createTray() {
   tray = new Tray(ICON);
   tray.setToolTip('Sales Buddy');
+  refreshTrayMenu();
+  tray.on('click', showWindow);
+  tray.on('double-click', showWindow);
+}
+
+function refreshTrayMenu() {
+  if (!tray) return;
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Sales Buddy', click: showWindow },
     { label: 'New Window', click: () => openNewWindow() },
     { label: 'Open in Browser', click: () => shell.openExternal(BASE_URL) },
     { type: 'separator' },
-    { label: 'Check for Updates', click: () => checkForUpdates(true) },
-    { label: 'Restart Backend', click: () => { stopStack(); startStack(); reloadAllWindows(); } },
+    { label: 'Check for Updates', enabled: !isUpdating, click: () => checkForUpdates(true) },
+    { label: 'Restart Backend', enabled: !isUpdating,
+      click: () => { stopStack(); startStack(); reloadAllWindows(); } },
     { type: 'separator' },
     { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
   ]));
-  tray.on('click', showWindow);
-  tray.on('double-click', showWindow);
 }
 
 // ---------------------------------------------------------------------------

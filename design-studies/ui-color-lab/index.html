@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dark palettes | Sales Buddy</title>
+  <link rel="icon" href="brand.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="navigation.css">
+  <link rel="stylesheet" href="themes.css">
+  <script src="themes.js" defer></script>
+  <script src="gallery.js" defer></script>
+  <link rel="stylesheet" href="../archive.css">
+</head>
+<body class="gallery color-gallery">
+  <nav class="archive-nav" aria-label="Design archive"><a href="../index.html">Design archive</a><span aria-hidden="true">/</span><a href="index.html">Iteration gallery</a><span>Fictional data only</span></nav>
+  <header class="gallery-header">
+    <div class="gallery-topline">
+      <div><img src="brand.svg" alt=""><span>Sales Buddy / dark palette studies</span></div>
+      <a href="preview.html?theme=graphite-contrast">Open Graphite Contrast</a>
+    </div>
+    <h1>Highlights and notes, distinct again.</h1>
+    <p>Graphite Contrast pairs mint interface highlights with consistent blue saved notes. Compare it with original Graphite, Graphite Blue, and Midnight. Earlier palettes remain for reference. All previews retain compact single-line attention headers.</p>
+  </header>
+  <main class="gallery-main">
+    <div class="gallery-controls" role="group" aria-label="Choose screenshot state">
+      <span>Compare the workspace or its menus. Click a sample for the interactive preview.</span>
+      <button data-state="workspace" aria-pressed="true">Workspace</button>
+      <button data-state="reports" aria-pressed="false">Reports open</button>
+      <button data-state="browse" aria-pressed="false">Browse open</button>
+    </div>
+    <div class="study-grid" id="study-grid"></div>
+  </main>
+  <footer class="gallery-footer">
+    Colors are anchored to the unchanged logo: mint #33E1AE, teal #19C0C8, and blue #0891F1. Surface and accent scales use OKLCH; warnings remain amber and revenue alerts remain rose across all themes.<br>
+    Graphite Blue keeps Graphite's neutral surfaces and replaces mint interaction accents and calendar fills with blue. Attention headers are 40px tall; Next 30 days and the revenue scope stay inline.<br>
+    Graphite Contrast separates mint highlights from blue saved-note content. Note background colors do not distinguish engagement linkage in this variant; the right-side engagement icon does.<br>
+    Same 18 fictional April calendar entries, three attention panes, centered search, top icon-only navigation, month controls, and six-entry legend. No general-note or plain-note icon is reintroduced. Hover and keyboard interactions remain available.<br>
+    Offline study only. No Bootstrap, CDN, external fonts, network calls, app changes, or live writes. Hide the preview bar to see the app alone. Today refers to the fictional April 29 snapshot.
+  </footer>
+</body>
+</html>

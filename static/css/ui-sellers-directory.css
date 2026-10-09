@@ -1,0 +1,35 @@
+.sb-sellers-directory { color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); }
+.sb-sellers-directory * { box-sizing: border-box; }
+.sb-sellers-directory [hidden] { display: none !important; }
+.sb-sellers-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-sellers-heading h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.sb-sellers-heading > div { display: flex; gap: 6px; }
+.sb-seller-command { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--sb-ui-control-line); background: transparent; color: var(--sb-ui-ink); font: 12px/1.5 var(--sb-ui-font); text-decoration: none; cursor: pointer; white-space: nowrap; }
+.sb-seller-command:hover { background: var(--sb-ui-raised); color: var(--sb-ui-accent); }
+.sb-seller-command:disabled { opacity: .5; cursor: wait; }
+.sb-sellers-directory .sb-sellers-reading { overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+.sb-sellers-reading h2 { margin: 0; padding: 9px 24px; border-bottom: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); color: var(--sb-ui-muted); font-size: 12px; font-weight: 600; }
+.sb-seller-record summary { display: grid; grid-template-columns: 10px 160px 200px minmax(0, 1fr) max-content max-content; grid-template-areas: "disclosure name email territories count action"; align-items: center; gap: 12px; min-height: 50px; padding: 9px 24px; border-bottom: 1px solid var(--sb-ui-grid-line); cursor: pointer; }
+.sb-seller-record summary::before { content: "›"; grid-area: disclosure; width: 10px; color: var(--sb-ui-muted); }
+.sb-seller-record[open] summary::before { transform: rotate(90deg); }
+.sb-seller-record summary:hover { background: var(--sb-ui-raised); }
+.sb-seller-name { grid-area: name; min-width: 0; color: var(--sb-ui-accent); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.sb-seller-email { grid-area: email; min-width: 0; color: var(--sb-ui-muted); font-size: 12px; overflow-wrap: anywhere; }
+.sb-seller-territories { grid-area: territories; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.sb-seller-territory { padding: 1px 5px; border: 1px solid var(--sb-ui-control-line); color: oklch(78% .09 210); background: var(--sb-ui-context); font-size: 11px; text-decoration: none; }
+[data-bs-theme="light"] .sb-seller-territory { color: oklch(42% .08 210); }
+.sb-seller-count { grid-area: count; justify-self: end; color: var(--sb-ui-muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sb-seller-record summary > .sb-seller-command { grid-area: action; }
+.sb-seller-customers { padding-left: 46px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-seller-table { width: 100%; max-width: 950px; border-collapse: collapse; font-size: 12px; }
+.sb-seller-table :is(th,td) { padding: 7px 16px; border-bottom: 1px solid var(--sb-ui-grid-line); text-align: left; }
+.sb-seller-table th { color: var(--sb-ui-muted); font-weight: 500; background: var(--sb-ui-surface); }
+.sb-seller-table th:last-child { width: 150px; }
+.sb-seller-table td { font-variant-numeric: tabular-nums; }
+.sb-seller-table td:last-child { color: var(--sb-ui-muted); }
+.sb-seller-table a, .sb-seller-empty a { color: var(--sb-ui-accent); text-decoration: none; }
+.sb-seller-table a { display: inline-flex; align-items: center; gap: 7px; }
+.sb-seller-table tbody tr:hover { background: var(--sb-ui-raised); cursor: pointer; }
+.sb-seller-empty, .sb-seller-notice { margin: 0; padding: 12px 24px; color: var(--sb-ui-muted); }
+.sb-seller-notice { color: var(--sb-ui-danger); }
+.sb-sellers-directory :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }

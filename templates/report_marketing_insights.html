@@ -1,265 +1,167 @@
 {% extends "base.html" %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
-
 {% block title %}Marketing Insights - Sales Buddy{% endblock %}
-
-{% block content %}
-<div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-        <h2><i class="bi bi-megaphone"></i> Marketing Insights</h2>
-        <p class="text-muted mb-0">Marketing engagement data synced from MSX. Shows which accounts have active marketing activity and which contacts are most engaged.</p>
-    </div>
-    <div class="d-flex gap-2">
-        {% set export_table_id = '#summaryTable' %}
-        {% set export_filename = 'marketing-insights' %}
-        {% include 'partials/_report_export.html' %}
-    </div>
-</div>
-
-<!-- Sync Status -->
-<div class="mb-3">
-    {% if sync_status.state == 'never_run' %}
-    <div class="alert alert-info mb-0 py-2">
-        <i class="bi bi-info-circle"></i> Marketing data has not been synced yet.
-        <a href="{{ url_for('admin.admin_panel') }}">Run a sync from the Admin Panel</a> to populate this report.
-    </div>
-    {% elif sync_status.state == 'in_progress' %}
-    <div class="alert alert-warning mb-0 py-2">
-        <i class="bi bi-arrow-repeat spin"></i> Marketing sync is currently running...
-    </div>
-    {% elif sync_status.state == 'complete' %}
-    <div class="alert alert-success mb-0 py-2 d-flex justify-content-between align-items-center">
-        <span>
-            <i class="bi bi-check-circle"></i>
-            Last synced: <span class="local-datetime">{{ sync_status.completed_at.strftime('%Y-%m-%dT%H:%M:%SZ') if sync_status.completed_at else 'Unknown' }}</span>
-            {% if sync_status.items_synced is not none %} - {{ sync_status.items_synced }} customers synced{% endif %}
-        </span>
-        <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-arrow-repeat"></i> Re-sync
-        </a>
-    </div>
-    {% elif sync_status.state in ('failed', 'incomplete') %}
-    <div class="alert alert-danger mb-0 py-2">
-        <i class="bi bi-exclamation-triangle"></i> Last sync {{ sync_status.state }}.
-        <a href="{{ url_for('admin.admin_panel') }}">Try again from the Admin Panel</a>.
-    </div>
-    {% endif %}
-</div>
-
-{% if customer_data %}
-<!-- Summary Cards -->
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card text-center">
-            <div class="card-body py-2">
-                <h3 class="mb-0">{{ total_customers }}</h3>
-                <small class="text-muted">Customers with Marketing Data</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-center">
-            <div class="card-body py-2">
-                <h3 class="mb-0">{{ "{:,}".format(total_interactions) }}</h3>
-                <small class="text-muted">Total Interactions</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-center">
-            <div class="card-body py-2">
-                <h3 class="mb-0">{{ "{:,}".format(total_contacts) }}</h3>
-                <small class="text-muted">Engaged Contacts</small>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Customer Filter -->
-<div class="mb-3">
-    <input type="text" id="customerFilter" class="form-control" placeholder="Filter by customer name...">
-</div>
-
-<!-- Customer Accordion -->
-<div class="accordion" id="marketingAccordion">
-    {% for item in customer_data %}
-    {% set cust = item.customer %}
-    {% set summary = item.summary %}
-    <div class="accordion-item customer-card" data-customer-name="{{ cust.get_display_name()|lower }}">
-        <h2 class="accordion-header">
-            <button class="accordion-button collapsed" type="button"
-                    data-bs-toggle="collapse" data-bs-target="#mkt-{{ cust.id }}">
-                <span class="d-flex align-items-center gap-2 w-100">
-                    {{ customer_favicon(cust, size=20) }}
-                    <strong>{{ cust.get_display_name() }}</strong>
-                    <span class="badge bg-secondary ms-auto me-3">{{ "{:,}".format(summary.total_interactions) }} interactions</span>
-                    <span class="badge bg-info text-dark">{{ summary.engaged_contacts }} contacts</span>
-                </span>
-            </button>
-        </h2>
-        <div id="mkt-{{ cust.id }}" class="accordion-collapse collapse" data-bs-parent="#marketingAccordion">
-            <div class="accordion-body">
-                <!-- Summary Stats -->
-                <div class="row mb-3">
-                    <div class="col">
-                        <div class="card bg-body-secondary text-center">
-                            <div class="card-body py-2">
-                                <h5 class="mb-0">{{ "{:,}".format(summary.total_interactions) }}</h5>
-                                <small class="text-muted">Total Interactions</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card bg-body-secondary text-center">
-                            <div class="card-body py-2">
-                                <h5 class="mb-0">{{ "{:,}".format(summary.content_downloads) }}</h5>
-                                <small class="text-muted">Content Downloads</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card bg-body-secondary text-center">
-                            <div class="card-body py-2">
-                                <h5 class="mb-0">{{ "{:,}".format(summary.trials) }}</h5>
-                                <small class="text-muted">Trials</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card bg-body-secondary text-center">
-                            <div class="card-body py-2">
-                                <h5 class="mb-0">{{ "{:,}".format(summary.engaged_contacts) }}</h5>
-                                <small class="text-muted">Engaged Contacts</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card bg-body-secondary text-center">
-                            <div class="card-body py-2">
-                                <h5 class="mb-0">{{ "{:,}".format(summary.unique_decision_makers) }}</h5>
-                                <small class="text-muted">Decision Makers</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {% if summary.last_interaction_date %}
-                <p class="text-muted small mb-3">
-                    <i class="bi bi-clock"></i> Last interaction:
-                    <span class="local-datetime">{{ summary.last_interaction_date.strftime('%Y-%m-%dT%H:%M:%SZ') }}</span>
-                </p>
-                {% endif %}
-
-                <!-- Sales Play Breakdown -->
-                {% if item.interactions %}
-                <h6 class="mb-2"><i class="bi bi-bar-chart"></i> Breakdown by Sales Play</h6>
-                <div class="table-responsive mb-3">
-                    <table class="table table-sm table-hover mb-0 align-middle">
-                        <thead>
-                            <tr>
-                                <th>Solution Area</th>
-                                <th>Sales Play</th>
-                                <th class="text-end">Interactions</th>
-                                <th class="text-end">Contact Me</th>
-                                <th class="text-end">Trials</th>
-                                <th class="text-end">Content</th>
-                                <th class="text-end">Events</th>
-                                <th class="text-end">Last Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for mi in item.interactions %}
-                            <tr>
-                                <td>{{ mi.solution_area or '-' }}</td>
-                                <td>{{ mi.sales_play or '-' }}</td>
-                                <td class="text-end">{{ mi.all_interactions }}</td>
-                                <td class="text-end">{{ mi.contact_me }}</td>
-                                <td class="text-end">{{ mi.trial_signups }}</td>
-                                <td class="text-end">{{ mi.content_downloads }}</td>
-                                <td class="text-end">{{ mi.events }}</td>
-                                <td class="text-end">
-                                    {% if mi.last_interaction_date %}
-                                    <span class="local-datetime">{{ mi.last_interaction_date.strftime('%Y-%m-%dT%H:%M:%SZ') }}</span>
-                                    {% else %}-{% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% endif %}
-
-                <!-- Engaged Contacts -->
-                {% if item.contacts %}
-                <h6 class="mb-2"><i class="bi bi-people"></i> Top Engaged Contacts</h6>
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0 align-middle">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Title</th>
-                                <th class="text-end">Email Interactions</th>
-                                <th class="text-end">Meeting Interactions</th>
-                                <th>Engagement Level</th>
-                                <th>Audience</th>
-                                <th>Last Solution Area</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for mc in item.contacts %}
-                            <tr>
-                                <td>{{ mc.contact_name or '-' }}</td>
-                                <td><small class="text-muted">{{ mc.job_title or '-' }}</small></td>
-                                <td class="text-end">{{ mc.mail_interactions }}</td>
-                                <td class="text-end">{{ mc.meeting_interactions }}</td>
-                                <td>
-                                    {% if mc.engagement_level %}
-                                    <span class="badge {% if 'High' in mc.engagement_level %}bg-success{% elif 'Medium' in mc.engagement_level %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                        {{ mc.engagement_level }}
-                                    </span>
-                                    {% else %}-{% endif %}
-                                </td>
-                                <td><small>{{ mc.audience_type or '-' }}</small></td>
-                                <td><small>{{ mc.last_solution_area or '-' }}</small></td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% endif %}
-
-                {% if not item.interactions and not item.contacts %}
-                <p class="text-muted mb-0">Summary data only - no sales play breakdown or contact details available.</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-
-{% else %}
-<div class="card">
-    <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-megaphone" style="font-size: 3rem;"></i>
-        <h4 class="mt-3">No Marketing Data</h4>
-        <p>Run a marketing sync from the <a href="{{ url_for('admin.admin_panel') }}">Admin Panel</a> to populate this report.</p>
-    </div>
-</div>
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-marketing.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="Marketing view status">
+    <span data-marketing-status>{{ total_customers }} customers with marketing data</span>
+    <span>Exports: filtered customer summary</span>
+</footer>
 {% endif %}
 {% endblock %}
-
+{% macro number_cell(value) -%}
+<td class="sb-marketing-number" data-sb-sort-value="{{ value if value is not none else '' }}">{{ value if value is not none else '-' }}</td>
+{%- endmacro %}
+{% block content %}
+<section class="sb-marketing" data-sb-marketing data-sb-page-surface
+         data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+         aria-labelledby="marketingTitle">
+    <header class="sb-marketing-header" data-sb-page-band>
+        <div><h1 id="marketingTitle">Marketing Insights</h1><p>Inspect synced account activity, sales plays and engaged contacts.</p></div>
+        {% set export_table_id = '#summaryTable[data-export-visible=true]' %}
+        {% set export_filename = 'marketing-insights' %}
+        {% set export_title = 'Marketing Insights' %}
+        {% include 'partials/_report_export.html' %}
+    </header>
+    <div class="sb-marketing-sync" data-state="{{ sync_status.state }}" data-sb-page-band role="status">
+        {% if sync_status.state == 'never_run' %}
+        <span>Marketing data has not been synced yet.</span>
+        <a href="{{ url_for('admin.admin_panel') }}">Run sync in Admin</a>
+        {% elif sync_status.state == 'in_progress' %}
+        <span>Marketing sync is currently running...</span>
+        {% elif sync_status.state == 'complete' %}
+        <span>Last synced: {% if sync_status.completed_at %}<span class="local-datetime" data-utc="{{ sync_status.completed_at.strftime('%Y-%m-%dT%H:%M:%SZ') }}">{{ sync_status.completed_at.strftime('%Y-%m-%dT%H:%M:%SZ') }}</span>{% else %}Unknown{% endif %}
+        {% if sync_status.items_synced is not none %} - {{ sync_status.items_synced }} customers synced{% endif %}</span>
+        <a href="{{ url_for('admin.admin_panel') }}">Re-sync in Admin</a>
+        {% elif sync_status.state in ('failed', 'incomplete') %}
+        <span>Last sync {{ sync_status.state }}.</span><a href="{{ url_for('admin.admin_panel') }}">Retry in Admin</a>
+        {% endif %}
+    </div>
+    {% if customer_data %}
+    <div class="sb-marketing-scope" data-sb-page-band>
+        <span>Report totals, all synced customers</span>
+        <dl>
+            <div><dt>Customers with data</dt><dd>{{ total_customers }}</dd></div>
+            <div><dt>Interactions</dt><dd>{{ "{:,}".format(total_interactions) }}</dd></div>
+            <div><dt>Engaged contacts</dt><dd>{{ "{:,}".format(total_contacts) }}</dd></div>
+        </dl>
+    </div>
+    <div class="sb-marketing-filter" data-sb-page-band>
+        <label for="customerFilter">Customer</label>
+        <input type="search" id="customerFilter" placeholder="Filter by customer name..." autocomplete="off">
+        <span data-marketing-count>{{ total_customers }} shown</span>
+    </div>
+    <div class="sb-marketing-notice" role="alert" hidden></div>
+    <div class="sb-marketing-workarea" data-sb-page-body>
+        <aside class="sb-marketing-list-pane" aria-label="Customers with marketing data">
+            <header class="sb-marketing-pane-header"><h2>Customers</h2><span>Choose an account to inspect</span></header>
+            <div class="sb-marketing-list-reading" role="region" aria-label="Customer summaries" tabindex="0">
+                <table id="summaryTable" data-export-visible="true" data-sb-sortable data-sb-sort-key="marketing:customers">
+                    <thead><tr>
+                        <th scope="col" data-sb-sort-type="text" data-export-label="Customer">Customer</th>
+                        <th scope="col" data-sb-sort-type="number" data-export-label="Interactions">Interactions</th>
+                        <th scope="col" data-sb-sort-type="number" data-export-label="Engaged Contacts">Contacts</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for item in customer_data %}
+                    <tr data-customer-id="{{ item.customer.id }}" data-customer-name="{{ item.customer.get_display_name()|lower }}">
+                        <td data-sb-sort-value="{{ item.customer.get_display_name() }}" data-export-label="{{ item.customer.get_display_name() }}" data-export-url="{{ url_for('customers.customer_view', id=item.customer.id, _external=true) }}">
+                            <button type="button" data-customer-select="{{ item.customer.id }}" aria-pressed="false">
+                                {{ customer_favicon(item.customer, size=16) }}<span>{{ item.customer.get_display_name() }}</span>
+                            </button>
+                        </td>
+                        <td class="sb-marketing-number" data-sb-sort-value="{{ item.summary.total_interactions }}">{{ "{:,}".format(item.summary.total_interactions) }}</td>
+                        <td class="sb-marketing-number" data-sb-sort-value="{{ item.summary.engaged_contacts }}">{{ "{:,}".format(item.summary.engaged_contacts) }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <p class="sb-marketing-empty" data-marketing-empty hidden>No customers match this filter.</p>
+            </div>
+        </aside>
+        <div class="sb-marketing-detail-pane">
+            <p class="sb-marketing-empty" data-marketing-no-selection hidden>Choose a customer to inspect its marketing activity.</p>
+            <div class="sb-marketing-detail-reading" tabindex="0" role="region" aria-label="Selected customer marketing details">
+                {% for item in customer_data %}
+                {% set cust = item.customer %}
+                {% set summary = item.summary %}
+                <article class="sb-marketing-detail" data-marketing-customer="{{ cust.id }}" hidden>
+                    <header class="sb-marketing-pane-header">
+                        <h2><a href="{{ url_for('customers.customer_view', id=cust.id) }}">{{ cust.get_display_name() }}</a></h2>
+                        <span>{{ item.contacts|length }} top contacts shown</span>
+                    </header>
+                    <dl class="sb-marketing-metrics">
+                        {% for label, value in [('Total Interactions', summary.total_interactions), ('Content Downloads', summary.content_downloads), ('Trials', summary.trials), ('Engaged Contacts', summary.engaged_contacts), ('Decision Makers', summary.unique_decision_makers)] %}
+                        <div><dt>{{ label }}</dt><dd>{{ "{:,}".format(value) }}</dd></div>
+                        {% endfor %}
+                    </dl>
+                    {% if summary.last_interaction_date %}
+                    <p class="sb-marketing-detail-date">Last interaction: <span class="local-datetime" data-utc="{{ summary.last_interaction_date.strftime('%Y-%m-%dT%H:%M:%SZ') }}">{{ summary.last_interaction_date.strftime('%Y-%m-%dT%H:%M:%SZ') }}</span></p>
+                    {% endif %}
+                    {% if item.interactions %}
+                    <section aria-labelledby="playsTitle{{ cust.id }}">
+                        <h3 id="playsTitle{{ cust.id }}">Breakdown by Sales Play</h3>
+                        <div class="sb-marketing-table-scroll">
+                            <table data-marketing-table="plays" data-sb-sort-key="marketing:{{ cust.id }}:plays">
+                                <thead><tr>
+                                    {% for label, type in [('Solution Area', 'text'), ('Sales Play', 'text'), ('Interactions', 'number'), ('Contact Me', 'number'), ('Trials', 'number'), ('Content', 'number'), ('Events', 'number'), ('Last Date', 'number')] %}
+                                    <th scope="col" data-sb-sort-type="{{ type }}">{{ label }}</th>
+                                    {% endfor %}
+                                </tr></thead>
+                                <tbody>{% for mi in item.interactions %}
+                                <tr>
+                                    <td>{{ mi.solution_area or '-' }}</td><td>{{ mi.sales_play or '-' }}</td>
+                                    {{ number_cell(mi.all_interactions) }}{{ number_cell(mi.contact_me) }}
+                                    {{ number_cell(mi.trial_signups) }}{{ number_cell(mi.content_downloads) }}{{ number_cell(mi.events) }}
+                                    <td class="sb-marketing-date" data-sb-sort-value="{{ mi.last_interaction_date.strftime('%Y%m%d%H%M%S') if mi.last_interaction_date else '' }}">
+                                        {% if mi.last_interaction_date %}<span class="local-datetime" data-utc="{{ mi.last_interaction_date.strftime('%Y-%m-%dT%H:%M:%SZ') }}">{{ mi.last_interaction_date.strftime('%Y-%m-%dT%H:%M:%SZ') }}</span>{% else %}-{% endif %}
+                                    </td>
+                                </tr>{% endfor %}</tbody>
+                            </table>
+                        </div>
+                    </section>
+                    {% endif %}
+                    {% if item.contacts %}
+                    <section aria-labelledby="contactsTitle{{ cust.id }}">
+                        <h3 id="contactsTitle{{ cust.id }}">Top Engaged Contacts</h3>
+                        <div class="sb-marketing-table-scroll">
+                            <table data-marketing-table="contacts" data-sb-sort-key="marketing:{{ cust.id }}:contacts">
+                                <thead><tr>
+                                    {% for label, type in [('Name', 'text'), ('Title', 'text'), ('Email Interactions', 'number'), ('Meeting Interactions', 'number'), ('Engagement Level', 'text'), ('Audience', 'text'), ('Last Solution Area', 'text')] %}
+                                    <th scope="col" data-sb-sort-type="{{ type }}">{{ label }}</th>
+                                    {% endfor %}
+                                </tr></thead>
+                                <tbody>{% for mc in item.contacts %}
+                                <tr>
+                                    <td>{{ mc.contact_name or '-' }}</td><td>{{ mc.job_title or '-' }}</td>
+                                    {{ number_cell(mc.mail_interactions) }}{{ number_cell(mc.meeting_interactions) }}
+                                    <td>{% if mc.engagement_level %}<span class="sb-marketing-level" data-tone="{{ 'positive' if 'High' in mc.engagement_level else 'warning' if 'Medium' in mc.engagement_level else 'muted' }}">{{ mc.engagement_level }}</span>{% else %}-{% endif %}</td>
+                                    <td>{{ mc.audience_type or '-' }}</td><td>{{ mc.last_solution_area or '-' }}</td>
+                                </tr>{% endfor %}</tbody>
+                            </table>
+                        </div>
+                    </section>
+                    {% endif %}
+                    {% if not item.interactions and not item.contacts %}
+                    <p class="sb-marketing-empty">Summary data only - no sales play breakdown or contact details available.</p>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="sb-marketing-empty" data-sb-page-body>
+        <h2>No Marketing Data</h2><p>Run a marketing sync from the <a href="{{ url_for('admin.admin_panel') }}">Admin Panel</a> to populate this report.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
 {% block extra_js %}
-<script>
-    // Customer name filter
-    const filterInput = document.getElementById('customerFilter');
-    if (filterInput) {
-        filterInput.addEventListener('input', function() {
-            const query = this.value.toLowerCase();
-            document.querySelectorAll('.customer-card').forEach(card => {
-                const name = card.dataset.customerName || '';
-                card.style.display = name.includes(query) ? '' : 'none';
-            });
-        });
-    }
-</script>
+{% if customer_data %}<script src="{{ url_for('static', filename='js/ui-marketing.js') }}"></script>{% endif %}
 {% endblock %}

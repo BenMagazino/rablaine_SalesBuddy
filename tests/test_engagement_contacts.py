@@ -143,7 +143,7 @@ class TestEngagementContactModel:
             # No fields filled - 0%
             assert eng.story_completeness == 0
 
-            # Add a contact - should count as 1/6
+            # Contacts are one of seven story fields, including business outcome.
             ec = EngagementContact(
                 engagement_id=eng.id,
                 external_name='Someone',
@@ -152,11 +152,11 @@ class TestEngagementContactModel:
             db.session.flush()
             # Need to expire to re-evaluate the relationship
             db.session.expire(eng, ['contacts'])
-            assert eng.story_completeness == 16  # 1/6 = 16%
+            assert eng.story_completeness == 14  # 1/7 = 14%
 
-            # Add technical_problem - should be 2/6
+            # Adding technical_problem fills two of the seven fields.
             eng.technical_problem = 'Some problem'
-            assert eng.story_completeness == 33  # 2/6 = 33%
+            assert eng.story_completeness == 28  # 2/7 = 28%
 
 
 class TestEngagementContactRoutes:

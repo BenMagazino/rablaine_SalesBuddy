@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connected navigation lab | Sales Buddy</title>
+  <link rel="icon" href="brand.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="navigation.css">
+  <script src="studies.js" defer></script>
+  <script src="gallery.js" defer></script>
+  <link rel="stylesheet" href="../archive.css">
+</head>
+<body class="gallery nav-gallery">
+  <nav class="archive-nav" aria-label="Design archive"><a href="../index.html">Design archive</a><span aria-hidden="true">/</span><a href="index.html">Iteration gallery</a><span>Fictional data only</span></nav>
+  <header class="gallery-header">
+    <div class="gallery-topline"><div><img src="brand.svg" alt="Sales Buddy"><span>ROUND THREE / CONNECTED NAVIGATION</span></div><span>SAME WORKSPACE / SIX NAVIGATION CHOICES</span></div>
+    <h1>One connected workspace. Six ways to navigate it.</h1>
+    <p>Same graphite palette, square edges, full month, and contiguous attention panes throughout. Navigation and header arrangement vary. Left navigation is on the left of each comparison; top navigation is on the right.</p>
+    <div class="brief-points"><span><i></i>Zero gaps between panes</span><span><i></i>No rounded borders</span><span><i></i>Illustrative menu contents</span><span><i></i>Working hover, click, and keyboard states</span></div>
+  </header>
+  <main class="gallery-main">
+    <p class="gallery-intro"><strong>My pick: 05, Top / Text.</strong> These are menu-heavy sections, so plain labels work well and leave the calendar wide. <strong>01, Left / Icons</strong> is the closest to VS Code. Try both with a flyout open.</p>
+    <div class="gallery-controls" role="group" aria-label="Screenshot state"><span>Compare the same state in all six:</span><button data-state="workspace" aria-pressed="true">Workspace</button><button data-state="reports" aria-pressed="false">Reports open</button><button data-state="browse" aria-pressed="false">Browse open</button></div>
+    <div id="study-grid" class="study-grid"></div>
+  </main>
+  <footer class="gallery-footer">
+    <strong>How the navigation behaves:</strong> Flyouts fit their contents rather than using a fixed width. Hover for 160 ms to open a menu. Moving into the flyout keeps it open; moving away closes it after a short grace period. Click toggles the menu. Hover or click another section to switch. Outside click or Escape closes it. Keyboard focus keeps a menu open while you navigate its entries.<br>
+    <strong>Keyboard:</strong> Tab to a navigation button. Down opens its menu; Right also opens left-side flyouts. Use Up/Down, Home/End to move through entries, Enter to select, and Escape to close. Focus returns to the originating button.<br>
+    Sellers, Reports, and Browse use illustrative menus with fictional sellers and record identifiers. Top / Icons retains three menus and centers search in the window. Other studies promote Notes from Browse as a direct shortcut for comparison. Selecting a destination shows a clearly labeled offline placeholder, never an application page.<br>
+    Reports explores Planning &amp; Reviews, Execution &amp; Coverage, Pipeline Health, and Account Insights sections, including Initiative Tracker.<br>
+    Filled calendar rows represent saved notes without a redundant note icon. Extra icons identify ghost meetings, unmatched customers, milestones, MSX tasks, HVA, and linked engagements. Hover or focus a legend entry to see a clearly labeled illustrative example. HVA overrides the task/milestone icon; linked engagement remains a secondary marker on the right. The top context strip is retained for future breadcrumbs.<br>
+    The month heading comes first, followed by separate Outlook-style Today, previous, and next buttons. The buttons navigate calendar grids offline. Only April 2031 has fictional activity; other months are labeled as unmodeled. Today returns to April 29, the fixture's date.<br>
+    All 18 calendar entries use fictional customer labels and times. Relationship flags are retained solely to compare marker behavior, not as records of customer activity. All sellers, titles, counts, and amounts are fictional. No Bootstrap, CDN, external fonts, or application connections. Use <strong>Hide preview bar</strong> to hide the study controls; archive navigation stays available.
+  </footer>
+</body>
+</html>

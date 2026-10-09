@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/9/2026
+
+- *Electron Shell Update* - UI redesign. It might not be perfect yet, so please let me know if you have any issues.
+
 ## 10/2/2026 - a25a8a4
 
 - Coordinate web and worker database upgrades so simultaneous startup does not race task-schema repair.
@@ -51,7 +55,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 ## 9/24/2026 - df23519
 
 - Add an FY27 Data Connect Goals action center with best-effort calculations for U2C pace, milestone and HVA coverage, technical validation, and sustained whitespace. Official results may differ.
-- Add direct MINT Earnings access, in-page FY27 compensation bucket selection, and updated HVA categories including Assessment and RFP/RFI while excluding Briefing.
+- Add in-page FY27 compensation bucket selection and updated HVA categories including Assessment and RFP/RFI while excluding Briefing.
 
 ## 9/23/2026 - fa8df50
 
@@ -648,3 +652,4 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Milestone sync scheduler with MWF schedule and startup catchup
 - Navbar customer search with `/` keyboard shortcut
 - UX navigation overhaul
+- Browse PODs in compact native roster rows with unchanged territory/SE counts and personnel, sortable data headings and restored Back context.

@@ -1,0 +1,22 @@
+/* The existing Quill editor inside native local-task dialogs. */
+.sb-task-dialog { width: min(680px, calc(100vw - 80px)); }
+.sb-task-fields { display: grid; gap: 16px; }
+.sb-task-error { margin-top: 12px; color: var(--sb-ui-danger); font-size: 13px; }
+.sb-task-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.sb-task-rich .ql-toolbar.ql-snow, .sb-task-rich .ql-container.ql-snow {
+    border: 1px solid var(--sb-ui-control-line); color: var(--sb-ui-ink);
+    font: 13px/1.5 var(--sb-ui-font);
+}
+.sb-task-rich .ql-toolbar { background: var(--sb-ui-context); }
+.sb-task-rich .ql-editor { min-height: 160px; max-height: 350px; color: var(--sb-ui-ink); background: var(--sb-ui-surface); }
+.sb-engagement-view .ql-editor.ql-blank::before,
+.sb-task-rich .ql-editor.ql-blank::before { color: var(--sb-ui-muted); }
+.sb-task-rich .ql-snow .ql-stroke { stroke: var(--sb-ui-ink); }
+.sb-task-rich .ql-snow .ql-fill { fill: var(--sb-ui-ink); }
+.sb-task-rich .ql-snow .ql-picker { color: var(--sb-ui-ink); }
+.sb-task-rich .ql-snow .ql-picker-options, .sb-task-rich .ql-snow .ql-tooltip {
+    background: var(--sb-ui-popup); color: var(--sb-ui-ink); border-color: var(--sb-ui-line);
+}
+.sb-task-rich .ql-snow .ql-tooltip input {
+    color: var(--sb-ui-ink); background: var(--sb-ui-surface); border-color: var(--sb-ui-line);
+}

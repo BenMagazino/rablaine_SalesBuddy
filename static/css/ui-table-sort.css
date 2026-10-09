@@ -1,0 +1,41 @@
+/* Native header controls retain the table's alignment and sticky header geometry. */
+table[data-sb-sortable] th > .sb-table-sort-button {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: inherit;
+    gap: 0.4em;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+    cursor: pointer;
+}
+
+table[data-sb-sortable] .sb-table-sort-button > i {
+    flex: none;
+    color: var(--sb-ui-muted);
+    font-size: 0.9em;
+}
+
+table[data-sb-sortable] th[aria-sort="ascending"] .sb-table-sort-button > i,
+table[data-sb-sortable] th[aria-sort="descending"] .sb-table-sort-button > i,
+table[data-sb-sortable] .sb-table-sort-button:hover {
+    color: var(--sb-ui-ink);
+}
+
+table[data-sb-sortable] .sb-table-sort-button:focus-visible {
+    outline: 2px solid var(--sb-ui-accent);
+    outline-offset: 3px;
+}
+
+.sb-table-sort-notice {
+    padding: 0.5em 0.75em;
+    border-bottom: 1px solid var(--sb-ui-line);
+    background: var(--sb-ui-surface);
+    color: var(--sb-ui-ink);
+    font-family: var(--sb-ui-font);
+}

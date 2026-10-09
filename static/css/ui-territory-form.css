@@ -1,0 +1,12 @@
+/* A short manual edit with the complete duplicate reference beside it. */
+.sb-territory-form .mf-reading { padding: 28px 32px; }
+.tf-layout { margin: 0 auto; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 48px; }
+.tf-layout h2 { margin: 0 0 24px; font: 600 15px/1.4 var(--sb-ui-font); }
+.tf-existing { padding-left: 32px; border-left: 1px solid var(--sb-ui-line); }
+.tf-existing h2 span { display: block; margin-top: 4px; color: var(--sb-ui-muted); font-size: 12px; font-weight: 400; }
+.tf-existing ul { margin: 0; padding: 0; list-style: none; }
+.tf-existing li { padding: 9px 0; border-bottom: 1px solid var(--sb-ui-grid-line); font-size: 14px; overflow-wrap: anywhere; }
+.tf-existing i { color: var(--sb-ui-accent); margin-right: 5px; }
+.tf-commands { display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-top: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }
+.tf-commands > span { flex: 1; color: var(--sb-ui-muted); font-size: 12px; }
+.tf-commands a { color: var(--sb-ui-ink); }

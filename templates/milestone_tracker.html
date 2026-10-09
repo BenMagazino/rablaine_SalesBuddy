@@ -1,80 +1,90 @@
 {% extends "base.html" %}
 
 {% block title %}Milestone Tracker - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Milestone tracker status">
+    <span>Local milestone cache · Sync from MSX for fresh data</span>
+    <span id="trackerStatus" role="status" aria-live="polite">{{ milestones|length }} milestones</span>
+</footer>
+{% endblock %}
 
 {% block content %}
-
+<div class="sb-milestone-tracker sb-directory-frame sb-directory-frame-wide" data-sb-page-surface>
 {% if sync_status and sync_status.state == 'in_progress' %}
-<div class="alert alert-info d-flex align-items-center mb-3" role="alert">
-    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+<div class="mt-notice mt-sync-banner" role="alert">
+    <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
     <div>
         <strong>Milestone sync is running.</strong>
         Data is being updated in the background. Refresh the page in a minute to see new results.
         {% if sync_status.started_at %}
-            <span class="text-muted small">(Started <span class="local-datetime" data-utc="{{ sync_status.started_at.isoformat() }}" data-fmt="short"></span>)</span>
+            <span class="mt-muted mt-small">(Started <span class="local-datetime" data-utc="{{ sync_status.started_at.isoformat() }}" data-fmt="short"></span>)</span>
         {% endif %}
     </div>
 </div>
 {% elif sync_status and sync_status.state == 'incomplete' %}
-<div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
-    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+<div class="mt-notice is-warning mt-sync-banner" role="alert">
+    <i class="bi bi-exclamation-triangle-fill"></i>
     <div>
         <strong>Last milestone sync didn't finish.</strong>
         Your milestone data may be incomplete. Click "Sync from MSX" to run a full sync.
         {% if sync_status.started_at %}
-            <span class="text-muted small">(Started <span class="local-datetime" data-utc="{{ sync_status.started_at.isoformat() }}" data-fmt="short"></span>)</span>
+            <span class="mt-muted mt-small">(Started <span class="local-datetime" data-utc="{{ sync_status.started_at.isoformat() }}" data-fmt="short"></span>)</span>
         {% endif %}
     </div>
 </div>
 {% elif sync_status and sync_status.state == 'failed' %}
-<div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
-    <i class="bi bi-x-circle-fill me-2"></i>
+<div class="mt-notice is-danger mt-sync-banner" role="alert">
+    <i class="bi bi-x-circle-fill"></i>
     <div>
         <strong>Last milestone sync failed.</strong>
         Your milestone data may be incomplete or outdated. Click "Sync from MSX" to try again.
         {% if sync_status.details %}
-            <span class="text-muted small">({{ sync_status.details }})</span>
+            <span class="mt-muted mt-small">({{ sync_status.details }})</span>
         {% endif %}
     </div>
 </div>
 {% endif %}
-<div class="d-flex justify-content-between align-items-start mb-3">
+<header class="mt-heading" data-sb-page-band>
     <div>
-        <h2><i class="bi bi-flag-fill text-success"></i> Milestone Tracker</h2>
-        <p class="text-muted mb-0">
+        <h2>Milestone Tracker</h2>
+        <p>
             Active milestones across all customers
             {% if last_sync %}
                 &middot; Last synced <span class="local-datetime" data-utc="{{ last_sync.isoformat() }}"></span> <span class="timezone-label"></span>
             {% endif %}
         </p>
     </div>
-    <div class="d-flex flex-column align-items-end gap-1">
-        <div class="d-flex gap-2">
+    <div class="mt-commands">
+        <div>
             {% set export_table_id = '#msListTable' %}
             {% set export_filename = 'milestone-tracker' %}
             {% include 'partials/_report_export.html' %}
         </div>
-        <button id="syncBtn" class="btn btn-sm btn-primary" onclick="syncMilestones()">
+        <button id="syncBtn" class="mt-command is-primary" onclick="syncMilestones()">
             <i class="bi bi-arrow-repeat"></i> Sync from MSX
         </button>
     </div>
-</div>
+</header>
 
 <!-- Sync Progress Alert (hidden by default) -->
-<div id="syncAlert" class="alert d-none mb-4" role="alert" style="position: relative;">
-    <div id="syncBrainrotToggle" class="brainrot-card-toggle brainrot-pos-top-right d-none">
+<div id="syncAlert" class="mt-notice sb-hidden" role="alert" style="position: relative;">
+    <div id="syncBrainrotToggle" class="brainrot-card-toggle brainrot-pos-top-right sb-hidden">
         <input type="checkbox" id="syncBrainrotCheck">
-        <label for="syncBrainrotCheck" class="small">brainrot mode</label>
+        <label for="syncBrainrotCheck" class="mt-small">brainrot mode</label>
     </div>
     <div id="syncMessage"></div>
-    <div id="syncProgressWrap" class="d-none mt-2">
-        <div class="progress" style="height: 22px;">
-            <div id="syncProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+    <div id="syncProgressWrap" class="mt-progress-wrap sb-hidden">
+        <div class="mt-progress">
+            <div id="syncProgressBar" class="mt-progress-bar"
                  role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
                 0%
             </div>
         </div>
-        <div id="syncDetail" class="small text-muted mt-1"></div>
+        <div id="syncDetail" class="mt-sync-detail mt-small mt-muted"></div>
     </div>
 </div>
 
@@ -82,34 +92,34 @@
 
 <!-- Calendar View (positioned by JS after the filter bar) -->
 <div id="msCalendarWrap" style="display: none;">
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <button class="btn btn-outline-secondary btn-sm" id="msPrevMonthBtn">
+<section class="mt-calendar">
+    <div class="mt-calendar-heading">
+        <button class="mt-command" id="msPrevMonthBtn" aria-label="Previous month">
             <i class="bi bi-chevron-left"></i>
         </button>
-        <h5 class="mb-0" id="msCalendarTitle">Loading...</h5>
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-outline-secondary btn-sm" id="msTodayBtn">
+        <h3 id="msCalendarTitle">Loading...</h3>
+        <div class="mt-commands">
+            <button class="mt-command" id="msTodayBtn">
                 <i class="bi bi-calendar-day"></i> Today
             </button>
-            <button class="btn btn-outline-secondary btn-sm" id="msNextMonthBtn">
+            <button class="mt-command" id="msNextMonthBtn" aria-label="Next month">
                 <i class="bi bi-chevron-right"></i>
             </button>
         </div>
     </div>
-    <div class="card-body p-0">
-        <table class="table table-bordered mb-0" id="msCalendarTable">
+    <div>
+        <table id="msCalendarTable">
             <thead>
-                <tr class="text-center">
+                <tr class="mt-centered">
                     <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
                 </tr>
             </thead>
             <tbody id="msCalendarBody"></tbody>
         </table>
     </div>
+</section>
 </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -119,9 +129,9 @@
     #msCalendarTable td { transition: background-color 0.15s; }
     .ms-cal-entry { font-size: 0.72rem; line-height: 1.3; cursor: pointer; transition: all 0.15s; }
     .ms-cal-entry:hover { opacity: 0.85; }
-    .ms-status-ontrack { border-left: 3px solid var(--bs-success); }
-    .ms-status-atrisk  { border-left: 3px solid var(--bs-warning); }
-    .ms-status-blocked  { border-left: 3px solid var(--bs-danger); }
+    .ms-status-ontrack { border-left: 3px solid var(--sb-ui-milestone-rail); }
+    .ms-status-atrisk  { border-left: 3px solid var(--sb-ui-warning); }
+    .ms-status-blocked  { border-left: 3px solid var(--sb-ui-danger); }
     .calendar-entries::-webkit-scrollbar { width: 4px; }
     .calendar-entries::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 2px; }
     html[data-bs-theme="dark"] .calendar-entries::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
@@ -134,9 +144,10 @@
     const MS_MONTH_KEY = 'salesbuddy_ms_cal_month';
     const MS_YEAR_KEY = 'salesbuddy_ms_cal_year';
     const MS_VIEW_KEY = 'salesbuddy_ms_view';
-    let year = parseInt(localStorage.getItem(MS_YEAR_KEY)) || new Date().getFullYear();
-    let month = parseInt(localStorage.getItem(MS_MONTH_KEY)) || (new Date().getMonth() + 1);
-    let calendarIsActive = localStorage.getItem(MS_VIEW_KEY) === 'calendar';
+    const savedView = window.history.state?.milestoneTracker || {};
+    let year = savedView.year ?? (parseInt(localStorage.getItem(MS_YEAR_KEY)) || new Date().getFullYear());
+    let month = savedView.month ?? (parseInt(localStorage.getItem(MS_MONTH_KEY)) || (new Date().getMonth() + 1));
+    let calendarIsActive = (savedView.view ?? localStorage.getItem(MS_VIEW_KEY)) === 'calendar';
     let calendarRequestId = 0;
     let calendarFilterTimer;
 
@@ -145,21 +156,34 @@
 
     const filterCard = instance.querySelector('[data-role="filterCard"]');
     const calWrap = document.getElementById('msCalendarWrap');
+    const reading = instance.querySelector('.mt-reading');
+    function saveReading() {
+        const entry = window.history.state || {};
+        window.history.replaceState({...entry, milestoneTracker: {
+            ...entry.milestoneTracker, year, month,
+            view: calendarIsActive ? 'calendar' : 'list',
+            scrollTop: reading.scrollTop, scrollLeft: reading.scrollLeft
+        }}, '');
+    }
+    reading.addEventListener('scroll', saveReading, {passive: true});
     // Grab the list content element (table or empty state) before inserting tabs
-    const listContentEl = filterCard ? filterCard.nextElementSibling : null;
+    const listContentEl = instance.querySelector('.mt-list');
 
     // Create tab nav and insert between filter bar and content
     const tabNav = document.createElement('div');
-    tabNav.className = 'mb-3';
+    tabNav.className = 'mt-tabs';
+    tabNav.setAttribute('role', 'tablist');
+    tabNav.setAttribute('aria-label', 'Milestone views');
+    tabNav.setAttribute('data-sb-page-band', '');
     tabNav.innerHTML =
-        '<ul class="nav nav-pills nav-sm mb-0">' +
-            '<li class="nav-item">' +
-                '<button class="nav-link' + (!calendarIsActive ? ' active' : '') + '" data-ms-view="list">' +
+        '<ul>' +
+            '<li>' +
+                '<button role="tab" class="mt-tab' + (!calendarIsActive ? ' active' : '') + '" data-ms-view="list">' +
                     '<i class="bi bi-list-ul"></i> List' +
                 '</button>' +
             '</li>' +
-            '<li class="nav-item">' +
-                '<button class="nav-link' + (calendarIsActive ? ' active' : '') + '" data-ms-view="calendar">' +
+            '<li>' +
+                '<button role="tab" class="mt-tab' + (calendarIsActive ? ' active' : '') + '" data-ms-view="calendar">' +
                     '<i class="bi bi-calendar3"></i> Calendar' +
                 '</button>' +
             '</li>' +
@@ -167,15 +191,18 @@
 
     if (filterCard) {
         filterCard.after(tabNav);
-        tabNav.after(calWrap);
+        instance.querySelector('.mt-reading').append(calWrap);
     }
 
     function setView(view) {
         calendarIsActive = (view === 'calendar');
         localStorage.setItem(MS_VIEW_KEY, view);
+        saveReading();
 
-        tabNav.querySelectorAll('.nav-link').forEach(function(btn) {
+        tabNav.querySelectorAll('.mt-tab').forEach(function(btn) {
             btn.classList.toggle('active', btn.dataset.msView === view);
+            btn.setAttribute('aria-selected', String(btn.dataset.msView === view));
+            btn.tabIndex = btn.dataset.msView === view ? 0 : -1;
         });
 
         if (calendarIsActive) {
@@ -188,14 +215,23 @@
         }
     }
 
-    tabNav.querySelectorAll('.nav-link').forEach(function(btn) {
+    tabNav.querySelectorAll('.mt-tab').forEach(function(btn) {
         btn.addEventListener('click', function() { setView(btn.dataset.msView); });
+        btn.addEventListener('keydown', function(event) {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const view = event.key === 'Home' ? 'list' : event.key === 'End' ? 'calendar'
+                : calendarIsActive ? 'list' : 'calendar';
+            setView(view);
+            tabNav.querySelector('[data-ms-view="' + view + '"]').focus();
+        });
     });
 
     // Calendar month navigation
     function savePos() {
         localStorage.setItem(MS_YEAR_KEY, year);
         localStorage.setItem(MS_MONTH_KEY, month);
+        saveReading();
     }
 
     document.getElementById('msPrevMonthBtn').addEventListener('click', function() {
@@ -248,7 +284,7 @@
         var requestId = ++calendarRequestId;
         var body = document.getElementById('msCalendarBody');
         var title = document.getElementById('msCalendarTitle');
-        body.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="mt-calendar-message" role="status">Loading...</td></tr>';
 
         var filterParams = getFilterParams();
         fetch('/api/milestones/calendar?year=' + year + '&month=' + month + filterParams)
@@ -264,7 +300,7 @@
             .catch(function(error) {
                 if (requestId !== calendarRequestId) return;
                 console.error('Error loading milestone calendar:', error);
-                body.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error loading calendar</td></tr>';
+                body.innerHTML = '<tr><td colspan="7" class="mt-calendar-message mt-danger">Error loading calendar</td></tr>';
             });
     }
 
@@ -292,33 +328,44 @@
             var row = document.createElement('tr');
             for (var col = 0; col < 7; col++) {
                 var cell = document.createElement('td');
-                cell.className = 'p-1'; cell.style.verticalAlign = 'top'; cell.style.height = '100px';
+                cell.className = 'mt-calendar-day'; cell.style.verticalAlign = 'top'; cell.style.height = '100px';
 
                 if ((!started && col < firstDow) || dayNum > daysInMonth) {
-                    cell.classList.add('bg-light');
+                    cell.classList.add('mt-calendar-outside');
                 } else {
                     started = true;
                     var d = dayNum;
                     var header = document.createElement('div');
-                    header.className = 'd-flex justify-content-between align-items-center mb-1';
+                    header.className = 'mt-calendar-day-heading';
                     var numEl = document.createElement('span');
-                    numEl.className = 'fw-bold small';
-                    if (d === todayDay) { numEl.innerHTML = '<span class="badge bg-primary rounded-circle">' + d + '</span>'; }
+                    numEl.className = 'mt-calendar-day-number';
+                    if (d === todayDay) { numEl.innerHTML = '<span class="mt-calendar-today">' + d + '</span>'; }
                     else { numEl.textContent = d; }
                     header.appendChild(numEl);
 
                     var msForDay = days[d] || [];
                     if (msForDay.length > 0) {
                         var badge = document.createElement('span');
-                        badge.className = 'badge bg-success rounded-pill'; badge.style.fontSize = '0.65rem';
+                        badge.className = 'mt-calendar-count'; badge.style.fontSize = '0.65rem';
                         badge.textContent = msForDay.length; header.appendChild(badge);
                     }
                     cell.appendChild(header);
 
                     if (msForDay.length > 0) {
-                        var container = document.createElement('div');
+                        const container = document.createElement('div');
                         container.style.maxHeight = '72px'; container.style.overflowY = 'auto';
                         container.className = 'calendar-entries';
+                        const dayKey = data.year + '-' + data.month + '-' + d;
+                        container.dataset.calendarDay = dayKey;
+                        container.addEventListener('scroll', function() {
+                            const entry = window.history.state || {};
+                            const state = entry.milestoneTracker || {};
+                            window.history.replaceState({...entry, milestoneTracker: {
+                                ...state, calendarScroll: {
+                                    ...state.calendarScroll, [dayKey]: container.scrollTop
+                                }
+                            }}, '');
+                        }, {passive: true});
 
                         msForDay.forEach(function(ms) {
                             var entry = document.createElement('div');
@@ -329,13 +376,13 @@
                             var statusClass = ms.status === 'On Track' ? 'ms-status-ontrack'
                                 : ms.status === 'At Risk' ? 'ms-status-atrisk' : 'ms-status-blocked';
                             var colorIdx = colorMap[ms.customer_id] || 1;
-                            entry.className = 'd-block text-decoration-none text-truncate mb-1 px-1 rounded ms-cal-entry ' + statusClass + ' cal-customer-' + colorIdx;
+                            entry.className = 'ms-cal-entry ' + statusClass + ' cal-customer-' + colorIdx;
                             entry.style.color = 'inherit';
 
                             var label = '';
-                            if (ms.on_my_team) { label += '<i class="bi bi-people-fill text-primary" style="font-size:.7em"></i> '; }
+                            if (ms.on_my_team) { label += '<i class="bi bi-people-fill mt-info" style="font-size:.7em"></i> '; }
                             label += esc(ms.customer_name);
-                            if (ms.monthly_usage) { label += ' <span class="text-muted">$' + Number(ms.monthly_usage).toLocaleString() + '</span>'; }
+                            if (ms.monthly_usage) { label += ' <span class="mt-muted">$' + Number(ms.monthly_usage).toLocaleString() + '</span>'; }
                             entry.innerHTML = label;
 
                             var tip = ms.customer_name + ' - ' + esc(ms.title);
@@ -356,6 +403,10 @@
                             container.appendChild(entry);
                         });
                         cell.appendChild(container);
+                        requestAnimationFrame(function() {
+                            const positions = window.history.state?.milestoneTracker?.calendarScroll;
+                            container.scrollTop = positions?.[dayKey] || 0;
+                        });
                     }
                     dayNum++;
                 }
@@ -375,58 +426,14 @@
 
     // Initialize view
     setView(calendarIsActive ? 'calendar' : 'list');
+    requestAnimationFrame(function() {
+        reading.scrollTop = savedView.scrollTop || 0;
+        reading.scrollLeft = savedView.scrollLeft || 0;
+    });
 })();
 </script>
 
 <script>
-// =============================================================================
-// Join Milestone Team (inline tracker)
-// =============================================================================
-
-async function toggleTrackerTeam(btn, milestoneId) {
-    // Pre-flight VPN check
-    if (window.isVpnBlocked && window.isVpnBlocked()) {
-        window.showVpnBanner();
-        return;
-    }
-    const onTeam = btn.dataset.onTeam === '1';
-    if (onTeam && !confirm('Leave this milestone team?')) return;
-    if (!onTeam && !confirm('Join the milestone team in MSX? This will add you to the access team for this milestone.')) return;
-    const origHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-    const url = onTeam ? '/api/msx/leave-milestone-team' : '/api/msx/join-milestone-team';
-    try {
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({milestone_id: milestoneId})
-        });
-        const data = await resp.json();
-
-        if (data.success) {
-            const newOnTeam = !onTeam;
-            const cell = btn.closest('td');
-            const row = cell.closest('tr');
-            if (row) row.setAttribute('data-on-my-team', newOnTeam ? 'true' : 'false');
-            if (newOnTeam) {
-                cell.innerHTML = `<button class="btn btn-sm btn-success team-toggle on-team" data-id="${milestoneId}" data-on-team="1" title="On milestone team (click to leave)" onclick="toggleTrackerTeam(this, ${milestoneId})"><i class="bi bi-people-fill icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
-            } else {
-                cell.innerHTML = `<button class="btn btn-sm btn-outline-success team-toggle" data-id="${milestoneId}" data-on-team="0" title="Join milestone team" onclick="toggleTrackerTeam(this, ${milestoneId})"><i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i></button>`;
-            }
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-            alert(data.error || 'Failed');
-        }
-    } catch (err) {
-        btn.disabled = false;
-        btn.innerHTML = origHtml;
-        alert('Network error: ' + err.message);
-    }
-}
-
 // =============================================================================
 // Sync from MSX
 // =============================================================================
@@ -445,7 +452,7 @@ function syncMilestones() {
     window.addEventListener('beforeunload', warnOnLeave);
 
     // Disable both sync buttons so user can't double-trigger
-    const syncingHtml = '<span class="spinner-border spinner-border-sm" role="status"></span> Syncing...';
+    const syncingHtml = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Syncing...';
     if (btn) { btn.disabled = true; btn.innerHTML = syncingHtml; }
     if (btnEmpty) { btnEmpty.disabled = true; btnEmpty.innerHTML = syncingHtml; }
 
@@ -456,17 +463,17 @@ function syncMilestones() {
     }
 
     // Show progress alert
-    alertEl.className = 'alert alert-info mb-4';
+    alertEl.className = 'mt-notice';
     msg.innerHTML = '<i class="bi bi-hourglass-split"></i> Connecting to MSX...';
 
     // Show brainrot toggle
     const brainrotToggle = document.getElementById('syncBrainrotToggle');
-    if (brainrotToggle) brainrotToggle.classList.remove('d-none');
+    if (brainrotToggle) brainrotToggle.classList.remove('sb-hidden');
     // If brainrot is already enabled, show the panel
     if (window.isBrainrotOn && window.isBrainrotOn() && window.showBrainrotPanel) {
         window.showBrainrotPanel();
     }
-    progressWrap.classList.add('d-none');
+    progressWrap.classList.add('sb-hidden');
 
     // Use EventSource-style fetch for SSE
     fetch('/api/milestone-tracker/sync', {
@@ -502,7 +509,7 @@ function syncMilestones() {
 
         function handleSyncEvent(type, data) {
             if (type === 'start') {
-                progressWrap.classList.remove('d-none');
+                progressWrap.classList.remove('sb-hidden');
                 msg.innerHTML = `<i class="bi bi-arrow-repeat"></i> Syncing milestones for <strong>${data.total}</strong> customers...`;
                 progressBar.style.width = '0%';
                 progressBar.textContent = '0%';
@@ -514,17 +521,17 @@ function syncMilestones() {
                 progressBar.setAttribute('aria-valuenow', pct);
 
                 if (data.status === 'fetching') {
-                    detail.innerHTML = `<i class="bi bi-cloud-download text-info"></i> Fetching: ${data.customer}`;
+                    detail.innerHTML = `<i class="bi bi-cloud-download mt-info"></i> Fetching: ${data.customer}`;
                 } else if (data.status === 'retrying') {
-                    detail.innerHTML = `<i class="bi bi-arrow-repeat text-warning"></i> ${data.customer}`;
+                    detail.innerHTML = `<i class="bi bi-arrow-repeat mt-warning"></i> ${data.customer}`;
                 } else if (data.status === 'ok') {
-                    let info = `<i class="bi bi-check-circle text-success"></i> ${data.customer}`;
+                    let info = `<i class="bi bi-check-circle mt-success"></i> ${data.customer}`;
                     if (data.created > 0 || data.updated > 0) {
-                        info += ` <span class="text-muted">(${data.created} new, ${data.updated} updated)</span>`;
+                        info += ` <span class="mt-muted">(${data.created} new, ${data.updated} updated)</span>`;
                     }
                     detail.innerHTML = info;
                 } else {
-                    detail.innerHTML = `<i class="bi bi-x-circle text-danger"></i> ${data.customer}: ${data.error}`;
+                    detail.innerHTML = `<i class="bi bi-x-circle mt-danger"></i> ${data.customer}: ${data.error}`;
                     // Show VPN banner if error indicates IP block
                     if (data.error && window.isVpnBlocked && window.isVpnBlocked(data.error)) {
                         window.showVpnBanner();
@@ -535,9 +542,8 @@ function syncMilestones() {
                 // VPN block detected — show banner and stop the progress display
                 if (window.showVpnBanner) window.showVpnBanner();
                 window.removeEventListener('beforeunload', warnOnLeave);
-                progressBar.classList.remove('progress-bar-animated');
                 restoreButtons();
-                alertEl.className = 'alert alert-danger mb-4';
+                alertEl.className = 'mt-notice is-danger';
                 msg.innerHTML = '<i class="bi bi-shield-exclamation"></i> ' +
                     '<strong>VPN Required:</strong> ' + (data.message || 'IP address is blocked.') +
                     (data.skipped ? ' (' + data.skipped + ' customers skipped)' : '');
@@ -546,39 +552,38 @@ function syncMilestones() {
                 syncFinished = true;
                 throw new Error(data.message || 'Milestone sync failed. Review the server log.');
             } else if (type === 'task_sync_start') {
-                detail.innerHTML = `<i class="bi bi-list-task text-info"></i> ${data.message}`;
+                detail.innerHTML = `<i class="bi bi-list-task mt-info"></i> ${data.message}`;
             } else if (type === 'task_sync_end') {
                 let taskInfo = '';
                 let taskParts = [];
                 if (data.tasks_created > 0) taskParts.push(`${data.tasks_created} new`);
                 if (data.tasks_updated > 0) taskParts.push(`${data.tasks_updated} updated`);
                 taskInfo = taskParts.length > 0 ? taskParts.join(', ') : 'No task changes';
-                detail.innerHTML = `<i class="bi bi-list-task text-success"></i> Tasks: ${taskInfo}`;
+                detail.innerHTML = `<i class="bi bi-list-task mt-success"></i> Tasks: ${taskInfo}`;
             } else if (type === 'comment_sync_start') {
-                detail.innerHTML = `<i class="bi bi-chat-dots text-info"></i> ${data.message}`;
+                detail.innerHTML = `<i class="bi bi-chat-dots mt-info"></i> ${data.message}`;
             } else if (type === 'comment_sync_end') {
                 let commentInfo = `${data.comments_synced} milestone(s) comments fetched`;
                 if (data.comments_skipped > 0) commentInfo += `, ${data.comments_skipped} already cached`;
                 if (data.comments_failed > 0) commentInfo += `, ${data.comments_failed} failed`;
-                detail.innerHTML = `<i class="bi bi-chat-dots-fill text-success"></i> ${commentInfo}`;
+                detail.innerHTML = `<i class="bi bi-chat-dots-fill mt-success"></i> ${commentInfo}`;
             } else if (type === 'audit_sync_start') {
-                detail.innerHTML = `<i class="bi bi-clock-history text-info"></i> ${data.message || 'Syncing audit trail...'}`;
+                detail.innerHTML = `<i class="bi bi-clock-history mt-info"></i> ${data.message || 'Syncing audit trail...'}`;
             } else if (type === 'audit_sync_end') {
                 let auditInfo = `${data.audit_fields_saved || 0} field changes tracked`;
-                detail.innerHTML = `<i class="bi bi-clock-history text-success"></i> Audit trail: ${auditInfo}`;
+                detail.innerHTML = `<i class="bi bi-clock-history mt-success"></i> Audit trail: ${auditInfo}`;
             } else if (type === 'complete') {
                 syncFinished = true;
                 window.removeEventListener('beforeunload', warnOnLeave);
-                progressBar.classList.remove('progress-bar-animated');
                 progressBar.style.width = '100%';
                 progressBar.textContent = '100%';
                 restoreButtons();
 
                 if (data.success) {
                     const brToggle = document.getElementById('syncBrainrotToggle');
-                    if (brToggle) brToggle.classList.add('d-none');
+                    if (brToggle) brToggle.classList.add('sb-hidden');
                     if (window.hideBrainrotPanel) window.hideBrainrotPanel();
-                    alertEl.className = 'alert alert-success mb-4';
+                    alertEl.className = 'mt-notice is-success';
                     let parts = [];
                     if (data.created > 0) parts.push(`${data.created} new`);
                     if (data.updated > 0) parts.push(`${data.updated} updated`);
@@ -603,18 +608,18 @@ function syncMilestones() {
                         `${data.synced} of ${data.total} customers synced in ${data.duration}s. ` +
                         `Milestones: ${summary}.${oppText}${taskText}${commentText}`;
                     if (data.errors && data.errors.length > 0) {
-                        resultHtml += `<br><small class="text-warning"><i class="bi bi-exclamation-triangle"></i> ` +
+                        resultHtml += `<br><small class="mt-warning"><i class="bi bi-exclamation-triangle"></i> ` +
                             `${data.errors.length} error(s): ${data.errors.slice(0, 3).join('; ')}</small>`;
                     }
                     sessionStorage.setItem('syncResult', JSON.stringify({
-                        html: resultHtml, className: 'alert alert-success mb-4'
+                        html: resultHtml, className: 'mt-notice is-success'
                     }));
                     window.location.reload();
                 } else {
                     const brToggle2 = document.getElementById('syncBrainrotToggle');
-                    if (brToggle2) brToggle2.classList.add('d-none');
+                    if (brToggle2) brToggle2.classList.add('sb-hidden');
                     if (window.hideBrainrotPanel) window.hideBrainrotPanel();
-                    alertEl.className = 'alert alert-danger mb-4';
+                    alertEl.className = 'mt-notice is-danger';
                     let errorMsg = data.errors ? data.errors.join('; ') : 'Unknown error';
                     msg.innerHTML = `<i class="bi bi-x-circle-fill"></i> Sync failed: ${errorMsg}`;
                 }
@@ -638,11 +643,10 @@ function syncMilestones() {
     }).catch(error => {
         window.removeEventListener('beforeunload', warnOnLeave);
         restoreButtons();
-        progressBar.classList.remove('progress-bar-animated');
-        alertEl.className = 'alert alert-danger mb-4';
+        alertEl.className = 'mt-notice is-danger';
         msg.textContent = `Sync error: ${error.message}`;
         const brToggle3 = document.getElementById('syncBrainrotToggle');
-        if (brToggle3) brToggle3.classList.add('d-none');
+        if (brToggle3) brToggle3.classList.add('sb-hidden');
         if (window.setBrainrot) window.setBrainrot(false);
     });
 }
@@ -659,7 +663,7 @@ function syncMilestones() {
             if (alertEl && msg) {
                 alertEl.className = result.className;
                 msg.innerHTML = result.html;
-                document.getElementById('syncProgressWrap').classList.add('d-none');
+                document.getElementById('syncProgressWrap').classList.add('sb-hidden');
             }
         } catch (e) { /* ignore parse errors */ }
     }

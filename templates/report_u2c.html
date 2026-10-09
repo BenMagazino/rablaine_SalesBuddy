@@ -2,34 +2,54 @@
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 
 {% block title %}U2C Attainment - Sales Buddy{% endblock %}
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-u2c.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="U2C status">
+    <span>{{ snapshot.fiscal_quarter if snapshot else current_fq }} · {{ 'Final snapshot' if snapshot and snapshot.is_final else 'Quarterly snapshot baseline' }}</span>
+    <span id="u2cRowStatus">{{ 'No milestones in scope' if snapshot else 'No snapshot available' }}</span>
+</footer>
+{% endif %}
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-start mb-3">
+<section class="sb-u2c{% if not request.args.get('embed') %} sb-directory-frame{% endif %}" data-sb-page-surface
+         data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+         aria-labelledby="u2cTitle">
+<header class="u2c-header" data-sb-page-band>
     <div>
-        <h2><i class="bi bi-bullseye"></i> U2C Attainment</h2>
-        <p class="text-muted mb-0">Track uncommitted-to-committed milestone attainment against a quarterly snapshot baseline.</p>
+        <h1 id="u2cTitle">U2C Attainment</h1>
+        <p class="u2c-muted">Track uncommitted-to-committed milestone attainment against a quarterly snapshot baseline.</p>
     </div>
-</div>
+</header>
+<p id="u2cNavigationStatus" class="u2c-notice" data-sb-page-band role="alert" hidden></p>
 
 {% if u2c_sync_error %}
-<div class="alert alert-danger d-flex align-items-start gap-2 mb-3" role="alert">
-    <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+<div class="u2c-notice is-danger u2c-inline is-start" data-sb-page-band role="alert">
+    <i class="bi bi-exclamation-triangle-fill u2c-gap-top"></i>
     <div>
         <strong>Automatic MSXi refresh failed.</strong>
         Your last saved U2C data is still shown.
-        <div class="small mt-1">{{ u2c_sync_error }}</div>
+        <div class="u2c-caption u2c-gap-top">{{ u2c_sync_error }}</div>
     </div>
 </div>
 {% endif %}
 
 <!-- Controls: Quarter selector, workload filter, official import -->
-<div class="card mb-3">
-    <div class="card-body py-2">
-        <form method="GET" action="{{ url_for('reports.report_u2c') }}" class="d-flex align-items-center gap-3 flex-wrap">
-            <div class="d-flex align-items-center gap-2">
-                <label class="small text-muted fw-semibold mb-0">Quarter:</label>
+<div class="u2c-controls" data-sb-page-band>
+    <div class="u2c-section-body">
+        <form method="GET" action="{{ url_for('reports.report_u2c') }}" class="u2c-inline is-loose is-wrap">
+            {% if request.args.get('embed') %}
+            <input type="hidden" name="embed" value="{{ request.args.get('embed') }}">
+            {% endif %}
+            <div class="u2c-inline">
+                <label class="u2c-label" for="quarterFilter">Quarter</label>
                 {% if snapshots %}
-                <select name="fq" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                <select id="quarterFilter" name="fq" class="u2c-select" onchange="this.form.submit()">
                     {% for s in snapshots %}
                     <option value="{{ s.fiscal_quarter }}" {% if snapshot and s.id == snapshot.id %}selected{% endif %}>
                         {{ s.fiscal_quarter }}{% if s.is_final %} (final){% endif %}
@@ -37,13 +57,13 @@
                     {% endfor %}
                 </select>
                 {% else %}
-                <span class="text-muted small">No snapshots yet</span>
+                <span class="u2c-muted u2c-caption">No snapshots yet</span>
                 {% endif %}
             </div>
             {% if workload_prefixes %}
-            <div class="d-flex align-items-center gap-2">
-                <label class="small text-muted fw-semibold mb-0">Workload:</label>
-                <select id="workloadFilter" class="form-select form-select-sm" style="width: auto;">
+            <div class="u2c-inline">
+                <label class="u2c-label" for="workloadFilter">Workload</label>
+                <select id="workloadFilter" class="u2c-select" >
                     <option value="">All workloads</option>
                     {% for prefix in workload_prefixes %}
                     <option value="{{ prefix }}">{{ prefix }}</option>
@@ -51,9 +71,9 @@
                 </select>
             </div>
             {% endif %}
-            <div class="ms-auto d-flex align-items-center gap-3">
+            <div class="u2c-refresh u2c-inline is-loose">
                 {% if snapshot %}
-                <span class="small text-muted" title="MSXi publishes a new snapshot version weekly; Sales Buddy checks daily.">
+                <span class="u2c-caption u2c-muted" title="MSXi publishes a new snapshot version weekly; Sales Buddy checks daily.">
                     <i class="bi bi-clock-history"></i>
                     {% if snapshot.msxi_version_date %}
                     MSXi data as of {{ snapshot.msxi_version_date.strftime('%b %d, %Y') }}
@@ -65,7 +85,7 @@
                     {% endif %}
                 </span>
                 {% endif %}
-                <button type="button" class="btn btn-sm btn-outline-success" id="importOfficialBtn"
+                <button type="button" class="u2c-command is-success" id="importOfficialBtn"
                         onclick="importOfficialSnapshot()"
                         {% if not territory_count %}disabled title="Add your sales territories first"{% endif %}>
                     <i class="bi bi-cloud-download"></i> Refresh {{ current_fq }} from MSXi
@@ -75,133 +95,118 @@
     </div>
 </div>
 
+{% if attainment and (attainment.remaining_items or attainment.committed_items) %}
+<div class="u2c-controls" id="u2cFilterBar" data-sb-page-band>
+    <div class="u2c-inline is-wrap">
+        <span class="u2c-label"><i class="bi bi-funnel"></i> Milestones</span>
+        <select id="filterSeller" class="u2c-select" aria-label="Filter milestones by seller">
+            <option value="">All Sellers</option>
+        </select>
+        <select id="filterCustomer" class="u2c-select" aria-label="Filter milestones by customer">
+            <option value="">All Customers</option>
+        </select>
+        <button type="button" class="u2c-command is-hidden" id="clearMilestoneFilters">
+            <i class="bi bi-x-circle"></i> Clear seller and customer
+        </button>
+        <span class="u2c-caption u2c-muted">
+            Seller/customer filters affect totals and queues. Trend follows workload only.
+        </span>
+    </div>
+</div>
+{% endif %}
+
+<div id="u2cReading" class="u2c-reading" data-sb-page-body
+     role="region" aria-label="U2C summary, trend and milestone queues" tabindex="0">
 {% if attainment %}
 <!-- Attainment Summary Cards -->
-<div class="row g-3 mb-4" id="summaryCards">
-    <div class="col">
-        <div class="card text-center h-100">
-            <div class="card-body">
-                <h3 class="mb-1" id="cardTarget">${{ "{:,.0f}".format(attainment.target_total) }}</h3>
-                <small class="text-muted">Total Pipeline ACR</small>
-                <div class="small text-muted mt-1" id="cardTargetSub">{{ attainment.total_in_scope }} milestones in scope</div>
-            </div>
-        </div>
+<div class="u2c-metrics" id="summaryCards">
+    <div class="u2c-metric">
+                <h3 class="u2c-value" id="cardTarget">${{ "{:,.0f}".format(attainment.target_total) }}</h3>
+                <small class="u2c-muted">Total Pipeline ACR</small>
+                <div class="u2c-caption u2c-muted u2c-gap-top" id="cardTargetSub">{{ attainment.total_in_scope }} milestones in scope</div>
     </div>
-    <div class="col">
-        <div class="card text-center h-100">
-            <div class="card-body">
-                <h3 class="mb-1 text-success" id="cardCommitted">${{ "{:,.0f}".format(attainment.committed_total) }}</h3>
-                <small class="text-muted">Committed ACR</small>
-                <div class="small text-muted mt-1" id="cardCommittedSub">{{ attainment.committed_count }} milestones committed</div>
-            </div>
-        </div>
+    <div class="u2c-metric">
+                <h3 class="u2c-value is-success" id="cardCommitted">${{ "{:,.0f}".format(attainment.committed_total) }}</h3>
+                <small class="u2c-muted">Committed ACR</small>
+                <div class="u2c-caption u2c-muted u2c-gap-top" id="cardCommittedSub">{{ attainment.committed_count }} milestones committed</div>
     </div>
-    <div class="col">
-        <div class="card text-center h-100">
-            <div class="card-body">
+    <div class="u2c-metric">
                 {% set u2c_tone = 'success' if attainment.u2c_pct >= u2c_goal else 'warning' %}
-                <h3 class="mb-1 text-{{ u2c_tone }}" id="cardU2cPct">{{ attainment.u2c_pct }}%</h3>
-                <small class="text-muted">U2C %</small>
-                <div class="progress mt-2" style="height: 8px;">
-                    <div id="cardU2cPctBar" class="progress-bar bg-{{ u2c_tone }}"
+                <h3 class="u2c-value  is-{{ u2c_tone }}" id="cardU2cPct">{{ attainment.u2c_pct }}%</h3>
+                <small class="u2c-muted">U2C %</small>
+                <div class="u2c-progress u2c-gap" >
+                    <div id="cardU2cPctBar" class="u2c-progress-fill is-{{ u2c_tone }}"
                          style="width: {{ [attainment.u2c_pct, 100]|min }}%"></div>
                 </div>
-                <div class="small text-muted mt-1">Snapshot ACR basis, {{ u2c_goal|int }}% goal</div>
-            </div>
-        </div>
+                <div class="u2c-caption u2c-muted u2c-gap-top">Snapshot ACR basis, {{ u2c_goal|int }}% goal</div>
     </div>
-    <div class="col">
-        <div class="card text-center h-100">
-            <div class="card-body">
-                <h3 class="mb-1" id="cardPct">{{ attainment.attainment_pct }}%</h3>
-                <small class="text-muted">Attainment %</small>
-                <div class="progress mt-2" style="height: 8px;">
-                    <div id="cardPctBar" class="progress-bar bg-info"
+    <div class="u2c-metric">
+                <h3 class="u2c-value" id="cardPct">{{ attainment.attainment_pct }}%</h3>
+                <small class="u2c-muted">Attainment %</small>
+                <div class="u2c-progress u2c-gap" >
+                    <div id="cardPctBar" class="u2c-progress-fill is-accent"
                          style="width: {{ [attainment.attainment_pct, 100]|min }}%"></div>
                 </div>
-                <div class="small text-muted mt-1">Live ACR at commit</div>
-            </div>
-        </div>
+                <div class="u2c-caption u2c-muted u2c-gap-top">Live ACR at commit</div>
     </div>
-    <div class="col">
-        <div class="card text-center h-100">
-            <div class="card-body">
-                <h3 class="mb-1 text-warning" id="cardRemaining">${{ "{:,.0f}".format(attainment.target_total - attainment.committed_total) }}</h3>
-                <small class="text-muted">Remaining ACR</small>
-                <div class="small text-muted mt-1" id="cardRemainingSub">{{ attainment.remaining_count }} milestones to go</div>
-            </div>
-        </div>
+    <div class="u2c-metric">
+                <h3 class="u2c-value is-warning" id="cardRemaining">${{ "{:,.0f}".format(attainment.target_total - attainment.committed_total) }}</h3>
+                <small class="u2c-muted">Remaining ACR</small>
+                <div class="u2c-caption u2c-muted u2c-gap-top" id="cardRemainingSub">{{ attainment.remaining_count }} milestones to go</div>
     </div>
 </div>
 
 <!-- Weekly attainment trend -->
-{% if trend.get('', [])|length > 1 %}
-<div class="card mb-4" id="trendCard">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">
+{% if trend.get('', []) %}
+<div class="u2c-section" id="trendCard">
+    <div class="u2c-section-heading u2c-inline is-spread">
+        <h2>
             <i class="bi bi-graph-up-arrow"></i> Attainment Over the Quarter
-            <span id="trendScope" class="badge bg-secondary ms-2 d-none"></span>
-        </h5>
-        <small class="text-muted">
-            Weekly MSXi history{% if trend.get('', []) and trend[''][-1].get('source') == 'live' %} + latest synced milestones (live){% endif %}
+            <span id="trendScope" class="u2c-tag u2c-muted is-hidden"></span>
+        </h2>
+        <small class="u2c-muted">
+            Published MSXi snapshots{% if trend.get('', []) and trend[''][-1].get('source') == 'live' %} + Today (live commitment status, snapshot ACR){% endif %}
         </small>
     </div>
-    <div class="card-body">
-        <div style="position: relative; height: 240px;">
+    <div class="u2c-section-body">
+        <div class="u2c-chart">
             <canvas id="u2cTrendChart"></canvas>
         </div>
-        <div id="trendEmpty" class="text-muted small text-center d-none py-4">
-            Not enough weekly history for this workload yet.
+        <div id="trendEmpty" class="u2c-muted u2c-caption is-hidden">
+            No published snapshots or Today point are available for this workload.
         </div>
     </div>
 </div>
 {% endif %}
 
 {% if attainment.remaining_items or attainment.committed_items %}
-<div class="card mb-3" id="u2cFilterBar">
-    <div class="card-body py-2 d-flex align-items-center gap-2 flex-wrap">
-        <span class="small text-muted fw-semibold me-1">
-            <i class="bi bi-funnel"></i> Filter milestones:
-        </span>
-        <select id="filterSeller" class="form-select form-select-sm" style="width: 180px;">
-            <option value="">All Sellers</option>
-        </select>
-        <select id="filterCustomer" class="form-select form-select-sm" style="width: 220px;">
-            <option value="">All Customers</option>
-        </select>
-        <button type="button" class="btn btn-sm btn-outline-secondary d-none"
-                id="clearMilestoneFilters">
-            <i class="bi bi-x-circle"></i> Clear seller and customer
-        </button>
-    </div>
-</div>
-<div class="alert alert-light border text-muted text-center d-none mb-4"
+<div class="u2c-notice u2c-muted is-hidden"
      id="u2cFilterEmpty" role="status">
     <i class="bi bi-funnel"></i>
     No milestones match these filters.
-    <button type="button" class="btn btn-link btn-sm p-0 ms-1"
+    <button type="button" class="u2c-command is-text"
             id="clearMilestoneFiltersEmpty">Clear seller and customer</button>
 </div>
 {% endif %}
 
 <!-- Remaining Milestones (need to commit) -->
 {% if attainment.remaining_items %}
-<div class="card mb-4" id="remainingCard">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h5 class="mb-0"><i class="bi bi-hourglass-split text-warning"></i> Remaining</h5>
-        <span class="badge bg-warning text-dark" id="remainingBadge">{{ attainment.remaining_count }} milestones - ${{ "{:,.0f}".format(attainment.target_total - attainment.committed_total) }}/mo</span>
+<div class="u2c-section" id="remainingCard">
+    <div class="u2c-section-heading u2c-inline is-spread is-wrap">
+        <h2><i class="bi bi-hourglass-split is-warning"></i> Remaining</h2>
+        <span class="u2c-tag is-warning" id="remainingBadge">{{ attainment.remaining_count }} milestones - ${{ "{:,.0f}".format(attainment.target_total - attainment.committed_total) }}/mo</span>
     </div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0" id="remainingTable">
+    <div class="u2c-table-scroll">
+        <table class="u2c-table" id="remainingTable">
             <thead>
                 <tr>
-                    <th class="sortable text-nowrap" data-sort="customer" style="cursor: pointer; min-width: 140px;">Customer <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th class="sortable text-nowrap" data-sort="milestone" style="cursor: pointer; min-width: 160px;">Milestone <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th class="sortable text-nowrap" data-sort="workload" style="cursor: pointer; min-width: 110px;">Workload <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th class="sortable text-nowrap" data-sort="due_date" style="cursor: pointer; min-width: 110px;">Due Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th class="sortable text-nowrap text-end" data-sort="acr" style="cursor: pointer; min-width: 110px;">Est. ACR <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th class="sortable text-nowrap" data-sort="status" style="cursor: pointer; min-width: 90px;">Status <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th class="text-center" title="Linked to an engagement">Eng</th>
+                    <th class="sortable is-nowrap" data-sort="customer" >Customer <i class="bi bi-arrow-down-up u2c-muted u2c-caption"></i></th>
+                    <th class="sortable is-nowrap" data-sort="milestone" >Milestone <i class="bi bi-arrow-down-up u2c-muted u2c-caption"></i></th>
+                    <th class="sortable is-nowrap" data-sort="workload" >Workload <i class="bi bi-arrow-down-up u2c-muted u2c-caption"></i></th>
+                    <th class="sortable is-nowrap" data-sort="due_date" >Due Date <i class="bi bi-arrow-down-up u2c-muted u2c-caption"></i></th>
+                    <th class="sortable is-nowrap is-right" data-sort="acr" >Est. ACR <i class="bi bi-arrow-down-up u2c-muted u2c-caption"></i></th>
+                    <th class="sortable is-nowrap" data-sort="status" >Status <i class="bi bi-arrow-down-up u2c-muted u2c-caption"></i></th>
+                    <th class="" title="Linked to an engagement">Eng</th>
                     <th title="Seller 1:1 notes">1:1</th>
                 </tr>
             </thead>
@@ -236,33 +241,33 @@
                         {{ item.milestone_title }}
                         {% endif %}
                         {% if item.opportunity_name %}
-                        <div class="small text-muted">{{ item.opportunity_name }}</div>
+                        <div class="u2c-caption u2c-muted">{{ item.opportunity_name }}</div>
                         {% endif %}
                         {% if item.owner_alias and not item.milestone_id %}
-                        <div class="small text-muted"><i class="bi bi-person"></i> {{ item.owner_alias }}</div>
+                        <div class="u2c-caption u2c-muted"><i class="bi bi-person"></i> {{ item.owner_alias }}</div>
                         {% endif %}
                     </td>
-                    <td><span class="small">{{ item.workload or '-' }}</span></td>
-                    <td style="white-space: nowrap;">
+                    <td><span class="u2c-caption">{{ item.workload or '-' }}</span></td>
+                    <td >
                         {% if item.due_date %}
-                        <span class="small">{{ item.due_date[:10] }}</span>
+                        <span class="u2c-caption">{{ item.due_date[:10] }}</span>
                         {% else %}
-                        <span class="text-muted">-</span>
+                        <span class="u2c-muted">-</span>
                         {% endif %}
                     </td>
-                    <td class="text-end fw-semibold" style="white-space: nowrap;">${{ "{:,.0f}".format(item.monthly_acr) }}</td>
+                    <td class="is-right is-strong" >${{ "{:,.0f}".format(item.monthly_acr) }}</td>
                     <td>
-                        <span class="badge {% if item.current_status == 'On Track' %}bg-success{% elif item.current_status == 'At Risk' %}bg-warning text-dark{% elif item.current_status == 'Blocked' %}bg-danger{% else %}bg-secondary{% endif %}">
+                        <span class="u2c-tag {% if item.current_status == 'On Track' %}is-success{% elif item.current_status == 'At Risk' %}is-warning {% elif item.current_status == 'Blocked' %}is-danger{% else %}u2c-muted{% endif %}">
                             {{ item.current_status }}
                         </span>
                     </td>
-                    <td class="text-center">
+                    <td class="">
                         {% if item.engagements %}
-                        <i class="bi bi-check-circle-fill text-success"
+                        <i class="bi bi-check-circle-fill is-success"
                            title="Linked: {{ item.engagements|map(attribute='title')|join(', ') }}"
                            aria-label="Linked to {{ item.engagements|length }} engagement{% if item.engagements|length != 1 %}s{% endif %}"></i>
                         {% else %}
-                        <i class="bi bi-x-circle text-muted"
+                        <i class="bi bi-x-circle u2c-muted"
                            title="No linked engagement"
                            aria-label="No linked engagement"></i>
                         {% endif %}
@@ -271,14 +276,14 @@
                         <div class="u2c-agenda-action">
                             {% if item.one_on_one_active %}
                             <a href="{{ url_for('one_on_one.seller_workspace', seller_id=item.seller_id) }}"
-                               class="btn btn-sm btn-outline-success"
+                               class="u2c-command is-success"
                                title="Open {{ item.seller_name }}'s 1:1 notes"
                                aria-label="Open {{ item.seller_name }}'s 1:1 notes">
                                 <i class="bi bi-check-circle"></i> On 1:1
                             </a>
                             {% elif item.milestone_id and item.seller_id %}
                             <button type="button"
-                                    class="btn btn-sm btn-outline-primary js-u2c-agenda-toggle"
+                                    class="u2c-command js-u2c-agenda-toggle"
                                     title="Add to {{ item.seller_name }}'s 1:1 notes"
                                     aria-label="Add to {{ item.seller_name }}'s 1:1 notes"
                                     aria-expanded="false"
@@ -287,37 +292,37 @@
                                 Add
                             </button>
                             <div id="u2cAgendaComposer{{ item.id }}"
-                                 class="u2c-agenda-composer d-none mt-2"
-                                 style="width: 260px;">
-                                <label class="form-label small fw-semibold mb-1"
+                                 class="u2c-agenda-composer is-hidden u2c-gap"
+                                 >
+                                <label class="u2c-field-label u2c-caption is-strong"
                                        for="u2cAgendaNote{{ item.id }}">
                                     Add to {{ item.seller_name }}'s 1:1
                                 </label>
                                 <textarea id="u2cAgendaNote{{ item.id }}"
-                                          class="form-control form-control-sm mb-2"
+                                          class="u2c-input u2c-block"
                                           rows="3">Review the path to commitment for {{ item.milestone_title }}. Currently {{ item.current_status }} with ${{ "{:,.0f}".format(item.monthly_acr) }}/mo remaining.</textarea>
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="u2c-inline">
                                     <button type="button"
-                                            class="btn btn-sm btn-primary js-u2c-agenda-save"
+                                            class="u2c-command is-primary js-u2c-agenda-save"
                                             data-endpoint="{{ url_for('one_on_one.agenda_add_u2c_context', seller_id=item.seller_id) }}"
                                             data-milestone-id="{{ item.milestone_id }}">
                                         Add to 1:1
                                     </button>
                                     <button type="button"
-                                            class="btn btn-sm btn-link text-muted p-0 js-u2c-agenda-cancel">
+                                            class="u2c-command is-text u2c-muted js-u2c-agenda-cancel">
                                         Cancel
                                     </button>
                                 </div>
-                                <div class="small text-danger mt-2 d-none u2c-agenda-error"
+                                <div class="u2c-caption is-danger u2c-gap is-hidden u2c-agenda-error"
                                      role="alert"></div>
                             </div>
                             {% elif not item.milestone_id %}
-                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                            <button type="button" class="u2c-command"
                                     disabled title="Sync this milestone locally before adding it to a 1:1">
                                 <i class="bi bi-person-plus"></i> Unavailable
                             </button>
                             {% else %}
-                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                            <button type="button" class="u2c-command"
                                     disabled title="Assign this customer to a seller first">
                                 <i class="bi bi-person-plus"></i> Unavailable
                             </button>
@@ -334,21 +339,21 @@
 
 <!-- Committed Milestones (attained) -->
 {% if attainment.committed_items %}
-<div class="card mb-4" id="committedCard">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-check-circle text-success"></i> Committed - Attained</h5>
-        <span class="badge bg-success" id="committedBadge">{{ attainment.committed_count }} milestones - ${{ "{:,.0f}".format(attainment.committed_total) }}/mo</span>
+<div class="u2c-section" id="committedCard">
+    <div class="u2c-section-heading u2c-inline is-spread">
+        <h2><i class="bi bi-check-circle is-success"></i> Committed - Attained</h2>
+        <span class="u2c-tag is-success" id="committedBadge">{{ attainment.committed_count }} milestones - ${{ "{:,.0f}".format(attainment.committed_total) }}/mo</span>
     </div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
+    <div class="u2c-table-scroll">
+        <table class="u2c-table" id="committedTable">
             <thead>
                 <tr>
-                    <th>Customer</th>
-                    <th>Milestone</th>
-                    <th>Workload</th>
-                    <th style="white-space: nowrap;">Due Date</th>
-                    <th class="text-end" style="white-space: nowrap;">Est. ACR</th>
-                    <th>Status</th>
+                    <th class="sortable" data-sort="customer">Customer <i class="bi bi-arrow-down-up"></i></th>
+                    <th class="sortable" data-sort="milestone">Milestone <i class="bi bi-arrow-down-up"></i></th>
+                    <th class="sortable" data-sort="workload">Workload <i class="bi bi-arrow-down-up"></i></th>
+                    <th class="sortable" data-sort="due_date">Due Date <i class="bi bi-arrow-down-up"></i></th>
+                    <th class="sortable is-right" data-sort="acr">Est. ACR <i class="bi bi-arrow-down-up"></i></th>
+                    <th class="sortable" data-sort="status">Status <i class="bi bi-arrow-down-up"></i></th>
                 </tr>
             </thead>
             <tbody id="committedBody">
@@ -382,25 +387,25 @@
                         {{ item.milestone_title }}
                         {% endif %}
                         {% if item.opportunity_name %}
-                        <div class="small text-muted">{{ item.opportunity_name }}</div>
+                        <div class="u2c-caption u2c-muted">{{ item.opportunity_name }}</div>
                         {% endif %}
                         {% if item.owner_alias and not item.milestone_id %}
-                        <div class="small text-muted"><i class="bi bi-person"></i> {{ item.owner_alias }}</div>
+                        <div class="u2c-caption u2c-muted"><i class="bi bi-person"></i> {{ item.owner_alias }}</div>
                         {% endif %}
                     </td>
-                    <td><span class="small">{{ item.workload or '-' }}</span></td>
-                    <td style="white-space: nowrap;">
+                    <td><span class="u2c-caption">{{ item.workload or '-' }}</span></td>
+                    <td >
                         {% if item.due_date %}
-                        <span class="small">{{ item.due_date[:10] }}</span>
+                        <span class="u2c-caption">{{ item.due_date[:10] }}</span>
                         {% else %}
-                        <span class="text-muted">-</span>
+                        <span class="u2c-muted">-</span>
                         {% endif %}
                     </td>
-                    <td class="text-end fw-semibold text-success" style="white-space: nowrap;">${{ "{:,.0f}".format(item.monthly_acr) }}</td>
+                    <td class="is-right is-strong is-success" >${{ "{:,.0f}".format(item.monthly_acr) }}</td>
                     <td>
-                        <span class="badge bg-success">{{ item.current_commitment }}</span>
+                        <span class="u2c-tag is-success">{{ item.current_commitment }}</span>
                         {% if item.current_status == 'Completed' %}
-                        <span class="badge bg-info">Completed</span>
+                        <span class="u2c-tag is-accent">Completed</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -413,16 +418,16 @@
 
 {% elif not snapshot %}
 <!-- No snapshot exists yet -->
-<div class="card">
-    <div class="card-body text-center py-5">
-        <i class="bi bi-cloud-download display-1 text-muted"></i>
-        <h4 class="mt-3">No U2C Snapshot Yet</h4>
-        <p class="text-muted">
+<div class="u2c-section">
+    <div class="u2c-section-body u2c-empty">
+        <i class="bi bi-cloud-download u2c-muted"></i>
+        <h2>No U2C Snapshot Yet</h2>
+        <p class="u2c-muted">
             Import the official MSX Insights baseline for this quarter.
             <br>It refreshes automatically once a day after that.
         </p>
-        <div class="d-flex justify-content-center gap-2">
-            <button class="btn btn-success" id="importOfficialBtnEmpty" onclick="importOfficialSnapshot()"
+        <div class="u2c-inline is-center">
+            <button class="u2c-command is-primary" id="importOfficialBtnEmpty" onclick="importOfficialSnapshot()"
                     {% if not territory_count %}disabled title="Add your sales territories first"{% endif %}>
                 <i class="bi bi-cloud-download"></i> Import Official {{ current_fq }} Snapshot
             </button>
@@ -431,50 +436,53 @@
 </div>
 {% else %}
 <!-- Snapshot exists but no milestones in scope -->
-<div class="card">
-    <div class="card-body text-center py-5">
-        <i class="bi bi-check-circle display-1 text-success"></i>
-        <h4 class="mt-3">No Milestones in Scope</h4>
-        <p class="text-muted">
+<div class="u2c-section">
+    <div class="u2c-section-body u2c-empty">
+        <i class="bi bi-check-circle is-success"></i>
+        <h2>No Milestones in Scope</h2>
+        <p class="u2c-muted">
             No uncommitted milestones with due dates in {{ snapshot.fiscal_quarter }} were captured in this snapshot.
         </p>
     </div>
 </div>
 {% endif %}
 
+</div>
+</section>
 {% endblock %}
 
 {% block extra_js %}
-{% if trend.get('', [])|length > 1 %}
+<script src="{{ url_for('static', filename='js/ui-u2c.js') }}"></script>
+{% if trend.get('', []) %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
 <script>
 // Attainment trend. One series per workload prefix plus '' for the whole
 // territory, all sent up front so switching follows the workload dropdown
-// instantly - the same client-side filtering the cards and tables use.
+// instantly - the same client-side filtering the summary and tables use.
 const TREND_SERIES = {{ trend|tojson }};
 const TREND_BOUNDS = {{ trend_bounds|tojson }};
 let u2cTrendChart = null;
 
 function u2cTrendColors() {
-    const css = getComputedStyle(document.body);
-    return {
-        muted: css.getPropertyValue('--bs-secondary-color').trim() || '#6c757d',
-        grid: css.getPropertyValue('--bs-border-color').trim() || '#dee2e6',
-        text: css.getPropertyValue('--bs-body-color').trim() || '#333',
-    };
+    return SBU2c.chartColors();
 }
 
+function resetU2cTrendTheme() {
+    if (u2cTrendChart) u2cTrendChart.destroy();
+    u2cTrendChart = null;
+    renderU2cTrend(document.getElementById('workloadFilter')?.value || '');
+}
 function u2cMoney(v) {
     return '$' + Math.round(v).toLocaleString();
 }
 
 function u2cTrendPoints(points, field) {
-    return points.map(p => ({ x: Date.parse(p.date), y: p[field] }));
+    return points.map(p => ({ ...p, x: Date.parse(p.date), y: p[field] }));
 }
 
 function u2cGoalPoints(points) {
     return points.map(p => ({
-        x: Date.parse(p.date), y: p.starting_acr * U2C_GOAL / 100,
+        ...p, x: Date.parse(p.date), y: p.starting_acr * U2C_GOAL / 100,
     }));
 }
 
@@ -491,19 +499,19 @@ function renderU2cTrend(prefix) {
     if (!canvas) return;
 
     const points = TREND_SERIES[prefix || ''] || [];
+    const published = points.filter(p => p.source !== 'live');
+    const live = points.filter(p => p.source === 'live');
     const empty = document.getElementById('trendEmpty');
     const scope = document.getElementById('trendScope');
 
     if (scope) {
         scope.textContent = prefix || '';
-        scope.classList.toggle('d-none', !prefix);
+        scope.classList.toggle('is-hidden', !prefix);
     }
 
-    // One point isn't a trend, and a workload can legitimately have fewer
-    // weeks of history than the territory as a whole.
-    const enough = points.length > 1;
+    const enough = points.length > 0;
     canvas.style.display = enough ? '' : 'none';
-    if (empty) empty.classList.toggle('d-none', enough);
+    if (empty) empty.classList.toggle('is-hidden', enough);
     if (!enough) {
         if (u2cTrendChart) { u2cTrendChart.destroy(); u2cTrendChart = null; }
         return;
@@ -513,10 +521,11 @@ function renderU2cTrend(prefix) {
 
     if (u2cTrendChart) {
         u2cTrendChart.data.datasets[0].data = u2cTrendPoints(
-            points, 'committed_acr');
+            published, 'committed_acr');
         u2cTrendChart.data.datasets[1].data = u2cTrendPoints(
             points, 'starting_acr');
         u2cTrendChart.data.datasets[2].data = u2cGoalPoints(points);
+        u2cTrendChart.data.datasets[3].data = u2cTrendPoints(live, 'committed_acr');
         u2cTrendChart.update();
         return;
     }
@@ -526,10 +535,13 @@ function renderU2cTrend(prefix) {
         data: {
             datasets: [
                 {
-                    label: 'Committed ACR',
-                    data: u2cTrendPoints(points, 'committed_acr'),
-                    borderColor: '#198754',
-                    backgroundColor: 'rgba(25, 135, 84, 0.12)',
+                    label: 'Snapshot committed ACR',
+                    data: u2cTrendPoints(published, 'committed_acr'),
+                    borderColor: colors.committed,
+                    pointBackgroundColor: colors.committed,
+                    pointBorderColor: colors.committed,
+                    backgroundColor: colors.committed.replace('rgb(', 'rgba(')
+                        .replace(')', ', .10)'),
                     fill: true,
                     tension: 0.25,
                     pointRadius: 3,
@@ -538,6 +550,7 @@ function renderU2cTrend(prefix) {
                     label: 'Total pipeline (starting uncommitted)',
                     data: u2cTrendPoints(points, 'starting_acr'),
                     borderColor: colors.muted,
+                    backgroundColor: 'transparent',
                     borderDash: [6, 4],
                     pointRadius: 0,
                     fill: false,
@@ -545,40 +558,52 @@ function renderU2cTrend(prefix) {
                 {
                     label: `${U2C_GOAL}% goal`,
                     data: u2cGoalPoints(points),
-                    borderColor: '#0d6efd',
+                    borderColor: colors.goal,
+                    backgroundColor: 'transparent',
                     borderDash: [3, 3],
                     pointRadius: 0,
                     fill: false,
+                },
+                {
+                    label: 'Today (live)',
+                    data: u2cTrendPoints(live, 'committed_acr'),
+                    borderColor: colors.goal,
+                    pointBackgroundColor: colors.goal,
+                    pointBorderColor: colors.goal,
+                    showLine: false,
+                    fill: false,
+                    pointStyle: 'rectRot',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
                 },
             ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
+            interaction: { mode: 'nearest', intersect: false },
             plugins: {
+                colors: {enabled: false},
                 legend: {
                     position: 'bottom',
-                    labels: { color: colors.text, boxWidth: 12, boxHeight: 3 },
+                    labels: {
+                        color: colors.text, boxWidth: 12, boxHeight: 3,
+                        filter: (item, data) => item.datasetIndex !== 3
+                            || data.datasets[3].data.length > 0,
+                    },
                 },
                 tooltip: {
                     callbacks: {
                         title: items => {
                             if (!items.length) return '';
-                            const series = TREND_SERIES[
-                                (document.getElementById('workloadFilter') || {}).value || ''
-                            ] || [];
-                            return (series[items[0].dataIndex] || {}).label || '';
+                            return items[0].raw.label || '';
                         },
                         label: ctx => {
-                            const series = TREND_SERIES[
-                                (document.getElementById('workloadFilter') || {}).value || ''
-                            ] || [];
-                            const p = series[ctx.dataIndex];
+                            const p = ctx.raw;
                             if (!p) return '';
-                            if (ctx.datasetIndex === 0) {
+                            if (ctx.datasetIndex === 0 || ctx.datasetIndex === 3) {
                                 // Same basis as the "Committed ACR" and "U2C %"
-                                // cards: how much of the frozen baseline has
+                                // summary: how much of the frozen baseline has
                                 // committed.
                                 return ` Committed ${u2cMoney(p.committed_acr)} (${p.u2c_pct}% U2C)`;
                             }
@@ -700,7 +725,7 @@ function filterCustomerBySeller(sellerId) {
 // ==========================================================================
 function sortTable(column) {
     const tbody = el('remainingBody');
-    if (!tbody) return;
+    if (!tbody && !el('committedBody')) return;
 
     if (currentSort.column === column) {
         currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
@@ -709,8 +734,9 @@ function sortTable(column) {
         currentSort.direction = (column === 'acr') ? 'desc' : 'asc';
     }
 
-    localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
-    applySortToBody(tbody);
+    SBU2c.writePreference(SORT_KEY, JSON.stringify(currentSort));
+    if (tbody) applySortToBody(tbody);
+    if (el('committedBody')) applySortToBody(el('committedBody'));
     updateSortIndicators();
 }
 
@@ -743,8 +769,12 @@ function applySortToBody(tbody) {
                 vb = parseFloat(b.dataset.acr) || 0;
                 return dir * (va - vb);
             case 'status':
-                va = a.dataset.status || '';
-                vb = b.dataset.status || '';
+                va = a.dataset.committed === '1'
+                    ? a.lastElementChild.textContent.trim().replace(/\s+/g, ' ')
+                    : a.dataset.status || '';
+                vb = b.dataset.committed === '1'
+                    ? b.lastElementChild.textContent.trim().replace(/\s+/g, ' ')
+                    : b.dataset.status || '';
                 return dir * va.localeCompare(vb);
             default:
                 return 0;
@@ -754,15 +784,17 @@ function applySortToBody(tbody) {
 }
 
 function updateSortIndicators() {
-    document.querySelectorAll('#remainingTable .sortable').forEach(th => {
+    document.querySelectorAll('.u2c-table .sortable').forEach(th => {
+        th.setAttribute('aria-sort', th.dataset.sort === currentSort.column
+            ? (currentSort.direction === 'asc' ? 'ascending' : 'descending') : 'none');
         const icon = th.querySelector('i');
         if (!icon) return;
         if (th.dataset.sort === currentSort.column) {
             icon.className = currentSort.direction === 'asc'
-                ? 'bi bi-sort-up small text-info'
-                : 'bi bi-sort-down small text-info';
+                ? 'bi bi-sort-up u2c-caption is-accent'
+                : 'bi bi-sort-down u2c-caption is-accent';
         } else {
-            icon.className = 'bi bi-arrow-down-up text-muted small';
+            icon.className = 'bi bi-arrow-down-up u2c-muted u2c-caption';
         }
     });
 }
@@ -781,9 +813,8 @@ function applyAllFilters() {
     const hasSellerOrCustomerFilter = Boolean(sellerId || customerId);
 
     // Save filter state
-    if (wlPrefix) localStorage.setItem(WL_KEY, wlPrefix);
-    else localStorage.removeItem(WL_KEY);
-    localStorage.setItem(FILTER_KEY, JSON.stringify({ seller: sellerId, customer: customerId }));
+    SBU2c.writePreference(WL_KEY, wlPrefix || null);
+    SBU2c.writePreference(FILTER_KEY, JSON.stringify({seller: sellerId, customer: customerId}));
 
     let remainingAcr = 0, remainingCount = 0;
     let committedAcr = 0, committedCount = 0;
@@ -823,7 +854,7 @@ function applyAllFilters() {
     const u2cPct = targetAcr > 0 ? Math.round(committedAcr / targetAcr * 1000) / 10 : 0;
     const attPct = targetAcr > 0 ? Math.round(committedLiveAcr / targetAcr * 1000) / 10 : 0;
 
-    // Update summary cards
+    // Update summary metrics
     if (el('cardTarget')) el('cardTarget').textContent = fmt(targetAcr);
     if (el('cardTargetSub')) el('cardTargetSub').textContent = totalCount + ' milestones in scope';
     if (el('cardCommitted')) el('cardCommitted').textContent = fmt(committedAcr);
@@ -834,42 +865,47 @@ function applyAllFilters() {
     // U2C %
     if (el('cardU2cPct')) {
         el('cardU2cPct').textContent = u2cPct + '%';
-        el('cardU2cPct').className = 'mb-1 ' + (u2cPct >= U2C_GOAL ? 'text-success' : 'text-warning');
+        el('cardU2cPct').className = 'u2c-value ' + (u2cPct >= U2C_GOAL ? 'is-success' : 'is-warning');
     }
     if (el('cardU2cPctBar')) {
         el('cardU2cPctBar').style.width = Math.min(u2cPct, 100) + '%';
-        el('cardU2cPctBar').className = 'progress-bar ' + (u2cPct >= U2C_GOAL ? 'bg-success' : 'bg-warning');
+        el('cardU2cPctBar').className = 'u2c-progress-fill ' + (u2cPct >= U2C_GOAL ? 'is-success' : 'is-warning');
     }
 
     // Attainment %
     if (el('cardPct')) {
         el('cardPct').textContent = attPct + '%';
-        el('cardPct').className = 'mb-1 ' + (attPct >= 100 ? 'text-success' : attPct >= 50 ? 'text-primary' : 'text-warning');
+        el('cardPct').className = 'u2c-value ' + (attPct >= 100 ? 'is-success' : attPct >= 50 ? 'is-accent' : 'is-warning');
     }
     if (el('cardPctBar')) {
         el('cardPctBar').style.width = Math.min(attPct, 100) + '%';
-        el('cardPctBar').className = 'progress-bar bg-info';
+        el('cardPctBar').className = 'u2c-progress-fill is-accent';
     }
 
     // Remaining badge
     if (el('remainingBadge')) el('remainingBadge').textContent = remainingCount + ' milestones - ' + fmt(remainingAcr) + '/mo';
     if (el('committedBadge')) el('committedBadge').textContent = committedCount + ' milestones - ' + fmt(committedAcr) + '/mo';
+    if (el('u2cRowStatus')) {
+        el('u2cRowStatus').textContent = remainingCount + ' remaining · '
+            + committedCount + ' committed milestones shown';
+    }
 
-    // Show/hide empty cards
+    // Show/hide empty queues
     if (el('remainingCard')) el('remainingCard').style.display = remainingCount > 0 ? '' : 'none';
     if (el('committedCard')) el('committedCard').style.display = committedCount > 0 ? '' : 'none';
     if (el('u2cFilterEmpty')) {
         el('u2cFilterEmpty').classList.toggle(
-            'd-none', remainingCount + committedCount > 0);
+            'is-hidden', remainingCount + committedCount > 0);
     }
     if (el('clearMilestoneFilters')) {
         el('clearMilestoneFilters').classList.toggle(
-            'd-none', !hasSellerOrCustomerFilter);
+            'is-hidden', !hasSellerOrCustomerFilter);
     }
 
     // Re-sort remaining after filter change
     const tbody = el('remainingBody');
     if (tbody) applySortToBody(tbody);
+    if (el('committedBody')) applySortToBody(el('committedBody'));
 
     // Keep the attainment trend on the same workload as everything else.
     if (typeof renderU2cTrend === 'function') renderU2cTrend(wlPrefix);
@@ -893,27 +929,32 @@ function clearMilestoneFilters() {
 // 5) Add remaining milestone context to a seller 1:1
 // ==========================================================================
 function closeU2cAgendaComposer(composer) {
-    composer.classList.add('d-none');
+    if (composer.getAttribute('aria-busy') === 'true') return;
+    composer.classList.add('is-hidden');
     const toggle = composer.parentElement.querySelector('.js-u2c-agenda-toggle');
     if (toggle) toggle.setAttribute('aria-expanded', 'false');
 }
 
 async function addU2cAgendaContext(button) {
     const composer = button.closest('.u2c-agenda-composer');
+    if (composer.getAttribute('aria-busy') === 'true') return;
     const note = composer.querySelector('textarea');
     const error = composer.querySelector('.u2c-agenda-error');
     const talkingPoints = note.value.trim();
     if (!talkingPoints) {
         error.textContent = 'Enter a discussion note before adding this item.';
-        error.classList.remove('d-none');
+        error.classList.remove('is-hidden');
         note.focus();
         return;
     }
 
-    error.classList.add('d-none');
+    error.classList.add('is-hidden');
     const original = button.innerHTML;
     button.disabled = true;
-    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Adding...';
+    composer.setAttribute('aria-busy', 'true');
+    composer.querySelector('.js-u2c-agenda-cancel').disabled = true;
+    note.readOnly = true;
+    button.innerHTML = '<span class="u2c-spinner"></span> Adding...';
 
     try {
         const response = await fetch(button.dataset.endpoint, {
@@ -932,14 +973,19 @@ async function addU2cAgendaContext(button) {
         const action = composer.closest('.u2c-agenda-action');
         const link = document.createElement('a');
         link.href = data.workspace_url;
-        link.className = 'btn btn-sm btn-outline-success';
+        link.className = 'u2c-command  is-success';
         link.innerHTML = '<i class="bi bi-check-circle"></i> On 1:1';
         action.replaceChildren(link);
     } catch (err) {
+        console.error('U2C agenda save:', err);
         error.textContent = err.message;
-        error.classList.remove('d-none');
+        error.classList.remove('is-hidden');
         button.disabled = false;
         button.innerHTML = original;
+    } finally {
+        composer.setAttribute('aria-busy', 'false');
+        composer.querySelector('.js-u2c-agenda-cancel').disabled = false;
+        note.readOnly = false;
     }
 }
 
@@ -951,16 +997,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Restore sort state ---
     try {
-        const saved = JSON.parse(localStorage.getItem(SORT_KEY));
-        if (saved && saved.column) {
-            currentSort.column = saved.column;
-            currentSort.direction = saved.direction || 'asc';
-        }
-    } catch(e) {}
+        const stored = SBU2c.readPreference(SORT_KEY);
+        if (stored !== null) currentSort = SBU2c.validateSort(JSON.parse(stored));
+    } catch(error) {
+        SBU2c.reportError('Saved U2C sort is invalid. Using ACR descending.', error);
+    }
 
     // --- Restore filter state ---
     try {
-        const savedF = JSON.parse(localStorage.getItem(FILTER_KEY));
+        const stored = SBU2c.readPreference(FILTER_KEY);
+        const savedF = stored === null ? null : SBU2c.validateFilters(JSON.parse(stored));
         if (savedF) {
             currentFilters = savedF;
             const sellerSel = el('filterSeller');
@@ -969,12 +1015,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const custSel = el('filterCustomer');
             if (custSel && savedF.customer) custSel.value = savedF.customer;
         }
-    } catch(e) {}
+    } catch(error) {
+        SBU2c.reportError('Saved U2C filters are invalid. Using the current scope.', error);
+    }
 
     // --- Restore workload filter ---
     const wlSel = el('workloadFilter');
     if (wlSel) {
-        const savedWl = localStorage.getItem(WL_KEY);
+        const savedWl = SBU2c.readPreference(WL_KEY);
         if (savedWl && [...wlSel.options].some(o => o.value === savedWl)) {
             wlSel.value = savedWl;
         }
@@ -985,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', function() {
     applyAllFilters();
 
     // --- Wire sort header clicks ---
-    document.querySelectorAll('#remainingTable .sortable').forEach(th => {
+    document.querySelectorAll('.u2c-table .sortable').forEach(th => {
         th.addEventListener('click', function() {
             sortTable(this.dataset.sort);
         });
@@ -1020,11 +1068,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.js-u2c-agenda-toggle').forEach(button => {
         button.addEventListener('click', function() {
             const composer = el(this.getAttribute('aria-controls'));
-            const opening = composer.classList.contains('d-none');
-            document.querySelectorAll('.u2c-agenda-composer:not(.d-none)').forEach(
+            if (document.querySelector('.u2c-agenda-composer[aria-busy="true"]')) return;
+            const opening = composer.classList.contains('is-hidden');
+            document.querySelectorAll('.u2c-agenda-composer:not(.is-hidden)').forEach(
                 closeU2cAgendaComposer
             );
-            composer.classList.toggle('d-none', !opening);
+            composer.classList.toggle('is-hidden', !opening);
             this.setAttribute('aria-expanded', opening ? 'true' : 'false');
             if (opening) composer.querySelector('textarea').focus();
         });
@@ -1043,6 +1092,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function importOfficialSnapshot() {
     const btns = Array.from(document.querySelectorAll('#importOfficialBtn, #importOfficialBtnEmpty'));
+    if (btns.some(button => button.disabled)) return;
+    const notice = el('u2cNavigationStatus');
+    notice.hidden = true;
     const original = btns.map(b => b.innerHTML);
     btns.forEach(b => {
         b.disabled = true;
@@ -1058,17 +1110,23 @@ function importOfficialSnapshot() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            location.href = '{{ url_for("reports.report_u2c") }}?fq=' + encodeURIComponent(data.fiscal_quarter);
-            return;
+    .then(async response => {
+        const data = await response.json();
+        if (!response.ok || data.success !== true ||
+            !/^FY\d{2} Q[1-4]$/.test(data.fiscal_quarter || '')) {
+            throw new Error(data.error || 'Could not confirm the official snapshot refresh.');
         }
-        alert(data.error || 'Failed to import the official snapshot');
-        restore();
+        return data;
+    })
+    .then(data => {
+        const target = new URL('{{ url_for("reports.report_u2c") }}', location.href);
+        target.searchParams.set('fq', data.fiscal_quarter);
+        const embedded = new URL(location.href).searchParams.get('embed');
+        if (embedded) target.searchParams.set('embed', embedded);
+        location.href = target.toString();
     })
     .catch(err => {
-        alert('Error: ' + err.message);
+        SBU2c.reportError('Could not refresh the official snapshot. ' + err.message, err);
         restore();
     });
 }

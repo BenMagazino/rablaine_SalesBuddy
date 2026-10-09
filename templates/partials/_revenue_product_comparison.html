@@ -1,0 +1,10 @@
+<section class="sb-products-consumption" data-sb-products-comparison="{{ product }}"
+         data-sb-products-seller="{{ seller_name|default('') }}">
+    {% include 'partials/_revenue_product_summary.html' %}
+    <div class="sb-products-customers-scroll" data-sb-products-customer-scroll
+         tabindex="0" role="region" aria-label="Customers using {{ product }}">
+        {% with directory_comparison=true %}
+        {% include 'partials/_revenue_product_customers.html' %}
+        {% endwith %}
+    </div>
+</section>

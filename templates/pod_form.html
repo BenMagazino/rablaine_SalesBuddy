@@ -1,132 +1,93 @@
 {% extends "base.html" %}
-
 {% block title %}Edit POD - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestone-form.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-pod-form.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="POD edit status">
+    <span id="podFormState">Existing POD</span><span>Assignments save automatically · Identity managed by MSX sync</span>
+</footer>
+{% endblock %}
 {% block content %}
-<h1 class="mb-4">Edit POD</h1>
-
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">POD Name</label>
-                        <div class="form-control-plaintext fw-bold">{{ pod.name }}</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Territories</label>
-                        <div>
-                            {% for territory in pod.territories|sort(attribute='name') %}
-                                <span class="badge bg-info text-dark me-1"><i class="bi bi-geo-alt"></i> {{ territory.name }}</span>
+<section id="podForm" class="sb-milestone-form sb-pod-form sb-directory-frame sb-directory-frame-wide" data-sb-page-surface
+         data-pod-id="{{ pod.id }}" aria-labelledby="podFormTitle">
+    <header class="mf-heading" data-sb-page-band>
+        <div><h1 id="podFormTitle">Edit POD</h1><p>{{ pod.name }}</p></div>
+        <a href="{{ url_for('pods.pod_view', id=pod.id) }}" class="sb-dialog-button" data-pod-back>
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Back to POD
+        </a>
+    </header>
+    <p id="podFormNotice" class="mf-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="mf-reading" data-sb-page-body>
+        <div class="pod-edit-layout">
+            <aside class="pod-edit-context" aria-labelledby="podIdentityTitle">
+                <h2 id="podIdentityTitle">POD identity</h2>
+                <dl><dt>POD Name</dt><dd>{{ pod.name }}</dd></dl>
+                <h3>Territories</h3>
+                <ul>{% for territory in pod.territories|sort(attribute='name') %}
+                    <li class="pod-territory"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ territory.name }}</li>
+                    {% else %}<li class="pod-muted">No territories assigned.</li>{% endfor %}</ul>
+                <p class="pod-muted">Managed by MSX sync.</p>
+                <h3>Solution Engineers</h3>
+                <ul>{% for se in pod.solution_engineers|sort(attribute='name') %}
+                    <li><i class="bi bi-person" aria-hidden="true"></i> {{ se.name }}</li>
+                    {% else %}<li class="pod-muted">No solution engineers assigned.</li>{% endfor %}</ul>
+                <p class="pod-muted">Managed by MSX sync.</p>
+            </aside>
+            <section class="pod-edit-assignments" aria-label="Digital Solution Specialist Assignments">
+                {% if territory_dss_grouped %}
+                <button type="button" class="pod-disclosure" id="podDssToggle" aria-expanded="true" aria-controls="dssCardBody">
+                    <span>Digital Solution Specialist Assignments</span><i class="bi bi-chevron-up" aria-hidden="true"></i>
+                </button>
+                <p class="pod-muted">Select the preferred specialist for each specialty per territory. Changes save automatically.</p>
+                <div id="dssCardBody">
+                    {% for territory, specialties in territory_dss_grouped.items() %}
+                    <section class="pod-assignment-group" aria-labelledby="podTerritory{{ territory.id }}">
+                        <h3 id="podTerritory{{ territory.id }}"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ territory.name }}</h3>
+                        {% for spec, info in specialties.items() %}
+                        <div class="pod-assignment">
+                            {% if info.dss_list|length == 1 and not info.selected_id %}
+                            <span>{{ spec }}</span>
+                            <span><i class="bi bi-person" aria-hidden="true"></i> {{ info.dss_list[0].name }}</span>
                             {% else %}
-                                <span class="text-muted">No territories assigned.</span>
-                            {% endfor %}
+                            <label for="dss-{{ territory.id }}-{{ loop.index }}">{{ spec }}</label>
+                            <div class="pod-choice">
+                                <select id="dss-{{ territory.id }}-{{ loop.index }}"
+                                        data-dss-territory="{{ territory.id }}" data-dss-specialty="{{ spec }}">
+                                    <option value="">None</option>
+                                    {% for dss in info.dss_list %}
+                                    <option value="{{ dss.id }}" {% if dss.id == info.selected_id or (info.dss_list|length == 1 and info.selected_id) %}selected{% endif %}>{{ dss.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <span class="pod-save-status" role="status" aria-live="polite"></span>
+                                <button type="button" class="sb-dialog-button" data-dss-retry hidden>Retry</button>
+                            </div>
+                            {% endif %}
                         </div>
-                        <small class="form-text text-muted">Managed by MSX sync.</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Solution Engineers</label>
-                        <div>
-                            {% for se in pod.solution_engineers|sort(attribute='name') %}
-                                <span class="badge bg-secondary me-1"><i class="bi bi-person"></i> {{ se.name }}</span>
-                            {% else %}
-                                <span class="text-muted">No solution engineers assigned.</span>
-                            {% endfor %}
-                        </div>
-                        <small class="form-text text-muted">Managed by MSX sync.</small>
-                    </div>
-
-                    {% if territory_dss_grouped %}
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="toggleDssCard({{ pod.id }})">
-                            <label class="form-label mb-0" style="cursor: pointer;">Digital Solution Specialist Assignments</label>
-                            <i class="bi bi-chevron-down" id="dssChevron"></i>
-                        </div>
-                        <div class="border rounded p-3 collapse" id="dssCardBody">
-                            {% for territory, specialties in territory_dss_grouped.items() %}
-                                {% if not loop.first %}
-                                    <hr class="my-2">
-                                {% endif %}
-                                <h6 class="mb-2 fw-bold">
-                                    <i class="bi bi-geo-alt"></i> {{ territory.name }}
-                                </h6>
-                                {% for spec, info in specialties.items() %}
-                                    <div class="mb-2">
-                                        <div class="text-muted small">{{ spec }}</div>
-                                        {% if info.dss_list|length == 1 and not info.selected_id %}
-                                            <span class="badge bg-secondary"><i class="bi bi-person"></i> {{ info.dss_list[0].name }}</span>
-                                        {% else %}
-                                        <select class="form-select form-select-sm" style="width: auto; min-width: 200px;"
-                                                onchange="saveDssSelection({{ territory.id }}, '{{ spec }}', this.value)">
-                                            <option value="">— None —</option>
-                                            {% for dss in info.dss_list %}
-                                                <option value="{{ dss.id }}" {% if dss.id == info.selected_id or (info.dss_list|length == 1 and info.selected_id) %}selected{% endif %}>{{ dss.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        {% endif %}
-                                        <span class="ms-1 small dss-save-status" style="display: none;"></span>
-                                    </div>
-                                {% endfor %}
-                            {% endfor %}
-                        </div>
-                        <small class="form-text text-muted">Select the preferred specialist for each specialty per territory. Changes save automatically.</small>
-                    </div>
-                    {% endif %}
-                    
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('pods.pod_view', id=pod.id) }}" class="btn btn-secondary">
-                            <i class="bi bi-arrow-left"></i> Back to POD
-                        </a>
-                    </div>
-            </div>
+                        {% endfor %}
+                    </section>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <h2>Digital Solution Specialist Assignments</h2>
+                <p class="pod-muted">No specialist assignments are available for this POD's territories.</p>
+                {% endif %}
+            </section>
         </div>
     </div>
-</div>
+</section>
+<dialog class="sb-dialog sb-dialog-compact" id="podFormDiscard" aria-labelledby="podFormDiscardTitle">
+    <header class="sb-dialog-header"><h2 id="podFormDiscardTitle">Discard unsaved assignments?</h2></header>
+    <div class="sb-dialog-body"><p>Some assignments have not saved. Keep editing to retry, or discard those changes to leave. Already saved assignments are not undone.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="podFormDiscardConfirm">Discard changes</button>
+    </footer>
+</dialog>
 {% endblock %}
-
 {% block extra_js %}
-<script>
-function toggleDssCard(podId) {
-    var body = document.getElementById('dssCardBody');
-    var chevron = document.getElementById('dssChevron');
-    var isShown = body.classList.contains('show');
-    if (isShown) {
-        body.classList.remove('show');
-        chevron.classList.replace('bi-chevron-up', 'bi-chevron-down');
-        localStorage.setItem('dss_collapsed_pod_' + podId, '1');
-    } else {
-        body.classList.add('show');
-        chevron.classList.replace('bi-chevron-down', 'bi-chevron-up');
-        localStorage.removeItem('dss_collapsed_pod_' + podId);
-    }
-}
-(function() {
-    var podId = {{ pod.id }};
-    if (!localStorage.getItem('dss_collapsed_pod_' + podId)) {
-        document.getElementById('dssCardBody').classList.add('show');
-        document.getElementById('dssChevron').classList.replace('bi-chevron-down', 'bi-chevron-up');
-    }
-})();
-function saveDssSelection(territoryId, specialty, seId) {
-    fetch('/territory/' + territoryId + '/dss-selection', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
-        body: JSON.stringify({specialty: specialty, solution_engineer_id: seId || null})
-    }).then(r => r.json()).then(data => {
-        // Brief flash to confirm save
-    }).catch(() => {});
-}
-</script>
+<script src="{{ url_for('static', filename='js/ui-pod-form.js') }}"></script>
 {% endblock %}
-
-
-
-
-
-
-
-
-
-

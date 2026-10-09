@@ -1,242 +1,118 @@
 {% extends "base.html" %}
-
 {% block title %}{{ 'Edit' if seller else 'New' }} Seller - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestone-form.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-seller-form.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Seller form status">
+    <span id="sellerFormState">{{ 'Existing seller' if seller else 'New seller' }}</span>
+    <span>Manual save · Seller name required</span>
+</footer>
+{% endblock %}
 {% block content %}
-<h1 class="mb-4">{{ 'Edit' if seller else 'New' }} Seller</h1>
-
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Seller Name *</label>
-                        <input type="text" class="form-control" id="name" name="name" 
-                               value="{{ seller.name if seller else '' }}" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="alias" class="form-label">Email Address</label>
-                        <input type="text" class="form-control" id="alias" name="alias" 
-                               value="{{ seller.get_email() if seller and seller.alias else '' }}" 
-                               placeholder="alias or alias@microsoft.com">
-                        <div class="form-text">Enter alias or full email - @microsoft.com will be added automatically</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="seller_type" class="form-label">Seller Type</label>
-                        <select class="form-select" id="seller_type" name="seller_type">
-                            <option value="Growth" {% if not seller or seller.seller_type == 'Growth' %}selected{% endif %}>Growth</option>
-                            <option value="Acquisition" {% if seller and seller.seller_type == 'Acquisition' %}selected{% endif %}>Acquisition</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3" style="position: relative;">
-                        <label for="territory_search" class="form-label">Territories</label>
-                        <input type="text" class="form-control" id="territory_search" 
-                               placeholder="Search and add territories..." autocomplete="off">
-                        <div id="territory_dropdown" class="list-group mt-1" style="display: none; position: absolute; z-index: 1050; max-height: 200px; overflow-y: auto; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
-                        
-                        <div id="selected_territories" class="mt-2 d-flex flex-wrap gap-2">
-                            {% if seller %}
-                                {% for territory in seller.territories|sort(attribute='name') %}
-                                    <span class="badge bg-info text-dark d-flex align-items-center" data-territory-id="{{ territory.id }}">
-                                        <i class="bi bi-geo-alt me-1"></i> {{ territory.name }}
-                                        <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 0.7rem;" onclick="removeTerritory({{ territory.id }})"></button>
-                                        <input type="hidden" name="territory_ids" value="{{ territory.id }}">
-                                    </span>
-                                {% endfor %}
-                            {% endif %}
-                        </div>
-                        <div class="form-text">
-                            Or <a href="#" data-bs-toggle="modal" data-bs-target="#newTerritoryModal">create a new territory</a>
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle"></i> Save Seller
-                        </button>
-                        <a href="{{ url_for('sellers.sellers_list') }}" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i> Cancel
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        {% if existing_sellers %}
-        <div class="card mt-3">
-            <div class="card-header">
-                <h6 class="mb-0">Existing Sellers (to prevent duplicates)</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-flex flex-wrap gap-2">
-                    {% for s in existing_sellers %}
-                        <span class="badge bg-secondary">{{ s.name }}</span>
-                    {% endfor %}
+{% set posted = form_values is not none %}
+{% set selected_ids = form_values.get('territory_ids', []) if posted else seller.territories|map(attribute='id')|map('string')|list if seller else [] %}
+<form method="POST" id="sellerForm" class="sb-milestone-form sb-seller-form sb-directory-frame sb-directory-frame-wide"
+      data-sb-page-surface data-form-key="{{ 'edit-' ~ seller.id if seller else 'new' }}"
+      data-posted="{{ 'true' if posted else 'false' }}" aria-labelledby="sellerFormTitle">
+    <header class="mf-heading" data-sb-page-band>
+        <div><h1 id="sellerFormTitle">{{ 'Edit' if seller else 'New' }} Seller</h1>
+        <p>Seller identity and territory coverage.</p></div>
+    </header>
+    <p id="sellerFormNotice" class="mf-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="mf-reading" data-sb-page-body>
+        <div class="sf-layout">
+            <section aria-labelledby="sellerIdentity">
+                <h2 id="sellerIdentity">Seller identity</h2>
+                <div class="mf-field">
+                    <label for="name">Seller Name *</label>
+                    <input type="text" id="name" name="name"
+                           value="{{ form_values.get('name', '') if posted else seller.name if seller else '' }}" required>
                 </div>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- New Territory Modal -->
-<div class="modal fade" id="newTerritoryModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Create New Territory</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="POST" action="{{ url_for('territories.territory_create_inline') }}">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="new_territory_name" class="form-label">Territory Name</label>
-                        <input type="text" class="form-control" id="new_territory_name" name="name" required>
+                <div class="mf-field">
+                    <label for="alias">Email Address</label>
+                    <input type="text" id="alias" name="alias"
+                           value="{{ form_values.get('alias', '') if posted else seller.get_email() if seller and seller.alias else '' }}"
+                           placeholder="alias or alias@microsoft.com" aria-describedby="aliasHelp">
+                    <p id="aliasHelp">Enter alias or full email - @microsoft.com will be added automatically</p>
+                </div>
+                <div class="mf-field">
+                    <label for="seller_type">Seller Type</label>
+                    {% set current_type = form_values.get('seller_type', 'Growth') if posted else seller.seller_type if seller else 'Growth' %}
+                    <select id="seller_type" name="seller_type">
+                        <option value="Growth" {% if current_type == 'Growth' %}selected{% endif %}>Growth</option>
+                        <option value="Acquisition" {% if current_type == 'Acquisition' %}selected{% endif %}>Acquisition</option>
+                    </select>
+                </div>
+                <div class="mf-field sf-picker">
+                    <label for="territory_search">Territories</label>
+                    <input type="text" id="territory_search" placeholder="Search and add territories..."
+                           autocomplete="off" role="combobox" aria-autocomplete="list"
+                           aria-expanded="false" aria-controls="territory_dropdown">
+                    <div id="territory_dropdown" class="sf-options" role="listbox" aria-label="Matching territories" hidden></div>
+                    <div id="selected_territories" class="sf-selected" aria-label="Selected territories">
+                        {% for territory in territories if territory.id|string in selected_ids %}
+                        <span class="sf-territory" data-territory-id="{{ territory.id }}">
+                            <i class="bi bi-geo-alt" aria-hidden="true"></i> {{ territory.name }}
+                            <button type="button" data-remove-territory="{{ territory.id }}" aria-label="Remove {{ territory.name }}">×</button>
+                            <input type="hidden" name="territory_ids" value="{{ territory.id }}">
+                        </span>
+                        {% endfor %}
+                        {% for territory_id in selected_ids if territory_id not in territories|map(attribute='id')|map('string')|list %}
+                        <input type="hidden" name="territory_ids" value="{{ territory_id }}">
+                        {% endfor %}
                     </div>
-                    <input type="hidden" name="redirect_to" value="{{ request.url }}">
+                    <p>Or <button type="button" class="sf-link" data-sb-dialog="newTerritoryModal">create a new territory</button></p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Territory</button>
-                </div>
-            </form>
+            </section>
+            {% if existing_sellers %}
+            <aside class="sf-existing" aria-labelledby="existingSellersTitle">
+                <h2 id="existingSellersTitle">Existing Sellers <span>(to prevent duplicates)</span></h2>
+                <ul>{% for s in existing_sellers %}<li><i class="bi bi-person" aria-hidden="true"></i> {{ s.name }}</li>{% endfor %}</ul>
+            </aside>
+            {% endif %}
         </div>
     </div>
-</div>
+    <footer class="sf-commands" data-sb-page-band>
+        <span>Changes stay here until you save the seller.</span>
+        <a href="{{ url_for('sellers.sellers_list') }}" class="sb-dialog-button">Cancel</a>
+        <button type="submit" id="sellerFormSave" class="sb-dialog-button mf-save"><i class="bi bi-check-circle" aria-hidden="true"></i> Save Seller</button>
+    </footer>
+</form>
+<dialog class="sb-dialog sb-dialog-compact" id="sellerFormDiscard" aria-labelledby="sellerFormDiscardTitle">
+    <header class="sb-dialog-header"><h2 id="sellerFormDiscardTitle">Discard seller changes?</h2></header>
+    <div class="sb-dialog-body"><p>These changes have not been saved. Keep editing, or discard them to continue.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="sellerFormDiscardConfirm">Discard changes</button>
+    </footer>
+</dialog>
+<dialog class="sb-dialog sb-dialog-compact" id="newTerritoryModal" aria-labelledby="newTerritoryTitle">
+    <header class="sb-dialog-header">
+        <h2 id="newTerritoryTitle">Create New Territory</h2>
+        <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">×</button>
+    </header>
+    <form method="POST" action="{{ url_for('territories.territory_create_inline') }}">
+        <div class="sb-dialog-body">
+            <div class="mf-field">
+                <label for="new_territory_name">Territory Name</label>
+                <input type="text" id="new_territory_name" name="name" required autofocus>
+            </div>
+            <p class="sf-help">Create Territory saves immediately and returns to this form. Use Back to recover unsaved seller entries.</p>
+            <input type="hidden" name="redirect_to" value="{{ request.url }}">
+        </div>
+        <footer class="sb-dialog-footer">
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+            <button type="submit" class="sb-dialog-button mf-save">Create Territory</button>
+        </footer>
+    </form>
+</dialog>
+<script type="application/json" id="sellerTerritories">{{ territory_choices|tojson }}</script>
 {% endblock %}
-
 {% block extra_js %}
-<script>
-// Territory search and selection functionality
-const allTerritories = [
-    {% for territory in territories %}
-        { id: {{ territory.id }}, name: "{{ territory.name|escape }}" },
-    {% endfor %}
-];
-
-const territorySearch = document.getElementById('territory_search');
-const territoryDropdown = document.getElementById('territory_dropdown');
-const selectedTerritoriesContainer = document.getElementById('selected_territories');
-let currentMatches = [];
-let selectedIndex = -1;
-
-territorySearch.addEventListener('input', function() {
-    const searchTerm = this.value.toLowerCase().trim();
-    
-    if (searchTerm.length === 0) {
-        territoryDropdown.style.display = 'none';
-        currentMatches = [];
-        selectedIndex = -1;
-        return;
-    }
-    
-    // Filter territories case-insensitively
-    currentMatches = allTerritories.filter(territory => 
-        territory.name.toLowerCase().includes(searchTerm) && 
-        !isTerritorySelected(territory.id)
-    );
-    
-    if (currentMatches.length > 0) {
-        selectedIndex = 0; // Auto-select first item
-        renderDropdown();
-        territoryDropdown.style.display = 'block';
-        territoryDropdown.style.width = territorySearch.offsetWidth + 'px';
-    } else {
-        territoryDropdown.style.display = 'none';
-        currentMatches = [];
-        selectedIndex = -1;
-    }
-});
-
-// Keyboard navigation
-territorySearch.addEventListener('keydown', function(e) {
-    if (e.key === 'ArrowDown' && currentMatches.length > 0) {
-        e.preventDefault();
-        selectedIndex = (selectedIndex + 1) % currentMatches.length;
-        renderDropdown();
-    } else if (e.key === 'ArrowUp' && currentMatches.length > 0) {
-        e.preventDefault();
-        selectedIndex = selectedIndex <= 0 ? currentMatches.length - 1 : selectedIndex - 1;
-        renderDropdown();
-    } else if (e.key === 'Enter' || e.key === ' ' || e.key === 'Tab') {
-        e.preventDefault();
-        
-        if (currentMatches.length > 0 && selectedIndex >= 0 && selectedIndex < currentMatches.length) {
-            const territory = currentMatches[selectedIndex];
-            addTerritory(territory.id, territory.name);
-        }
-    } else if (e.key === 'Escape') {
-        territoryDropdown.style.display = 'none';
-        currentMatches = [];
-        selectedIndex = -1;
-    }
-});
-
-function renderDropdown() {
-    territoryDropdown.innerHTML = currentMatches.map((territory, index) => 
-        `<a href="#" class="list-group-item list-group-item-action ${index === selectedIndex ? 'active' : ''}" 
-            onmousedown="event.preventDefault(); addTerritory(${territory.id}, '${territory.name.replace(/'/g, "\\'")}'); return false;"
-            onmouseover="selectedIndex = ${index}; renderDropdown();">
-            <i class="bi bi-geo-alt"></i> ${territory.name}
-        </a>`
-    ).join('');
-}
-
-// Hide dropdown when clicking outside
-document.addEventListener('click', function(e) {
-    if (!territorySearch.contains(e.target) && !territoryDropdown.contains(e.target)) {
-        territoryDropdown.style.display = 'none';
-        currentMatches = [];
-        selectedIndex = -1;
-    }
-});
-
-function isTerritorySelected(territoryId) {
-    return document.querySelector(`[data-territory-id="${territoryId}"]`) !== null;
-}
-
-function addTerritory(territoryId, territoryName) {
-    if (isTerritorySelected(territoryId)) {
-        return; // Already added
-    }
-    
-    const badge = document.createElement('span');
-    badge.className = 'badge bg-info text-dark d-flex align-items-center';
-    badge.setAttribute('data-territory-id', territoryId);
-    badge.innerHTML = `
-        <i class="bi bi-geo-alt me-1"></i> ${territoryName}
-        <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 0.7rem;" onclick="removeTerritory(${territoryId})"></button>
-        <input type="hidden" name="territory_ids" value="${territoryId}">
-    `;
-    
-    selectedTerritoriesContainer.appendChild(badge);
-    
-    // Clear search and hide dropdown
-    territorySearch.value = '';
-    territoryDropdown.style.display = 'none';
-    currentMatches = [];
-    selectedIndex = -1;
-}
-
-function removeTerritory(territoryId) {
-    const badge = document.querySelector(`[data-territory-id="${territoryId}"]`);
-    if (badge) {
-        badge.remove();
-    }
-}
-</script>
+<script src="{{ url_for('static', filename='js/ui-seller-form.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-milestone-form.js') }}"></script>
 {% endblock %}
-
-
-
-
-
-
-
-
-
-

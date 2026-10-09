@@ -1,0 +1,148 @@
+<dialog class="sb-dialog sb-setup" id="welcomeModal" aria-labelledby="welcomeModalLabel"
+        data-sb-escape-close="false" data-sb-backdrop-close="false"
+        data-sb-auto-open="{{ 'true' if not first_run_modal_dismissed else 'false' }}">
+    <div class="sb-dialog-shell">
+        <header class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <div class="sb-dialog-eyebrow" id="setupWizardEyebrow">Getting started</div>
+                <h2 id="welcomeModalLabel"><i class="bi bi-rocket-takeoff"></i> Welcome to Sales Buddy!</h2>
+            </div>
+            <span class="sb-setup-step-label" id="onboardingStepBadge">Step 1 of 2</span>
+            <button class="sb-dialog-close sb-setup-hidden" id="setupReviewClose" type="button"
+                    aria-label="Close setup review"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </header>
+        <div class="sb-dialog-body">
+            <div class="sb-setup-progress">
+                <div id="onboardingProgress" role="progressbar" aria-label="Setup progress"
+                     aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%"></div>
+            </div>
+            <div class="onboarding-step" id="onboardingStep1">
+                <p class="sb-setup-intro">Let's get you set up! This wizard will walk you through connecting to MSX, enabling AI-powered features, and importing your data.</p>
+                <section class="sb-setup-section sb-setup-theme">
+                    <div>
+                        <h3><i class="bi bi-moon-stars"></i> Choose Your Theme</h3>
+                        <p class="sb-setup-muted">You can always change this later in <i class="bi bi-gear"></i> Settings</p>
+                    </div>
+                    <label class="sb-theme-switch" for="onboardDarkModeToggle">
+                        <span><i class="bi bi-sun-fill" aria-hidden="true"></i> Light</span>
+                        <input class="sb-theme-switch-input" type="checkbox" role="switch"
+                               id="onboardDarkModeToggle"
+                               aria-label="Dark mode" {{ 'checked' if dark_mode else '' }}>
+                        <span><i class="bi bi-moon-fill" aria-hidden="true"></i> Dark</span>
+                    </label>
+                </section>
+                <h3><i class="bi bi-shield-lock"></i> Connect to MSX</h3>
+                <p>Sign in to Azure to access MSX data and enable AI features like topic suggestions and engagement summaries.</p>
+                <section class="sb-setup-section" id="authCard" aria-live="polite">
+                    <div id="signInInitial">
+                        <p class="sb-setup-muted"><i class="bi bi-info-circle"></i> A browser window will open. Select your <strong>Microsoft corporate account</strong> to sign in.</p>
+                        <button class="sb-dialog-button sb-setup-primary" id="startSignInBtn" type="button">
+                            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Sign In to Azure
+                        </button>
+                    </div>
+                    <div id="signInWaiting" class="sb-setup-hidden">
+                        <p class="sb-setup-emphasis" id="signInBrowserHint">Select your Microsoft corporate account to sign in.</p>
+                        <p class="sb-setup-muted">This page will update automatically once you're signed in.</p>
+                        <p class="sb-setup-status" role="status">
+                            <span class="sb-setup-spinner" aria-hidden="true"></span>
+                            <span id="signInStatus">Waiting for sign-in...</span>
+                        </p>
+                        <div id="signInStillWaitingNudge" class="sb-setup-notice sb-setup-hidden">
+                            <i class="bi bi-window"></i> <strong>Still waiting?</strong> Look for a separate window or browser tab prompting you to pick your Microsoft account. It might be hidden behind this window.
+                        </div>
+                        <button class="sb-dialog-button" id="signInCancelBtn" type="button">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </button>
+                    </div>
+                    <div id="signInSuccess" class="sb-setup-hidden">
+                        <p class="sb-setup-status sb-setup-success">
+                            <i class="bi bi-check-circle-fill"></i> <strong>Signed in</strong>
+                            <small class="sb-setup-muted" id="signInEmail"></small>
+                        </p>
+                    </div>
+                    <div id="signInVpnBlocked" class="sb-setup-hidden">
+                        <p class="sb-setup-status sb-setup-success">
+                            <i class="bi bi-check-circle-fill"></i> <strong>Signed in</strong>
+                            <small class="sb-setup-muted" id="signInVpnEmail"></small>
+                        </p>
+                        <div class="sb-setup-notice">
+                            <i class="bi bi-wifi-off"></i> <strong>VPN Required</strong> - Connect to corpnet to reach MSX, then try again.
+                        </div>
+                        <button class="sb-dialog-button" id="vpnRetryBtn" type="button">
+                            <i class="bi bi-arrow-clockwise"></i> I'm on VPN - Try Again
+                        </button>
+                    </div>
+                    <div id="signInError" class="sb-setup-hidden">
+                        <i class="bi bi-exclamation-triangle-fill sb-setup-warning"></i>
+                        <p class="sb-setup-emphasis sb-setup-warning" id="signInErrorMsg">Authentication timed out</p>
+                        <p class="sb-setup-muted">Make sure you selected your Microsoft corporate account and try again.</p>
+                        <button class="sb-dialog-button sb-setup-primary" id="signInRetryBtn" type="button">
+                            <i class="bi bi-arrow-clockwise"></i> Try Again
+                        </button>
+                    </div>
+                    <div id="signInNoCli" class="sb-setup-hidden">
+                        <i class="bi bi-exclamation-triangle-fill sb-setup-danger"></i>
+                        <p class="sb-setup-emphasis sb-setup-danger" id="signInNoCliMsg">Azure CLI Not Installed</p>
+                        <p class="sb-setup-muted" id="signInNoCliHelp">Install from <a href="https://aka.ms/installazurecli" target="_blank" rel="noopener">aka.ms/installazurecli</a>, then try again.</p>
+                        <button class="sb-dialog-button" id="signInNoCliRetryBtn" type="button">
+                            <i class="bi bi-arrow-clockwise"></i> Check Again
+                        </button>
+                    </div>
+                </section>
+            </div>
+            <div class="onboarding-step sb-setup-hidden" id="onboardingStep2">
+                <p>Sales Buddy will pull everything it needs from MSX and MSXI - your accounts, milestones, and revenue. Each one runs in turn; you don't need to do anything else.</p>
+                <p class="sb-setup-muted"><i class="bi bi-shield-lock"></i> Requires VPN and takes about 8 minutes. If you get disconnected, reconnect and retry whichever step failed.</p>
+                <div id="importAllInitial" class="sb-setup-section">
+                    <div id="importIncompleteWarning" class="sb-setup-notice sb-setup-hidden">
+                        <i class="bi bi-exclamation-triangle"></i> <span id="importIncompleteText"></span>
+                    </div>
+                    <button class="sb-dialog-button sb-setup-primary" id="onboardStartImport" type="button">
+                        <i class="bi bi-cloud-download"></i> Start Import
+                    </button>
+                </div>
+                <div class="sb-setup-phases sb-setup-hidden" id="importAllCard" aria-live="polite">
+                    {% for phase, icon, duration in [('Accounts', 'building', '1-3 min'), ('Milestones', 'flag', '3 min'), ('Revenue', 'graph-up', '2-3 min')] %}
+                    <section class="sb-setup-phase" id="phase{{ phase }}">
+                        <div class="sb-setup-phase-heading">
+                            <span id="phase{{ phase }}Icon"><i class="bi bi-circle sb-setup-muted"></i></span>
+                            <strong><i class="bi bi-{{ icon }}"></i> {{ phase }}</strong>
+                            <span class="sb-setup-muted">(~{{ duration }})</span>
+                            <span class="sb-setup-phase-status" id="phase{{ phase }}Status">Waiting</span>
+                        </div>
+                        <div class="sb-setup-progress sb-setup-hidden" id="phase{{ phase }}BarWrap">
+                            <div id="phase{{ phase }}Bar" style="width: 0%" role="progressbar"
+                                 aria-label="{{ phase }} import progress" aria-valuemin="0"
+                                 aria-valuemax="100" aria-valuenow="0"></div>
+                        </div>
+                        <div class="sb-setup-summary sb-setup-hidden" id="phase{{ phase }}Summary"></div>
+                        <button class="sb-dialog-button sb-setup-hidden" id="phase{{ phase }}Retry" type="button">
+                            <i class="bi bi-arrow-clockwise"></i> Retry
+                        </button>
+                    </section>
+                    {% endfor %}
+                </div>
+                {% if user_role != 'dss' %}
+                <section class="sb-setup-section sb-setup-hidden" id="onboardBucketPickerCard">
+                    <h3><i class="bi bi-funnel"></i> Select Your Buckets</h3>
+                    <p class="sb-setup-muted">Check the service comp groupings you're compensated on to filter your revenue views across the app. Leave them all unchecked to see every bucket. You can change this later from Revenue Import.</p>
+                    <div id="onboardBucketList">
+                        <p class="sb-setup-status sb-setup-muted" role="status">
+                            <span class="sb-setup-spinner" aria-hidden="true"></span> Loading buckets...
+                        </p>
+                    </div>
+                </section>
+                {% endif %}
+            </div>
+        </div>
+        <footer class="sb-dialog-footer">
+            <small id="setupReviewStatus">Complete sign-in before continuing. Imports can be retried without repeating finished steps.</small>
+            <button type="button" class="sb-dialog-button sb-setup-hidden" id="onboardBackBtn">
+                <i class="bi bi-arrow-left"></i> Back
+            </button>
+            <button type="button" class="sb-dialog-button sb-setup-primary" id="onboardNextBtn" disabled>
+                Next <i class="bi bi-arrow-right"></i>
+            </button>
+        </footer>
+    </div>
+</dialog>

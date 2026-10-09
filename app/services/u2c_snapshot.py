@@ -905,10 +905,10 @@ def get_attainment_trend(snapshot_id: int,
             series to, matching the report's workload filter. Weeks recorded
             before per-milestone detail was stored are skipped when filtering,
             since they can only answer the territory-wide question.
-        include_live: Add a labeled point from the same latest synced milestone
-            data as the cards, without changing stored weekly history. Only
-            applies to the current, non-final quarter. A same-day weekly point
-            is replaced in the returned series, not in storage.
+        include_live: Append a separate Today point using current commitment
+            status and dollars from the latest imported snapshot. Only applies
+            to the current, non-final quarter. Every weekly publish is retained,
+            including a publish on the same date as Today.
         reference: Date for the live endpoint, defaulting to today.
 
     Returns:
@@ -977,19 +977,16 @@ def get_attainment_trend(snapshot_id: int,
 def _append_live_attainment_point(
     points: list[dict], snapshot_id: int, workload_prefix: str | None, reference: date,
 ) -> list[dict]:
-    """Add current card totals to a chart without rewriting weekly history."""
+    """Append Today without replacing any published snapshot point."""
     snapshot = db.session.get(U2CSnapshot, snapshot_id)
     if (snapshot is None or snapshot.is_final
             or snapshot.fiscal_quarter != current_fiscal_quarter(reference)):
         return points
     live_date = reference.isoformat()
-    if points and points[-1]['date'] > live_date:
-        return points
-
     attainment = get_attainment(snapshot_id, workload_prefix)
     live_point = {
         'date': live_date,
-        'label': f"{reference.strftime('%b %d')} (live)",
+        'label': f"Today ({reference.strftime('%b %d')}, live)",
         'source': 'live',
         'items': attainment['total_in_scope'],
         'starting_acr': attainment['target_total'],
@@ -997,7 +994,7 @@ def _append_live_attainment_point(
         'msxi_converted_acr': None,
         'u2c_pct': attainment['u2c_pct'],
     }
-    return [point for point in points if point['date'] != live_date] + [live_point]
+    return points + [live_point]
 
 
 def get_attainment_trend_by_workload(

@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 
 {% block title %}{{ engagement.title }} - {{ customer.get_display_name() }} - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Engagement status">
+    <span>{{ linked_notes|length }} linked notes · {{ engagement.open_action_item_count }} open action items</span>
+    <span>{{ engagement.status }} · {{ engagement.story_completeness }}% story complete</span>
+</footer>
+{% endblock %}
 
 {% block content %}
 {% include 'partials/_engagement_view_content.html' %}

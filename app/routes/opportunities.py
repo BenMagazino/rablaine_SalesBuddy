@@ -7,6 +7,7 @@ import logging
 from datetime import date, datetime, timezone
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import db, Opportunity, Milestone, Favorite
 from app.services.msx_api import (
@@ -101,6 +102,7 @@ def api_opportunity_msx_details(id: int):
     msx_result = get_opportunity(opportunity.msx_opportunity_id)
     if msx_result.get("success"):
         opp_data = msx_result["opportunity"]
+        cache_error = None
 
         # Cache details back to local DB
         try:
@@ -122,13 +124,16 @@ def api_opportunity_msx_details(id: int):
                 opportunity.cached_comments_json = json.dumps(comments)
             opportunity.details_fetched_at = datetime.now(timezone.utc)
             db.session.commit()
-        except Exception:
+        except (SQLAlchemyError, TypeError, ValueError):
             logger.exception(f"Failed to cache MSX details for opportunity {id}")
             db.session.rollback()
+            cache_error = 'Fresh MSX details loaded, but the local cache could not be saved.'
 
         return jsonify({
             "success": True,
             "opportunity": opp_data,
+            "cache_saved": cache_error is None,
+            "cache_error": cache_error,
         })
     else:
         return jsonify({
@@ -226,5 +231,10 @@ def api_toggle_opportunity_favorite(id: int):
     no changes made to the Opportunity model itself.
     """
     Opportunity.query.get_or_404(id)
-    is_favorited = Favorite.toggle('opportunity', id)
+    try:
+        is_favorited = Favorite.toggle('opportunity', id)
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception("Failed to update favorite for opportunity %s", id)
+        return jsonify(success=False, error='Could not save favorite. Please try again.'), 500
     return jsonify(success=True, is_favorited=is_favorited)

@@ -1,0 +1,17 @@
+/* A compact technology naming editor with persistent manual commands. */
+.sb-topic-form .mf-reading { padding: 28px 32px; }
+.tf-fields { max-width: 620px; margin: 0 auto; }
+.tf-fields textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--sb-ui-control-line);
+    border-radius: 0;
+    background: var(--sb-ui-context);
+    color: var(--sb-ui-ink);
+    font: 14px/1.5 var(--sb-ui-font);
+    resize: vertical;
+}
+.tf-fields textarea:focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 1px; }
+.tf-commands { display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-top: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }
+.tf-commands > span { flex: 1; color: var(--sb-ui-muted); font-size: 12px; }
+.tf-commands a { color: var(--sb-ui-ink); }

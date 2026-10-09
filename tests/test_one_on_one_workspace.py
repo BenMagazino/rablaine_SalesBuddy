@@ -267,8 +267,8 @@ class TestOneOnOneWorkspaceAPI:
         milestone_button = html.index('data-item-type="milestone"')
         assert engagement_button < milestone_button
         assert "let activeType = 'engagement';" in html
-        assert 'salesbuddy_one_on_one_notes_height_' in html
-        assert 'new ResizeObserver' in html
+        assert 'workspaceNotes.style.height' not in html
+        assert 'new ResizeObserver' not in html
         assert 'quill/2.0.0-dev.3/quill.min.js' in html
         assert 'new Quill(workspaceNotes' in html
         assert "['bold', 'italic', 'underline', 'strike']" in html

@@ -1,0 +1,29 @@
+.sb-partners-directory { color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); }
+.sb-partners-directory * { box-sizing: border-box; }
+.sb-partners-directory [hidden] { display: none !important; }
+.partners-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.partners-heading h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.partners-commands { display: flex; align-items: center; gap: 8px; }
+.partners-commands .sb-dialog-button { gap: 6px; text-decoration: none; }
+.partners-primary { color: var(--sb-ui-accent); }
+.partners-reading { overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+.partners-table { width: min(100%, 1180px); border-collapse: collapse; table-layout: fixed; }
+.partners-table :is(th, td) { padding: 8px 16px; border-bottom: 1px solid var(--sb-ui-grid-line); text-align: left; vertical-align: middle; }
+.partners-table :is(th, td):first-child { padding-left: 24px; width: 24%; }
+.partners-table :is(th, td):nth-child(2) { width: 130px; }
+.partners-table :is(th, td):nth-child(4) { width: 125px; text-align: right; }
+.partners-table :is(th, td):last-child { width: 80px; text-align: right; }
+.partners-table th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-context); color: var(--sb-ui-muted); font-size: 12px; font-weight: 500; }
+.partners-table tbody tr { cursor: pointer; }
+.partners-table tbody tr:hover { background: var(--sb-ui-raised); }
+.partners-name { color: var(--sb-ui-accent); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.partners-name:hover, .partners-specialties a:hover { text-decoration: underline; }
+.partners-rating { display: inline-flex; gap: 2px; color: var(--sb-ui-warning); font-size: 11px; }
+.partners-rating .bi-star { color: var(--sb-ui-muted); }
+.partners-specialties { display: flex; flex-wrap: wrap; gap: 3px 12px; }
+.partners-specialties a { color: var(--sb-ui-warning); text-decoration: none; font-size: 12px; overflow-wrap: anywhere; }
+.partners-count { color: var(--sb-ui-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.partners-empty, .partners-notice { margin: 0; padding: 12px 24px; color: var(--sb-ui-muted); }
+.partners-empty a { color: var(--sb-ui-accent); }
+.partners-notice { color: var(--sb-ui-danger); }
+.sb-partners-directory :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }

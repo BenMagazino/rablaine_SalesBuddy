@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 
 {% block title %}{{ milestone.title or 'Milestone' }} - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Milestone detail status">
+    <span>{{ milestone.notes|length }} linked note{{ 's' if milestone.notes|length != 1 else '' }} · {{ tasks|length }} task{{ 's' if tasks|length != 1 else '' }}</span>
+    <span id="milestonePageState" role="status">{{ 'Reading MSX details...' if milestone.msx_milestone_id else 'Local milestone · No MSX ID' }}</span>
+</footer>
+{% endblock %}
 
 {% block content %}
 {% include 'partials/milestone_view_content.html' %}

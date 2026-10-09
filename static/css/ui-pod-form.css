@@ -1,0 +1,24 @@
+/* Synced identity remains beside territory-scoped, immediately saved assignments. */
+.sb-pod-form .mf-heading { display: flex; justify-content: space-between; align-items: center; }
+.sb-pod-form [data-pod-back] { text-decoration: none; }
+.sb-pod-form .mf-reading { padding: 28px 32px; }
+.pod-edit-layout { margin: 0 auto; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 40px; }
+.pod-edit-context { border-right: 1px solid var(--sb-ui-line); padding-right: 28px; }
+.sb-pod-form h2, .pod-disclosure { margin: 0 0 20px; font: 600 16px/1.4 var(--sb-ui-font); }
+.sb-pod-form h3 { margin: 24px 0 12px; font: 600 14px/1.4 var(--sb-ui-font); }
+.pod-edit-context dl { margin: 0 0 24px; }
+.pod-edit-context dt { color: var(--sb-ui-muted); font-size: 12px; margin-bottom: 6px; }
+.pod-edit-context dd { margin: 0; font-weight: 600; }
+.pod-edit-context ul { list-style: none; padding: 0; margin: 0; }
+.pod-edit-context li { padding: 5px 0; font-size: 13px; overflow-wrap: anywhere; }
+.pod-territory, .pod-assignment-group h3 i { color: var(--sb-ui-accent); }
+.pod-muted { color: var(--sb-ui-muted); font-size: 12px; line-height: 1.6; }
+.pod-disclosure { display: flex; justify-content: space-between; width: 100%; border: 0; padding: 0; background: none; color: var(--sb-ui-ink); text-align: left; cursor: pointer; }
+.pod-assignment-group { border-top: 1px solid var(--sb-ui-line); padding: 0 0 20px; }
+.pod-assignment { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(240px, 1.4fr); align-items: start; gap: 24px; padding: 8px 0; font-size: 13px; }
+.pod-assignment > label, .pod-assignment > span { padding-top: 8px; }
+.pod-choice { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; }
+.pod-choice select { grid-column: 1 / -1; width: 100%; padding: 8px 10px; border: 1px solid var(--sb-ui-line); border-radius: 4px; background: var(--sb-ui-surface); color: var(--sb-ui-ink); font: inherit; }
+.pod-save-status { color: var(--sb-ui-muted); font-size: 12px; }
+.pod-choice select[aria-invalid="true"] { border-color: var(--sb-ui-danger); }
+.sb-pod-form :is(select, button, a):focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 3px; }

@@ -1,0 +1,27 @@
+{# Opt-in hub controls. Home and seller panels keep their existing lifecycle. #}
+<div class="sb-eng-controls" data-sb-page-band data-eng-directory
+     data-api-url="{{ eng_api_url }}" data-body-id="{{ eng_body_id }}"
+     data-count-id="{{ eng_count_id }}" data-show-seller="{{ 'true' if eng_show_seller else 'false' }}"
+     data-empty-msg="{{ eng_empty_msg }}"
+     data-auto-load="{{ 'true' if eng_auto_load|default(true) else 'false' }}"
+     {% if eng_seller_scope | default(false) %}data-seller-scope="true"{% endif %}>
+    <div role="group" aria-label="Status filter" id="{{ eng_body_id }}_statusFilter">
+        {% for status in (['', 'Active', 'On Hold'] if eng_seller_scope | default(false) else ['', 'Active', 'On Hold', 'Won', 'Lost']) %}
+        <button type="button" class="sb-eng-command" data-status="{{ status }}" aria-pressed="{{ 'true' if not status else 'false' }}">{{ status or 'All' }}</button>
+        {% endfor %}
+    </div>
+    <label for="{{ eng_body_id }}_sortSelect">Order</label>
+    <select id="{{ eng_body_id }}_sortSelect" aria-label="Sort engagements">
+        <option value="updated">Last Updated</option>
+        <option value="updated-asc">Last Updated (old first)</option>
+        <option value="story-asc">Story % (low first)</option>
+        <option value="story-desc">Story % (high first)</option>
+        <option value="target">Target Date</option>
+        <option value="target-desc">Target Date (late first)</option>
+    </select>
+    <button type="button" class="sb-eng-command" id="{{ eng_body_id }}_groupToggle" aria-pressed="false" title="{{ 'Group by seller' if eng_show_seller else 'Group by customer' }}"><i class="bi bi-{{ 'people' if eng_show_seller else 'building' }}" aria-hidden="true"></i> {{ 'Group by seller' if eng_show_seller else 'Group by customer' }}</button>
+    <button type="button" class="sb-eng-command" id="{{ eng_body_id }}_favoritesBtn" aria-pressed="false" title="Show favorites only"><i class="bi bi-star" aria-hidden="true"></i> Favorites only</button>
+    <span id="{{ eng_count_id }}" class="sb-eng-count"></span>
+</div>
+<p class="sb-eng-notice" id="engDirectoryNotice" role="alert" hidden></p>
+<script src="{{ url_for('static', filename='js/ui-engagements-directory.js') }}" defer></script>

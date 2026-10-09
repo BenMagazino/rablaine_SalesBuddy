@@ -142,6 +142,8 @@ class TestTaskCategories:
         legacy_db = SimpleNamespace(engine=engine, session=session)
         try:
             with engine.begin() as connection:
+                connection.execute(text("CREATE TABLE customers (id INTEGER PRIMARY KEY)"))
+                connection.execute(text("INSERT INTO customers (id) VALUES (1)"))
                 connection.execute(text(
                     "CREATE TABLE msx_tasks ("
                     "id INTEGER PRIMARY KEY, "
@@ -163,7 +165,8 @@ class TestTaskCategories:
             columns = {
                 column['name'] for column in inspect(engine).get_columns('msx_tasks')
             }
-            assert columns == {'id', 'is_hok', 'is_hva'}
+            assert columns == {'id', 'is_hva'}
+            assert len(list(tmp_path.glob('legacy-tasks.db.task-hva-*.bak'))) == 1
         finally:
             session.close()
             engine.dispose()

@@ -10,6 +10,8 @@ import calendar as cal
 import json
 import os
 import re
+import logging
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import (db, Note, Customer, Seller, Territory, Topic,
                         UserPreference, NoteTemplate, User, SyncStatus,
@@ -1207,24 +1209,40 @@ def preferences():
                          pref=pref,
                          templates=templates,
                          workiq_prompt=workiq_prompt,
-                         default_workiq_prompt=DEFAULT_SUMMARY_PROMPT)
+                         default_workiq_prompt=DEFAULT_SUMMARY_PROMPT,
+                         default_template_values=session.pop('template_default_failure', None))
 
 
 # =============================================================================
 # Note Template CRUD
 # =============================================================================
 
+def _render_template_form(
+    template: NoteTemplate | None, values: dict[str, str] | None = None
+) -> str:
+    """Render raw failed entries once on their originating editor path."""
+    failure = session.get('template_form_failure')
+    if values is None and failure and failure.get('path') == request.path:
+        values = session.pop('template_form_failure')['values']
+    return render_template('note_template_form.html', template=template, form_values=values)
+
+
+def _template_form_values() -> dict[str, str]:
+    """Keep the two original manual fields without normalizing the failed draft."""
+    return {name: request.form.get(name, '') for name in ('name', 'content')}
+
+
 @main_bp.route('/templates/new')
 def template_create():
     """Show blank template editor."""
-    return render_template('note_template_form.html', template=None)
+    return _render_template_form(None)
 
 
 @main_bp.route('/templates/<int:id>/edit')
 def template_edit(id):
     """Show template editor with existing content."""
     template = NoteTemplate.query.get_or_404(id)
-    return render_template('note_template_form.html', template=template)
+    return _render_template_form(template)
 
 
 @main_bp.route('/templates', methods=['POST'])
@@ -1232,18 +1250,29 @@ def template_save():
     """Create a new template."""
     name = request.form.get('name', '').strip()
     content = request.form.get('content', '').strip()
+    values = _template_form_values()
 
     if not name:
         flash('Template name is required.', 'danger')
+        session['template_form_failure'] = {
+            'path': url_for('main.template_create'), 'values': values}
         return redirect(url_for('main.template_create'))
 
     if not content:
         flash('Template content is required.', 'danger')
+        session['template_form_failure'] = {
+            'path': url_for('main.template_create'), 'values': values}
         return redirect(url_for('main.template_create'))
 
     template = NoteTemplate(name=name, content=content)
-    db.session.add(template)
-    db.session.commit()
+    try:
+        db.session.add(template)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Could not create note template from manual form')
+        flash('Could not save the template. Your entries are still here.', 'danger')
+        return _render_template_form(None, values), 500
 
     backup_template(template.id)
 
@@ -1257,18 +1286,29 @@ def template_update(id):
     template = NoteTemplate.query.get_or_404(id)
     name = request.form.get('name', '').strip()
     content = request.form.get('content', '').strip()
+    values = _template_form_values()
 
     if not name:
         flash('Template name is required.', 'danger')
+        session['template_form_failure'] = {
+            'path': url_for('main.template_edit', id=id), 'values': values}
         return redirect(url_for('main.template_edit', id=id))
 
     if not content:
         flash('Template content is required.', 'danger')
+        session['template_form_failure'] = {
+            'path': url_for('main.template_edit', id=id), 'values': values}
         return redirect(url_for('main.template_edit', id=id))
 
-    template.name = name
-    template.content = content
-    db.session.commit()
+    try:
+        template.name = name
+        template.content = content
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Could not update note template %s from manual form', id)
+        flash('Could not save the template. Your entries are still here.', 'danger')
+        return _render_template_form(template, values), 500
 
     backup_template(template.id)
 
@@ -1326,18 +1366,30 @@ def api_template_delete(id):
 @main_bp.route('/api/preferences/default-templates', methods=['POST'])
 def api_save_default_templates():
     """Save default template preferences for customer and non-customer notes."""
-    pref = UserPreference.query.first()
-    if not pref:
-        pref = UserPreference()
-        db.session.add(pref)
+    values = {
+        key: request.form.get(key, '') for key in (
+            'default_template_customer_id', 'default_template_noncustomer_id')
+    }
+    try:
+        selected = {key: int(value) if value else None for key, value in values.items()}
+        if any(value is not None and db.session.get(NoteTemplate, value) is None
+               for value in selected.values()):
+            raise ValueError('The selected template is no longer available.')
+        pref = UserPreference.query.first()
+        if not pref:
+            pref = UserPreference()
+            db.session.add(pref)
+        for key, value in selected.items():
+            setattr(pref, key, value)
+        db.session.commit()
+    except (ValueError, SQLAlchemyError):
+        db.session.rollback()
+        current_app.logger.exception('Could not save default note templates')
+        session['template_default_failure'] = values
+        flash('Could not save default templates. Your selections are retained. Try again.', 'danger')
+        return redirect(url_for('main.preferences'))
 
-    customer_id = request.form.get('default_template_customer_id')
-    noncustomer_id = request.form.get('default_template_noncustomer_id')
-
-    pref.default_template_customer_id = int(customer_id) if customer_id else None
-    pref.default_template_noncustomer_id = int(noncustomer_id) if noncustomer_id else None
-    db.session.commit()
-
+    session.pop('template_default_failure', None)
     flash('Default templates saved.', 'success')
     return redirect(url_for('main.preferences'))
 
@@ -1519,7 +1571,12 @@ def topic_sort_preference():
         else:
             pref.topic_sort_by_calls = topic_sort_by_calls
         
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Could not save topic sort preference")
+            return jsonify({'error': 'Could not save the default topic order.'}), 503
         return jsonify({'topic_sort_by_calls': pref.topic_sort_by_calls}), 200
     
     # GET request
@@ -1537,6 +1594,8 @@ def territory_view_preference():
     """Get or set territory view preference (recent calls vs accounts)."""
     if request.method == 'POST':
         data = request.get_json()
+        if not isinstance(data, dict):
+            return jsonify({'error': 'Territory view settings must be an object.'}), 400
         territory_view_accounts = data.get('territory_view_accounts', False)
         
         # Get or create user preference
@@ -1547,7 +1606,12 @@ def territory_view_preference():
         else:
             pref.territory_view_accounts = territory_view_accounts
         
-        db.session.commit()
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            logging.getLogger(__name__).exception('Could not save territory view preference')
+            return jsonify({'error': 'Could not save the territory view. Try again.'}), 500
         return jsonify({'territory_view_accounts': pref.territory_view_accounts}), 200
     
     # GET request
@@ -1555,7 +1619,12 @@ def territory_view_preference():
     if not pref:
         pref = UserPreference(territory_view_accounts=False)
         db.session.add(pref)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            logging.getLogger(__name__).exception('Could not initialize territory view preference')
+            return jsonify({'error': 'Could not load the territory view. Try again.'}), 500
     
     return jsonify({'territory_view_accounts': pref.territory_view_accounts}), 200
 
@@ -2045,4 +2114,3 @@ def inject_preferences():
         seller_mode_seller=seller_mode_seller,
         is_debug=current_app.debug,
     )
-

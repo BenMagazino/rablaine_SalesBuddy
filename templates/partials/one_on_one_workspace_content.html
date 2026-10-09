@@ -1,291 +1,149 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/2.0.0-dev.3/quill.snow.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.css" rel="stylesheet">
-<style>
-    .one-on-one-shell { max-width: 1500px; margin: 0 auto; }
-    .workspace-kicker { letter-spacing: 0.09em; text-transform: uppercase; font-size: 0.72rem; }
-    .workspace-notes {
-        min-height: 560px;
-        height: 560px;
-        resize: vertical;
-        line-height: 1.65;
-        border: 0;
-        background: transparent;
-        box-shadow: none !important;
-        overflow: hidden;
-    }
-    .workspace-notes .ql-editor {
-        padding: 1.25rem;
-        overflow-y: auto;
-        font-size: 1rem;
-    }
-    .workspace-notes .ql-editor.ql-blank::before {
-        left: 1.25rem;
-        right: 1.25rem;
-        color: var(--bs-secondary-color);
-    }
-    .notes-surface .ql-toolbar {
-        border: 0;
-        border-bottom: 1px solid var(--bs-border-color);
-        background: var(--bs-secondary-bg);
-        border-radius: var(--bs-border-radius-lg) var(--bs-border-radius-lg) 0 0;
-    }
-    .notes-surface .ql-snow .ql-stroke { stroke: var(--bs-body-color); }
-    .notes-surface .ql-snow .ql-fill { fill: var(--bs-body-color); }
-    .notes-surface .ql-snow .ql-picker { color: var(--bs-body-color); }
-    .notes-surface .ql-snow .ql-picker-options {
-        background: var(--bs-body-bg);
-        border-color: var(--bs-border-color);
-    }
-    .notes-surface .ql-snow button:hover .ql-stroke,
-    .notes-surface .ql-snow button.ql-active .ql-stroke { stroke: var(--bs-primary); }
-    .notes-surface .ql-snow button:hover .ql-fill,
-    .notes-surface .ql-snow button.ql-active .ql-fill { fill: var(--bs-primary); }
-    .workspace-notes img {
-        max-width: 100%;
-    }
-    .workspace-notes table {
-        border-collapse: collapse;
-        width: 100%;
-        margin: 0.75rem 0;
-    }
-    .workspace-notes td {
-        border: 1px solid var(--bs-border-color);
-        min-width: 80px;
-        padding: 0.45rem 0.6rem;
-    }
-    .notes-surface .ql-toolbar button.ql-insert-table {
-        color: var(--bs-body-color);
-        font-size: 1rem;
-        line-height: 1;
-    }
-    .table-size-picker {
-        position: absolute;
-        z-index: 1060;
-        top: calc(100% + 0.35rem);
-        right: 0;
-        width: 230px;
-        padding: 0.75rem;
-        background: var(--bs-body-bg);
-        border: 1px solid var(--bs-border-color);
-        border-radius: var(--bs-border-radius);
-        box-shadow: var(--bs-box-shadow);
-    }
-    .table-size-picker input { min-width: 0; }
-    .notes-surface .qlbt-operation-menu {
-        background: var(--bs-body-bg);
-        border-color: var(--bs-border-color);
-        color: var(--bs-body-color);
-    }
-    .notes-surface .qlbt-col-tool .qlbt-col-tool-cell {
-        background: var(--bs-secondary-bg);
-        border-color: var(--bs-border-color);
-    }
-    .notes-surface .qlbt-col-tool .qlbt-col-tool-cell-holder:hover {
-        background: var(--bs-primary);
-    }
-    .notes-surface .qlbt-operation-menu .qlbt-operation-menu-item,
-    .notes-surface .qlbt-operation-menu .qlbt-operation-color-picker {
-        background: var(--bs-body-bg);
-        color: var(--bs-body-color);
-    }
-    .notes-surface .qlbt-operation-menu .qlbt-operation-menu-item:hover {
-        background: var(--bs-tertiary-bg);
-    }
-    .notes-surface {
-        background: var(--bs-tertiary-bg);
-        border: 1px solid var(--bs-border-color);
-        border-radius: var(--bs-border-radius-lg);
-    }
-    .agenda-item {
-        border-bottom: 1px solid var(--bs-border-color);
-        padding: 1rem 0;
-    }
-    .agenda-item:last-child { border-bottom: 0; }
-    .min-width-0 { min-width: 0; }
-    .agenda-notes {
-        resize: vertical;
-        min-height: 72px;
-        background: var(--bs-tertiary-bg);
-    }
-    .save-state { min-width: 5.5rem; text-align: right; }
-    .candidate-list { max-height: 440px; overflow-y: auto; }
-    .candidate-row { cursor: pointer; }
-    .candidate-row:hover { background: var(--bs-tertiary-bg); }
-    .agenda-type-marker {
-        width: 2rem;
-        height: 2rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        background: var(--bs-secondary-bg);
-        flex: 0 0 auto;
-    }
-    .engagement-flow {
-        background: color-mix(in srgb, var(--bs-primary-bg-subtle) 58%, transparent);
-        border: 1px solid var(--bs-primary-border-subtle);
-        border-radius: var(--bs-border-radius);
-    }
-    .engagement-flow-step {
-        width: 1.7rem;
-        height: 1.7rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        background: var(--bs-primary);
-        color: var(--bs-white);
-        font-size: 0.75rem;
-        font-weight: 700;
-        flex: 0 0 auto;
-    }
-    .discussion-note-composer { background: var(--bs-tertiary-bg); }
-    .engagement-note-history { border-left: 2px solid var(--bs-border-color); }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-one-on-one-workspace.css') }}">
 
-<div class="one-on-one-shell">
-    <div class="d-flex justify-content-between align-items-start mb-4">
+<section class="one-on-one-shell sb-one-on-one-workspace{% if workspace_width_bounded|default(false) %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface aria-labelledby="workspaceTitle">
+    <header class="workspace-header" data-sb-page-band>
         <div>
-            <div class="workspace-kicker text-muted mb-1">{{ workspace.person_type }} 1:1 workspace</div>
-            <h1 class="mb-1">{{ workspace.person_name }}</h1>
-            <div class="text-muted">Keep standing notes and shape the next conversation.</div>
+            <div class="workspace-kicker ow-muted">{{ workspace.person_type }} 1:1 workspace</div>
+            <h1 id="workspaceTitle">{{ workspace.person_name }}</h1>
+            <div class="workspace-subtitle">Keep standing notes and shape the next conversation.</div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="ow-row">
             {% if workspace.seller %}
-            <a href="{{ url_for('sellers.seller_view', id=workspace.seller.id) }}" class="btn btn-outline-secondary">
+            <a href="{{ url_for('sellers.seller_view', id=workspace.seller.id) }}" class="ow-command">
                 <i class="bi bi-person"></i> Seller
             </a>
             {% endif %}
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAgendaModal">
+            <button type="button" class="ow-command is-primary" data-sb-dialog="addAgendaModal">
                 <i class="bi bi-plus-lg"></i> Add to Agenda
             </button>
         </div>
-    </div>
+    </header>
+    <p id="workspaceReadingNotice" class="ow-reading-notice" role="alert" data-sb-page-band hidden></p>
 
-    <div class="row g-4">
-        <div class="col-5">
-            <div class="d-flex justify-content-between align-items-end mb-2">
+    <div class="workspace-workarea" data-sb-page-body>
+        <section class="workspace-standing" aria-labelledby="standingNotesTitle">
+            <div class="workspace-pane-heading">
                 <div>
-                    <h5 class="mb-0">Standing notes</h5>
-                    <small class="text-muted">Anything worth remembering between conversations.</small>
+                    <h2 id="standingNotesTitle">Standing notes</h2>
+                    <small class="ow-muted">Anything worth remembering between conversations.</small>
                 </div>
-                <small class="save-state text-muted" id="workspaceSaveState">Saved</small>
+                <div class="workspace-save"><small class="save-state" id="workspaceSaveState" role="status" aria-live="polite">Saved</small><button type="button" class="ow-command" id="workspaceRetrySave" hidden>Retry save</button></div>
             </div>
             <div class="notes-surface">
                 <div class="workspace-notes" id="workspaceNotes">{{ workspace.notes|safe }}</div>
             </div>
-        </div>
+        </section>
 
-        <div class="col-7">
-            <div class="d-flex justify-content-between align-items-end mb-2">
+        <section class="workspace-conversation" aria-labelledby="conversationTitle">
+            <div class="workspace-pane-heading">
                 <div>
-                    <h5 class="mb-0">Next conversation</h5>
-                    <small class="text-muted">Milestones and engagements you want to discuss.</small>
+                    <h2 id="conversationTitle">Next conversation</h2>
+                    <small class="ow-muted">Milestones and engagements you want to discuss.</small>
                 </div>
-                <span class="badge bg-primary" id="agendaCount">{{ active_items|length }}</span>
+                <span class="ow-count" id="agendaCount">{{ active_items|length }} queued</span>
             </div>
 
-            <div class="card">
-                <div class="card-body py-1" id="activeAgenda">
+            <div class="workspace-agenda-reading" tabindex="0" aria-label="Conversation agenda">
+                <div id="activeAgenda">
                     {% for item in active_items %}
                     <div class="agenda-item" data-agenda-item-id="{{ item.id }}">
-                        <div class="d-flex gap-3">
+                        <div class="ow-row ow-gap">
                             <span class="agenda-type-marker">
                                 <i class="bi {{ 'bi-flag' if item.item_type == 'milestone' else 'bi-diagram-3' }}"></i>
                             </span>
-                            <div class="flex-grow-1 min-width-0">
-                                <div class="d-flex justify-content-between gap-3">
-                                    <div class="min-width-0">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span class="badge {{ 'bg-info text-dark' if item.item_type == 'milestone' else 'bg-secondary' }}">
+                            <div class="ow-grow">
+                                <div class="ow-row ow-between ow-gap">
+                                    <div class="ow-grow">
+                                        <div class="ow-row ow-center">
+                                            <span class="ow-tag {{ 'is-milestone' if item.item_type == 'milestone' else 'is-engagement' }}">
                                                 {{ item.item_type|capitalize }}
                                             </span>
                                             {% if item.item_type == 'milestone' and item.milestone %}
-                                            <a href="{{ url_for('milestones.milestone_view', id=item.milestone.id) }}" class="fw-semibold text-decoration-none text-truncate">{{ item.title }}</a>
+                                            <a href="{{ url_for('milestones.milestone_view', id=item.milestone.id) }}" class="ow-link ow-strong">{{ item.title }}</a>
                                             {% elif item.item_type == 'engagement' and item.engagement %}
-                                            <a href="{{ url_for('engagements.engagement_view', id=item.engagement.id) }}" class="fw-semibold text-decoration-none text-truncate">{{ item.title }}</a>
-                                            <button type="button" class="btn btn-sm btn-link text-muted p-0" data-edit-engagement="{{ item.engagement.id }}"
+                                            <a href="{{ url_for('engagements.engagement_view', id=item.engagement.id) }}" class="ow-link ow-strong">{{ item.title }}</a>
+                                            <button type="button" class="ow-command is-icon" data-edit-engagement="{{ item.engagement.id }}"
                                                     aria-label="Edit {{ item.title }}" title="Edit engagement details">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             {% else %}
-                                            <span class="fw-semibold text-truncate">{{ item.title }}</span>
+                                            <span class="ow-strong">{{ item.title }}</span>
                                             {% endif %}
                                         </div>
-                                        <small class="text-muted">{{ item.customer_name }}</small>
+                                        <small class="ow-muted">{{ item.customer_name }}</small>
                                     </div>
-                                    <div class="dropdown flex-shrink-0">
-                                        <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown" aria-label="Agenda item actions">
-                                            <i class="bi bi-three-dots"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><button class="dropdown-item" data-agenda-action="discuss"><i class="bi bi-check2 me-2"></i>Mark discussed</button></li>
-                                            <li><button class="dropdown-item text-danger" data-agenda-action="delete"><i class="bi bi-trash me-2"></i>Remove</button></li>
-                                        </ul>
-                                    </div>
+                                    <details class="ow-actions">
+                                        <summary aria-label="Agenda item actions"><i class="bi bi-three-dots"></i></summary>
+                                        <div class="ow-action-menu">
+                                            <button class="ow-command" data-agenda-action="discuss"><i class="bi bi-check2"></i> Mark discussed</button>
+                                            <button class="ow-command is-danger" data-agenda-action="delete"><i class="bi bi-trash"></i> Remove</button>
+                                        </div>
+                                    </details>
                                 </div>
-                                <textarea class="form-control form-control-sm agenda-notes mt-2" data-talking-points
+                                <textarea class="ow-input agenda-notes ow-top" data-talking-points aria-label="Talking points for {{ item.title }}"
                                           placeholder="What do you want to ask or say?">{{ item.talking_points }}</textarea>
-                                <div class="text-end"><small class="text-muted opacity-0" data-item-save-state>Saved</small></div>
+                                <div class="workspace-item-save"><small class="ow-muted ow-invisible" data-item-save-state role="status">Saved</small><button type="button" class="ow-command" data-item-retry hidden>Retry save</button></div>
 
                                 {% if item.item_type == 'milestone' and item.milestone %}
-                                <div class="engagement-flow p-3 mt-2" data-engagement-flow>
-                                    <div class="d-flex gap-2 align-items-start">
+                                <div class="engagement-flow ow-pad ow-top" data-engagement-flow>
+                                    <div class="ow-row ow-start">
                                         <span class="engagement-flow-step">1</span>
-                                        <div class="flex-grow-1 min-width-0">
-                                            <div class="fw-semibold small">Turn this milestone into trackable work</div>
-                                            <div class="small text-body-secondary mb-2">Create an engagement linked to this milestone. This agenda item will become the engagement, keeping your talking points intact.</div>
-                                            <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control" data-engagement-title
+                                        <div class="ow-grow">
+                                            <div class="ow-strong ow-small">Turn this milestone into trackable work</div>
+                                            <div class="ow-small ow-muted ow-bottom">Create an engagement linked to this milestone. This agenda item will become the engagement, keeping your talking points intact.</div>
+                                            <div class="ow-row">
+                                                <input type="text" class="ow-input" data-engagement-title
                                                        value="{{ item.title }}" maxlength="300" aria-label="Engagement title">
-                                                <button type="button" class="btn btn-primary" data-create-engagement>
-                                                    <i class="bi bi-diagram-3 me-1"></i>Create engagement
+                                                <button type="button" class="ow-command is-primary" data-create-engagement>
+                                                    <i class="bi bi-diagram-3"></i>Create engagement
                                                 </button>
                                             </div>
-                                            <div class="small text-danger d-none mt-2" data-engagement-error></div>
+                                            <div class="ow-small ow-danger ow-hidden ow-top" data-engagement-error role="alert"></div>
                                         </div>
                                     </div>
                                 </div>
                                 {% elif item.item_type == 'engagement' and item.engagement %}
-                                <div class="d-flex justify-content-between align-items-center mt-2">
-                                    <div class="small text-muted">
-                                        <i class="bi bi-journal-text me-1"></i>
+                                <div class="ow-row ow-between ow-center ow-top">
+                                    <div class="ow-small ow-muted">
+                                        <i class="bi bi-journal-text"></i>
                                         {{ item.engagement.linked_note_count }} discussion note{{ 's' if item.engagement.linked_note_count != 1 else '' }}
                                         {% if item.engagement.milestones %}
                                         · Linked to {{ item.engagement.milestones|length }} milestone{{ 's' if item.engagement.milestones|length != 1 else '' }}
                                         {% endif %}
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline-primary" data-note-toggle>
-                                        <i class="bi bi-plus-lg me-1"></i>Add discussion note
+                                    <button type="button" class="ow-command" data-note-toggle>
+                                        <i class="bi bi-plus-lg"></i>Add discussion note
                                     </button>
                                 </div>
-                                <div class="discussion-note-composer border rounded p-3 mt-2 d-none" data-note-composer>
-                                    <div class="d-flex gap-2 align-items-start mb-2">
+                                <div class="discussion-note-composer ow-pad ow-top ow-hidden" data-note-composer>
+                                    <div class="ow-row ow-start ow-bottom">
                                         <span class="engagement-flow-step">2</span>
                                         <div>
-                                            <div class="fw-semibold small">Capture what you discussed</div>
-                                            <div class="small text-body-secondary">Saved on this engagement{% if item.engagement.milestones %} and linked milestone{% endif %}.</div>
+                                            <div class="ow-strong ow-small">Capture what you discussed</div>
+                                            <div class="ow-small ow-muted">Saved on this engagement{% if item.engagement.milestones %} and linked milestone{% endif %}.</div>
                                         </div>
                                     </div>
-                                    <textarea class="form-control form-control-sm" rows="4" data-discussion-note
+                                    <textarea class="ow-input" rows="4" data-discussion-note aria-label="Discussion note for {{ item.title }}"
                                               placeholder="Decisions, updates, seller feedback, and next steps..."></textarea>
-                                    <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <div class="small text-danger d-none" data-note-error></div>
-                                        <div class="d-flex gap-2 ms-auto">
-                                            <button type="button" class="btn btn-sm btn-link text-muted" data-note-cancel>Cancel</button>
-                                            <button type="button" class="btn btn-sm btn-primary" data-note-save>
-                                                <i class="bi bi-check2 me-1"></i>Save to engagement
+                                    <div class="ow-row ow-between ow-center ow-top">
+                                        <div class="ow-small ow-danger ow-hidden" data-note-error role="alert"></div>
+                                        <div class="ow-row ow-auto">
+                                            <button type="button" class="ow-command" data-note-cancel>Cancel</button>
+                                            <button type="button" class="ow-command is-primary" data-note-save>
+                                                <i class="bi bi-check2"></i>Save to engagement
                                             </button>
                                         </div>
                                     </div>
                                 </div>
                                 {% if item.engagement.notes %}
-                                <div class="engagement-note-history ps-3 mt-3">
+                                <div class="engagement-note-history ow-indent ow-top">
                                     {% for note in item.engagement.notes|sort(attribute='call_date', reverse=true) %}
                                     {% if loop.index <= 3 %}
-                                    <div class="small{% if not loop.last %} mb-2{% endif %}">
-                                        <a href="{{ url_for('notes.note_view', id=note.id) }}" class="text-decoration-none fw-semibold">{{ note.call_date.strftime('%b %d, %Y') }}</a>
-                                        <span class="text-body-secondary ms-1">{{ note.content|striptags|truncate(140) }}</span>
+                                    <div class="ow-small{% if not loop.last %} ow-bottom{% endif %}">
+                                        <a href="{{ url_for('notes.note_view', id=note.id) }}" class="ow-link ow-strong">{{ note.call_date.strftime('%b %d, %Y') }}</a>
+                                        <span class="ow-muted">{{ note.content|striptags|truncate(140) }}</span>
                                     </div>
                                     {% endif %}
                                     {% endfor %}
@@ -296,181 +154,174 @@
                         </div>
                     </div>
                     {% else %}
-                    <div class="text-center py-5" id="agendaEmptyState">
-                        <i class="bi bi-chat-square-text fs-2 text-muted"></i>
-                        <h6 class="mt-3">Nothing queued yet</h6>
-                        <p class="text-muted small mb-3">Add work you want to cover in the next conversation.</p>
-                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addAgendaModal">
+                    <div class="ow-empty" id="agendaEmptyState">
+                        <i class="bi bi-chat-square-text"></i>
+                        <h3>Nothing queued yet</h3>
+                        <p class="ow-muted ow-small">Add work you want to cover in the next conversation.</p>
+                        <button type="button" class="ow-command" data-sb-dialog="addAgendaModal">
                             Add first item
                         </button>
                     </div>
                     {% endfor %}
                 </div>
-            </div>
 
             {% if discussed_items %}
-            <div class="mt-4">
-                <button class="btn btn-link text-muted text-decoration-none px-0" type="button"
-                        data-bs-toggle="collapse" data-bs-target="#discussionHistory" aria-expanded="false">
-                    <i class="bi bi-clock-history me-1"></i> Discussion history
-                    <span class="badge bg-secondary ms-1">{{ discussed_items|length }}</span>
-                </button>
-                <div class="collapse" id="discussionHistory">
-                    <div class="list-group">
+            <details class="workspace-history">
+                <summary>
+                    <i class="bi bi-clock-history"></i> Discussion history
+                    <span class="ow-count">{{ discussed_items|length }}</span>
+                </summary>
+                <div id="discussionHistory">
+                    <div>
                         {% for item in discussed_items %}
-                        <div class="list-group-item" data-agenda-item-id="{{ item.id }}">
-                            <div class="d-flex justify-content-between gap-3">
+                        <div class="workspace-history-item" data-agenda-item-id="{{ item.id }}">
+                            <div class="ow-row ow-between ow-gap">
                                 <div>
-                                    <div class="fw-semibold">{{ item.title }}</div>
-                                    <small class="text-muted">
+                                    <div class="ow-strong">{{ item.title }}</div>
+                                    <small class="ow-muted">
                                         {{ item.customer_name }}
                                         {% if item.discussed_at %} · Discussed {{ item.discussed_at.strftime('%b %d, %Y') }}{% endif %}
                                     </small>
-                                    {% if item.talking_points %}<div class="small mt-2 text-body-secondary">{{ item.talking_points }}</div>{% endif %}
+                                    {% if item.talking_points %}<div class="ow-small ow-top ow-muted">{{ item.talking_points }}</div>{% endif %}
                                 </div>
-                                <div class="d-flex gap-1 align-items-start">
-                                    <button class="btn btn-sm btn-outline-secondary" data-agenda-action="restore">Restore</button>
-                                    <button class="btn btn-sm btn-link text-danger" data-agenda-action="delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                <div class="ow-row ow-start">
+                                    <button class="ow-command" data-agenda-action="restore">Restore</button>
+                                    <button class="ow-command is-danger is-icon" data-agenda-action="delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                                 </div>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
                 </div>
-            </div>
+            </details>
             {% endif %}
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="editEngagementModal" tabindex="-1" aria-labelledby="editEngagementModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <h5 class="modal-title" id="editEngagementModalLabel"><i class="bi bi-pencil-square me-2"></i>Edit engagement</h5>
-                    <div class="small text-muted" id="editEngagementCustomer"></div>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-8">
-                        <label for="editEngagementTitle" class="form-label">Title</label>
-                        <input type="text" class="form-control" id="editEngagementTitle" maxlength="300" required>
+        </section>
+    </div>
+</section>
+
+<dialog class="sb-dialog ow-dialog" id="editEngagementModal" aria-labelledby="editEngagementModalLabel">
+    <div class="sb-dialog-panel">
+            <div class="sb-dialog-header">
+                <div>
+                    <h2 id="editEngagementModalLabel"><i class="bi bi-pencil-square"></i>Edit engagement</h2>
+                    <div class="ow-small ow-muted" id="editEngagementCustomer"></div>
+                </div>
+                <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">×</button>
+            </div>
+            <div class="sb-dialog-body">
+                <div class="workspace-edit-fields">
+                    <div class="ow-field-wide">
+                        <label for="editEngagementTitle">Title</label>
+                        <input type="text" class="ow-input" id="editEngagementTitle" maxlength="300" required>
                     </div>
-                    <div class="col-4">
-                        <label for="editEngagementStatus" class="form-label">Status</label>
-                        <select class="form-select" id="editEngagementStatus">
+                    <div>
+                        <label for="editEngagementStatus">Status</label>
+                        <select class="ow-input" id="editEngagementStatus">
                             <option value="Active">Active</option>
                             <option value="On Hold">On Hold</option>
                             <option value="Won">Won</option>
                             <option value="Lost">Lost</option>
                         </select>
                     </div>
-                    <div class="col-12">
-                        <div class="small text-uppercase text-muted fw-semibold">Engagement story</div>
+                    <div class="ow-field-full">
+                        <div class="ow-small ow-muted ow-strong">Engagement story</div>
                     </div>
-                    <div class="col-12">
-                        <label for="editEngagementProblem" class="form-label mb-1">Technical/Business Problem</label>
-                        <div class="small text-muted mb-2">What challenge has the customer run into?</div>
-                        <textarea class="form-control" id="editEngagementProblem" rows="3"></textarea>
+                    <div class="ow-field-full">
+                        <label for="editEngagementProblem">Technical/Business Problem</label>
+                        <div class="ow-small ow-muted ow-bottom">What challenge has the customer run into?</div>
+                        <textarea class="ow-input" id="editEngagementProblem" rows="3"></textarea>
                     </div>
-                    <div class="col-12">
-                        <label for="editEngagementImpact" class="form-label mb-1">Business Process/Strategy Impact</label>
-                        <div class="small text-muted mb-2">How is the problem affecting the business?</div>
-                        <textarea class="form-control" id="editEngagementImpact" rows="3"></textarea>
+                    <div class="ow-field-full">
+                        <label for="editEngagementImpact">Business Process/Strategy Impact</label>
+                        <div class="ow-small ow-muted ow-bottom">How is the problem affecting the business?</div>
+                        <textarea class="ow-input" id="editEngagementImpact" rows="3"></textarea>
                     </div>
-                    <div class="col-12">
-                        <label for="editEngagementResources" class="form-label mb-1">Solution Resources</label>
-                        <div class="small text-muted mb-2">What services, people, or solutions are addressing it?</div>
-                        <textarea class="form-control" id="editEngagementResources" rows="3"></textarea>
+                    <div class="ow-field-full">
+                        <label for="editEngagementResources">Solution Resources</label>
+                        <div class="ow-small ow-muted ow-bottom">What services, people, or solutions are addressing it?</div>
+                        <textarea class="ow-input" id="editEngagementResources" rows="3"></textarea>
                     </div>
-                    <div class="col-6">
-                        <label for="editEngagementAcr" class="form-label">Estimated monthly ACR</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="editEngagementAcr" min="0" step="1">
-                            <span class="input-group-text">/mo</span>
+                    <div class="ow-field-half">
+                        <label for="editEngagementAcr">Estimated monthly ACR</label>
+                        <div class="ow-row ow-center">
+                            <span>$</span>
+                            <input type="number" class="ow-input" id="editEngagementAcr" min="0" step="1">
+                            <span>/mo</span>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <label for="editEngagementTarget" class="form-label">Target date</label>
-                        <input type="date" class="form-control" id="editEngagementTarget">
+                    <div class="ow-field-half">
+                        <label for="editEngagementTarget">Target date</label>
+                        <input type="date" class="ow-input" id="editEngagementTarget">
                     </div>
                 </div>
-                <div class="alert alert-danger d-none mt-3 mb-0" id="editEngagementError"></div>
+                <div class="ow-error ow-hidden ow-top" id="editEngagementError" role="alert"></div>
             </div>
-            <div class="modal-footer justify-content-between">
-                <a href="#" class="btn btn-link text-muted px-0" id="editEngagementFullLink">
-                    Open full engagement <i class="bi bi-arrow-up-right ms-1"></i>
+            <div class="sb-dialog-footer">
+                <a href="#" class="ow-full-link" id="editEngagementFullLink">
+                    Open full engagement <i class="bi bi-arrow-up-right"></i>
                 </a>
                 <div>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="saveEngagementDetails">
-                        <i class="bi bi-check2 me-1"></i>Save changes
+                    <button type="button" class="ow-command" data-sb-dialog-close>Cancel</button>
+                    <button type="button" class="ow-command is-primary" id="saveEngagementDetails">
+                        <i class="bi bi-check2"></i>Save changes
                     </button>
                 </div>
             </div>
-        </div>
     </div>
-</div>
+</dialog>
 
-<div class="modal fade" id="addAgendaModal" tabindex="-1" aria-labelledby="addAgendaModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
+<dialog class="sb-dialog ow-dialog" id="addAgendaModal" aria-labelledby="addAgendaModalLabel">
+    <div class="sb-dialog-panel">
+            <div class="sb-dialog-header">
                 <div>
-                    <h5 class="modal-title" id="addAgendaModalLabel">Add to {{ workspace.person_name }}'s agenda</h5>
-                    <div class="small text-muted">
+                    <h2 id="addAgendaModalLabel">Add to {{ workspace.person_name }}'s agenda</h2>
+                    <div class="ow-small ow-muted">
                         {% if workspace.seller %}Showing work from {{ workspace.seller.name }}'s customers.{% else %}Showing your full customer book.{% endif %}
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">×</button>
             </div>
-            <div class="modal-body">
-                <div class="d-flex gap-2 mb-3">
-                    <div class="btn-group" role="group" aria-label="Agenda item type">
-                        <button type="button" class="btn btn-primary agenda-type-button" data-item-type="engagement"><i class="bi bi-diagram-3"></i> Engagements</button>
-                        <button type="button" class="btn btn-outline-primary agenda-type-button" data-item-type="milestone"><i class="bi bi-flag"></i> Milestones</button>
+            <div class="sb-dialog-body">
+                <div class="ow-row ow-bottom">
+                    <div class="ow-type-switch" role="group" aria-label="Agenda item type">
+                        <button type="button" class="ow-command is-primary agenda-type-button" data-item-type="engagement" aria-pressed="true"><i class="bi bi-diagram-3"></i> Engagements</button>
+                        <button type="button" class="ow-command agenda-type-button" data-item-type="milestone" aria-pressed="false"><i class="bi bi-flag"></i> Milestones</button>
                     </div>
-                    <input type="search" class="form-control" id="agendaCandidateSearch" placeholder="Search customer or title..." autocomplete="off">
+                    <input type="search" class="ow-input" id="agendaCandidateSearch" aria-label="Search agenda choices" placeholder="Search customer or title..." autocomplete="off">
                 </div>
-                <div class="candidate-list list-group list-group-flush" id="agendaCandidates">
-                    <div class="text-center text-muted py-5"><span class="spinner-border spinner-border-sm me-2"></span>Loading...</div>
+                <div class="candidate-list" id="agendaCandidates" aria-live="polite">
+                    <div class="ow-empty">Loading...</div>
                 </div>
-                <div class="alert alert-danger d-none mt-3 mb-0" id="candidateError"></div>
-            </div>
+                <div class="ow-error ow-hidden ow-top" id="candidateError" role="alert"></div>
         </div>
-    </div>
+    </dialog>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quill/2.0.0-dev.3/quill.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.js"></script>
+<script src="{{ url_for('static', filename='js/ui-one-on-one-save.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-one-on-one-reading.js') }}"></script>
 <script>
 (function() {
     {% if parent_modal_id is defined %}
     const parentModal = document.getElementById({{ parent_modal_id|tojson }});
+    const parentClosingEvent = 'sb:dialog-before-close';
+    const parentClosedEvent = 'sb:dialog-closed';
     for (const id of ['addAgendaModal', 'editEngagementModal']) {
         const modal = document.getElementById(id);
         modal.dataset.workspaceParentModal = parentModal.id;
-        document.body.appendChild(modal);
-        modal.addEventListener('show.bs.modal', function() {
-            bootstrap.Modal.getOrCreateInstance(parentModal).hide();
-        });
-        modal.addEventListener('hidden.bs.modal', function() {
-            bootstrap.Modal.getOrCreateInstance(parentModal).show();
-        });
+        parentModal.appendChild(modal);
     }
     {% endif %}
     const workspaceId = {{ workspace.id }};
     const workspaceNotes = document.getElementById('workspaceNotes');
     const workspaceSaveState = document.getElementById('workspaceSaveState');
-    const workspaceNotesHeightKey = 'salesbuddy_one_on_one_notes_height_' + workspaceId;
-    let workspaceTimer;
+    const saveQueues = [];
     let activeType = 'engagement';
     let searchTimer;
     let editingEngagementId = null;
+    let engagementDirty = false;
 
     Quill.register({'modules/better-table': quillBetterTable}, true);
     const workspaceQuill = new Quill(workspaceNotes, {
@@ -504,8 +355,16 @@
         }
     });
     const toolbar = workspaceQuill.getModule('toolbar').container;
+    workspaceQuill.root.setAttribute('role', 'textbox');
+    workspaceQuill.root.setAttribute('aria-label', 'Standing notes');
+    workspaceQuill.root.setAttribute('aria-multiline', 'true');
+    toolbar.querySelectorAll('button').forEach(function(button) {
+        const format = Array.from(button.classList).find(function(name) { return name.startsWith('ql-'); });
+        if (format) button.setAttribute('aria-label',
+            format.slice(3) + (button.value ? ' ' + button.value : ''));
+    });
     const tableButtonGroup = toolbar.lastElementChild;
-    tableButtonGroup.classList.add('position-relative');
+    tableButtonGroup.classList.add('ow-position');
     const tableButton = document.createElement('button');
     tableButton.type = 'button';
     tableButton.className = 'ql-insert-table';
@@ -514,20 +373,20 @@
     tableButton.setAttribute('aria-expanded', 'false');
     tableButton.innerHTML = '<i class="bi bi-table"></i>';
     const tableSizePicker = document.createElement('div');
-    tableSizePicker.className = 'table-size-picker d-none';
+    tableSizePicker.className = 'table-size-picker ow-hidden';
     tableSizePicker.innerHTML =
-        '<div class="fw-semibold small mb-2">Insert table</div>' +
-        '<div class="d-flex gap-2 align-items-end">' +
-            '<div class="flex-fill"><label class="form-label small mb-1" for="workspaceTableRows">Rows</label>' +
-            '<input class="form-control form-control-sm" id="workspaceTableRows" type="number" min="1" max="20" value="3"></div>' +
-            '<div class="flex-fill"><label class="form-label small mb-1" for="workspaceTableColumns">Columns</label>' +
-            '<input class="form-control form-control-sm" id="workspaceTableColumns" type="number" min="1" max="12" value="3"></div>' +
-            '<button type="button" class="btn btn-sm btn-primary" data-insert-table>Insert</button>' +
+        '<div class="ow-strong ow-small ow-bottom">Insert table</div>' +
+        '<div class="ow-row ow-end">' +
+            '<div class="ow-grow"><label class="ow-small" for="workspaceTableRows">Rows</label>' +
+            '<input class="ow-input" id="workspaceTableRows" type="number" min="1" max="20" value="3"></div>' +
+            '<div class="ow-grow"><label class="ow-small" for="workspaceTableColumns">Columns</label>' +
+            '<input class="ow-input" id="workspaceTableColumns" type="number" min="1" max="12" value="3"></div>' +
+            '<button type="button" class="ow-command is-primary" data-insert-table>Insert</button>' +
         '</div>';
     tableButton.addEventListener('click', function(event) {
         event.stopPropagation();
-        const opening = tableSizePicker.classList.contains('d-none');
-        tableSizePicker.classList.toggle('d-none', !opening);
+        const opening = tableSizePicker.classList.contains('ow-hidden');
+        tableSizePicker.classList.toggle('ow-hidden', !opening);
         tableButton.setAttribute('aria-expanded', String(opening));
         if (opening) tableSizePicker.querySelector('#workspaceTableRows').focus();
     });
@@ -539,102 +398,168 @@
         const columns = Number(tableSizePicker.querySelector('#workspaceTableColumns').value);
         if (!Number.isInteger(rows) || rows < 1 || rows > 20 ||
                 !Number.isInteger(columns) || columns < 1 || columns > 12) return;
-        tableSizePicker.classList.add('d-none');
+        tableSizePicker.classList.add('ow-hidden');
         tableButton.setAttribute('aria-expanded', 'false');
         workspaceQuill.focus();
         workspaceQuill.getModule('better-table').insertTable(rows, columns);
+        notesQueue.change();
     });
-    document.addEventListener('click', function() {
-        tableSizePicker.classList.add('d-none');
+    function closeTablePicker() {
+        tableSizePicker.classList.add('ow-hidden');
         tableButton.setAttribute('aria-expanded', 'false');
-    });
+    }
+    document.addEventListener('click', closeTablePicker);
     tableButtonGroup.append(tableButton, tableSizePicker);
     toolbar.appendChild(tableButtonGroup);
-
-    const savedWorkspaceNotesHeight = Number(
-        localStorage.getItem(workspaceNotesHeightKey)
-    );
-    if (savedWorkspaceNotesHeight > 0) {
-        workspaceNotes.style.height = savedWorkspaceNotesHeight + 'px';
-    }
-    if (window.ResizeObserver) {
-        new ResizeObserver(function() {
-            const height = Math.round(workspaceNotes.offsetHeight);
-            if (height > 0) localStorage.setItem(workspaceNotesHeightKey, String(height));
-        }).observe(workspaceNotes);
-    }
 
     function setSaveState(element, text, className) {
         element.textContent = text;
         element.className = className;
     }
 
-    function saveWorkspaceNotes() {
-        clearTimeout(workspaceTimer);
-        setSaveState(workspaceSaveState, 'Saving...', 'save-state text-muted');
+    function readWorkspaceNotes() {
         const hasRichContent = workspaceQuill.getText().trim() ||
             workspaceQuill.root.querySelector('table, img');
-        fetch('/api/one-on-one/' + workspaceId, {
-            method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                notes: hasRichContent
-                    ? workspaceQuill.root.innerHTML
-                    : ''
-            }),
-        })
-        .then(function(response) {
+        return hasRichContent ? workspaceQuill.root.innerHTML : '';
+    }
+    function writeField(url, payload) {
+        return fetch(url, {
+            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+        }).then(function(response) {
             if (!response.ok) throw new Error('Save failed');
-            setSaveState(workspaceSaveState, 'Saved', 'save-state text-success');
-        })
-        .catch(function() {
-            setSaveState(workspaceSaveState, 'Not saved', 'save-state text-danger');
         });
     }
-
-    workspaceQuill.on('text-change', function() {
-        setSaveState(workspaceSaveState, 'Unsaved', 'save-state text-muted');
-        clearTimeout(workspaceTimer);
-        workspaceTimer = setTimeout(saveWorkspaceNotes, 700);
+    const labels = {unsaved: 'Unsaved', saving: 'Saving...', saved: 'Saved', failed: 'Not saved'};
+    const workspaceRetry = document.getElementById('workspaceRetrySave');
+    const notesQueue = SBOneOnOneSave.createSaveQueue({
+        read: readWorkspaceNotes,
+        write: function(notes) { return writeField('/api/one-on-one/' + workspaceId, {notes}); },
+        state: function(status) {
+            setSaveState(workspaceSaveState, labels[status],
+                'save-state ' + (status === 'failed' ? 'ow-danger' : status === 'saved' ? 'ow-success' : 'ow-muted'));
+            workspaceRetry.hidden = status !== 'failed';
+        },
     });
-    workspaceQuill.root.addEventListener('blur', saveWorkspaceNotes);
+    saveQueues.push(notesQueue);
+    workspaceQuill.on('text-change', function(delta, previous, source) {
+        if (source === 'user') notesQueue.change();
+    });
+    workspaceQuill.root.addEventListener('blur', function() { notesQueue.save().catch(function() {}); });
+    workspaceRetry.addEventListener('click', function() { notesQueue.save().catch(function() {}); });
 
     document.querySelectorAll('[data-talking-points]').forEach(function(input) {
-        let timer;
         const row = input.closest('[data-agenda-item-id]');
         const state = row.querySelector('[data-item-save-state]');
-        function save() {
-            clearTimeout(timer);
-            state.classList.remove('opacity-0');
-            state.textContent = 'Saving...';
-            fetch('/api/one-on-one/agenda/' + row.dataset.agendaItemId, {
-                method: 'PATCH',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({talking_points: input.value}),
-            })
-            .then(function(response) {
-                if (!response.ok) throw new Error('Save failed');
-                state.textContent = 'Saved';
-                state.className = 'text-success';
-                setTimeout(function() { state.classList.add('opacity-0'); }, 1200);
-            })
-            .catch(function() {
-                state.textContent = 'Not saved';
-                state.className = 'text-danger';
-            });
-        }
-        input.addEventListener('input', function() {
-            clearTimeout(timer);
-            timer = setTimeout(save, 700);
+        const retry = row.querySelector('[data-item-retry]');
+        const queue = SBOneOnOneSave.createSaveQueue({
+            read: function() { return input.value; },
+            write: function(talking_points) {
+                return writeField('/api/one-on-one/agenda/' + row.dataset.agendaItemId, {talking_points});
+            },
+            state: function(status) {
+                state.textContent = labels[status];
+                state.className = status === 'failed' ? 'ow-danger' : status === 'saved' ? 'ow-success' : 'ow-muted';
+                retry.hidden = status !== 'failed';
+            },
         });
-        input.addEventListener('blur', save);
+        saveQueues.push(queue);
+        input.addEventListener('input', queue.change);
+        input.addEventListener('blur', function() { queue.save().catch(function() {}); });
+        retry.addEventListener('click', function() { queue.save().catch(function() {}); });
+    });
+    const workspaceRoot = document.querySelector('.sb-one-on-one-workspace');
+    const reading = SBOneOnOneReading.createReadingController({
+        window: window, id: workspaceId,
+        embedded: {{ 'true' if parent_modal_id is defined or request.args.get('embed') else 'false' }},
+        agenda: workspaceRoot.querySelector('.workspace-agenda-reading'),
+        surface: workspaceRoot.querySelector('.notes-surface'),
+        editor: workspaceQuill.root,
+        history: workspaceRoot.querySelector('.workspace-history'),
+        notice: document.getElementById('workspaceReadingNotice'),
+    });
+    function hasDrafts(ignoredInput = null) {
+        return Array.from(workspaceRoot.querySelectorAll('[data-discussion-note]'))
+            .some(function(input) {
+                return input !== ignoredInput && Boolean(input.value.trim()) &&
+                    !input.closest?.('[data-note-composer]')?.classList.contains('ow-hidden');
+            });
+    }
+    function hasPendingEdits() {
+        return engagementDirty || hasDrafts() || saveQueues.some(function(queue) { return queue.dirty(); });
+    }
+    async function flushEdits(ignoredInput = null, keepEngagement = false) {
+        await Promise.all(saveQueues.map(function(queue) { return queue.save(); }));
+        if (engagementDirty && !keepEngagement &&
+                !confirm('Discard the unsaved engagement changes?')) {
+            throw new Error('Your engagement editor is still open.');
+        }
+        if (hasDrafts(ignoredInput) && !confirm('Discard the unsaved discussion note?')) {
+            throw new Error('Your discussion note is still open.');
+        }
+    }
+    function protectUnload(event) {
+        if (!workspaceRoot.isConnected || !hasPendingEdits()) return;
+        event.preventDefault();
+        event.returnValue = '';
+    }
+    window.addEventListener('beforeunload', protectUnload);
+    const workspaceController = {
+        root: workspaceRoot, hasPendingEdits: hasPendingEdits, flush: flushEdits,
+        dispose: function() {
+            saveQueues.forEach(function(queue) { queue.dispose(); });
+            reading.dispose();
+            window.removeEventListener('beforeunload', protectUnload);
+            document.removeEventListener('click', closeTablePicker);
+            clearTimeout(searchTimer);
+            {% if parent_modal_id is defined %}
+            parentModal.removeEventListener(parentClosingEvent, protectHostClose);
+            parentModal.removeEventListener(parentClosedEvent, cleanupWorkspace);
+            {% endif %}
+        },
+    };
+    window.SBOneOnOneWorkspace = workspaceController;
+    async function reloadWorkspace(savedDiscussion = null) {
+        await flushEdits(savedDiscussion);
+        if (savedDiscussion) savedDiscussion.value = '';
+        workspaceController.dispose();
+        window.location.reload();
+    }
+    {% if parent_modal_id is defined %}
+    let closingWorkspace = false;
+    function protectHostClose(event) {
+        if (event.target !== parentModal || !workspaceRoot.isConnected ||
+                closingWorkspace || !hasPendingEdits()) return;
+        event.preventDefault();
+        flushEdits().then(function() {
+            closingWorkspace = true;
+            SBDialog.close(parentModal, 'saved');
+        }).catch(function() {
+            alert('Save or retry your pending changes before closing.');
+        });
+    }
+    function cleanupWorkspace(event) {
+        if (event.target !== parentModal) return;
+        workspaceController.dispose();
+    }
+    parentModal.addEventListener(parentClosingEvent, protectHostClose);
+    parentModal.addEventListener(parentClosedEvent, cleanupWorkspace);
+    {% endif %}
+    workspaceRoot.addEventListener('click', function(event) {
+        const link = event.target.closest('a[href]');
+        if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey ||
+                event.button !== 0 || !hasPendingEdits()) return;
+        event.preventDefault();
+        flushEdits().then(function() { window.location.assign(link.href); })
+            .catch(function() { alert('Save or retry your pending changes before leaving.'); });
     });
 
     document.querySelectorAll('[data-agenda-action]').forEach(function(button) {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', async function() {
             const row = button.closest('[data-agenda-item-id]');
             const action = button.dataset.agendaAction;
             if (action === 'delete' && !confirm('Remove this item from the 1:1 workspace?')) return;
+            try { await flushEdits(); } catch { return; }
             const options = action === 'delete'
                 ? {method: 'DELETE'}
                 : {
@@ -646,7 +571,7 @@
             fetch('/api/one-on-one/agenda/' + row.dataset.agendaItemId, options)
                 .then(function(response) {
                     if (!response.ok) throw new Error('Update failed');
-                    window.location.reload();
+                    return reloadWorkspace();
                 })
                 .catch(function() {
                     button.disabled = false;
@@ -656,20 +581,21 @@
     });
 
     document.querySelectorAll('[data-create-engagement]').forEach(function(button) {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', async function() {
             const row = button.closest('[data-agenda-item-id]');
             const flow = button.closest('[data-engagement-flow]');
             const title = flow.querySelector('[data-engagement-title]');
             const error = flow.querySelector('[data-engagement-error]');
-            error.classList.add('d-none');
+            error.classList.add('ow-hidden');
             if (!title.value.trim()) {
                 error.textContent = 'Enter an engagement title.';
-                error.classList.remove('d-none');
+                error.classList.remove('ow-hidden');
                 title.focus();
                 return;
             }
+            try { await flushEdits(); } catch { return; }
             button.disabled = true;
-            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+            button.textContent = 'Creating...';
             fetch('/api/one-on-one/agenda/' + row.dataset.agendaItemId + '/engagement', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -682,14 +608,14 @@
                         'oneOnOneOpenNoteItem',
                         row.dataset.agendaItemId
                     );
-                    window.location.reload();
+                    return reloadWorkspace();
                 });
             })
             .catch(function(errorValue) {
                 button.disabled = false;
-                button.innerHTML = '<i class="bi bi-diagram-3 me-1"></i>Create engagement';
+                button.innerHTML = '<i class="bi bi-diagram-3"></i>Create engagement';
                 error.textContent = errorValue.message;
-                error.classList.remove('d-none');
+                error.classList.remove('ow-hidden');
             });
         });
     });
@@ -698,8 +624,8 @@
         button.addEventListener('click', function() {
             const row = button.closest('[data-agenda-item-id]');
             const composer = row.querySelector('[data-note-composer]');
-            composer.classList.remove('d-none');
-            button.classList.add('d-none');
+            composer.classList.remove('ow-hidden');
+            button.classList.add('ow-hidden');
             composer.querySelector('[data-discussion-note]').focus();
         });
     });
@@ -707,26 +633,27 @@
     document.querySelectorAll('[data-note-cancel]').forEach(function(button) {
         button.addEventListener('click', function() {
             const row = button.closest('[data-agenda-item-id]');
-            row.querySelector('[data-note-composer]').classList.add('d-none');
-            row.querySelector('[data-note-toggle]').classList.remove('d-none');
+            row.querySelector('[data-note-composer]').classList.add('ow-hidden');
+            row.querySelector('[data-note-toggle]').classList.remove('ow-hidden');
         });
     });
 
     document.querySelectorAll('[data-note-save]').forEach(function(button) {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', async function() {
             const row = button.closest('[data-agenda-item-id]');
             const composer = button.closest('[data-note-composer]');
             const content = composer.querySelector('[data-discussion-note]');
             const error = composer.querySelector('[data-note-error]');
-            error.classList.add('d-none');
+            error.classList.add('ow-hidden');
             if (!content.value.trim()) {
                 error.textContent = 'Add discussion notes before saving.';
-                error.classList.remove('d-none');
+                error.classList.remove('ow-hidden');
                 content.focus();
                 return;
             }
+            try { await flushEdits(content); } catch { return; }
             button.disabled = true;
-            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+            button.textContent = 'Saving...';
             fetch('/api/one-on-one/agenda/' + row.dataset.agendaItemId + '/notes', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -735,14 +662,14 @@
             .then(function(response) {
                 return response.json().then(function(data) {
                     if (!response.ok) throw new Error(data.error || 'Could not save note');
-                    window.location.reload();
+                    return reloadWorkspace(content);
                 });
             })
             .catch(function(errorValue) {
                 button.disabled = false;
-                button.innerHTML = '<i class="bi bi-check2 me-1"></i>Save to engagement';
+                button.innerHTML = '<i class="bi bi-check2"></i>Save to engagement';
                 error.textContent = errorValue.message;
-                error.classList.remove('d-none');
+                error.classList.remove('ow-hidden');
             });
         });
     });
@@ -752,21 +679,20 @@
             editingEngagementId = button.dataset.editEngagement;
             const error = document.getElementById('editEngagementError');
             const saveButton = document.getElementById('saveEngagementDetails');
-            error.classList.add('d-none');
+            error.classList.add('ow-hidden');
             saveButton.disabled = true;
             document.getElementById('editEngagementCustomer').textContent =
-                button.closest('[data-agenda-item-id]').querySelector('small.text-muted').textContent.trim();
+                button.closest('[data-agenda-item-id]').querySelector('small.ow-muted').textContent.trim();
             document.getElementById('editEngagementFullLink').href =
                 '/engagement/' + editingEngagementId;
-            bootstrap.Modal.getOrCreateInstance(
-                document.getElementById('editEngagementModal')
-            ).show();
+            SBDialog.open('editEngagementModal');
             fetch('/api/engagement/' + editingEngagementId)
                 .then(function(response) {
                     if (!response.ok) throw new Error('Could not load engagement details');
                     return response.json();
                 })
                 .then(function(data) {
+                    engagementDirty = false;
                     document.getElementById('editEngagementTitle').value = data.title || '';
                     document.getElementById('editEngagementStatus').value = data.status || 'Active';
                     document.getElementById('editEngagementProblem').value = data.technical_problem || '';
@@ -779,24 +705,35 @@
                 })
                 .catch(function(errorValue) {
                     error.textContent = errorValue.message;
-                    error.classList.remove('d-none');
+                    error.classList.remove('ow-hidden');
                 });
         });
     });
 
-    document.getElementById('saveEngagementDetails').addEventListener('click', function() {
+    const engagementDialog = document.getElementById('editEngagementModal');
+    engagementDialog.addEventListener('input', function() { engagementDirty = true; });
+    engagementDialog.addEventListener('change', function() { engagementDirty = true; });
+    engagementDialog.addEventListener('sb:dialog-before-close', function(event) {
+        if (engagementDirty && !confirm('Discard the unsaved engagement changes?')) {
+            event.preventDefault();
+        } else {
+            engagementDirty = false;
+        }
+    });
+    document.getElementById('saveEngagementDetails').addEventListener('click', async function() {
         const button = this;
         const error = document.getElementById('editEngagementError');
         const title = document.getElementById('editEngagementTitle').value.trim();
-        error.classList.add('d-none');
+        error.classList.add('ow-hidden');
         if (!title) {
             error.textContent = 'Engagement title is required.';
-            error.classList.remove('d-none');
+            error.classList.remove('ow-hidden');
             document.getElementById('editEngagementTitle').focus();
             return;
         }
+        try { await flushEdits(null, true); } catch { return; }
         button.disabled = true;
-        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+        button.textContent = 'Saving...';
         fetch('/api/engagement/' + editingEngagementId, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
@@ -813,14 +750,15 @@
         .then(function(response) {
             return response.json().then(function(data) {
                 if (!response.ok) throw new Error(data.error || 'Could not save engagement');
-                window.location.reload();
+                engagementDirty = false;
+                return reloadWorkspace();
             });
         })
         .catch(function(errorValue) {
             button.disabled = false;
-            button.innerHTML = '<i class="bi bi-check2 me-1"></i>Save changes';
+            button.innerHTML = '<i class="bi bi-check2"></i>Save changes';
             error.textContent = errorValue.message;
-            error.classList.remove('d-none');
+            error.classList.remove('ow-hidden');
         });
     });
 
@@ -835,10 +773,10 @@
     }
 
     function statusBadgeClass(status) {
-        if (status === 'On Track' || status === 'Active') return 'bg-success';
-        if (status === 'At Risk' || status === 'On Hold') return 'bg-warning text-dark';
-        if (status === 'Blocked') return 'bg-danger';
-        return 'bg-secondary';
+        if (status === 'On Track' || status === 'Active') return 'is-success';
+        if (status === 'At Risk' || status === 'On Hold') return 'is-warning';
+        if (status === 'Blocked') return 'is-danger';
+        return '';
     }
 
     function renderCandidates(results) {
@@ -846,7 +784,7 @@
         container.replaceChildren();
         if (!results.length) {
             const empty = document.createElement('div');
-            empty.className = 'text-center text-muted py-5';
+            empty.className = 'ow-empty';
             empty.textContent = 'No matching ' + activeType + 's found.';
             container.appendChild(empty);
             return;
@@ -854,35 +792,35 @@
         results.forEach(function(item) {
             const row = document.createElement('button');
             row.type = 'button';
-            row.className = 'list-group-item list-group-item-action candidate-row py-3';
+            row.className = 'candidate-row';
 
             const layout = document.createElement('div');
-            layout.className = 'd-flex justify-content-between align-items-start gap-3';
+            layout.className = 'ow-row ow-between ow-start ow-gap';
             const copy = document.createElement('div');
-            copy.className = 'min-width-0';
+            copy.className = 'ow-grow';
             const title = document.createElement('div');
-            title.className = 'fw-semibold';
+            title.className = 'ow-strong';
             title.textContent = item.title;
             const detail = document.createElement('div');
-            detail.className = 'small text-muted';
+            detail.className = 'ow-small ow-muted';
             detail.textContent = item.customer_name + (item.detail ? ' · ' + item.detail : '');
             copy.append(title, detail);
 
             const meta = document.createElement('div');
-            meta.className = 'text-end flex-shrink-0';
+            meta.className = 'ow-right ow-fixed';
             if (item.on_my_team === true) {
                 const team = document.createElement('span');
-                team.className = 'badge bg-primary me-1';
-                team.innerHTML = '<i class="bi bi-people-fill me-1"></i>On your team';
+                team.className = 'ow-tag is-engagement';
+                team.innerHTML = '<i class="bi bi-people-fill"></i> On your team';
                 meta.appendChild(team);
             }
             const badge = document.createElement('span');
-            badge.className = 'badge ' + statusBadgeClass(item.status);
+            badge.className = 'ow-tag ow-status ' + statusBadgeClass(item.status);
             badge.textContent = item.status;
             meta.appendChild(badge);
             if (item.acr) {
                 const acr = document.createElement('div');
-                acr.className = 'small text-success mt-1';
+                acr.className = 'ow-small ow-success';
                 acr.textContent = '$' + Number(item.acr).toLocaleString() + '/mo';
                 meta.appendChild(acr);
             }
@@ -893,35 +831,42 @@
         });
     }
 
+    let candidateRequest = 0;
     function loadCandidates() {
+        const requestId = ++candidateRequest;
         const container = document.getElementById('agendaCandidates');
         const error = document.getElementById('candidateError');
-        error.classList.add('d-none');
-        container.innerHTML = '<div class="text-center text-muted py-5"><span class="spinner-border spinner-border-sm me-2"></span>Loading...</div>';
+        error.classList.add('ow-hidden');
+        container.innerHTML = '<div class="ow-empty">Loading...</div>';
         const query = encodeURIComponent(document.getElementById('agendaCandidateSearch').value.trim());
         fetch('/api/one-on-one/' + workspaceId + '/candidates?type=' + activeType + '&q=' + query)
             .then(function(response) {
                 if (!response.ok) throw new Error('Could not load agenda choices');
                 return response.json();
             })
-            .then(function(data) { renderCandidates(data.results); })
+            .then(function(data) {
+                if (requestId === candidateRequest && workspaceRoot.isConnected) renderCandidates(data.results);
+            })
             .catch(function(errorValue) {
+                if (requestId !== candidateRequest || !workspaceRoot.isConnected) return;
                 container.replaceChildren();
                 error.textContent = errorValue.message;
-                error.classList.remove('d-none');
+                error.classList.remove('ow-hidden');
             });
     }
 
-    function addCandidate(entityId, button) {
+    async function addCandidate(entityId, button) {
+        const itemType = activeType;
+        try { await flushEdits(); } catch { return; }
         button.disabled = true;
         fetch('/api/one-on-one/' + workspaceId + '/agenda', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({item_type: activeType, entity_id: entityId}),
+            body: JSON.stringify({item_type: itemType, entity_id: entityId}),
         })
         .then(function(response) {
             if (!response.ok) throw new Error('Could not add item');
-            window.location.reload();
+            return reloadWorkspace();
         })
         .catch(function() {
             button.disabled = false;
@@ -933,8 +878,8 @@
         button.addEventListener('click', function() {
             activeType = button.dataset.itemType;
             document.querySelectorAll('.agenda-type-button').forEach(function(other) {
-                other.classList.toggle('btn-primary', other === button);
-                other.classList.toggle('btn-outline-primary', other !== button);
+                other.classList.toggle('is-primary', other === button);
+                other.setAttribute('aria-pressed', String(other === button));
             });
             loadCandidates();
         });
@@ -943,6 +888,6 @@
         clearTimeout(searchTimer);
         searchTimer = setTimeout(loadCandidates, 250);
     });
-    document.getElementById('addAgendaModal').addEventListener('show.bs.modal', loadCandidates);
+    document.getElementById('addAgendaModal').addEventListener('sb:dialog-opening', loadCandidates);
 })();
 </script>

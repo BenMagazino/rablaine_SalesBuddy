@@ -221,11 +221,13 @@ def test_project_detail_and_standalone_share_complete_content(client, projects):
     assert fragment.status_code == page.status_code == 200
     content = BeautifulSoup(fragment.data, 'html.parser')
     standalone = BeautifulSoup(page.data, 'html.parser')
-    for selector in ['h1', '.breadcrumb', '#addTaskForm', '#actionItemDetailModal']:
+    for selector in ['h1', '#addTaskForm', '#actionItemDetailModal']:
         assert str(content.select_one(selector)) == str(standalone.select_one(selector))
+    assert not content.select('.sb-context-bar, .breadcrumb')
+    assert len(standalone.select('.sb-context-bar')) == 1
     assert b'Review exam topics' in fragment.data
     assert b'Prepare for a certification' in fragment.data
-    assert b'addProjectTask' in fragment.data
-    assert b'parentModal' in fragment.data
+    assert b'SBProjectDetail.mount' in fragment.data
+    assert content.select_one('[data-project-parent="managerWorkModal"]')
     assert content.select_one('html') is None
     assert client.get('/api/project/999999/detail').status_code == 404

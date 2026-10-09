@@ -1,89 +1,29 @@
-<style>
-    .milestone-coverage-toolbar { border-block: 1px solid var(--bs-border-color); }
-    .milestone-coverage-list { border-top: 1px solid var(--bs-border-color); }
-    .milestone-coverage-columns {
-        display: grid;
-        grid-template-columns: 1.1rem minmax(9rem, 1fr) minmax(11rem, 1.25fr) minmax(14rem, 1.7fr) 7rem 9rem 10rem 3rem;
-        align-items: center;
-        gap: 0.7rem;
-        padding-inline: 0.6rem;
-    }
-    .milestone-coverage-heading {
-        min-height: 2.1rem;
-        border-bottom: 1px solid var(--bs-border-color);
-        color: var(--bs-secondary-color);
-        font-size: 0.72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-    .milestone-coverage-row { border-bottom: 1px solid var(--bs-border-color); }
-    .milestone-coverage-summary { min-height: 3.25rem; padding-block: 0.45rem; cursor: pointer; }
-    .milestone-coverage-summary:hover { background: var(--bs-tertiary-bg); }
-    .milestone-coverage-chevron { transition: transform 160ms ease-out; }
-    .milestone-coverage-row.is-expanded .milestone-coverage-chevron { transform: rotate(90deg); }
-    .milestone-coverage-cell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; }
-    .milestone-coverage-title { font-size: 0.88rem; font-weight: 600; }
-    .milestone-coverage-detail {
-        display: none;
-        padding: 0.9rem 0.75rem 1rem 2.4rem;
-        background: color-mix(in srgb, var(--bs-tertiary-bg) 55%, transparent);
-    }
-    .milestone-coverage-row.is-expanded .milestone-coverage-detail { display: block; }
-    .milestone-coverage-fields {
-        display: grid;
-        grid-template-columns: minmax(16rem, 1fr) 13rem 8rem 13rem;
-        gap: 0.65rem;
-    }
-    .milestone-hva-description { min-height: 5rem; resize: vertical; }
-    .prepared-meeting-list { border-top: 1px solid var(--bs-border-color); }
-    .prepared-meeting-task {
-        display: grid;
-        grid-template-columns: 8rem minmax(12rem, 0.9fr) minmax(14rem, 1.3fr) 13rem 7rem 10.5rem;
-        gap: 0.75rem;
-        align-items: start;
-        padding: 0.7rem 0;
-        border-bottom: 1px solid var(--bs-border-color);
-    }
-    .prepared-meeting-context, .prepared-activity-draft { min-width: 0; }
-    .prepared-meeting-context strong {
-        display: block;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .prepared-activity-description {
-        grid-column: 3 / 6;
-    }
-    .prepared-activity-description textarea { min-height: 4.25rem; resize: vertical; }
-    .prepared-task-actions { display: grid; gap: 0.4rem; }
-    .prepared-meeting-task .form-label { margin-bottom: 0.2rem; }
-    .prepared-meeting-task .form-control,
-    .prepared-meeting-task .form-select { font-size: 0.82rem; }
-</style>
 
-<div class="milestone-coverage-toolbar py-2 mb-2">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div class="d-flex align-items-center gap-3 small">
-            <div class="form-check form-switch mb-0">
-                <input class="form-check-input milestone-view-filter" id="showCoveredMilestones" type="checkbox" data-param="covered" {% if include_covered %}checked{% endif %}>
-                <label class="form-check-label" for="showCoveredMilestones">Show covered</label>
+<div class="milestone-coverage-toolbar" data-sb-page-band>
+    <div class="coverage-inline is-wrap is-spread">
+        <div class="coverage-inline is-loose coverage-caption-text">
+            <div class="coverage-choice">
+                <input class="coverage-checkbox milestone-view-filter" id="showCoveredMilestones" type="checkbox" data-param="covered" {% if include_covered %}checked{% endif %}>
+                <label  for="showCoveredMilestones">Show covered</label>
             </div>
-            <div class="form-check form-switch mb-0">
-                <input class="form-check-input milestone-view-filter" id="showInactiveMilestones" type="checkbox" data-param="inactive" {% if include_inactive %}checked{% endif %}>
-                <label class="form-check-label" for="showInactiveMilestones">Show inactive</label>
+            <div class="coverage-choice">
+                <input class="coverage-checkbox milestone-view-filter" id="showInactiveMilestones" type="checkbox" data-param="inactive" {% if include_inactive %}checked{% endif %}>
+                <label  for="showInactiveMilestones">Show inactive</label>
             </div>
         </div>
-        <button class="btn btn-sm btn-outline-secondary" id="milestoneRefreshButton" {% if reconciliation.running %}disabled{% endif %} title="Refresh MSX activities before recalculating milestone HVA coverage">
-            <span class="spinner-border spinner-border-sm{% if not reconciliation.running %} d-none{% endif %}" id="milestoneRefreshSpinner" aria-hidden="true"></span>
-            <i class="bi bi-arrow-repeat{% if reconciliation.running %} d-none{% endif %}" id="milestoneRefreshIcon"></i>
+        <button class="coverage-command" id="milestoneRefreshButton" {% if reconciliation.running %}disabled{% endif %} title="Refresh MSX activities before recalculating milestone HVA coverage">
+            <span class="coverage-spinner {% if not reconciliation.running %} is-hidden{% endif %}" id="milestoneRefreshSpinner" aria-hidden="true"></span>
+            <i class="bi bi-arrow-repeat{% if reconciliation.running %} is-hidden{% endif %}" id="milestoneRefreshIcon"></i>
             <span id="milestoneRefreshLabel">{% if reconciliation.running %}Refreshing MSX{% else %}Refresh MSX Activities{% endif %}</span>
         </button>
     </div>
-    <div class="small mt-1 {% if reconciliation.error %}text-danger{% else %}text-muted{% endif %}{% if not reconciliation.running and not reconciliation.error %} d-none{% endif %}" id="milestoneRefreshStatus">
+    <div class="coverage-caption-text coverage-caption {% if reconciliation.error %}is-danger{% else %}coverage-muted{% endif %}{% if not reconciliation.running and not reconciliation.error %} is-hidden{% endif %}" id="milestoneRefreshStatus">
         {% if reconciliation.error %}{{ reconciliation.error }}{% elif reconciliation.running %}Syncing activities from MSX...{% endif %}
     </div>
 </div>
 
+<div id="activityCoverageReading" class="coverage-reading" data-sb-page-body
+     role="region" aria-label="Fiscal-year milestone HVA audit" tabindex="0">
 <div class="milestone-coverage-list" id="milestoneCoverageList">
     <div class="milestone-coverage-heading milestone-coverage-columns" aria-hidden="true">
         <span></span>
@@ -97,25 +37,25 @@
     </div>
     {% for row in milestone_rows %}
     {% set milestone = row.milestone %}
-    <section class="milestone-coverage-row" id="milestone-coverage-{{ milestone.id }}" data-milestone-id="{{ milestone.id }}">
+    <section class="milestone-coverage-row" id="milestone-coverage-{{ milestone.id }}" data-milestone-id="{{ milestone.id }}" data-coverage-history-key="milestone:{{ milestone.id }}">
         <div class="milestone-coverage-summary milestone-coverage-columns" role="button" tabindex="0" aria-expanded="false" aria-controls="milestone-coverage-detail-{{ milestone.id }}">
-            <i class="bi bi-chevron-right milestone-coverage-chevron text-muted small"></i>
+            <i class="bi bi-chevron-right milestone-coverage-chevron coverage-muted coverage-caption-text"></i>
             <div class="milestone-coverage-cell" title="{{ milestone.customer.name if milestone.customer else 'No customer' }}">
-                {% if milestone.customer %}<i class="bi bi-building me-1"></i>{{ milestone.customer.name }}{% else %}<span class="text-warning">No customer</span>{% endif %}
+                {% if milestone.customer %}<i class="bi bi-building"></i>{{ milestone.customer.name }}{% else %}<span class="is-warning">No customer</span>{% endif %}
             </div>
-            <div class="milestone-coverage-cell text-muted" title="{{ milestone.opportunity.name if milestone.opportunity else (milestone.opportunity_name or '') }}">
+            <div class="milestone-coverage-cell coverage-muted" title="{{ milestone.opportunity.name if milestone.opportunity else (milestone.opportunity_name or '') }}">
                 {{ milestone.opportunity.name if milestone.opportunity else (milestone.opportunity_name or 'No opportunity') }}
             </div>
             <div class="milestone-coverage-cell milestone-coverage-title" title="{{ milestone.display_text }}">
                 {{ milestone.display_text }}
-                {% if not milestone.is_active %}<span class="badge bg-secondary ms-1">{{ milestone.msx_status or 'Inactive' }}</span>{% endif %}
+                {% if not milestone.is_active %}<span class="coverage-tag coverage-muted">{{ milestone.msx_status or 'Inactive' }}</span>{% endif %}
             </div>
-            <div class="milestone-coverage-cell text-muted">
+            <div class="milestone-coverage-cell coverage-muted">
                 {% if milestone.due_date %}{{ milestone.due_date.strftime('%b %d, %Y') }}{% else %}No date{% endif %}
             </div>
             <div class="milestone-coverage-cell milestone-hva-coverage">
                 {% if row.meeting_draft_count %}
-                <a href="{{ url_for('reports.report_activity_coverage', view='all', milestone=milestone.id) }}" class="text-decoration-none" onclick="event.stopPropagation();" title="Open unlogged meeting drafts targeting this milestone">
+                <a href="{{ url_for('reports.report_activity_coverage', view='all', milestone=milestone.id) }}"  onclick="event.stopPropagation();" title="Open unlogged meeting drafts targeting this milestone">
                     {% if row.prepared_meeting_count == row.meeting_draft_count %}
                     {{ row.meeting_draft_count }} prepared meeting{% if row.meeting_draft_count != 1 %}s{% endif %}
                     {% elif row.prepared_meeting_count %}
@@ -124,68 +64,68 @@
                     {{ row.meeting_draft_count }} meeting draft{% if row.meeting_draft_count != 1 %}s{% endif %}
                     {% endif %}
                 </a>
-                {% else %}<span class="text-muted">None</span>{% endif %}
+                {% else %}<span class="coverage-muted">None</span>{% endif %}
             </div>
             <div class="milestone-coverage-cell">
                 {% if row.covered %}
-                <span class="badge bg-success">Covered {{ fiscal_year_label }}</span>
+                <span class="coverage-tag is-success">Covered {{ fiscal_year_label }}</span>
                 {% elif row.prior_task %}
-                <span class="badge bg-warning text-dark">HVA in FY{{ '%02d'|format(row.prior_fiscal_year) }}</span>
+                <span class="coverage-tag is-warning">HVA in FY{{ '%02d'|format(row.prior_fiscal_year) }}</span>
                 {% else %}
-                <span class="text-warning"><i class="bi bi-exclamation-circle"></i> No HVA activity</span>
+                <span class="is-warning"><i class="bi bi-exclamation-circle"></i> No HVA activity</span>
                 {% endif %}
             </div>
-            <div class="d-flex justify-content-end milestone-hva-actions" onclick="event.stopPropagation();">
+            <div class="coverage-inline is-end milestone-hva-actions" onclick="event.stopPropagation();">
                 {% if row.current_task and row.current_task.msx_task_url %}
-                <a class="btn btn-sm btn-outline-success" href="{{ row.current_task.msx_task_url }}" target="_blank" rel="noopener" title="Open HVA activity in MSX"><i class="bi bi-box-arrow-up-right"></i></a>
+                <a class="coverage-command is-success" href="{{ row.current_task.msx_task_url }}" target="_blank" rel="noopener" title="Open HVA activity in MSX"><i class="bi bi-box-arrow-up-right"></i></a>
                 {% endif %}
             </div>
         </div>
         <div class="milestone-coverage-detail" id="milestone-coverage-detail-{{ milestone.id }}">
             {% if row.prepared_meetings %}
-            <div class="mb-4">
-                <div class="d-flex align-items-baseline gap-2 mb-1">
+            <div class="coverage-section-gap">
+                <div class="coverage-inline is-baseline">
                     <strong>Prepared meeting activities</strong>
-                    <span class="text-muted small">{{ row.prepared_meetings|length }}</span>
+                    <span class="coverage-muted coverage-caption-text">{{ row.prepared_meetings|length }}</span>
                 </div>
                 <div class="prepared-meeting-list">
                     {% for prepared in row.prepared_meetings %}
                     <form class="prepared-meeting-task prepared-meeting-form" data-meeting-id="{{ prepared.id }}">
                         <input type="hidden" name="customer_id" value="{{ prepared.customer_id }}">
                         <input type="hidden" name="milestone_id" value="{{ prepared.milestone_id }}">
-                        <div class="small">
-                            <div class="fw-semibold">{{ prepared.meeting_date.strftime('%a %b %d') }}</div>
-                            <div class="text-muted local-datetime" data-utc="{{ prepared.start_time.strftime('%Y-%m-%dT%H:%M:%SZ') }}" data-fmt="time"></div>
+                        <div class="coverage-caption-text">
+                            <div class="is-strong">{{ prepared.meeting_date.strftime('%a %b %d') }}</div>
+                            <div class="coverage-muted local-datetime" data-utc="{{ prepared.start_time.strftime('%Y-%m-%dT%H:%M:%SZ') }}" data-fmt="time"></div>
                         </div>
                         <div class="prepared-meeting-context">
-                            <span class="text-muted small">Meeting</span>
+                            <span class="coverage-muted coverage-caption-text">Meeting</span>
                             <strong title="{{ prepared.meeting_subject }}">{{ prepared.meeting_subject }}</strong>
                         </div>
                         <div class="prepared-activity-draft">
-                            <label class="form-label small text-muted" for="prepared-subject-{{ prepared.id }}">Activity subject</label>
-                            <input class="form-control" id="prepared-subject-{{ prepared.id }}" name="subject" maxlength="500" value="{{ prepared.activity_subject }}" required>
+                            <label class="coverage-label coverage-caption-text coverage-muted" for="prepared-subject-{{ prepared.id }}">Activity subject</label>
+                            <input class="coverage-input" id="prepared-subject-{{ prepared.id }}" name="subject" maxlength="500" value="{{ prepared.activity_subject }}" required>
                         </div>
                         <div>
-                            <label class="form-label small text-muted" for="prepared-category-{{ prepared.id }}">Activity type</label>
-                            <select class="form-select" id="prepared-category-{{ prepared.id }}" name="task_category">
+                            <label class="coverage-label coverage-caption-text coverage-muted" for="prepared-category-{{ prepared.id }}">Activity type</label>
+                            <select class="coverage-select" id="prepared-category-{{ prepared.id }}" name="task_category">
                                 {% for category in task_categories %}
                                 <option value="{{ category.value }}" {% if category.value == prepared.task_category %}selected{% endif %}>{% if category.is_hva %}★ {% endif %}{{ category.label }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div>
-                            <label class="form-label small text-muted" for="prepared-duration-{{ prepared.id }}">Minutes</label>
-                            <input class="form-control" id="prepared-duration-{{ prepared.id }}" name="duration_minutes" type="number" min="1" max="1440" value="{{ prepared.duration_minutes }}" required>
+                            <label class="coverage-label coverage-caption-text coverage-muted" for="prepared-duration-{{ prepared.id }}">Minutes</label>
+                            <input class="coverage-input" id="prepared-duration-{{ prepared.id }}" name="duration_minutes" type="number" min="1" max="1440" value="{{ prepared.duration_minutes }}" required>
                         </div>
                         <div class="prepared-task-actions">
-                            <button class="btn btn-sm btn-outline-secondary save-prepared-meeting-draft" type="button" title="Save edits without creating an MSX activity"><i class="bi bi-floppy"></i> Save Draft</button>
-                            <button class="btn btn-sm btn-success create-prepared-meeting-activity" type="button" title="Save edits and create this meeting activity in MSX">
+                            <button class="coverage-command save-prepared-meeting-draft" type="button" title="Save edits without creating an MSX activity"><i class="bi bi-floppy"></i> Save Draft</button>
+                            <button class="coverage-command is-primary create-prepared-meeting-activity" type="button" title="Save edits and create this meeting activity in MSX">
                                 <i class="bi bi-plus-circle"></i> Create Activity
                             </button>
                         </div>
                         <div class="prepared-activity-description">
-                            <label class="form-label small text-muted" for="prepared-description-{{ prepared.id }}">Description</label>
-                            <textarea class="form-control" id="prepared-description-{{ prepared.id }}" name="description">{{ prepared.description }}</textarea>
+                            <label class="coverage-label coverage-caption-text coverage-muted" for="prepared-description-{{ prepared.id }}">Description</label>
+                            <textarea class="coverage-input" id="prepared-description-{{ prepared.id }}" name="description">{{ prepared.description }}</textarea>
                         </div>
                     </form>
                     {% endfor %}
@@ -193,68 +133,69 @@
             </div>
             {% endif %}
             {% if row.covered %}
-            <div class="d-flex flex-wrap align-items-center gap-2 py-1">
-                <i class="bi bi-check-circle-fill text-success"></i>
+            <div class="coverage-inline is-wrap coverage-section-compact">
+                <i class="bi bi-check-circle-fill is-success"></i>
                 <strong>{{ row.current_task.subject }}</strong>
-                <span class="badge bg-secondary">{{ row.current_task.task_category_name }}</span>
-                <span class="text-muted small">{{ row.current_task.due_date.strftime('%b %d, %Y') if row.current_task.due_date else 'Date unavailable' }}</span>
+                <span class="coverage-tag coverage-muted">{{ row.current_task.task_category_name }}</span>
+                <span class="coverage-muted coverage-caption-text">{{ row.current_task.due_date.strftime('%b %d, %Y') if row.current_task.due_date else 'Date unavailable' }}</span>
             </div>
             {% else %}
             {% if row.prepared_meetings %}
-            <div class="d-flex align-items-center gap-2 mb-3 text-muted small">
-                <span class="flex-grow-1 border-top"></span>
+            <div class="coverage-inline coverage-section-end coverage-muted coverage-caption-text">
+                <span class="is-growing coverage-divider"></span>
                 <span>Or create a standalone HVA activity</span>
-                <span class="flex-grow-1 border-top"></span>
+                <span class="is-growing coverage-divider"></span>
             </div>
             {% endif %}
             {% if row.prior_task %}
-            <div class="small text-muted mb-3">
+            <div class="coverage-caption-text coverage-muted coverage-section-end">
                 <i class="bi bi-clock-history"></i> Prior HVA: <strong>{{ row.prior_task.subject }}</strong> · {{ row.prior_task.task_category_name }} · {{ row.prior_task.due_date.strftime('%b %d, %Y') if row.prior_task.due_date else 'date unavailable' }}
             </div>
             {% endif %}
             <form class="milestone-hva-form" data-id="{{ milestone.id }}">
-                <div class="milestone-coverage-fields mb-3">
+                <div class="milestone-coverage-fields coverage-section-end">
                     <div>
-                        <label class="form-label small" for="milestone-hva-subject-{{ milestone.id }}">Activity subject</label>
-                        <input class="form-control" id="milestone-hva-subject-{{ milestone.id }}" name="subject" maxlength="500" value="{{ row.draft.subject }}" required>
+                        <label class="coverage-label coverage-caption-text" for="milestone-hva-subject-{{ milestone.id }}">Activity subject</label>
+                        <input class="coverage-input" id="milestone-hva-subject-{{ milestone.id }}" name="subject" maxlength="500" value="{{ row.draft.subject }}" required>
                     </div>
                     <div>
-                        <label class="form-label small" for="milestone-hva-category-{{ milestone.id }}">HVA activity type</label>
-                        <select class="form-select" id="milestone-hva-category-{{ milestone.id }}" name="task_category">
+                        <label class="coverage-label coverage-caption-text" for="milestone-hva-category-{{ milestone.id }}">HVA activity type</label>
+                        <select class="coverage-select" id="milestone-hva-category-{{ milestone.id }}" name="task_category">
                             {% for category in hva_task_categories %}
                             <option value="{{ category.value }}" {% if category.value == row.draft.task_category %}selected{% endif %}>★ {{ category.label }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div>
-                        <label class="form-label small" for="milestone-hva-duration-{{ milestone.id }}">Minutes</label>
-                        <input class="form-control" id="milestone-hva-duration-{{ milestone.id }}" name="duration_minutes" type="number" min="1" max="1440" value="{{ row.draft.duration_minutes }}" required>
+                        <label class="coverage-label coverage-caption-text" for="milestone-hva-duration-{{ milestone.id }}">Minutes</label>
+                        <input class="coverage-input" id="milestone-hva-duration-{{ milestone.id }}" name="duration_minutes" type="number" min="1" max="1440" value="{{ row.draft.duration_minutes }}" required>
                     </div>
                     <div>
-                        <label class="form-label small" for="milestone-hva-date-{{ milestone.id }}">Work date and time</label>
-                        <input class="form-control milestone-hva-date" id="milestone-hva-date-{{ milestone.id }}" name="scheduled_start" type="datetime-local" data-utc="{{ row.draft.scheduled_start.strftime('%Y-%m-%dT%H:%M:%SZ') }}" max="{{ today.isoformat() }}T23:59" required>
+                        <label class="coverage-label coverage-caption-text" for="milestone-hva-date-{{ milestone.id }}">Work date and time</label>
+                        <input class="coverage-input milestone-hva-date" id="milestone-hva-date-{{ milestone.id }}" name="scheduled_start" type="datetime-local" data-utc="{{ row.draft.scheduled_start.strftime('%Y-%m-%dT%H:%M:%SZ') }}" max="{{ today.isoformat() }}T23:59" required>
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label small" for="milestone-hva-description-{{ milestone.id }}">Hands-on work performed</label>
-                    <textarea class="form-control milestone-hva-description" id="milestone-hva-description-{{ milestone.id }}" name="description" placeholder="Describe the architecture, prototype, workshop, demo, or technical work completed." required>{{ row.draft.description }}</textarea>
+                <div class="coverage-section-end">
+                    <label class="coverage-label coverage-caption-text" for="milestone-hva-description-{{ milestone.id }}">Hands-on work performed</label>
+                    <textarea class="coverage-input milestone-hva-description" id="milestone-hva-description-{{ milestone.id }}" name="description" placeholder="Describe the architecture, prototype, workshop, demo, or technical work completed." required>{{ row.draft.description }}</textarea>
                 </div>
-                <div class="d-flex justify-content-end gap-2">
-                    <button class="btn btn-outline-secondary save-milestone-hva" type="button"><i class="bi bi-floppy"></i> Save Draft</button>
-                    <button class="btn btn-success create-milestone-hva" type="button"><i class="bi bi-plus-circle"></i> Create HVA Task</button>
+                <div class="coverage-inline is-end">
+                    <button class="coverage-command save-milestone-hva" type="button"><i class="bi bi-floppy"></i> Save Draft</button>
+                    <button class="coverage-command is-primary create-milestone-hva" type="button"><i class="bi bi-plus-circle"></i> Create HVA Task</button>
                 </div>
             </form>
             {% endif %}
         </div>
     </section>
     {% else %}
-    <div class="text-center py-5">
-        <i class="bi bi-check2-circle fs-2 text-success"></i>
-        <div class="mt-2 text-muted">No milestones match these coverage filters.</div>
+    <div class="coverage-empty">
+        <i class="bi bi-check2-circle is-success"></i>
+        <div class="coverage-subsection coverage-muted">No milestones match these coverage filters.</div>
     </div>
     {% endfor %}
 </div>
 
+</div>
 <script>
 (function() {
     'use strict';
@@ -290,6 +231,7 @@
         }
         summary.addEventListener('click', toggle);
         summary.addEventListener('keydown', function(event) {
+            if (event.target !== summary) return;
             if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 toggle();
@@ -330,12 +272,12 @@
             return;
         }
 
-        row.querySelector('.milestone-hva-coverage').innerHTML = '<span class="badge bg-success">Covered {{ fiscal_year_label }}</span>';
+        row.querySelector('.milestone-hva-coverage').innerHTML = '<span class="coverage-tag is-success">Covered {{ fiscal_year_label }}</span>';
         var actions = row.querySelector('.milestone-hva-actions');
         actions.replaceChildren();
         if (task.task_url) {
             var link = document.createElement('a');
-            link.className = 'btn btn-sm btn-outline-success';
+            link.className = 'coverage-command  is-success';
             link.href = task.task_url;
             link.target = '_blank';
             link.rel = 'noopener';
@@ -345,20 +287,20 @@
             actions.appendChild(link);
         }
         var detail = row.querySelector('.milestone-coverage-detail');
-        detail.innerHTML = '<div class="d-flex flex-wrap align-items-center gap-2 py-1"><i class="bi bi-check-circle-fill text-success"></i></div>';
+        detail.innerHTML = '<div class="coverage-inline is-wrap coverage-section-compact"><i class="bi bi-check-circle-fill is-success"></i></div>';
         var activity = detail.firstElementChild;
         var subject = document.createElement('strong');
         subject.textContent = task.subject;
         activity.appendChild(subject);
         if (task.category) {
             var category = document.createElement('span');
-            category.className = 'badge bg-secondary';
+            category.className = 'coverage-tag coverage-muted';
             category.textContent = task.category;
             activity.appendChild(category);
         }
         if (task.due_date) {
             var dueDate = document.createElement('span');
-            dueDate.className = 'text-muted small';
+            dueDate.className = 'coverage-muted coverage-caption-text';
             dueDate.textContent = new Date(task.due_date + 'T00:00:00').toLocaleDateString(
                 undefined, { month: 'short', day: '2-digit', year: 'numeric' }
             );
@@ -422,7 +364,7 @@
         var meetingId = form.dataset.meetingId;
         buttons.forEach(function(button) { button.disabled = true; });
         if (createAfter) {
-            createButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating';
+            createButton.innerHTML = '<span class="coverage-spinner"></span> Creating';
         }
         return requestJson('/api/reports/activity-coverage/meetings/' + meetingId, {
             method: 'PATCH',
@@ -472,8 +414,8 @@
     function pollRefresh() {
         requestJson('/api/reports/activity-coverage/reconcile-status').then(function(data) {
             if (data.running) {
-                refreshStatus.classList.remove('d-none', 'text-danger');
-                refreshStatus.classList.add('text-muted');
+                refreshStatus.classList.remove('is-hidden', 'is-danger');
+                refreshStatus.classList.add('coverage-muted');
                 refreshStatus.textContent = data.phase === 'syncing'
                     ? 'Syncing activities from MSX...'
                     : 'Reconciling activities with meetings...';
@@ -482,27 +424,27 @@
             window.clearInterval(refreshTimer);
             if (data.error) {
                 refreshButton.disabled = false;
-                refreshSpinner.classList.add('d-none');
-                refreshIcon.classList.remove('d-none');
+                refreshSpinner.classList.add('is-hidden');
+                refreshIcon.classList.remove('is-hidden');
                 refreshLabel.textContent = 'Retry MSX Refresh';
-                refreshStatus.classList.remove('d-none', 'text-muted');
-                refreshStatus.classList.add('text-danger');
+                refreshStatus.classList.remove('is-hidden', 'coverage-muted');
+                refreshStatus.classList.add('is-danger');
                 refreshStatus.textContent = data.error;
             } else {
                 window.location.reload();
             }
         }).catch(function(error) {
             window.clearInterval(refreshTimer);
-            refreshStatus.classList.remove('d-none', 'text-muted');
-            refreshStatus.classList.add('text-danger');
+            refreshStatus.classList.remove('is-hidden', 'coverage-muted');
+            refreshStatus.classList.add('is-danger');
             refreshStatus.textContent = error.message;
         });
     }
 
     refreshButton.addEventListener('click', function() {
         refreshButton.disabled = true;
-        refreshSpinner.classList.remove('d-none');
-        refreshIcon.classList.add('d-none');
+        refreshSpinner.classList.remove('is-hidden');
+        refreshIcon.classList.add('is-hidden');
         refreshLabel.textContent = 'Refreshing MSX';
         requestJson('/api/reports/activity-coverage/reconcile', {
             method: 'POST',
@@ -512,10 +454,10 @@
             pollRefresh();
         }).catch(function(error) {
             refreshButton.disabled = false;
-            refreshSpinner.classList.add('d-none');
-            refreshIcon.classList.remove('d-none');
+            refreshSpinner.classList.add('is-hidden');
+            refreshIcon.classList.remove('is-hidden');
             refreshLabel.textContent = 'Retry MSX Refresh';
-            refreshStatus.classList.remove('d-none');
+            refreshStatus.classList.remove('is-hidden');
             refreshStatus.textContent = error.message;
         });
     });

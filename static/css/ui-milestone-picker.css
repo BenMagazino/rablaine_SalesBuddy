@@ -1,0 +1,17 @@
+.sb-hygiene-picker { margin-top: 16px; font-size: 13px; }
+.sb-hygiene-picker [data-milestone-picker-results] { margin-top: 4px; border: 1px solid var(--sb-ui-control-line); max-height: 240px; overflow: auto; background: var(--sb-ui-context); }
+.sb-hygiene-picker [data-milestone-picker-help], .sb-ms-detail, .sb-ms-empty { color: var(--sb-ui-muted); font-size: 12px; }
+.sb-ms-option { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-bottom: 1px solid var(--sb-ui-grid-line); background: transparent; color: var(--sb-ui-ink); font: inherit; cursor: pointer; }
+.sb-ms-option.active, .sb-ms-option:hover { background: var(--sb-ui-selection); }
+.sb-ms-title { font-weight: 600; overflow-wrap: anywhere; }
+.sb-ms-detail { display: block; margin-top: 3px; overflow-wrap: anywhere; }
+.sb-ms-status { display: inline-block; font-size: 11px; font-weight: 400; margin-left: 8px; padding: 0 4px; border: 1px solid var(--sb-ui-control-line); color: var(--sb-ui-muted); }
+.sb-ms-status[data-status="On Track"], .sb-ms-check { color: var(--sb-ui-milestone-rail); }
+.sb-ms-status[data-status="At Risk"] { color: var(--sb-ui-warning); }
+.sb-ms-status[data-status="Blocked"] { color: var(--sb-ui-danger); }
+.sb-ms-empty { padding: 10px; }
+.sb-ms-selected { border-bottom: 1px solid var(--sb-ui-grid-line); }
+.sb-ms-selected-body { display: flex; align-items: start; justify-content: space-between; gap: 16px; padding: 10px 0; }
+.sb-ms-check { margin-right: 6px; }
+.sb-ms-remove { flex-shrink: 0; border: 0; background: transparent; color: var(--sb-ui-danger); font: inherit; padding: 4px; cursor: pointer; }
+.sb-ms-remove:hover { background: var(--sb-ui-raised); }

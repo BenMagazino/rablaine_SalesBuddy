@@ -1,302 +1,150 @@
 {% extends "base.html" %}
 {% block title %}{{ customer_name }} - Revenue History - Sales Buddy{% endblock %}
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-customer.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="View status">
+    <span data-sb-customer-revenue-status role="status" aria-live="polite" aria-atomic="true">{{ revenue_by_bucket|length }} history buckets loaded, {{ analyses|length }} analyses</span>
+    <span>Totals include all buckets and all imported months</span>
+</footer>
+{% endif %}
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    {% if customer %}
-                    <li class="breadcrumb-item"><a href="{{ url_for('customers.customer_view', id=customer.id) }}">{{ customer_name }}</a></li>
-                    {% else %}
-                    <li class="breadcrumb-item">{{ customer_name }}</li>
-                    {% endif %}
-                    <li class="breadcrumb-item active">Revenue</li>
-                </ol>
-            </nav>
-            <h1>
-                <i class="bi bi-building"></i> {{ customer_name }}
-            </h1>
-        </div>
-        <div class="col-auto d-flex align-items-end">
+{% from 'partials/_revenue_cells.html' import revenue_cell %}
+{% set sections = namespace(buckets=[]) %}
+{% for bucket in revenue_by_bucket %}{% set sections.buckets = sections.buckets + [bucket] %}{% endfor %}
+{% for a in analyses %}{% if a.bucket not in sections.buckets %}{% set sections.buckets = sections.buckets + [a.bucket] %}{% endif %}{% endfor %}
+<div class="sb-revenue-workspace sb-revenue-customer{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-revenue-page="customer"
+     data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
+    <header class="sb-revenue-page-header" data-sb-page-band>
+        <h1><i class="bi bi-building" aria-hidden="true"></i> {{ customer_name }}</h1>
+        <div class="sb-revenue-command-group">
+            <a href="{{ url_for('customers.customer_view', id=customer.id) }}" class="sb-revenue-command">Customer Hub</a>
             <span id="bucketFilterContainer"></span>
         </div>
-    </div>
-
-    <!-- Analysis Cards by Bucket -->
-    {% if analyses %}
-    {% from 'partials/review_action.html' import review_badge, action_buttons, previous_review_hint %}
-    <div class="row mb-4">
-        {% for a in analyses %}
-        <div class="col-md-4" data-bucket="{{ a.bucket }}">
-            <div class="card {% if a.category == 'DECLINING' %}border-danger{% elif a.category == 'EXPANSION_OPPORTUNITY' %}border-success{% elif a.category == 'RECENT_DIP' %}border-warning{% endif %}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0"><a href="#bucket-{{ a.bucket | lower | replace(' ', '-') | replace('/', '') | replace(':', '') }}" class="text-decoration-none text-reset">{{ a.bucket }} <i class="bi bi-arrow-down-short text-muted" style="font-size: 0.75em;"></i></a></h6>
-                    {% if a.category == 'DECLINING' %}
-                    <span class="badge bg-danger">Declining</span>
-                    {% elif a.category == 'RECENT_DIP' %}
-                    <span class="badge bg-warning text-dark">Recent Dip</span>
-                    {% elif a.category == 'EXPANSION_OPPORTUNITY' %}
-                    <span class="badge bg-success">Expansion</span>
-                    {% elif a.category == 'VOLATILE' %}
-                    <span class="badge bg-secondary">Volatile</span>
-                    {% elif a.category == 'HEALTHY' %}
-                    <span class="badge bg-light text-dark">Healthy</span>
-                    {% elif a.category == 'NEW_CUSTOMER' %}
-                    <span class="badge bg-info">New Customer</span>
-                    {% elif a.category == 'CHURNED' %}
-                    <span class="badge bg-dark">Inactive</span>
-                    {% else %}
-                    <span class="badge bg-info">{{ a.category|replace('_', ' ')|title }}</span>
-                    {% endif %}
+    </header>
+    <p class="sb-revenue-customer-view-notice" data-sb-customer-view-notice role="alert" hidden></p>
+    <div class="sb-revenue-customer-scroll" data-sb-page-body tabindex="0"
+         role="region" aria-label="Customer revenue analysis and history">
+        <aside class="sb-revenue-customer-context" tabindex="0" aria-label="Selected bucket context">
+            <nav class="sb-revenue-customer-nav" aria-label="Revenue sections" data-sb-customer-nav hidden>
+                {% if grand_recent_months and revenue_by_bucket|length > 1 %}
+                <a href="#bucket-total" data-sb-customer-overview-link>Overview <span>All buckets</span></a>
+                {% endif %}
+                <div data-sb-customer-bucket-options>
+                    <h2>Visible buckets</h2>
+                    {% for bucket in sections.buckets %}
+                    {% set analysis = analyses|selectattr('bucket', 'equalto', bucket)|first %}
+                    <a href="{{ '#bucket-' ~ (bucket | lower | replace(' ', '-') | replace('/', '') | replace(':', '')) if bucket in revenue_by_bucket else '#analysis-' ~ analysis.id }}"
+                       data-sb-customer-bucket="{{ bucket }}">{{ bucket }}</a>
+                    {% endfor %}
                 </div>
-                <div class="card-body">
-                    <div class="row mb-2">
-                        <div class="col-6">
-                            <small class="text-muted">Avg Revenue</small>
-                            <h5>${{ '{:,.0f}'.format(a.avg_revenue) }}</h5>
-                        </div>
-                        <div class="col-6">
-                            <small class="text-muted">Latest</small>
-                            <h5>${{ '{:,.0f}'.format(a.latest_revenue) }}</h5>
-                        </div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-6">
-                            <small class="text-muted">Trend</small>
-                            <h6 class="{% if a.trend_slope < -3 %}text-danger{% elif a.trend_slope > 3 %}text-success{% endif %}">
-                                {{ '{:+.1f}'.format(a.trend_slope) }}%/mo
-                            </h6>
-                        </div>
-                        <div class="col-6">
-                            <small class="text-muted">Priority</small>
-                            <h6>
-                                <span class="badge {% if a.priority_score >= 80 %}bg-danger{% elif a.priority_score >= 60 %}bg-warning text-dark{% elif a.priority_score >= 40 %}bg-info{% else %}bg-secondary{% endif %}">
-                                    {{ a.priority_score }}
-                                </span>
-                            </h6>
-                        </div>
-                    </div>
-                    {% if a.recommended_action != 'NO ACTION' %}
-                    <hr>
-                    <p class="mb-1"><strong>{{ a.recommended_action }}</strong></p>
-                    <small class="text-muted">{{ a.engagement_rationale }}</small>
-                    {% endif %}
-                    {% if a.dollars_at_risk > 0 %}
-                    <div class="mt-2">
-                        <span class="text-danger"><i class="bi bi-exclamation-triangle"></i> ${{ '{:,.0f}'.format(a.dollars_at_risk) }}/mo at risk</span>
-                    </div>
-                    {% elif a.dollars_opportunity > 0 %}
-                    <div class="mt-2">
-                        <span class="text-success"><i class="bi bi-graph-up-arrow"></i> ${{ '{:,.0f}'.format(a.dollars_opportunity) }}/mo opportunity</span>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="card-footer">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span data-review-id="{{ a.id }}">{{ review_badge(a) }}</span>
-                        <div class="d-flex align-items-center gap-2">
-                            {{ action_buttons(a) }}
-                            <small class="text-muted">{{ a.analyzed_at.strftime('%b %d, %Y') }} ({{ a.months_analyzed }} months)</small>
-                        </div>
-                    </div>
-                    {{ previous_review_hint(a) }}
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- Revenue History Tables with Product Grids -->
-    {% if grand_recent_months and revenue_by_bucket|length > 1 %}
-    <div class="card mb-4 border-primary" id="bucket-total">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-calculator"></i> Total Revenue</h5>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover table-sm mb-0">
+                <a data-sb-customer-return hidden></a>
+            </nav>
+            <section class="sb-revenue-detail sb-revenue-customer-overview-context" data-sb-customer-overview-context hidden>
+                <h2>All buckets</h2>
+                <dl class="sb-revenue-metrics">
+                    <div><dt>All imported revenue</dt><dd>${{ '{:,.0f}'.format(grand_total) }}</dd></div>
+                    <div><dt>History buckets</dt><dd>{{ revenue_by_bucket|length }}</dd></div>
+                </dl>
+                <p>Aggregate revenue includes hidden buckets. Use a bucket's history to inspect its products and analysis.</p>
+            </section>
+            <section class="sb-revenue-detail sb-revenue-customer-no-analysis" data-sb-customer-no-analysis hidden>
+                <h2 data-sb-customer-context-title></h2>
+                <p>No analysis available for this bucket.</p>
+            </section>
+        {% if analyses %}
+        {% set inactive_category_label = 'Inactive' %}
+        <section class="sb-revenue-customer-analyses" aria-labelledby="customerAnalysesTitle">
+            <h2 id="customerAnalysesTitle">Bucket analysis</h2>
+            {% for a in analyses %}
+            <section class="sb-revenue-detail sb-revenue-customer-analysis" data-bucket="{{ a.bucket }}"
+                     data-sb-customer-analysis data-sb-revenue-id="{{ a.id }}" id="analysis-{{ a.id }}"
+                     aria-label="{{ a.bucket }} analysis">
+                {% set analysis_history_href = '#bucket-' ~ (a.bucket | lower | replace(' ', '-') | replace('/', '') | replace(':', '')) if a.bucket in revenue_by_bucket else none %}
+                {% include 'partials/_revenue_analysis_summary.html' %}
+            </section>
+            {% endfor %}
+        </section>
+        {% endif %}
+        </aside>
+        <div class="sb-revenue-customer-history-area" tabindex="0" role="region" aria-label="Selected revenue history">
+        <p class="sb-revenue-customer-filter-empty" data-sb-customer-no-history hidden>No revenue history found for this bucket.</p>
+        {% if grand_recent_months and revenue_by_bucket|length > 1 %}
+        <section class="sb-revenue-detail sb-revenue-customer-history" id="bucket-total" aria-labelledby="customerTotalTitle">
+            <header class="sb-revenue-products-header">
+                <h2 id="customerTotalTitle">Total Revenue</h2>
+                <span class="sb-revenue-review-meta">All buckets, including hidden buckets</span>
+            </header>
+            <div class="sb-revenue-table-scroll" tabindex="0" role="region" aria-label="Total revenue by bucket and month">
+                <table class="sb-revenue-table" data-sb-sortable data-sb-sort-key="overview-buckets">
+                    <caption>All-bucket monthly revenue and all-history totals</caption>
                     <thead>
                         <tr>
-                            <th class="ps-3">Bucket</th>
-                            {% for month in grand_recent_months %}
-                            <th class="text-end">{{ month }}</th>
-                            {% endfor %}
-                            <th class="text-end pe-3"><strong>Total</strong></th>
+                            <th scope="col" data-sb-sort-type="text">Bucket</th>
+                            {% for month in grand_recent_months %}<th scope="col" data-sb-sort-type="number">{{ month }}</th>{% endfor %}
+                            <th scope="col" data-sb-sort-type="number">Total</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Grand Total Row -->
-                        <tr class="fw-bold border-bottom border-2">
-                            <td class="ps-3">All Buckets</td>
+                        <tr class="sb-revenue-total" data-sb-sort-fixed>
+                            <th scope="row">All Buckets</th>
                             {% for month in grand_recent_months %}
-                            <td class="text-end">
-                                {% set current_rev = grand_month_revenues.get(month, 0) %}
-                                {% set prev_month = grand_recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
-                                {% set prev_rev = grand_month_revenues.get(prev_month, 0) if prev_month else 0 %}
-                                {% if current_rev %}
-                                    {% if prev_rev > 0 %}
-                                        {% set change = ((current_rev - prev_rev) / prev_rev * 100) %}
-                                        <span class="{% if change < -10 %}text-danger{% elif change > 10 %}text-success{% endif %}">
-                                            ${{ '{:,.0f}'.format(current_rev) }}
-                                        </span>
-                                    {% else %}
-                                        ${{ '{:,.0f}'.format(current_rev) }}
-                                    {% endif %}
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
+                            {% set prev_month = grand_recent_months[loop.index0 - 1] if loop.index0 > 0 else none %}
+                            <td data-sb-sort-value="{{ grand_month_revenues.get(month, '') }}">{{ revenue_cell(grand_month_revenues.get(month, 0), grand_month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
                             {% endfor %}
-                            <td class="text-end pe-3">${{ '{:,.0f}'.format(grand_total) }}</td>
+                            <td data-sb-sort-value="{{ grand_total }}">${{ '{:,.0f}'.format(grand_total) }}</td>
                         </tr>
-
-                        <!-- Per-Bucket Rows -->
                         {% for bucket, bdata in bucket_product_data.items() %}
                         <tr data-bucket="{{ bucket }}">
-                            <td class="ps-3">
-                                <a href="#bucket-{{ bucket | lower | replace(' ', '-') | replace('/', '') | replace(':', '') }}" class="text-decoration-none">
-                                    {{ bucket }}
-                                </a>
-                            </td>
+                            <th scope="row"><a href="#bucket-{{ bucket | lower | replace(' ', '-') | replace('/', '') | replace(':', '') }}">{{ bucket }}</a></th>
                             {% for month in grand_recent_months %}
-                            <td class="text-end">
-                                {% set current_rev = bdata.bucket_month_revenues.get(month, 0) %}
-                                {% set prev_month = grand_recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
-                                {% set prev_rev = bdata.bucket_month_revenues.get(prev_month, 0) if prev_month else 0 %}
-                                {% if current_rev %}
-                                    {% if prev_rev > 0 %}
-                                        {% set change = ((current_rev - prev_rev) / prev_rev * 100) %}
-                                        <span class="{% if change < -10 %}text-danger{% elif change > 10 %}text-success{% endif %}">
-                                            ${{ '{:,.0f}'.format(current_rev) }}
-                                        </span>
-                                    {% else %}
-                                        ${{ '{:,.0f}'.format(current_rev) }}
-                                    {% endif %}
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
+                            {% set prev_month = grand_recent_months[loop.index0 - 1] if loop.index0 > 0 else none %}
+                            <td data-sb-sort-value="{{ bdata.bucket_month_revenues.get(month, '') }}">{{ revenue_cell(bdata.bucket_month_revenues.get(month, 0), bdata.bucket_month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
                             {% endfor %}
-                            <td class="text-end pe-3">${{ '{:,.0f}'.format(bdata.bucket_total) }}</td>
+                            <td data-sb-sort-value="{{ bdata.bucket_total }}">${{ '{:,.0f}'.format(bdata.bucket_total) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {% for bucket, history in revenue_by_bucket.items() %}
-    <div class="card mb-4" data-bucket="{{ bucket }}" id="bucket-{{ bucket | lower | replace(' ', '-') | replace('/', '') | replace(':', '') }}">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-graph-up"></i> {{ bucket }}</h5>
-            {% if products_by_bucket.get(bucket) %}
-            <a href="{{ url_for('revenue.revenue_bucket_products', customer_id=customer.id, bucket=bucket) }}" 
-               class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-clock-history"></i> Full History
-            </a>
-            {% endif %}
-        </div>
-        <div class="card-body p-0">
-            {% set bdata = bucket_product_data.get(bucket, {}) %}
-            {% set recent_months = bdata.get('recent_months', []) %}
-            {% set product_summary = bdata.get('product_summary', []) %}
-            {% set bucket_month_revenues = bdata.get('bucket_month_revenues', {}) %}
-            {% set bucket_total = bdata.get('bucket_total', 0) %}
-            
-            {% if product_summary %}
-            <div class="table-responsive">
-                <table class="table table-hover table-sm mb-0">
-                    <thead>
-                        <tr>
-                            <th class="ps-3">Product</th>
-                            {% for month in recent_months %}
-                            <th class="text-end">{{ month }}</th>
-                            {% endfor %}
-                            <th class="text-end pe-3"><strong>Total</strong></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Bucket Total Row -->
-                        <tr class="fw-bold border-bottom border-2">
-                            <td class="ps-3">{{ bucket }} Total</td>
-                            {% for month in recent_months %}
-                            <td class="text-end">
-                                {% set current_rev = bucket_month_revenues.get(month, 0) %}
-                                {% set prev_month = recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
-                                {% set prev_rev = bucket_month_revenues.get(prev_month, 0) if prev_month else 0 %}
-                                {% if current_rev %}
-                                    {% if prev_rev > 0 %}
-                                        {% set change = ((current_rev - prev_rev) / prev_rev * 100) %}
-                                        <span class="{% if change < -10 %}text-danger{% elif change > 10 %}text-success{% endif %}">
-                                            ${{ '{:,.0f}'.format(current_rev) }}
-                                        </span>
-                                    {% else %}
-                                        ${{ '{:,.0f}'.format(current_rev) }}
-                                    {% endif %}
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            {% endfor %}
-                            <td class="text-end pe-3">${{ '{:,.0f}'.format(bucket_total) }}</td>
-                        </tr>
-                        
-                        <!-- Product Rows -->
-                        {% for p in product_summary %}
-                        <tr>
-                            <td class="ps-3">
-                                <a href="{{ url_for('revenue.revenue_product_view', product=p.product) }}" class="text-decoration-none">
-                                    {{ p.product }}
-                                </a>
-                            </td>
-                            {% for month in recent_months %}
-                            <td class="text-end">
-                                {% set current_rev = p.month_revenues.get(month, 0) %}
-                                {% set prev_month = recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
-                                {% set prev_rev = p.month_revenues.get(prev_month, 0) if prev_month else 0 %}
-                                {% if current_rev %}
-                                    {% if prev_rev > 0 %}
-                                        {% set change = ((current_rev - prev_rev) / prev_rev * 100) %}
-                                        <span class="{% if change < -10 %}text-danger{% elif change > 10 %}text-success{% endif %}">
-                                            ${{ '{:,.0f}'.format(current_rev) }}
-                                        </span>
-                                    {% else %}
-                                        ${{ '{:,.0f}'.format(current_rev) }}
-                                    {% endif %}
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            {% endfor %}
-                            <td class="text-end pe-3">${{ '{:,.0f}'.format(p.total_revenue) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        </section>
+        {% endif %}
+        <p class="sb-revenue-customer-filter-empty" data-sb-customer-filter-empty role="status" hidden>No analysis or history in these buckets. Choose different buckets to see this customer's revenue.</p>
+        {% for bucket, history in revenue_by_bucket.items() %}
+        <section class="sb-revenue-detail sb-revenue-customer-history" data-bucket="{{ bucket }}"
+                 data-sb-customer-history id="bucket-{{ bucket | lower | replace(' ', '-') | replace('/', '') | replace(':', '') }}"
+                 aria-label="{{ bucket }} revenue history">
+            <header class="sb-revenue-products-header">
+                <h2>{{ bucket }}</h2>
+                {% if products_by_bucket.get(bucket) %}
+                <a href="{{ url_for('revenue.revenue_bucket_products', customer_id=customer.id, bucket=bucket) }}" class="sb-revenue-command">
+                    <i class="bi bi-clock-history" aria-hidden="true"></i> Full History
+                </a>
+                {% endif %}
+            </header>
+            {% set bucket_data = bucket_product_data.get(bucket, {}) %}
+            {% if bucket_data.get('product_summary', []) %}
+            {% set revenue_bucket = bucket %}
+            {% include 'partials/_revenue_product_table.html' %}
             {% else %}
-            <div class="p-4 text-center text-muted">
-                <i class="bi bi-inbox display-4"></i>
-                <p class="mt-2">No product data available for this bucket.</p>
-            </div>
+            <p class="sb-revenue-empty">No product data available for this bucket.</p>
             {% endif %}
+        </section>
+        {% else %}
+        <p class="sb-revenue-customer-filter-empty" data-sb-customer-no-data>No revenue history found for this customer.</p>
+        {% endfor %}
         </div>
     </div>
-    {% else %}
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> No revenue history found for this customer.
-    </div>
-    {% endfor %}
 </div>
-
 {% include 'partials/review_action.html' %}
-
-<style>html { scroll-behavior: smooth; }</style>
 <script src="{{ url_for('static', filename='js/revenue-bucket-filter.js') }}"></script>
-<script>RevenueBucketFilter.init({ containerId: 'bucketFilterContainer' });</script>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-revenue-customer.js') }}" defer></script>
 {% endblock %}

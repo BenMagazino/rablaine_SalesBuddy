@@ -3,6 +3,7 @@ Tests for milestone functionality.
 """
 import json
 import pytest
+from bs4 import BeautifulSoup
 from datetime import datetime
 from unittest.mock import patch
 from app.models import db, Milestone, Note
@@ -439,7 +440,7 @@ class TestMilestoneViewOverhaul:
             return ms.id
 
     def test_view_shows_engagements_in_nav(self, client, app, db_session, sample_user, sample_customer):
-        """Engagements linked to the milestone appear in the Navigation card."""
+        """Linked engagements retain their destination in the details navigation."""
         from app.models import Engagement
         with app.app_context():
             ms = Milestone(
@@ -459,11 +460,16 @@ class TestMilestoneViewOverhaul:
             eng.milestones.append(ms)
             db.session.commit()
             ms_id = ms.id
+            engagement_id = eng.id
 
         resp = client.get(f'/milestone/{ms_id}')
         assert resp.status_code == 200
         assert b'Fabric Migration' in resp.data
-        assert b'bi-diagram-3' in resp.data
+        soup = BeautifulSoup(resp.data, "html.parser")
+        link = soup.select_one(
+            f'#milestoneNavigationLinks a[href="/engagement/{engagement_id}"]'
+        )
+        assert link.get_text(strip=True) == "Fabric Migration"
 
     def test_view_offers_engagement_creation_when_unlinked(
         self, client, app, db_session, sample_user, sample_customer
@@ -480,7 +486,7 @@ class TestMilestoneViewOverhaul:
 
         assert resp.status_code == 200
         assert 'No engagement linked to this milestone.' in html
-        assert 'onclick="openMilestoneEngagementModal()"' in html
+        assert 'data-sb-ms-action="engagement"' in html
         assert 'id="milestoneEngagementModal"' in html
         assert 'Technical/Business Problem' in html
         assert f'milestone_ids: [{ms_id}]' in html
@@ -539,26 +545,22 @@ class TestMilestoneViewOverhaul:
         assert b'id="commentsSpinner"' not in resp.data
 
     def test_tasks_in_left_column(self, client, app, db_session, sample_user):
-        """Tasks card should be in the left column (col-md-4)."""
+        """Tasks remain in the details rail rather than the forecast reading pane."""
         ms_id = self._create_milestone(app)
         resp = client.get(f'/milestone/{ms_id}')
-        html = resp.data.decode()
-        # Tasks header should appear before the right column starts
-        left_col_start = html.index('col-md-4')
-        right_col_start = html.index('col-md-8')
-        tasks_pos = html.index('Tasks</h5>')
-        assert left_col_start < tasks_pos < right_col_start
+        soup = BeautifulSoup(resp.data, "html.parser")
+        assert soup.select_one('.sb-ms-context > section[aria-label="Milestone tasks"]')
+        assert not soup.select('.sb-ms-main [aria-label="Milestone tasks"]')
 
     def test_notes_between_details_and_tasks(self, client, app, db_session, sample_user):
-        """Associated Notes card appears between Details and Tasks in left column."""
+        """Associated notes keep their original position between details and tasks."""
         ms_id = self._create_milestone(app)
         resp = client.get(f'/milestone/{ms_id}')
-        html = resp.data.decode()
-        # Use card header text to find positions
-        details_pos = html.index('Details</h5>')
-        notes_pos = html.index('Associated Notes</h5>')
-        tasks_pos = html.index('Tasks</h5>')
-        assert details_pos < notes_pos < tasks_pos
+        soup = BeautifulSoup(resp.data, "html.parser")
+        assert [
+            heading.get_text(strip=True)
+            for heading in soup.select(".sb-ms-context .sb-ms-heading")
+        ] == ["Details", "Associated Notes", "Tasks"]
 
 
 class TestMilestoneMsxDetailsAPI:

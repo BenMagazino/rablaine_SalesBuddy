@@ -1,288 +1,328 @@
 /**
- * Revenue Bucket Filter
- *
- * Shared client-side filter for revenue alerts across all pages.
- * Stores selected buckets in localStorage so the filter persists
- * across the dashboard, seller alerts, and homepage.
- *
- * Renders a searchable picklist with checkboxes (like MSXi filters).
- *
- * Usage:
- *   1. Include this script on any page with revenue alerts
- *   2. Add a container with id="bucketFilterContainer" where the filter button should appear
- *   3. Add data-bucket="BucketName" to each filterable element (row or card)
- *   4. Call RevenueBucketFilter.init() after the page loads
+ * Shared native bucket filter. Empty selection intentionally shows every row.
+ * Local selections persist across pages; server preferences remain a read-only fallback.
  */
-var RevenueBucketFilter = (function() {
-    var STORAGE_KEY = 'salesbuddy_revenue_bucket_filter';
-    var VERSION_KEY = 'salesbuddy_revenue_bucket_taxonomy_version';
-    var allBuckets = [];
-    var selectedBuckets = new Set();
-    var onFilterChange = null;
-    var _popoverInstance = null;
-    var _btn = null;
-    var _usedFallback = false;  // True if we defaulted to all (no localStorage)
+var RevenueBucketFilter = (() => {
+    'use strict';
+    const STORAGE_KEY = 'salesbuddy_revenue_bucket_filter';
+    const VERSION_KEY = 'salesbuddy_revenue_bucket_taxonomy_version';
+    const views = new Map(), callbacks = new Set(), selections = new Set(), warnings = new Map();
+    let allBuckets = [], selectedBuckets = new Set();
+    let loaded = false, usedFallback = true, edits = 0, pending = null;
 
-    function loadSelection() {
-        try {
-            var saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-            if (saved && Array.isArray(saved)) {
-                selectedBuckets = new Set(saved);
-                // An empty selection is valid: it means "no filter yet", so we
-                // still consult the DB in case another device picked buckets.
-                _usedFallback = saved.length === 0;
-                return;
-            }
-        } catch(e) {}
-        // No selection at all - show everything until the user narrows it.
-        selectedBuckets = new Set();
-        _usedFallback = true;
-    }
-
-    function loadFallbackFromDB() {
-        // If localStorage had a selection, no need for fallback
-        if (!_usedFallback) return;
-        fetch('/api/revenue/compensated-buckets')
-            .then(function(r) { return r.json(); })
-            .then(function(buckets) {
-                if (buckets && Array.isArray(buckets) && buckets.length > 0) {
-                    selectedBuckets = new Set(buckets);
-                    // Persist to localStorage so future loads are instant
-                    saveSelection();
-                    applyFilter();
-                }
-            })
-            .catch(function() {});
-    }
-
-    // MSXI renames and retires buckets at the fiscal-year boundary. When that
-    // happens the server clears the stored selection and bumps a version; without
-    // this check a stale localStorage copy would silently win on the next load.
-    function invalidateStaleCache(done) {
-        fetch('/api/revenue/sync/status')
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
-                var serverVersion = String(d.bucket_taxonomy_version || 0);
-                var seen = localStorage.getItem(VERSION_KEY);
-                if (seen !== serverVersion) {
-                    localStorage.removeItem(STORAGE_KEY);
-                    localStorage.setItem(VERSION_KEY, serverVersion);
-                }
-            })
-            .catch(function() {})
-            .then(function() { if (done) done(); });
+    function warn(key, text, error) {
+        console.error('Revenue bucket filter ' + key + ':', error);
+        warnings.set(key, text);
+        syncViews();
     }
 
     function saveSelection() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(selectedBuckets)));
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify([...selectedBuckets]));
+            warnings.delete('storage');
+        } catch (error) {
+            warn('storage', 'Could not remember this selection. It applies on this page only.', error);
+        }
     }
 
-    function discoverBuckets() {
-        var bucketSet = new Set();
-        document.querySelectorAll('[data-bucket]').forEach(function(el) {
-            var b = el.dataset.bucket;
-            if (b) bucketSet.add(b);
-        });
-        allBuckets = Array.from(bucketSet).sort();
+    function loadSelection() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            const saved = raw === null ? [] : JSON.parse(raw);
+            if (!Array.isArray(saved) || saved.some(bucket => typeof bucket !== 'string')) {
+                throw new Error('Invalid saved bucket selection.');
+            }
+            selectedBuckets = new Set(saved.filter(bucket => allBuckets.includes(bucket)));
+            usedFallback = saved.length === 0;
+            warnings.delete('storage');
+        } catch (error) {
+            selectedBuckets = new Set();
+            usedFallback = true;
+            warn('storage', 'Saved bucket selection is unavailable. Showing all buckets for now.', error);
+        }
+    }
+
+    async function read(url) {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Request failed (HTTP ' + response.status + ').');
+        return response.json();
+    }
+
+    async function hydrate() {
+        const version = edits;
+        try {
+            const data = await read('/api/revenue/sync/status');
+            if (!Number.isInteger(data?.bucket_taxonomy_version) || data.bucket_taxonomy_version < 0) {
+                throw new Error('Invalid bucket taxonomy version.');
+            }
+            const serverVersion = String(data.bucket_taxonomy_version);
+            try {
+                const savedVersion = localStorage.getItem(VERSION_KEY);
+                if ((savedVersion === null ? '0' : savedVersion) !== serverVersion) {
+                    if (version === edits) localStorage.removeItem(STORAGE_KEY);
+                    localStorage.setItem(VERSION_KEY, serverVersion);
+                    if (version === edits) {
+                        selectedBuckets = new Set();
+                        usedFallback = true;
+                    }
+                }
+            } catch (error) {
+                warn('storage', 'Could not check saved bucket version. ' +
+                    'Your current page selection is unchanged.', error);
+            }
+            warnings.delete('taxonomy');
+        } catch (error) {
+            warn('taxonomy', 'Could not check bucket changes. Your current selection is unchanged.', error);
+        }
+        if (usedFallback && version === edits) {
+            try {
+                const buckets = await read('/api/revenue/compensated-buckets');
+                if (!Array.isArray(buckets) || buckets.some(bucket => typeof bucket !== 'string')) {
+                    throw new Error('Invalid saved bucket list.');
+                }
+                if (version === edits && buckets.length) {
+                    selectedBuckets = new Set(buckets);
+                    saveSelection();
+                }
+                warnings.delete('fallback');
+            } catch (error) {
+                if (version === edits && usedFallback) {
+                    warn('fallback', 'Could not load saved buckets. ' +
+                        'Your current selection is unchanged.', error);
+                } else {
+                    console.error('Revenue bucket filter superseded fallback:', error);
+                }
+            }
+        }
+        applyFilter();
+    }
+
+    function refresh() {
+        if (pending) return pending;
+        if (warnings.has('storage')) {
+            if (edits === 0) loadSelection();
+            else saveSelection();
+        }
+        pending = hydrate().finally(() => { pending = null; syncViews(); });
+        syncViews();
+        return pending;
+    }
+
+    function syncViews() {
+        for (const view of views.values()) {
+            const count = selectedBuckets.size;
+            view.count.textContent = count + '/' + allBuckets.length;
+            view.count.hidden = !(count > 0 && count < allBuckets.length);
+            view.selectAll.checked = allBuckets.length > 0 &&
+                allBuckets.every(bucket => selectedBuckets.has(bucket));
+            view.selectAll.indeterminate = !view.selectAll.checked &&
+                allBuckets.some(bucket => selectedBuckets.has(bucket));
+            for (const checkbox of view.list.querySelectorAll('input')) {
+                checkbox.checked = selectedBuckets.has(checkbox.value);
+            }
+            view.status.textContent = [...warnings.values()].join(' ');
+            view.status.setAttribute('role', warnings.size ? 'alert' : 'status');
+            view.retry.hidden = warnings.size === 0;
+            view.retry.disabled = pending !== null;
+            if (view.panel.matches(':popover-open')) position(view);
+        }
     }
 
     function applyFilter() {
-        // No buckets picked means no filter, not "hide everything".
-        var noFilter = selectedBuckets.size === 0;
-        var visibleCount = 0;
-        document.querySelectorAll('[data-bucket]').forEach(function(el) {
-            var show = noFilter || selectedBuckets.has(el.dataset.bucket);
-            el.style.display = show ? '' : 'none';
-            if (show) visibleCount++;
+        let visible = 0;
+        document.querySelectorAll('[data-bucket]').forEach(element => {
+            const show = selectedBuckets.size === 0 || selectedBuckets.has(element.dataset.bucket);
+            element.style.display = show ? '' : 'none';
+            if (show) visible++;
         });
-        updateBadge();
-        if (onFilterChange) onFilterChange(visibleCount);
+        syncViews();
+        for (const callback of callbacks) callback(visible);
     }
 
-    function updateBadge() {
-        var countEl = document.getElementById('bucketFilterCount');
-        if (countEl) {
-            var total = allBuckets.length;
-            if (selectedBuckets.size > 0 && selectedBuckets.size < total) {
-                countEl.textContent = selectedBuckets.size + '/' + total;
-                countEl.classList.remove('d-none');
-            } else {
-                countEl.classList.add('d-none');
+    function change() {
+        edits++;
+        usedFallback = false;
+        warnings.delete('fallback');
+        saveSelection();
+        applyFilter();
+        for (const callback of selections) callback([...selectedBuckets]);
+    }
+
+    function searchRows(view) {
+        const term = view.search.value.toLowerCase().trim();
+        let visible = 0;
+        for (const row of view.list.children) {
+            row.hidden = !row.dataset.bucketName.includes(term);
+            if (!row.hidden) visible++;
+        }
+        view.empty.hidden = visible !== 0;
+        view.empty.textContent = allBuckets.length ?
+            'No buckets match your search.' : 'No buckets on this page.';
+        if (view.panel.matches(':popover-open')) position(view);
+    }
+
+    function position(view, reset = false) {
+        const button = view.button.getBoundingClientRect(), panel = view.panel.getBoundingClientRect();
+        if (reset || !view.anchor) {
+            view.anchor = button.bottom + 6 + panel.height <= window.innerHeight - 8 ?
+                'below' : 'above';
+        }
+        const left = Math.max(8, Math.min(button.right - panel.width,
+            window.innerWidth - panel.width - 8));
+        const attachedTop = view.anchor === 'above' ?
+            button.top - panel.height - 6 : button.bottom + 6;
+        const top = Math.max(8, Math.min(attachedTop, window.innerHeight - panel.height - 8));
+        view.panel.style.left = left + 'px';
+        view.panel.style.top = top + 'px';
+    }
+
+    function element(tag, className, text) {
+        const node = document.createElement(tag);
+        node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    }
+
+    function buildRows(view) {
+        view.list.replaceChildren();
+        allBuckets.forEach((bucket, index) => {
+            const row = element('label', 'sb-bucket-option');
+            row.dataset.bucketName = bucket.toLowerCase();
+            const checkbox = element('input', 'sb-bucket-check');
+            checkbox.type = 'checkbox';
+            checkbox.value = bucket;
+            checkbox.id = view.panel.id + '-bucket-' + index;
+            row.htmlFor = checkbox.id;
+            checkbox.addEventListener('change', () => {
+                if (checkbox.checked) selectedBuckets.add(bucket);
+                else selectedBuckets.delete(bucket);
+                change();
+            });
+            row.appendChild(checkbox);
+            row.appendChild(element('span', '', bucket));
+            view.list.appendChild(row);
+        });
+        searchRows(view);
+    }
+
+    function renderFilterUI(containerId, inline = false) {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.error('Revenue bucket filter container missing:', containerId);
+            return;
+        }
+        const existing = views.get(container);
+        if (existing) { buildRows(existing); return; }
+        const button = element('button', 'sb-bucket-button', 'Buckets');
+        button.type = 'button';
+        button.hidden = inline;
+        const count = element('span', 'sb-bucket-count');
+        count.hidden = true;
+        button.appendChild(count);
+        const panel = element('div', inline ? 'sb-bucket-inline' : 'sb-bucket-popover');
+        panel.id = containerId + '-bucket-popover';
+        if (!inline) panel.setAttribute('popover', 'auto');
+        panel.setAttribute('role', inline ? 'group' : 'dialog');
+        panel.setAttribute('aria-label', 'Revenue bucket filter');
+        if (!inline) {
+            button.setAttribute('popovertarget', panel.id);
+            button.setAttribute('aria-controls', panel.id);
+            button.setAttribute('aria-expanded', 'false');
+        }
+        const heading = element('div', 'sb-bucket-heading', 'Revenue buckets');
+        const search = element('input', 'sb-bucket-search');
+        search.type = 'search';
+        search.placeholder = 'Search buckets';
+        search.setAttribute('aria-label', 'Search revenue buckets');
+        search.autocomplete = 'off';
+        const selectRow = element('label', 'sb-bucket-option sb-bucket-select-all');
+        const selectAll = element('input', '');
+        selectAll.type = 'checkbox';
+        selectRow.appendChild(selectAll);
+        selectRow.appendChild(element('span', '', 'Select all'));
+        const list = element('div', 'sb-bucket-list');
+        const empty = element('p', 'sb-bucket-empty');
+        empty.setAttribute('role', 'status');
+        const hint = element('p', 'sb-bucket-hint', 'No selection shows every bucket.');
+        const status = element('p', 'sb-bucket-status');
+        status.setAttribute('aria-live', 'polite');
+        const retry = element('button', 'sb-bucket-button', 'Retry');
+        retry.type = 'button';
+        retry.addEventListener('click', refresh);
+        for (const node of [heading, search, selectRow, list, empty, hint, status, retry]) {
+            panel.appendChild(node);
+        }
+        const view = {button, count, panel, search, selectAll, list, empty, status, retry};
+        views.set(container, view);
+        search.addEventListener('input', () => searchRows(view));
+        selectAll.addEventListener('change', () => {
+            selectedBuckets = selectAll.checked ? new Set(allBuckets) : new Set();
+            change();
+        });
+        if (!inline) panel.addEventListener('toggle', event => {
+            button.setAttribute('aria-expanded', String(event.newState === 'open'));
+            if (event.newState === 'open') {
+                view.anchor = null;
+                search.value = '';
+                searchRows(view);
+                position(view);
+                search.focus();
             }
+        });
+        container.appendChild(button);
+        container.appendChild(panel);
+        buildRows(view);
+    }
+
+    window.addEventListener('resize', () => {
+        for (const view of views.values()) if (view.panel.matches(':popover-open')) position(view, true);
+    });
+    window.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const view = [...views.values()].find(item => item.panel.matches(':popover-open'));
+        if (!view) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        view.panel.hidePopover();
+        view.button.focus();
+    }, true);
+    window.addEventListener('pagehide', () => {
+        for (const view of views.values()) {
+            if (view.panel.matches(':popover-open')) view.panel.hidePopover();
         }
-    }
+    });
 
-    function buildContent() {
-        // every() is true for an empty list, which would render "Select all"
-        // ticked when nothing is selectable at all.
-        var allSelected = allBuckets.length > 0 &&
-            allBuckets.every(function(b) { return selectedBuckets.has(b); });
-        var c = '<div class="bucket-filter-panel" style="min-width:220px;">';
-        // Search box
-        c += '<div class="px-2 pt-2 pb-1">';
-        c += '<input type="text" class="form-control form-control-sm" id="bucketSearchInput" placeholder="Search" autocomplete="off">';
-        c += '</div>';
-        // Select all row
-        c += '<div class="px-2 py-1 border-bottom">';
-        c += '<label class="d-flex align-items-center gap-2 mb-0" style="cursor:pointer;">';
-        c += '<input type="checkbox" id="bucketSelectAll"' + (allSelected ? ' checked' : '') + ' style="width:16px;height:16px;flex-shrink:0;">';
-        c += '<span class="small fw-semibold">Select all</span>';
-        c += '</label>';
-        c += '</div>';
-        // Bucket list
-        c += '<div style="max-height:240px;overflow-y:auto;" id="bucketListContainer">';
-        allBuckets.forEach(function(b) {
-            var checked = selectedBuckets.has(b) ? ' checked' : '';
-            var safeId = 'bf_' + b.replace(/[^a-zA-Z0-9]/g, '_');
-            c += '<label class="bucket-filter-item d-flex align-items-center gap-2 px-2 py-1 mb-0" data-bucket-name="' + b.toLowerCase() + '" style="cursor:pointer;">';
-            c += '<input class="bucket-check" type="checkbox" value="' + b + '" id="' + safeId + '"' + checked + ' style="width:16px;height:16px;flex-shrink:0;">';
-            c += '<span class="small">' + b + '</span>';
-            c += '</label>';
-        });
-        c += '</div>';
-        c += '</div>';
-        return c;
-    }
-
-    function wirePopoverEvents() {
-        // Find elements inside the active popover (not just anywhere in document)
-        var popover = document.querySelector('.popover');
-        if (!popover) return;
-        var search = popover.querySelector('#bucketSearchInput');
-        var selectAllCb = popover.querySelector('#bucketSelectAll');
-        if (!search) return;
-
-        // Search filtering
-        search.addEventListener('input', function() {
-            var term = this.value.toLowerCase().trim();
-            popover.querySelectorAll('.bucket-filter-item').forEach(function(item) {
-                var name = item.dataset.bucketName || '';
-                if (!term || name.includes(term)) {
-                    item.classList.remove('d-none');
-                } else {
-                    item.classList.add('d-none');
-                }
-            });
-        });
-
-        // Select all toggle
-        if (selectAllCb) {
-            selectAllCb.addEventListener('change', function() {
-                if (this.checked) {
-                    RevenueBucketFilter.selectAll();
-                } else {
-                    RevenueBucketFilter.selectNone();
-                }
-            });
-        }
-
-        // Individual checkbox changes
-        popover.querySelectorAll('.bucket-check').forEach(function(cb) {
-            cb.addEventListener('change', function() {
-                if (this.checked) {
-                    selectedBuckets.add(this.value);
-                } else {
-                    selectedBuckets.delete(this.value);
-                }
-                saveSelection();
-                applyFilter();
-                // Sync "Select all" checkbox
-                var allCb = popover.querySelector('#bucketSelectAll');
-                if (allCb) {
-                    allCb.checked = allBuckets.length > 0 &&
-                        allBuckets.every(function(b) { return selectedBuckets.has(b); });
-                }
-            });
-        });
-
-        // Auto-focus search
-        setTimeout(function() { search.focus(); }, 50);
-    }
-
-    function renderFilterUI(containerId) {
-        var container = document.getElementById(containerId);
-        if (!container || allBuckets.length === 0) return;
-
-        _btn = document.createElement('button');
-        _btn.className = 'btn btn-sm btn-outline-secondary py-0';
-        _btn.style.fontSize = '0.75rem';
-        _btn.style.lineHeight = '1.5';
-        _btn.type = 'button';
-        _btn.setAttribute('data-bs-toggle', 'popover');
-        _btn.setAttribute('data-bs-placement', 'bottom');
-        _btn.setAttribute('data-bs-trigger', 'click');
-        _btn.innerHTML = '<i class="bi bi-funnel"></i> Buckets <span id="bucketFilterCount" class="badge bg-info ms-1 d-none"></span>';
-        container.appendChild(_btn);
-
-        function initPopover() {
-            if (typeof bootstrap !== 'undefined' && bootstrap.Popover) {
-                _popoverInstance = new bootstrap.Popover(_btn, {
-                    sanitize: false,
-                    html: true,
-                    content: buildContent
-                });
-                // Wire events after popover is shown
-                _btn.addEventListener('shown.bs.popover', wirePopoverEvents);
-                // Rebuild content each time the popover opens
-                _btn.addEventListener('show.bs.popover', function() {
-                    _popoverInstance._config.content = buildContent;
-                });
-            } else {
-                setTimeout(initPopover, 50);
+    return Object.freeze({
+        init(options = {}) {
+            options = options || {};
+            if (options.buckets !== undefined && (!Array.isArray(options.buckets) ||
+                options.buckets.some(bucket => typeof bucket !== 'string' || !bucket))) {
+                throw new Error('Invalid explicit revenue bucket list.');
             }
-        }
-        initPopover();
-    }
-
-    return {
-        init: function(opts) {
-            opts = opts || {};
-            onFilterChange = opts.onFilterChange || null;
-            invalidateStaleCache(function() {
-                discoverBuckets();
-                loadSelection();
-                // Remove buckets from selection that no longer exist in data
-                selectedBuckets.forEach(function(b) {
-                    if (allBuckets.indexOf(b) === -1) selectedBuckets.delete(b);
-                });
-                if (opts.containerId) renderFilterUI(opts.containerId);
-                applyFilter();
-                loadFallbackFromDB();
-            });
-        },
-        toggle: function(bucket) {
-            if (selectedBuckets.has(bucket)) {
-                selectedBuckets.delete(bucket);
-            } else {
-                selectedBuckets.add(bucket);
+            if (options.onFilterChange) callbacks.add(options.onFilterChange);
+            if (options.onSelectionChange) selections.add(options.onSelectionChange);
+            const previous = allBuckets.join('\0');
+            const buckets = options.buckets === undefined ?
+                [...document.querySelectorAll('[data-bucket]')]
+                    .map(row => row.dataset.bucket).filter(Boolean) : options.buckets;
+            allBuckets = [...new Set(buckets)].sort();
+            if (previous !== allBuckets.join('\0')) {
+                for (const view of views.values()) buildRows(view);
             }
-            saveSelection();
+            if (!loaded) { loadSelection(); loaded = true; }
+            if (options.containerId) renderFilterUI(options.containerId, options.inline === true);
             applyFilter();
+            return refresh();
         },
-        selectAll: function() {
-            selectedBuckets = new Set(allBuckets);
-            saveSelection();
-            document.querySelectorAll('.bucket-check').forEach(function(cb) { cb.checked = true; });
-            var allCb = document.getElementById('bucketSelectAll');
-            if (allCb) allCb.checked = true;
-            applyFilter();
+        toggle(bucket) {
+            if (selectedBuckets.has(bucket)) selectedBuckets.delete(bucket);
+            else selectedBuckets.add(bucket);
+            change();
         },
-        selectNone: function() {
-            selectedBuckets.clear();
-            saveSelection();
-            document.querySelectorAll('.bucket-check').forEach(function(cb) { cb.checked = false; });
-            var allCb = document.getElementById('bucketSelectAll');
-            if (allCb) allCb.checked = false;
-            applyFilter();
-        },
-        getSelected: function() {
-            return Array.from(selectedBuckets);
-        },
-        isSelected: function(bucket) {
-            return selectedBuckets.has(bucket);
-        },
-        getAllBuckets: function() {
-            return allBuckets.slice();
-        }
-    };
+        selectAll() { selectedBuckets = new Set(allBuckets); change(); },
+        selectNone() { selectedBuckets.clear(); change(); },
+        getSelected: () => [...selectedBuckets],
+        isSelected: bucket => selectedBuckets.has(bucket),
+        getAllBuckets: () => allBuckets.slice(),
+    });
 })();

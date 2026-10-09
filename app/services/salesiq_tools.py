@@ -2176,7 +2176,8 @@ def get_u2c_attainment(
     'Get the week-by-week U2C attainment history for a fiscal quarter. Each '
     'historical point is one MSX Insights weekly publish, showing committed ACR '
     'against the starting target. The current, non-final quarter also includes '
-    'a labeled live endpoint matching the current attainment totals. '
+    'a separate Today/live point using current commitment status and the latest '
+    'imported snapshot dollars. Every publish is retained, including one on the same date. '
     'Useful for "how has attainment progressed?" '
     'questions. Note the series can go down - MSXi restates conversions.',
     {
@@ -2190,7 +2191,7 @@ def get_u2c_attainment(
     },
 )
 def get_u2c_attainment_trend(fiscal_quarter: str | None = None) -> dict:
-    """Return weekly history plus the current quarter's live endpoint."""
+    """Return all published points plus a separate Today point for the current quarter."""
     from app.models import U2CSnapshot
     from app.services.u2c_snapshot import (
         current_fiscal_quarter, get_attainment_trend,

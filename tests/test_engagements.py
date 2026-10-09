@@ -150,11 +150,15 @@ class TestEngagementCRUD:
         assert b'View Test Engagement' in resp.data
 
         soup = BeautifulSoup(resp.data, 'html.parser')
-        breadcrumb_items = soup.select('nav[aria-label="breadcrumb"] .breadcrumb-item')
-        assert [item.get_text(' ', strip=True) for item in breadcrumb_items] == [
+        breadcrumb_items = soup.select('.sb-context-breadcrumb > li')
+        assert [
+            (item.select_one('a') or item.select_one('span[title]')).get_text(strip=True)
+            for item in breadcrumb_items
+        ] == [
+            'Home',
             'Dana Lee',
             'Contoso Ltd',
-            'Engagement',
+            'View Test Engagement',
         ]
 
     def test_edit_engagement(self, client, app, engagement_data):

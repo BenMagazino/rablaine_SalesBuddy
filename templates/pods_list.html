@@ -1,64 +1,52 @@
 {% extends "base.html" %}
-
 {% block title %}PODs - Sales Buddy{% endblock %}
-
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-diagram-2"></i> PODs</h1>
-</div>
-
-{% if pods %}
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
-        {% for pod in pods %}
-        <div class="col">
-            <div class="card row-link">
-                <a href="{{ url_for('pods.pod_view', id=pod.id) }}" class="stretched-link" aria-label="View {{ pod.name }}"></a>
-                <div class="card-body pb-2">
-                    {% set pod_sellers = [] %}
-                    {% for t in pod.territories %}
-                        {% for s in t.sellers %}
-                            {% if s not in pod_sellers %}
-                                {% set _ = pod_sellers.append(s) %}
-                            {% endif %}
-                        {% endfor %}
-                    {% endfor %}
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="card-title mb-0">{{ pod.name }}</h6>
-                        <div class="d-flex gap-1 flex-shrink-0">
-                            <span class="badge bg-primary">{{ pod.territories|length }} territories</span>
-                            <span class="badge bg-info text-dark">{{ pod.solution_engineers|length }} SEs</span>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-start" style="font-size: 0.7rem; line-height: 1.4;">
-                        <div>
-                            {% for seller in pod_sellers|sort(attribute='name') %}
-                            <div class="text-muted text-nowrap"><i class="bi bi-person-fill"></i> {{ seller.name }}</div>
-                            {% endfor %}
-                        </div>
-                        <div class="text-end">
-                            {% for se in pod.solution_engineers|sort(attribute='name') %}
-                            <div class="text-muted text-nowrap">{{ se.name }}</div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-{% else %}
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> No PODs yet.
-    </div>
-{% endif %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-pods-directory.css') }}">
 {% endblock %}
 
-
-
-
-
-
-
-
-
-
+{% block content %}
+<section class="sb-pods-directory sb-directory-frame" data-sb-page-surface data-pods-directory aria-labelledby="podsTitle">
+    <header class="sb-pods-heading" data-sb-page-band><h1 id="podsTitle">PODs</h1></header>
+    <p class="sb-pod-notice" role="alert" hidden></p>
+    <div class="sb-pods-reading" data-sb-page-body tabindex="0" aria-label="POD directory">
+        {% if pods %}
+        <table class="sb-pods-table" data-sb-sortable data-sb-sort-key="pods-directory">
+            <thead><tr>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Name">Name</th>
+                <th scope="col" data-sb-sort-type="number" data-export-label="Territories">Territories</th>
+                <th scope="col" data-sb-sort-type="number" data-export-label="SEs">SEs</th>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Sellers">Sellers</th>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Solution Engineers">Solution Engineers</th>
+            </tr></thead>
+            <tbody>{% for pod in pods %}
+                {% set pod_sellers = [] %}
+                {% for territory in pod.territories %}
+                    {% for seller in territory.sellers %}
+                        {% if seller not in pod_sellers %}{% set _ = pod_sellers.append(seller) %}{% endif %}
+                    {% endfor %}
+                {% endfor %}
+                <tr data-pod-id="{{ pod.id }}" data-pod-href="{{ url_for('pods.pod_view', id=pod.id) }}">
+                    <td data-sb-sort-value="{{ pod.name }}"><a class="sb-pod-name" href="{{ url_for('pods.pod_view', id=pod.id) }}" aria-label="View {{ pod.name }}"><i class="bi bi-diagram-2" aria-hidden="true"></i> {{ pod.name }}</a></td>
+                    <td class="sb-pod-count" data-sb-sort-value="{{ pod.territories|length }}">{{ pod.territories|length }} territories</td>
+                    <td class="sb-pod-count" data-sb-sort-value="{{ pod.solution_engineers|length }}">{{ pod.solution_engineers|length }} SEs</td>
+                    <td data-sb-sort-value="{{ pod_sellers|sort(attribute='name')|map(attribute='name')|join(', ') }}"><div class="sb-pod-people">
+                        {% for seller in pod_sellers|sort(attribute='name') %}<span class="sb-pod-seller"><i class="bi bi-person" aria-hidden="true"></i> {{ seller.name }}</span>{% endfor %}
+                    </div></td>
+                    <td data-sb-sort-value="{{ pod.solution_engineers|sort(attribute='name')|map(attribute='name')|join(', ') }}"><div class="sb-pod-people">
+                        {% for se in pod.solution_engineers|sort(attribute='name') %}<span class="sb-pod-se">{{ se.name }}</span>{% endfor %}
+                    </div></td>
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}<p class="sb-pod-empty">No PODs yet.</p>{% endif %}
+    </div>
+</section>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="POD directory status"><span>{{ pods|length }} PODs</span><span>All PODs</span></footer>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-pods-directory.js') }}"></script>
+{% endblock %}

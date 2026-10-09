@@ -31,8 +31,8 @@ def test_analytics_call_frequency_trend(client, sample_data):
     assert response.status_code == 200
     
     # Should have trend section
-    assert b'Call Frequency Trend' in response.data
-    assert b'progress-bar' in response.data  # Visual representation
+    assert b'Note Frequency Trend' in response.data
+    assert b'sb-admin-progress-fill' in response.data  # Native visual representation
 
 
 def test_analytics_top_topics(client, sample_data):
@@ -145,7 +145,7 @@ def test_analytics_calculates_weekly_trends_correctly(client):
     assert response.status_code == 200
     
     # Should show trend data
-    assert b'Call Frequency Trend' in response.data
+    assert b'Note Frequency Trend' in response.data
 
 
 def test_analytics_link_in_navigation(client):

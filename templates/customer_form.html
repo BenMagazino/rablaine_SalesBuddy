@@ -1,70 +1,86 @@
 {% extends "base.html" %}
 
 {% block title %}{{ 'Edit' if customer else 'New' }} Customer - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestone-form.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-customer-form.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Customer form status">
+    <span id="customerFormState">{{ 'Existing customer' if customer else 'New customer' }}</span>
+    <span>Manual save · Name and TPID required</span>
+</footer>
+{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8 offset-md-2">
-        <h1 class="mb-4">{{ 'Edit' if customer else 'New' }} Customer</h1>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-8 offset-md-2">
-        <div class="card">
-            <div class="card-body">
-                <form method="POST">
+{% set posted = request.method == 'POST' %}
+<form method="POST" id="customerForm" class="sb-milestone-form sb-customer-form sb-directory-frame"
+      data-sb-page-surface data-form-key="{{ 'edit-' ~ customer.id if customer else 'new' }}{{ '-seller-' ~ seller_mode_seller.id if seller_mode and seller_mode_seller else '' }}"
+      data-posted="{{ 'true' if posted else 'false' }}" aria-labelledby="customerFormTitle">
+    <header class="mf-heading" data-sb-page-band>
+        <div><h1 id="customerFormTitle">{{ 'Edit' if customer else 'New' }} Customer</h1>
+        <p>Account identity and local ownership.</p></div>
+    </header>
+    <p id="customerFormNotice" class="mf-notice" data-sb-page-band role="alert" hidden></p>
+    <div class="mf-reading" data-sb-page-body>
+        <div class="cf-fields">
+            <section aria-labelledby="customerIdentity"><h2 id="customerIdentity">Account identity</h2>
                     <input type="hidden" name="referrer" value="{{ referrer if referrer else '' }}">
-                    <div class="mb-3">
+                    <div class="mf-field">
                         <label for="name" class="form-label">Customer Name *</label>
-                        <input type="text" class="form-control" id="name" name="name" 
-                               value="{{ customer.name if customer else '' }}" required>
+                        <input type="text" id="name" name="name"
+                               value="{{ request.form.get('name', '') if posted else customer.name if customer else '' }}" required>
                         <div class="form-text">Official customer name from CRM</div>
                     </div>
                     
-                    <div class="mb-3">
+                    <div class="mf-field">
                         <label for="nickname" class="form-label">Nickname</label>
-                        <input type="text" class="form-control" id="nickname" name="nickname" 
-                               value="{{ customer.nickname|default('', true) if customer else '' }}" maxlength="200">
+                        <input type="text" id="nickname" name="nickname"
+                               value="{{ request.form.get('nickname', '') if posted else customer.nickname|default('', true) if customer else '' }}" maxlength="200">
                         <div class="form-text">Optional: Shorter or preferred name for display</div>
                     </div>
                     
-                    <div class="mb-3">
+                    <div class="mf-field">
                         <label for="tpid" class="form-label">TPID (Top Parent ID) *</label>
-                        <input type="number" class="form-control" id="tpid" name="tpid" 
-                               value="{{ customer.tpid if customer else '' }}" 
+                        <input type="number" id="tpid" name="tpid"
+                               value="{{ request.form.get('tpid', '') if posted else customer.tpid if customer else '' }}"
                                required min="0" step="1">
                         <div class="form-text">Numerical identifier for the customer's top parent organization</div>
                     </div>
                     
-                    <div class="mb-3">
+                    <div class="mf-field">
                         <label for="tpid_url" class="form-label">MSX Account URL</label>
-                        <input type="url" class="form-control" id="tpid_url" name="tpid_url" 
-                               value="{{ customer.tpid_url|default('', true) if customer else '' }}" 
+                        <input type="url" id="tpid_url" name="tpid_url"
+                               value="{{ request.form.get('tpid_url', '') if posted else customer.tpid_url|default('', true) if customer else '' }}"
                                maxlength="500" placeholder="https://microsoftsales.crm.dynamics.com/main.aspx?appid=...&id=...">
                         <div class="form-text">Link to this customer's account record in Microsoft Sales Experience (MSX)</div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mf-field">
                         <label for="website" class="form-label">Website</label>
-                        <input type="text" class="form-control" id="website" name="website" 
-                               value="{{ customer.website|default('', true) if customer else '' }}" 
+                        <input type="text" id="website" name="website"
+                               value="{{ request.form.get('website', '') if posted else customer.website|default('', true) if customer else '' }}"
                                maxlength="500" placeholder="example.com">
                         <div class="form-text">Customer's domain (used for favicon)</div>
                     </div>
                     
+            </section>
+            <section aria-labelledby="customerOwnership"><h2 id="customerOwnership">Ownership</h2>
                     {% if seller_mode and seller_mode_seller %}
                     <input type="hidden" name="seller_id" value="{{ seller_mode_seller.id }}">
+                    <p class="cf-role">Seller mode: {{ seller_mode_seller.name }}</p>
                     {% else %}
-                    <div class="mb-3">
+                    <div class="mf-field">
                         <label for="seller_id" class="form-label">Seller</label>
-                        <select class="form-select" id="seller_id" name="seller_id">
+                        <select id="seller_id" name="seller_id">
                             <option value="">-- No seller --</option>
                             {% for seller in sellers %}
                                 <option value="{{ seller.id }}" 
                                     data-territory-ids="{% for t in seller.territories %}{{ t.id }}{% if not loop.last %},{% endif %}{% endfor %}"
                                     data-territory-id="{{ seller.territories[0].id if seller.territories|length == 1 else '' }}"
-                                    {% if (customer and customer.seller_id == seller.id) or (preselect_seller_id and preselect_seller_id == seller.id) %}selected{% endif %}>
+                                    {% if (posted and request.form.get('seller_id') == seller.id|string) or (not posted and ((customer and customer.seller_id == seller.id) or (preselect_seller_id and preselect_seller_id == seller.id))) %}selected{% endif %}>
                                     {{ seller.name }}
                                     {% if seller.territories|length == 1 %} ({{ seller.territories[0].name }})
                                     {% elif seller.territories|length > 1 %} ({{ seller.territories|length }} territories)
@@ -73,28 +89,28 @@
                             {% endfor %}
                         </select>
                         <div class="form-text" id="seller-auto-msg" style="display:none;">
-                            <span class="text-info"><i class="bi bi-info-circle"></i> Seller auto-selected based on territory</span>
+                            <span><i class="bi bi-info-circle"></i> Seller auto-selected based on territory</span>
                         </div>
                         <div class="form-text">
-                            Or <a href="#" data-bs-toggle="modal" data-bs-target="#newSellerModal">create a new seller</a>
+                            Or <button type="button" class="cf-link" data-sb-dialog="newSellerModal">create a new seller</button>
                         </div>
                     </div>
                     {% endif %}
                     
-                    <div class="mb-3">
+                    <div class="mf-field">
                         <label for="territory_id" class="form-label">Territory</label>
-                        <select class="form-select" id="territory_id" name="territory_id">
+                        <select id="territory_id" name="territory_id">
                             <option value="">-- No territory --</option>
                             {% for territory in territories %}
                                 <option value="{{ territory.id }}"
                                     data-seller-ids="{% for s in territory.sellers %}{{ s.id }}{% if not loop.last %},{% endif %}{% endfor %}"
-                                    {% if (customer and customer.territory_id == territory.id) or (preselect_territory_id and preselect_territory_id == territory.id) %}selected{% endif %}>
+                                    {% if (posted and request.form.get('territory_id') == territory.id|string) or (not posted and ((customer and customer.territory_id == territory.id) or (preselect_territory_id and preselect_territory_id == territory.id))) %}selected{% endif %}>
                                     {{ territory.name }}
                                 </option>
                             {% endfor %}
                         </select>
                         <div class="form-text" id="territory-auto-msg" style="display:none;">
-                            <span class="text-info"><i class="bi bi-info-circle"></i> Territory auto-selected based on seller</span>
+                            <span><i class="bi bi-info-circle"></i> Territory auto-selected based on seller</span>
                         </div>
                         <div class="form-text">
                             Or <a href="{{ url_for('territories.territory_create') }}" target="_blank">create a new territory</a>
@@ -102,56 +118,58 @@
                     </div>
                     
                     {% if customer and customer.available_csams|length > 0 %}
-                    <div class="mb-3">
+                    <div class="mf-field">
                         <label for="csam_id" class="form-label">CSAM</label>
-                        <select class="form-select" id="csam_id" name="csam_id">
-                            <option value="">— No CSAM —</option>
+                        <select id="csam_id" name="csam_id">
+                            <option value="">- No CSAM -</option>
                             {% for csam in customer.available_csams|sort(attribute='name') %}
-                                <option value="{{ csam.id }}" {% if customer.csam_id == csam.id %}selected{% endif %}>{{ csam.name }}</option>
+                                <option value="{{ csam.id }}" {% if (posted and request.form.get('csam_id') == csam.id|string) or (not posted and customer.csam_id == csam.id) %}selected{% endif %}>{{ csam.name }}</option>
                             {% endfor %}
                         </select>
                         <div class="form-text">Primary CSAM from MSX account team</div>
                     </div>
                     {% endif %}
 
-                    <div class="d-flex justify-content-between">
-                        <button type="submit" class="btn btn-primary">
+            </section>
+        </div>
+    </div>
+    <footer class="cf-commands" data-sb-page-band>
+        <span>Changes stay here until you save the customer.</span>
+                        <a href="{{ url_for('customers.customers_list') }}" class="sb-dialog-button">Cancel</a>
+                        <button id="customerFormSave" type="submit" class="sb-dialog-button mf-save">
                             <i class="bi bi-check-circle"></i> Save Customer
                         </button>
-                        <a href="{{ url_for('customers.customers_list') }}" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i> Cancel
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+    </footer>
+</form>
+<dialog class="sb-dialog sb-dialog-compact" id="customerFormDiscard" aria-labelledby="customerFormDiscardTitle">
+    <header class="sb-dialog-header"><h2 id="customerFormDiscardTitle">Discard customer changes?</h2></header>
+    <div class="sb-dialog-body"><p>These changes have not been saved. Keep editing, or discard them to continue.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="customerFormDiscardConfirm">Discard changes</button>
+    </footer>
+</dialog>
 
-<!-- New Seller Modal -->
-<div class="modal fade" id="newSellerModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Create New Seller</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+<dialog class="sb-dialog sb-dialog-compact" id="newSellerModal" aria-labelledby="newSellerTitle">
+            <header class="sb-dialog-header">
+                <h2 id="newSellerTitle">Create New Seller</h2>
+                <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">×</button>
+            </header>
             <form method="POST" action="{{ url_for('sellers.seller_create_inline') }}">
-                <div class="modal-body">
-                    <div class="mb-3">
+                <div class="sb-dialog-body">
+                    <div class="mf-field">
                         <label for="new_seller_name" class="form-label">Seller Name</label>
-                        <input type="text" class="form-control" id="new_seller_name" name="name" required>
+                        <input type="text" id="new_seller_name" name="name" required autofocus>
                     </div>
+                    <p class="cf-role">Create Seller saves immediately and returns to this form. Use Back to recover unsaved customer entries.</p>
                     <input type="hidden" name="redirect_to" value="{{ request.url }}">
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Seller</button>
-                </div>
+                <footer class="sb-dialog-footer">
+                    <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+                    <button type="submit" class="sb-dialog-button mf-save">Create Seller</button>
+                </footer>
             </form>
-        </div>
-    </div>
-</div>
+</dialog>
 {% endblock %}
 
 {% block extra_js %}
@@ -273,7 +291,9 @@ if (!sellerDropdown || sellerDropdown.tagName !== 'SELECT') {
 }
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
+(function() {
+    const form = document.getElementById('customerForm');
+    if (form.dataset.posted === 'true' || form.dataset.draftRestored === 'true') return;
     // Apply filters based on pre-selected values (only when dropdowns exist)
     if (sellerDropdown && sellerDropdown.tagName === 'SELECT' && sellerDropdown.value) {
         filterTerritories();
@@ -281,15 +301,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sellerDropdown && sellerDropdown.tagName === 'SELECT' && document.getElementById('territory_id').value) {
         filterSellers();
     }
-});
+})();
 </script>
+<script src="{{ url_for('static', filename='js/ui-milestone-form.js') }}"></script>
 {% endblock %}
-
-
-
-
-
-
-
 
 

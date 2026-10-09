@@ -372,7 +372,7 @@ def _preview_update(
 
     # Rating
     incoming_rating = data.get("rating")
-    if incoming_rating and incoming_rating != existing.rating:
+    if incoming_rating is not None and incoming_rating != existing.rating:
         changes["rating"] = incoming_rating
 
     # Website

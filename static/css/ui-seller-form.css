@@ -1,0 +1,24 @@
+/* Identity editing beside a quiet duplicate reference, within the desktop frame. */
+.sb-seller-form .mf-reading { padding: 28px 32px; }
+.sf-layout { margin: 0 auto; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 48px; }
+.sf-layout h2 { margin: 0 0 24px; font: 600 15px/1.4 var(--sb-ui-font); }
+.sf-existing { padding-left: 32px; border-left: 1px solid var(--sb-ui-line); }
+.sf-existing h2 span { display: block; margin-top: 4px; color: var(--sb-ui-muted); font-size: 12px; font-weight: 400; }
+.sf-existing ul { margin: 0; padding: 0; list-style: none; }
+.sf-existing li { padding: 9px 0; border-bottom: 1px solid var(--sb-ui-grid-line); font-size: 14px; }
+.sf-existing i { color: var(--sb-ui-accent); margin-right: 5px; }
+.sf-layout select { width: 100%; padding: 8px 10px; border: 1px solid var(--sb-ui-control-line); border-radius: 0; background: var(--sb-ui-context); color: var(--sb-ui-ink); font: 14px/1.5 var(--sb-ui-font); }
+.sf-layout select:focus-visible, .sf-link:focus-visible, .sf-territory button:focus-visible, .sf-options button:focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.sf-picker { position: relative; }
+.sf-options { position: absolute; z-index: 10; left: 0; right: 0; max-height: 200px; overflow: auto; border: 1px solid var(--sb-ui-control-line); background: var(--sb-ui-surface); }
+.sf-options button { display: block; width: 100%; padding: 9px 10px; border: 0; text-align: left; font: 13px/1.4 var(--sb-ui-font); color: var(--sb-ui-ink); background: transparent; cursor: pointer; }
+.sf-options button[aria-selected="true"], .sf-options button:hover { background: var(--sb-ui-control-fill); color: var(--sb-ui-control-ink); }
+.sf-selected { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.sf-territory { display: inline-flex; gap: 6px; align-items: center; padding: 4px 7px; border: 1px solid var(--sb-ui-control-line); background: var(--sb-ui-context); color: oklch(78% .09 210); font-size: 12px; }
+[data-bs-theme="light"] .sf-territory { color: oklch(42% .08 210); }
+.sf-territory button { padding: 0 3px; border: 0; background: transparent; color: inherit; font: 16px/1 var(--sb-ui-font); cursor: pointer; }
+.sf-link { padding: 0; border: 0; background: none; color: var(--sb-ui-accent); font: inherit; text-decoration: underline; cursor: pointer; }
+.sf-commands { display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-top: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }
+.sf-commands > span { flex: 1; color: var(--sb-ui-muted); font-size: 12px; }
+.sf-commands a { color: var(--sb-ui-ink); }
+.sf-help { color: var(--sb-ui-muted); font-size: 12px; }

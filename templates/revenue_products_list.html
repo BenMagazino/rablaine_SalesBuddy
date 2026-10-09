@@ -1,80 +1,97 @@
 {% extends "base.html" %}
 {% block title %}Products - Revenue - Sales Buddy{% endblock %}
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-product.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-products.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="View status">
+    <span data-sb-products-count role="status" aria-live="polite" aria-atomic="true">{{ products|length }} of {{ products|length }} products shown</span>
+    <span>{{ seller_name ~ "'s products" if seller_name is defined else 'All products' }}; all imported months</span>
+</footer>
+{% endif %}
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1><i class="bi bi-boxes"></i> Products</h1>
-            <p class="text-muted mb-0">All Azure products with revenue data</p>
+<div class="sb-revenue-workspace sb-products-directory{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-products-directory
+     data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+     data-seller-name="{{ seller_name|default('') }}"
+     data-comparison-status="{{ 'All imported months. Choose a customer to open its monthly comparison.' if seller_name is defined else 'All imported months. Choose a customer to open its graph and history.' }}">
+    <header class="sb-revenue-page-header" data-sb-page-band>
+        <h1><i class="bi bi-boxes" aria-hidden="true"></i> {{ seller_name ~ "'s Products" if seller_name is defined else 'Products' }}</h1>
+        {% if seller_name is defined %}
+        <a href="{{ url_for('revenue.revenue_seller_view', seller_name=seller_name) }}" class="sb-revenue-command">Back to Alerts</a>
+        {% else %}
+        <span class="sb-revenue-review-meta">Default: highest total revenue first</span>
+        {% endif %}
+    </header>
+    <div class="sb-products-workarea" data-sb-page-body>
+    <section class="sb-products-catalog" aria-label="Products">
+    <div class="sb-products-controls">
+        <label for="directoryProductSearch">Search products</label>
+        <div class="sb-products-search">
+            <input type="search" class="sb-record-field" id="directoryProductSearch"
+                   placeholder="Product, usage count or total" {% if not products %}disabled{% endif %}>
+            <button type="button" class="sb-revenue-command" data-sb-products-clear hidden>Clear</button>
         </div>
+        <p>Usage entries count customer/bucket pairs with positive totals. Consolidated products add their member counts.{% if seller_name is defined %} Customer comparisons also retain zero and negative entries.{% endif %}</p>
+        {% if request.args.get('embed') %}
+        <span data-sb-products-count role="status" aria-live="polite" aria-atomic="true">{{ products|length }} of {{ products|length }} products shown</span>
+        {% endif %}
     </div>
-
-    <!-- Search -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <input type="text" class="form-control" id="productSearch" placeholder="Search products..." onkeyup="filterProducts()">
+    <section class="sb-products-reading sb-revenue-detail" data-sb-products-reading tabindex="0"
+             role="region" aria-label="Product revenue comparison">
+        {% if products %}
+        <table class="sb-revenue-table sb-products-table" id="productsTable" data-sb-sortable
+               data-sb-sort-key="products-directory" data-sb-sort-default-column="{{ 1 if sort|default('revenue') == 'customers' else 2 }}"
+               data-sb-sort-default-direction="descending">
+            <caption>Imported products, initially ordered by {{ 'usage entries' if sort|default('revenue') == 'customers' else 'total revenue' }}</caption>
+            <thead><tr><th scope="col" data-sb-sort-type="text">Product</th><th scope="col" data-sb-sort-type="number">Usage entries</th><th scope="col" data-sb-sort-type="number">Total Revenue</th></tr></thead>
+            <tbody>
+                {% for p in products %}
+                <tr data-sb-directory-product data-product-name="{{ p.product }}">
+                    <th scope="row" data-sb-directory-value>
+                        <a data-sb-products-link href="{{ url_for('revenue.revenue_seller_product_view', seller_name=seller_name, product=p.product) if seller_name is defined else url_for('revenue.revenue_product_view', product=p.product) }}">{{ p.product }}</a>
+                        <button type="button" class="sb-product-select" data-sb-products-select
+                                aria-label="Show customers using {{ p.product }}" hidden><i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i></button>
+                    </th>
+                    <td data-sb-directory-value data-sb-sort-value="{{ p.customer_count }}">{{ p.customer_count }}</td>
+                    <td data-sb-directory-value data-sb-sort-value="{{ p.total_revenue }}">${{ '{:,.0f}'.format(p.total_revenue) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p class="sb-revenue-empty" data-sb-products-no-matches hidden>No matching products. Clear search to see all products.</p>
+        {% else %}
+        <section class="sb-revenue-page-empty">
+            <h2>{{ 'No product data for this seller' if seller_name is defined else 'No product data yet' }}</h2>
+            <p>{{ 'Products appear for customers linked to this seller in revenue analyses.' if seller_name is defined else 'Import revenue data to see products.' }}</p>
+            <a href="{{ url_for('revenue.revenue_import') }}" class="sb-revenue-command"><i class="bi bi-upload" aria-hidden="true"></i> Import Data</a>
+        </section>
+        {% endif %}
+    </section>
+    </section>
+    <section class="sb-products-inspector" data-sb-products-inspector aria-label="Product customer consumption" hidden>
+        <header class="sb-products-inspector-header">
+            <h2 data-sb-record-title tabindex="-1"></h2>
+            <a data-sb-record-full-link class="sb-revenue-command">Open product</a>
+        </header>
+        <p class="sb-products-inspector-status" data-sb-record-status role="status" aria-live="polite"></p>
+        <p class="sb-products-inspector-message" data-sb-record-loading role="status" hidden>Loading customer consumption...</p>
+        <div class="sb-products-inspector-message" data-sb-record-error role="alert" hidden>
+            <p>Customer consumption could not be loaded.</p>
+            <button type="button" class="sb-revenue-command" data-sb-record-retry>Retry</button>
+            <p>Or use Open product to read the full page.</p>
         </div>
-    </div>
-
-    <!-- Products Table -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0"><i class="bi bi-list-ul"></i> {{ products|length }} Products</h5>
-        </div>
-        <div class="card-body p-0">
-            {% if products %}
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="productsTable">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th class="text-center">Customers</th>
-                            <th class="text-end">Total Revenue</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for p in products %}
-                        <tr>
-                            <td>
-                                <a href="{{ url_for('revenue.revenue_product_view', product=p.product) }}">
-                                    {{ p.product }}
-                                </a>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-primary">{{ p.customer_count }}</span>
-                            </td>
-                            <td class="text-end">${{ '{:,.0f}'.format(p.total_revenue) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="p-5 text-center text-muted">
-                <i class="bi bi-inbox display-1"></i>
-                <h4 class="mt-3">No product data yet</h4>
-                <p>Import revenue data to see products.</p>
-                <a href="{{ url_for('revenue.revenue_import') }}" class="btn btn-primary">
-                    <i class="bi bi-upload"></i> Import Data
-                </a>
-            </div>
-            {% endif %}
-        </div>
+        <div data-sb-record-content hidden></div>
+    </section>
+    <p class="sb-products-inspector-message" data-sb-products-no-selection hidden>No matching products. Clear search to choose a product.</p>
     </div>
 </div>
-
-<script>
-function filterProducts() {
-    const search = document.getElementById('productSearch').value.toLowerCase();
-    const table = document.getElementById('productsTable');
-    const rows = table.getElementsByTagName('tr');
-    
-    for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(search) ? '' : 'none';
-    }
-}
-</script>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-revenue-products.js') }}" defer></script>
 {% endblock %}

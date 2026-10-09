@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime, timezone
-from typing import Optional
+from typing import Optional, TypedDict
 
 from app.models import (
     db, RevenueImport, CustomerRevenueData, ProductRevenueData, Customer,
@@ -78,6 +78,49 @@ def consolidate_products_list(products: list[dict]) -> list[dict]:
         consolidated[display_name]['customer_count'] += p.get('customer_count', 0)
     
     return list(consolidated.values())
+
+
+class ProductComparison(TypedDict):
+    """Shared product members and customer/bucket rollup, without monthly history."""
+
+    customers: list[dict]
+    matching_products: list[str]
+    is_consolidated: bool
+
+
+def get_product_comparison(product: str, seller_name: str | None = None) -> ProductComparison:
+    """Roll up product members using the existing global or seller-scoped query semantics."""
+    is_consolidated = product in PRODUCT_CONSOLIDATION_PREFIXES
+    matching_products = (
+        [p['product'] for p in (
+            get_seller_products(seller_name) if seller_name is not None else get_all_products()
+        ) if p['product'].startswith(product)]
+        if is_consolidated else [product]
+    )
+    customers_dict: dict[tuple[str, str], dict] = {}
+    for member in matching_products:
+        member_customers = (
+            get_seller_customers_using_product(seller_name, member)
+            if seller_name is not None else get_customers_using_product(member)
+        )
+        for customer in member_customers:
+            key = (customer['customer_name'], customer['bucket'])
+            if key not in customers_dict:
+                customers_dict[key] = {
+                    'customer_name': customer['customer_name'],
+                    'bucket': customer['bucket'],
+                    'customer_id': customer.get('customer_id'),
+                    'total_revenue': 0,
+                    'latest_month': customer.get('latest_month'),
+                }
+            customers_dict[key]['total_revenue'] += customer['total_revenue']
+    return {
+        'customers': sorted(
+            customers_dict.values(), key=lambda customer: customer['total_revenue'], reverse=True,
+        ),
+        'matching_products': matching_products,
+        'is_consolidated': is_consolidated,
+    }
 
 
 def fiscal_month_to_date(fiscal_month: str) -> Optional[date]:

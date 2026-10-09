@@ -2,18 +2,31 @@
 
 {% block title %}Home - Sales Buddy{% endblock %}
 
+{% block body_class %}{{ super() }} sb-page-frame sb-home-page{% endblock %}
+
+{% block context_bar %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home-native.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-engagements-directory.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home-calendar.css') }}">
+{% endblock %}
+
+{% block footer %}{% endblock %}
+
 {% block content %}
 
-<!-- Dashboard Cards Row -->
-<div class="row mb-4">
+{% set dashboard_rail %}
+<aside class="sb-home-rail" aria-label="Needs attention">
     <!-- Action Items -->
-    <div class="col-lg-4 mb-3">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0" title="Action items from across the app and suggested items from Copilot"><i class="bi bi-check2-square"></i> Action Items</h5>
-                <a href="#" class="text-muted" data-bs-toggle="modal" data-bs-target="#dashboardSettingsModal" title="Configure action items"><i class="bi bi-gear"></i></a>
-            </div>
-            <div class="card-body p-0" style="max-height: 360px; overflow-y: auto;">
+        <section class="sb-home-panel" aria-labelledby="homeActionsHeading">
+            <header class="sb-home-panel-header">
+                <h2 id="homeActionsHeading" title="Action items from across the app and suggested items from Copilot"><i class="bi bi-check2-square"></i> Action Items</h2>
+                <button type="button" class="sb-home-button sb-home-icon-button" data-sb-dialog="dashboardSettingsModal" aria-controls="dashboardSettingsModal" aria-label="Configure action items" title="Configure action items"><i class="bi bi-gear" aria-hidden="true"></i></button>
+            </header>
+            <div class="sb-home-panel-body" tabindex="0" aria-label="Action items list">
                 {% set engagement_tasks = open_tasks|selectattr('source', 'equalto', 'engagement')|list %}
                 {% set copilot_tasks = open_tasks|selectattr('source', 'equalto', 'copilot')|list %}
                 {# Split project tasks: copilot_saved vs regular #}
@@ -27,24 +40,24 @@
                     {% endif %}
                 {% endfor %}
                 {% if engagement_tasks %}
-                <div class="list-group list-group-flush">
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
                     {% for task in engagement_tasks %}
-                    <div class="list-group-item list-group-item-action py-2 px-3" onclick="viewActionItem({{ task.id }}, {showEngagementLink: true})" style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate{% if task.priority == 'high' %} text-danger{% endif %}">
-                                    {% if task.priority == 'high' %}<i class="bi bi-exclamation-triangle-fill me-1"></i>{% endif %}{{ task.title }}
+                    <div class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: true})">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate{% if task.priority == 'high' %} sb-hn-text-danger{% endif %}">
+                                    {% if task.priority == 'high' %}<i class="bi bi-exclamation-triangle-fill sb-hn-me-1"></i>{% endif %}{{ task.title }}
                                 </div>
-                                <div class="text-muted small text-truncate">
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
                                     {% if task.source == 'project' and task.project %}
-                                        <i class="bi bi-folder text-info me-1"></i>{{ task.project.title }}
+                                        <i class="bi bi-folder sb-hn-text-info sb-hn-me-1"></i>{{ task.project.title }}
                                     {% elif task.engagement %}
                                         {{ task.engagement.customer.name if task.engagement.customer else '' }}{% if task.engagement.customer %} &middot; {% endif %}{{ task.engagement.title }}
                                     {% endif %}
                                 </div>
                             </div>
                             {% if task.due_date %}
-                            <span class="badge flex-shrink-0 {% if task.is_overdue %}bg-danger{% else %}bg-secondary{% endif %}">
+                            <span class="sb-hn-badge sb-hn-flex-shrink-0 {% if task.is_overdue %}sb-hn-bg-danger{% else %}sb-hn-bg-secondary{% endif %}">
                                 {{ task.due_date.strftime('%b %d') }}
                             </span>
                             {% endif %}
@@ -54,21 +67,21 @@
                 </div>
                 {% endif %}
                 {% if copilot_tasks or _saved %}
-                {% if engagement_tasks %}<hr class="my-0">{% endif %}
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item bg-info bg-opacity-10 py-1 px-3" title="AI-generated action items from your emails, chats, and meetings via WorkIQ">
-                        <small class="fw-semibold text-muted"><i class="bi bi-stars"></i> Copilot Suggestions</small>
+                {% if engagement_tasks %}<hr class="sb-hn-my-0">{% endif %}
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
+                    <div class="sb-hn-list-group-item sb-hn-bg-info sb-hn-bg-opacity-10 sb-hn-py-1 sb-hn-px-3" title="AI-generated action items from your emails, chats, and meetings via WorkIQ">
+                        <small class="sb-hn-fw-semibold sb-hn-text-muted"><i class="bi bi-stars"></i> Copilot Suggestions</small>
                     </div>
                     {% for task in _saved %}
-                    <div class="list-group-item list-group-item-action py-2 px-3" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})" style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">
-                                    <i class="bi bi-pin-angle text-info me-1"></i>{{ task.title }}
+                    <div class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">
+                                    <i class="bi bi-pin-angle sb-hn-text-info sb-hn-me-1"></i>{{ task.title }}
                                 </div>
                             </div>
                             {% if task.due_date %}
-                            <span class="badge flex-shrink-0 {% if task.is_overdue %}bg-danger{% else %}bg-secondary{% endif %}">
+                            <span class="sb-hn-badge sb-hn-flex-shrink-0 {% if task.is_overdue %}sb-hn-bg-danger{% else %}sb-hn-bg-secondary{% endif %}">
                                 {{ task.due_date.strftime('%b %d') }}
                             </span>
                             {% endif %}
@@ -76,15 +89,15 @@
                     </div>
                     {% endfor %}
                     {% for task in copilot_tasks %}
-                    <div class="list-group-item list-group-item-action py-2 px-3" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})" style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">
+                    <div class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">
                                     {{ task.title }}
                                 </div>
                             </div>
                             {% if task.due_date %}
-                            <span class="badge flex-shrink-0 {% if task.is_overdue %}bg-danger{% else %}bg-secondary{% endif %}">
+                            <span class="sb-hn-badge sb-hn-flex-shrink-0 {% if task.is_overdue %}sb-hn-bg-danger{% else %}sb-hn-bg-secondary{% endif %}">
                                 {{ task.due_date.strftime('%b %d') }}
                             </span>
                             {% endif %}
@@ -94,24 +107,24 @@
                 </div>
                 {% endif %}
                 {% if _project_tasks %}
-                {% if engagement_tasks or copilot_tasks or _saved %}<hr class="my-0">{% endif %}
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item bg-info bg-opacity-10 py-1 px-3">
-                        <small class="fw-semibold text-muted"><i class="bi bi-folder"></i> Project Tasks</small>
+                {% if engagement_tasks or copilot_tasks or _saved %}<hr class="sb-hn-my-0">{% endif %}
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
+                    <div class="sb-hn-list-group-item sb-hn-bg-info sb-hn-bg-opacity-10 sb-hn-py-1 sb-hn-px-3">
+                        <small class="sb-hn-fw-semibold sb-hn-text-muted"><i class="bi bi-folder"></i> Project Tasks</small>
                     </div>
                     {% for task in _project_tasks %}
-                    <div class="list-group-item list-group-item-action py-2 px-3" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})" style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate{% if task.priority == 'high' %} text-danger{% endif %}">
-                                    {% if task.priority == 'high' %}<i class="bi bi-exclamation-triangle-fill me-1"></i>{% endif %}{{ task.title }}
+                    <div class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate{% if task.priority == 'high' %} sb-hn-text-danger{% endif %}">
+                                    {% if task.priority == 'high' %}<i class="bi bi-exclamation-triangle-fill sb-hn-me-1"></i>{% endif %}{{ task.title }}
                                 </div>
-                                <div class="text-muted small text-truncate">
-                                    {% if task.project %}<i class="bi bi-folder text-info me-1"></i>{{ task.project.title }}{% endif %}
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
+                                    {% if task.project %}<i class="bi bi-folder sb-hn-text-info sb-hn-me-1"></i>{{ task.project.title }}{% endif %}
                                 </div>
                             </div>
                             {% if task.due_date %}
-                            <span class="badge flex-shrink-0 {% if task.is_overdue %}bg-danger{% else %}bg-secondary{% endif %}">
+                            <span class="sb-hn-badge sb-hn-flex-shrink-0 {% if task.is_overdue %}sb-hn-bg-danger{% else %}sb-hn-bg-secondary{% endif %}">
                                 {{ task.due_date.strftime('%b %d') }}
                             </span>
                             {% endif %}
@@ -121,33 +134,33 @@
                 </div>
                 {% endif %}
                 {% if stale_milestones %}
-                {% if engagement_tasks or copilot_tasks or _saved or _project_tasks %}<hr class="my-0">{% endif %}
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item bg-warning bg-opacity-10 py-1 px-3" title="Milestones where you're on the team but haven't updated comments in 2 weeks or more">
-                        <small class="fw-semibold text-muted"><i class="bi bi-clock-history"></i> Stale Milestones</small>
+                {% if engagement_tasks or copilot_tasks or _saved or _project_tasks %}<hr class="sb-hn-my-0">{% endif %}
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
+                    <div class="sb-hn-list-group-item sb-hn-bg-warning sb-hn-bg-opacity-10 sb-hn-py-1 sb-hn-px-3" title="Milestones where you're on the team but haven't updated comments in 2 weeks or more">
+                        <small class="sb-hn-fw-semibold sb-hn-text-muted"><i class="bi bi-clock-history"></i> Stale Milestones</small>
                     </div>
                     {% for ms in stale_milestones %}
                     <div onclick="openHomeMilestoneDetail(event, {{ ms.id }}, '{{ (ms.title or ms.opportunity_name or '')|replace("'", "\\'") }}', '{{ ms.msx_status }}', '{{ ms.url or '' }}')"
-                         class="list-group-item list-group-item-action py-2 px-3" style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">
+                         class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">
                                     {{ ms.title or ms.opportunity_name or 'Milestone #' ~ ms.id }}
                                 </div>
-                                <div class="text-muted small text-truncate">
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
                                     {% if ms.customer %}{{ ms.customer.name }}{% endif %}
                                     {% if ms.workload %} - {{ ms.workload }}{% endif %}
                                 </div>
                             </div>
-                            <div class="text-end flex-shrink-0">
+                            <div class="sb-hn-text-end sb-hn-flex-shrink-0">
                                 {% if ms.customer and ms.customer.seller %}
                                 <div>
-                                    <a href="{{ url_for('sellers.seller_view', id=ms.customer.seller.id) }}" class="badge {{ get_seller_color(ms.customer.seller.id) }} text-decoration-none" onclick="event.stopPropagation();" style="font-size: 0.65rem;"><i class="bi bi-person"></i> {{ ms.customer.seller.name }}</a>
+                                    <a href="{{ url_for('sellers.seller_view', id=ms.customer.seller.id) }}" class="sb-hn-badge sb-hn-bg-primary sb-hn-text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-person"></i> {{ ms.customer.seller.name }}</a>
                                 </div>
                                 {% endif %}
                                 {% if ms.monthly_usage %}
                                 <div>
-                                    <span class="badge bg-success" style="font-size: 0.65rem;">
+                                    <span class="sb-hn-badge sb-hn-bg-success" style="font-size: 0.65rem;">
                                         {{ '${:,.0f}'.format(ms.monthly_usage) }}/mo
                                     </span>
                                 </div>
@@ -159,19 +172,19 @@
                 </div>
                 {% endif %}
                 {% if hygiene_tasks %}
-                {% if open_tasks or stale_milestones %}<hr class="my-0">{% endif %}
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item bg-light bg-opacity-10 py-1 px-3" title="Data quality issues that need attention">
-                        <small class="fw-semibold text-muted"><i class="bi bi-wrench"></i> Hygiene</small>
+                {% if open_tasks or stale_milestones %}<hr class="sb-hn-my-0">{% endif %}
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
+                    <div class="sb-hn-list-group-item sb-hn-bg-light sb-hn-bg-opacity-10 sb-hn-py-1 sb-hn-px-3" title="Data quality issues that need attention">
+                        <small class="sb-hn-fw-semibold sb-hn-text-muted"><i class="bi bi-wrench"></i> Hygiene</small>
                     </div>
                     {% for ht in hygiene_tasks %}
-                    <a href="{{ ht.url }}" class="list-group-item list-group-item-action py-2 px-3">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">
-                                    <i class="bi {{ ht.icon }} text-muted me-1"></i>{{ ht.title }}
+                    <a href="{{ ht.url }}" class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">
+                                    <i class="bi {{ ht.icon }} sb-hn-text-muted sb-hn-me-1"></i>{{ ht.title }}
                                 </div>
-                                <div class="text-muted small text-truncate">
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
                                     {{ ht.subtitle }}{% if ht.type == 'engagement_no_milestone' %} - no milestone linked{% elif ht.type == 'milestone_no_acr' %} - no ACR set{% endif %}
                                 </div>
                             </div>
@@ -181,51 +194,49 @@
                 </div>
                 {% endif %}
                 {% if not engagement_tasks and not copilot_tasks and not _saved and not _project_tasks and not stale_milestones and not hygiene_tasks %}
-                <div class="text-center text-muted py-4">
+                <div class="sb-hn-text-center sb-hn-text-muted sb-hn-py-4">
                     <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
-                    <p class="mb-0 mt-2">No open action items yet.</p>
-                    <p class="small mb-0 mt-1">Go to an <a href="{{ url_for('engagements.engagements_hub') }}">engagement</a> to create action items.</p>
+                    <p class="sb-hn-mb-0 sb-hn-mt-2">No open action items yet.</p>
+                    <p class="sb-hn-small sb-hn-mb-0 sb-hn-mt-1">Go to an <a href="{{ url_for('engagements.engagements_hub') }}">engagement</a> to create action items.</p>
                 </div>
                 {% endif %}
             </div>
-            <div class="card-footer text-center">
-                <a href="{{ url_for('main.action_items_hub') }}" class="text-decoration-none small">View all action items <i class="bi bi-arrow-right"></i></a>
-            </div>
-        </div>
-    </div>
+            <footer class="sb-home-panel-footer">
+                <a href="{{ url_for('main.action_items_hub') }}" class="sb-hn-text-decoration-none sb-hn-small">View all action items <i class="bi bi-arrow-right"></i></a>
+            </footer>
+        </section>
 
     <!-- Milestones Coming Due -->
-    <div class="col-lg-4 mb-3">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0" title="Milestones coming due in the next 30 days where you're on the milestone team"><i class="bi bi-flag-fill text-warning"></i> Milestones Due</h5>
-            </div>
-            <div class="card-body p-0" style="max-height: 360px; overflow-y: auto;">
+        <section class="sb-home-panel" aria-labelledby="homeMilestonesHeading">
+            <header class="sb-home-panel-header">
+                <h2 id="homeMilestonesHeading" title="Milestones coming due in the next 30 days where you're on the milestone team"><i class="bi bi-flag-fill"></i> Milestones Due</h2>
+            </header>
+            <div class="sb-home-panel-body" tabindex="0" aria-label="Milestones due list">
                 {% if upcoming_milestones %}
-                <div class="list-group list-group-flush">
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
                     {% for ms in upcoming_milestones %}
                     <div onclick="openHomeMilestoneDetail(event, {{ ms.id }}, '{{ (ms.title or ms.opportunity_name or '')|replace("'", "\\'") }}', '{{ ms.msx_status }}', '{{ ms.url or '' }}')"
-                         class="list-group-item list-group-item-action py-2 px-3" style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">
+                         class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">
                                     {{ ms.title or ms.opportunity_name or 'Milestone #' ~ ms.id }}
                                 </div>
-                                <div class="text-muted small text-truncate">
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
                                     {% if ms.customer %}{{ ms.customer.name }}{% endif %}
                                     {% if ms.workload %} - {{ ms.workload }}{% endif %}
                                 </div>
                             </div>
-                            <div class="text-end flex-shrink-0">
+                            <div class="sb-hn-text-end sb-hn-flex-shrink-0">
                                 {% if ms.due_date %}
-                                <span class="badge {% if ms.due_date_urgency == 'past_due' %}bg-danger{% elif ms.due_date_urgency == 'this_week' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                <span class="sb-hn-badge {% if ms.due_date_urgency == 'past_due' %}sb-hn-bg-danger{% elif ms.due_date_urgency == 'this_week' %}sb-hn-bg-warning sb-hn-text-dark{% else %}sb-hn-bg-secondary{% endif %}">
                                     {{ ms.due_date.strftime('%b %d') }}
                                 </span>
                                 {% endif %}
                                 {% if ms.msx_status == 'On Track' and ms.monthly_usage %}
-                                <div class="text-success small fw-semibold">${{ '{:,.0f}'.format(ms.monthly_usage) }}/mo</div>
+                                <div class="sb-hn-text-success sb-hn-small sb-hn-fw-semibold">${{ '{:,.0f}'.format(ms.monthly_usage) }}/mo</div>
                                 {% elif ms.msx_status != 'On Track' %}
-                                <div class="small fw-semibold {% if ms.msx_status == 'At Risk' %}text-warning{% elif ms.msx_status == 'Blocked' %}text-danger{% else %}text-muted{% endif %}">
+                                <div class="sb-hn-small sb-hn-fw-semibold {% if ms.msx_status == 'At Risk' %}sb-hn-text-warning{% elif ms.msx_status == 'Blocked' %}sb-hn-text-danger{% else %}sb-hn-text-muted{% endif %}">
                                     {{ ms.msx_status }}
                                 </div>
                                 {% endif %}
@@ -235,58 +246,56 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center text-muted py-4">
+                <div class="sb-hn-text-center sb-hn-text-muted sb-hn-py-4">
                     <i class="bi bi-flag" style="font-size: 2rem;"></i>
-                    <p class="mb-0 mt-2">No milestones due in the next 30 days.</p>
+                    <p class="sb-hn-mb-0 sb-hn-mt-2">No milestones due in the next 30 days.</p>
                 </div>
                 {% endif %}
             </div>
             {% if upcoming_milestones %}
-            <div class="card-footer text-center">
-                <a href="{{ url_for('milestones.milestone_tracker') }}" class="text-decoration-none small">View all milestones <i class="bi bi-arrow-right"></i></a>
-            </div>
+            <footer class="sb-home-panel-footer">
+                <a href="{{ url_for('milestones.milestone_tracker') }}" class="sb-hn-text-decoration-none sb-hn-small">View all milestones <i class="bi bi-arrow-right"></i></a>
+            </footer>
             {% endif %}
-        </div>
-    </div>
+        </section>
 
     <!-- Revenue Alerts -->
-    <div class="col-lg-4 mb-3">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0" title="Top 10 unactioned revenue alerts across your accounts"><i class="bi bi-exclamation-diamond text-danger"></i> Revenue Alerts</h5>
-                <div class="d-flex align-items-center gap-2">
+        <section class="sb-home-panel" aria-labelledby="homeRevenueHeading">
+            <header class="sb-home-panel-header">
+                <h2 id="homeRevenueHeading" title="Top 10 unactioned revenue alerts across your accounts"><i class="bi bi-exclamation-diamond"></i> Revenue Alerts</h2>
+                <div class="sb-hn-d-flex sb-hn-align-items-center sb-hn-gap-2">
                     <span id="homeBucketFilterContainer"></span>
                 </div>
-            </div>
-            <div class="card-body p-0" style="max-height: 360px; overflow-y: auto;">
+            </header>
+            <div class="sb-home-panel-body" tabindex="0" aria-label="Revenue alerts list">
                 {% if not has_revenue %}
-                <div class="text-center text-muted py-4">
+                <div class="sb-hn-text-center sb-hn-text-muted sb-hn-py-4">
                     <i class="bi bi-cloud-arrow-up" style="font-size: 2rem;"></i>
-                    <p class="mb-0 mt-2">Revenue not imported yet.</p>
-                    <a href="{{ url_for('revenue.revenue_import') }}" class="btn btn-sm btn-outline-primary mt-2">
+                    <p class="sb-hn-mb-0 sb-hn-mt-2">Revenue not imported yet.</p>
+                    <a href="{{ url_for('revenue.revenue_import') }}" class="sb-home-button">
                         <i class="bi bi-upload"></i> Import Revenue
                     </a>
                 </div>
                 {% elif revenue_alerts %}
-                <div class="list-group list-group-flush">
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
                     {% for alert in revenue_alerts %}
                     <div data-bucket="{{ alert.bucket }}" onclick="openHomeAlertDetail(event, {{ alert.id }}, '{{ alert.customer_name|replace("'", "\\'") }}', '{{ alert.bucket|replace("'", "\\'") }}')"
-                         class="list-group-item list-group-item-action py-2 px-3" style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">{{ alert.customer_name }}</div>
-                                <div class="text-muted small text-truncate">
+                         class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">{{ alert.customer_name }}</div>
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
                                     {{ alert.bucket }} - {{ alert.recommended_action|replace('_', ' ')|title }}
                                 </div>
                             </div>
-                            <div class="text-end flex-shrink-0">
-                                <span class="badge {% if alert.category == 'DECLINING' %}bg-danger{% elif alert.category == 'RECENT_DIP' %}bg-warning text-dark{% elif alert.category == 'EXPANSION_OPPORTUNITY' %}bg-success{% else %}bg-info{% endif %}">
+                            <div class="sb-hn-text-end sb-hn-flex-shrink-0">
+                                <span class="sb-hn-badge {% if alert.category == 'DECLINING' %}sb-hn-bg-danger{% elif alert.category == 'RECENT_DIP' %}sb-hn-bg-warning sb-hn-text-dark{% elif alert.category == 'EXPANSION_OPPORTUNITY' %}sb-hn-bg-success{% else %}sb-hn-bg-info{% endif %}">
                                     {% if alert.category == 'DECLINING' %}Declining{% elif alert.category == 'CHURNED' %}Inactive{% else %}{{ alert.category|replace('_', ' ')|title }}{% endif %}
                                 </span>
                                 {% if alert.dollars_at_risk %}
-                                <div class="text-danger small fw-semibold">${{ '{:,.0f}'.format(alert.dollars_at_risk) }}</div>
+                                <div class="sb-hn-text-danger sb-hn-small sb-hn-fw-semibold">${{ '{:,.0f}'.format(alert.dollars_at_risk) }}</div>
                                 {% elif alert.dollars_opportunity %}
-                                <div class="text-success small fw-semibold">${{ '{:,.0f}'.format(alert.dollars_opportunity) }}</div>
+                                <div class="sb-hn-text-success sb-hn-small sb-hn-fw-semibold">${{ '{:,.0f}'.format(alert.dollars_opportunity) }}</div>
                                 {% endif %}
                             </div>
                         </div>
@@ -294,37 +303,43 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center text-muted py-4">
+                <div class="sb-hn-text-center sb-hn-text-muted sb-hn-py-4">
                     <i class="bi bi-shield-check" style="font-size: 2rem;"></i>
-                    <p class="mb-0 mt-2">No unactioned revenue alerts.</p>
+                    <p class="sb-hn-mb-0 sb-hn-mt-2">No unactioned revenue alerts.</p>
                 </div>
                 {% endif %}
             </div>
             {% if revenue_alerts %}
-            <div class="card-footer text-center">
-                <a href="{{ url_for('revenue.revenue_dashboard') }}" class="text-decoration-none small">View all alerts <i class="bi bi-arrow-right"></i></a>
-            </div>
+            <footer class="sb-home-panel-footer">
+                <a href="{{ url_for('revenue.revenue_dashboard') }}" class="sb-hn-text-decoration-none sb-hn-small">View all alerts <i class="bi bi-arrow-right"></i></a>
+            </footer>
             {% endif %}
+        </section>
+</aside>
+{% endset %}
+
+
+
+<dialog class="sb-dialog sb-dialog-compact" id="dashboardSettingsModal"
+        aria-labelledby="dashboardSettingsLabel" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <div class="sb-dialog-eyebrow">Home preferences</div>
+                <h2 id="dashboardSettingsLabel">Configure Action Items</h2>
+            </div>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                    aria-label="Close action item settings"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <div class="sb-dialog-body">
+            {% include 'partials/_dashboard_settings.html' %}
+        </div>
+        <div class="sb-dialog-footer">
+            <small>Changes save immediately. Reload Home to update the displayed items.</small>
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Done</button>
         </div>
     </div>
-</div>
-
-
-
-<!-- Dashboard Settings Modal -->
-<div class="modal fade" id="dashboardSettingsModal" tabindex="-1" aria-labelledby="dashboardSettingsLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="dashboardSettingsLabel"><i class="bi bi-gear"></i> Configure Action Items</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                {% include 'partials/_dashboard_settings.html' %}
-            </div>
-        </div>
-    </div>
-</div>
+</dialog>
 
 
 <style>
@@ -347,24 +362,11 @@
         min-width: 0;
         width: 100%;
     }
-    .calendar-entries .text-truncate,
-    .cal-ghosts-container .text-truncate,
-    #tasksCalendarTable .text-truncate {
+    .calendar-entries .sb-hn-text-truncate,
+    .cal-ghosts-container .sb-hn-text-truncate,
+    #tasksCalendarTable .sb-hn-text-truncate {
         display: block;
         max-width: 100%;
-    }
-    #calendarTable th.text-muted {
-        color: var(--bs-secondary-color) !important;
-        opacity: 0.65;
-    }
-    #calendarTable td {
-        transition: background-color 0.15s;
-    }
-    #calendarTable td:hover:not(.bg-light) {
-        background-color: rgba(13, 110, 253, 0.05);
-    }
-    html[data-bs-theme="dark"] #calendarTable td.bg-light {
-        background-color: rgba(255,255,255,0.03) !important;
     }
     .calendar-entries::-webkit-scrollbar {
         width: 4px;
@@ -376,46 +378,8 @@
     html[data-bs-theme="dark"] .calendar-entries::-webkit-scrollbar-thumb {
         background-color: rgba(255,255,255,0.2);
     }
-    /* Customer color palette for calendar - 15 distinct colors */
-    .cal-customer-1 { background-color: rgba(220, 53, 69, 0.3) !important; } /* Red */
-    .cal-customer-2 { background-color: rgba(25, 135, 84, 0.35) !important; } /* Green */
-    .cal-customer-3 { background-color: rgba(13, 110, 253, 0.3) !important; } /* Blue */
-    .cal-customer-4 { background-color: rgba(255, 193, 7, 0.4) !important; } /* Yellow */
-    .cal-customer-5 { background-color: rgba(111, 66, 193, 0.35) !important; } /* Purple */
-    .cal-customer-6 { background-color: rgba(253, 126, 20, 0.35) !important; } /* Orange */
-    .cal-customer-7 { background-color: rgba(214, 51, 132, 0.3) !important; } /* Pink */
-    .cal-customer-8 { background-color: rgba(13, 202, 240, 0.3) !important; } /* Cyan */
-    .cal-customer-9 { background-color: rgba(102, 16, 242, 0.3) !important; } /* Indigo */
-    .cal-customer-10 { background-color: rgba(32, 201, 151, 0.35) !important; } /* Teal */
-    .cal-customer-11 { background-color: rgba(165, 42, 42, 0.35) !important; } /* Brown */
-    .cal-customer-12 { background-color: rgba(0, 128, 128, 0.35) !important; } /* Dark Teal */
-    .cal-customer-13 { background-color: rgba(255, 99, 71, 0.35) !important; } /* Tomato */
-    .cal-customer-14 { background-color: rgba(75, 0, 130, 0.3) !important; } /* Dark Indigo */
-    .cal-customer-15 { background-color: rgba(184, 134, 11, 0.4) !important; } /* Dark Gold */
-    /* Highlight state for same-customer entries */
-    .cal-customer-1.cal-highlight { background-color: rgba(220, 53, 69, 0.7) !important; box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.8); }
-    .cal-customer-2.cal-highlight { background-color: rgba(25, 135, 84, 0.7) !important; box-shadow: 0 0 0 2px rgba(25, 135, 84, 0.8); }
-    .cal-customer-3.cal-highlight { background-color: rgba(13, 110, 253, 0.7) !important; box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.8); }
-    .cal-customer-4.cal-highlight { background-color: rgba(255, 193, 7, 0.75) !important; box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.9); }
-    .cal-customer-5.cal-highlight { background-color: rgba(111, 66, 193, 0.7) !important; box-shadow: 0 0 0 2px rgba(111, 66, 193, 0.8); }
-    .cal-customer-6.cal-highlight { background-color: rgba(253, 126, 20, 0.7) !important; box-shadow: 0 0 0 2px rgba(253, 126, 20, 0.8); }
-    .cal-customer-7.cal-highlight { background-color: rgba(214, 51, 132, 0.7) !important; box-shadow: 0 0 0 2px rgba(214, 51, 132, 0.8); }
-    .cal-customer-8.cal-highlight { background-color: rgba(13, 202, 240, 0.7) !important; box-shadow: 0 0 0 2px rgba(13, 202, 240, 0.8); }
-    .cal-customer-9.cal-highlight { background-color: rgba(102, 16, 242, 0.7) !important; box-shadow: 0 0 0 2px rgba(102, 16, 242, 0.8); }
-    .cal-customer-10.cal-highlight { background-color: rgba(32, 201, 151, 0.7) !important; box-shadow: 0 0 0 2px rgba(32, 201, 151, 0.8); }
-    .cal-customer-11.cal-highlight { background-color: rgba(165, 42, 42, 0.7) !important; box-shadow: 0 0 0 2px rgba(165, 42, 42, 0.8); }
-    .cal-customer-12.cal-highlight { background-color: rgba(0, 128, 128, 0.7) !important; box-shadow: 0 0 0 2px rgba(0, 128, 128, 0.8); }
-    .cal-customer-13.cal-highlight { background-color: rgba(255, 99, 71, 0.7) !important; box-shadow: 0 0 0 2px rgba(255, 99, 71, 0.8); }
-    .cal-customer-14.cal-highlight { background-color: rgba(75, 0, 130, 0.7) !important; box-shadow: 0 0 0 2px rgba(75, 0, 130, 0.8); }
-    .cal-customer-15.cal-highlight { background-color: rgba(184, 134, 11, 0.75) !important; box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.9); }
-    
-    /* General note (no customer) style */
-    .cal-general-note { background-color: rgba(108, 117, 125, 0.2) !important; border-left: 2px solid rgba(108, 117, 125, 0.6); }
-    .cal-general-note.cal-highlight { background-color: rgba(108, 117, 125, 0.45) !important; box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.6); }
-    [data-customer-id] { cursor: pointer; transition: all 0.15s ease; }
-    .cal-general-note { cursor: pointer; transition: all 0.15s ease; }
     .cal-add-btn { opacity: 0.3; transition: opacity 0.15s; font-size: 0.85rem; }
-    .cal-add-btn:hover { opacity: 1; color: var(--bs-primary) !important; }
+    .cal-add-btn:hover { opacity: 1; color: var(--sb-ui-accent) !important; }
     /* Per-day sync control lives inside the day-number span and only
        appears when the user hovers the date. Click replaces the number
        with a spinning teal refresh icon until the WorkIQ pull finishes. */
@@ -432,7 +396,7 @@
         display: none;
         align-items: center;
         justify-content: center;
-        color: var(--bs-info);
+        color: var(--sb-ui-accent);
         font-size: 0.9em;
         pointer-events: none;
     }
@@ -441,13 +405,13 @@
     /* If the aura sync is already syncing/queueing this day, don't
        advertise the manual refresh affordance -- the morning sync owns
        it. We block the click in JS too (see triggerDaySync). */
-    td:has(> .d-flex .cal-aura-dots) .cal-day-num-wrap {
+    td:has(.cal-aura-dots) .cal-day-num-wrap {
         cursor: default;
     }
-    td:has(> .d-flex .cal-aura-dots) .cal-day-num-wrap:hover .cal-day-sync-overlay {
+    td:has(.cal-aura-dots) .cal-day-num-wrap:hover .cal-day-sync-overlay {
         display: none;
     }
-    td:has(> .d-flex .cal-aura-dots) .cal-day-num-wrap:hover .cal-day-num {
+    td:has(.cal-aura-dots) .cal-day-num-wrap:hover .cal-day-num {
         visibility: visible;
     }
     .cal-day-num-wrap.cal-day-syncing .cal-day-num { visibility: hidden; }
@@ -457,115 +421,9 @@
     }
     @keyframes cal-sync-spin { to { transform: rotate(360deg); } }
     .cal-fill-btn { opacity: 0.3; transition: opacity 0.15s; font-size: 0.85rem; }
-    .cal-fill-btn:hover { opacity: 1; color: var(--bs-warning) !important; }
+    .cal-fill-btn:hover { opacity: 1; color: var(--sb-ui-warning) !important; }
     #calendarTable td:hover .cal-add-btn { opacity: 0.7; }
     #calendarTable td:hover .cal-fill-btn { opacity: 0.7; }
-
-    /* Ghost meeting (PrefetchedMeeting) styling - clearly distinct from real notes.
-       Dashed border + lower opacity says "this is a placeholder, click to make it real". */
-    .cal-ghost {
-        background-color: transparent !important;
-        border: 1px dashed rgba(108, 117, 125, 0.6);
-        opacity: 0.75;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        position: relative;
-        padding-right: 1.1rem !important;
-    }
-    .cal-ghost:hover {
-        opacity: 1;
-        background-color: rgba(108, 117, 125, 0.08) !important;
-        border-style: solid;
-    }
-    html[data-bs-theme="dark"] .cal-ghost {
-        border-color: rgba(255, 255, 255, 0.35);
-    }
-    html[data-bs-theme="dark"] .cal-ghost:hover {
-        background-color: rgba(255, 255, 255, 0.06) !important;
-    }
-    .cal-ghost-dismiss {
-        position: absolute;
-        top: 0;
-        right: 2px;
-        opacity: 0;
-        font-size: 0.7rem;
-        line-height: 1;
-        color: var(--bs-secondary);
-        text-decoration: none;
-        background: transparent;
-        border: 0;
-        padding: 1px 3px;
-    }
-    .cal-ghost:hover .cal-ghost-dismiss { opacity: 0.8; }
-    .cal-ghost-dismiss:hover { opacity: 1 !important; color: var(--bs-danger); }
-    .cal-ghost-unmatched { border-color: rgba(255, 193, 7, 0.7); }
-    .cal-ghost-unmatched:hover { background-color: rgba(255, 193, 7, 0.1) !important; }
-    .cal-ghost-recur { display: inline-block; cursor: pointer; }
-    .cal-ghost-recur:hover { transform: scale(1.15); }
-
-    /* Ghost color tints - share the same hue as real customer notes for
-       visual continuity, but at much lower opacity so ghosts still read
-       as placeholders. Border stays dashed in the matching color too. */
-    .cal-ghost-customer-1  { background-color: rgba(220, 53, 69, 0.10) !important; border-color: rgba(220, 53, 69, 0.55); }
-    .cal-ghost-customer-2  { background-color: rgba(25, 135, 84, 0.12) !important; border-color: rgba(25, 135, 84, 0.55); }
-    .cal-ghost-customer-3  { background-color: rgba(13, 110, 253, 0.10) !important; border-color: rgba(13, 110, 253, 0.55); }
-    .cal-ghost-customer-4  { background-color: rgba(255, 193, 7, 0.14) !important; border-color: rgba(255, 193, 7, 0.65); }
-    .cal-ghost-customer-5  { background-color: rgba(111, 66, 193, 0.12) !important; border-color: rgba(111, 66, 193, 0.55); }
-    .cal-ghost-customer-6  { background-color: rgba(253, 126, 20, 0.12) !important; border-color: rgba(253, 126, 20, 0.55); }
-    .cal-ghost-customer-7  { background-color: rgba(214, 51, 132, 0.10) !important; border-color: rgba(214, 51, 132, 0.55); }
-    .cal-ghost-customer-8  { background-color: rgba(13, 202, 240, 0.10) !important; border-color: rgba(13, 202, 240, 0.55); }
-    .cal-ghost-customer-9  { background-color: rgba(102, 16, 242, 0.10) !important; border-color: rgba(102, 16, 242, 0.55); }
-    .cal-ghost-customer-10 { background-color: rgba(32, 201, 151, 0.12) !important; border-color: rgba(32, 201, 151, 0.55); }
-    .cal-ghost-customer-11 { background-color: rgba(165, 42, 42, 0.12) !important;  border-color: rgba(165, 42, 42, 0.55); }
-    .cal-ghost-customer-12 { background-color: rgba(0, 128, 128, 0.12) !important;  border-color: rgba(0, 128, 128, 0.55); }
-    .cal-ghost-customer-13 { background-color: rgba(255, 99, 71, 0.12) !important;  border-color: rgba(255, 99, 71, 0.55); }
-    .cal-ghost-customer-14 { background-color: rgba(75, 0, 130, 0.10) !important;   border-color: rgba(75, 0, 130, 0.55); }
-    .cal-ghost-customer-15 { background-color: rgba(184, 134, 11, 0.14) !important; border-color: rgba(184, 134, 11, 0.65); }
-    /* Slightly stronger tint on hover */
-    .cal-ghost.cal-ghost-customer-1:hover  { background-color: rgba(220, 53, 69, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-2:hover  { background-color: rgba(25, 135, 84, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-3:hover  { background-color: rgba(13, 110, 253, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-4:hover  { background-color: rgba(255, 193, 7, 0.25) !important; }
-    .cal-ghost.cal-ghost-customer-5:hover  { background-color: rgba(111, 66, 193, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-6:hover  { background-color: rgba(253, 126, 20, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-7:hover  { background-color: rgba(214, 51, 132, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-8:hover  { background-color: rgba(13, 202, 240, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-9:hover  { background-color: rgba(102, 16, 242, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-10:hover { background-color: rgba(32, 201, 151, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-11:hover { background-color: rgba(165, 42, 42, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-12:hover { background-color: rgba(0, 128, 128, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-13:hover { background-color: rgba(255, 99, 71, 0.22) !important; }
-    .cal-ghost.cal-ghost-customer-14:hover { background-color: rgba(75, 0, 130, 0.20) !important; }
-    .cal-ghost.cal-ghost-customer-15:hover { background-color: rgba(184, 134, 11, 0.25) !important; }
-    /* Cross-highlight: when user hovers a real note for the same customer,
-       this ghost lights up (border becomes solid + stronger fill).
-       The existing .cal-customer-N.cal-highlight rules handle the real
-       notes; these rules handle the ghost side. */
-    .cal-ghost.cal-highlight { opacity: 1; border-style: solid; }
-    .cal-ghost.cal-ghost-customer-1.cal-highlight  { background-color: rgba(220, 53, 69, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-2.cal-highlight  { background-color: rgba(25, 135, 84, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-3.cal-highlight  { background-color: rgba(13, 110, 253, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-4.cal-highlight  { background-color: rgba(255, 193, 7, 0.45) !important; }
-    .cal-ghost.cal-ghost-customer-5.cal-highlight  { background-color: rgba(111, 66, 193, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-6.cal-highlight  { background-color: rgba(253, 126, 20, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-7.cal-highlight  { background-color: rgba(214, 51, 132, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-8.cal-highlight  { background-color: rgba(13, 202, 240, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-9.cal-highlight  { background-color: rgba(102, 16, 242, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-10.cal-highlight { background-color: rgba(32, 201, 151, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-11.cal-highlight { background-color: rgba(165, 42, 42, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-12.cal-highlight { background-color: rgba(0, 128, 128, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-13.cal-highlight { background-color: rgba(255, 99, 71, 0.40) !important; }
-    .cal-ghost.cal-ghost-customer-14.cal-highlight { background-color: rgba(75, 0, 130, 0.38) !important; }
-    .cal-ghost.cal-ghost-customer-15.cal-highlight { background-color: rgba(184, 134, 11, 0.45) !important; }
-
-    /* Today-cell health indicator. The day-number badge goes blue (default)
-       when this morning's sync covered today, orange when it didn't. The
-       actual refresh affordance comes from the standard date-number hover
-       overlay (see .cal-day-num-wrap) -- this rule only colors the badge. */
-    .cal-today-incomplete .badge.bg-primary {
-        background-color: var(--bs-warning) !important;
-        color: #000 !important;
-    }
 
     /* Aura sync indicator: typing-dots overlay on each calendar day cell
        that the morning aura is currently working through. Three opacity
@@ -584,7 +442,7 @@
         width: 4px;
         height: 4px;
         border-radius: 50%;
-        background-color: var(--bs-primary);
+        background-color: var(--sb-ui-accent);
         opacity: 0.2;
         animation: cal-aura-pulse 1.2s infinite ease-in-out;
     }
@@ -593,7 +451,7 @@
     .cal-aura-dots span:nth-child(3) { animation-delay: 0.8s; }
     .cal-aura-dots.cal-aura-queued span {
         animation-duration: 2.1s;
-        background-color: var(--bs-secondary);
+        background-color: var(--sb-ui-muted);
     }
     .cal-aura-dots.cal-aura-queued span:nth-child(2) { animation-delay: 0.7s; }
     .cal-aura-dots.cal-aura-queued span:nth-child(3) { animation-delay: 1.4s; }
@@ -609,82 +467,108 @@
     .cal-ghosts-fade.cal-ghosts-fade-in { opacity: 1; }
 </style>
 
-<!-- Sync-in-progress modal lives in base.html as a draggable, non-blocking
+<!-- Meeting-sync feedback lives in base.html as a draggable, non-blocking
      floating card. The today-cell click handler routes through window.SyncStatus. -->
 
-<div class="row mt-4" id="draftsSection" style="display: none;">
-    <div class="col-md-12">
-        <div class="alert alert-warning d-flex justify-content-between align-items-center">
-            <div>
-                <i class="bi bi-pencil-square"></i> <strong>Unsaved Drafts</strong>
-                <span id="draftCount" class="badge bg-warning text-dark ms-2">0</span>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-warning" onclick="clearAllDrafts()">
-                <i class="bi bi-trash"></i> Clear All Drafts
-            </button>
-        </div>
-        <div id="draftsList" class="list-group mb-3"></div>
+<div class="sb-home-page" data-sb-home data-sb-page-surface>
+<nav class="sb-context-bar sb-home-context" aria-label="Breadcrumb">
+    <div class="sb-home-breadcrumb">
+        <i class="bi bi-house-door" aria-hidden="true"></i>
+        <span aria-current="page">Home</span>
     </div>
-</div>
+    <button type="button" class="sb-home-drafts-button" id="homeDraftsButton"
+            data-sb-dialog="homeDraftsDialog" hidden>
+        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+        Drafts <span id="draftCount">0</span>
+    </button>
+</nav>
+<dialog class="sb-dialog sb-dialog-compact sb-home-drafts" id="homeDraftsDialog"
+        aria-labelledby="homeDraftsHeading" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <header class="sb-dialog-header">
+            <h2 id="homeDraftsHeading">Unsaved drafts</h2>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                    aria-label="Close drafts" autofocus>
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </header>
+        <div class="sb-dialog-body">
+            <div id="draftsSection" style="display: none;">
+                <div id="draftsList"></div>
+            </div>
+            <p id="homeDraftsEmpty">No saved drafts.</p>
+        </div>
+        <footer class="sb-dialog-footer">
+            <button type="button" class="sb-dialog-button" id="homeClearDraftsButton"
+                    onclick="clearAllDrafts()" hidden>
+                <i class="bi bi-trash" aria-hidden="true"></i> Clear all drafts
+            </button>
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Close</button>
+        </footer>
+    </div>
+</dialog>
 
-<div class="row mt-2">
-    <div class="col-md-12">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="mb-0">Activity</h3>
-            <ul class="nav nav-pills" id="noteViewTabs" role="tablist">
+<div class="sb-home-workspace">
+    <section class="sb-home-activity" aria-labelledby="homeActivityHeading">
+        <header class="sb-home-activity-header">
+            <h1 id="homeActivityHeading">Activity</h1>
+            <div class="sb-home-month-toolbar">
+                <h2 id="calendarTitle" aria-live="polite">Loading...</h2>
+                <div class="sb-home-month-controls">
+                    <button class="sb-home-button" id="todayBtn">Today</button>
+                    <button class="sb-home-button sb-home-icon-button" id="prevMonthBtn" aria-label="Previous month">
+                        <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                    </button>
+                    <button class="sb-home-button sb-home-icon-button" id="nextMonthBtn" aria-label="Next month">
+                        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+            <ul class="sb-home-tabs" id="noteViewTabs" role="tablist" aria-label="Activity views">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="calendar-tab" data-bs-toggle="pill" data-bs-target="#calendar-view" type="button" role="tab" aria-controls="calendar-view" aria-selected="true">
+                    <button class="sb-home-tab active" id="calendar-tab" type="button" role="tab" aria-controls="calendar-view" aria-selected="true" tabindex="0">
                         <i class="bi bi-calendar3"></i> Calendar
                     </button>
                 </li>
                 {% if has_engagements %}
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="engagements-tab" data-bs-toggle="pill" data-bs-target="#engagements-view" type="button" role="tab" aria-controls="engagements-view" aria-selected="false">
-                        <i class="bi bi-diagram-3"></i> Engagements <span class="fw-normal" id="engagements-count" style="font-size:0.8em; opacity:0.85;">({{ engagement_count }})</span>
+                    <button class="sb-home-tab" id="engagements-tab" type="button" role="tab" aria-controls="engagements-view" aria-selected="false" tabindex="-1">
+                        <i class="bi bi-diagram-3"></i> Engagements <span class="sb-hn-fw-normal" id="engagements-count" style="font-size:0.8em; opacity:0.85;">({{ engagement_count }})</span>
                     </button>
                 </li>
                 {% endif %}
                 {% if has_projects %}
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="projects-tab" data-bs-toggle="pill" data-bs-target="#projects-view" type="button" role="tab" aria-controls="projects-view" aria-selected="false">
-                        <i class="bi bi-folder"></i> Projects <span class="fw-normal" style="font-size:0.8em; opacity:0.85;">({{ project_count }})</span>
+                    <button class="sb-home-tab" id="projects-tab" type="button" role="tab" aria-controls="projects-view" aria-selected="false" tabindex="-1">
+                        <i class="bi bi-folder"></i> Projects <span class="sb-hn-fw-normal" style="font-size:0.8em; opacity:0.85;">({{ project_count }})</span>
                     </button>
                 </li>
                 {% endif %}
                 {% if task_due_count > 0 %}
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="tasks-tab" data-bs-toggle="pill" data-bs-target="#tasks-view" type="button" role="tab" aria-controls="tasks-view" aria-selected="false">
-                        <i class="bi bi-check2-square"></i> Action Items <span class="fw-normal" style="font-size:0.8em; opacity:0.85;">({{ task_due_count }})</span>
+                    <button class="sb-home-tab" id="tasks-tab" type="button" role="tab" aria-controls="tasks-view" aria-selected="false" tabindex="-1">
+                        <i class="bi bi-check2-square"></i> Action Items <span class="sb-hn-fw-normal" style="font-size:0.8em; opacity:0.85;">({{ task_due_count }})</span>
                     </button>
                 </li>
                 {% endif %}
             </ul>
-        </div>
+        </header>
         
-        <div class="tab-content" id="noteViewTabContent">
+        <div class="sb-home-tab-content" id="noteViewTabContent">
             <!-- Calendar View Tab -->
-            <div class="tab-pane fade show active" id="calendar-view" role="tabpanel" aria-labelledby="calendar-tab">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <button class="btn btn-outline-secondary btn-sm" id="prevMonthBtn">
-                            <i class="bi bi-chevron-left"></i>
-                        </button>
-                        <h5 class="mb-0" id="calendarTitle">Loading...</h5>
-                        <button class="btn btn-outline-secondary btn-sm" id="nextMonthBtn">
-                            <i class="bi bi-chevron-right"></i>
-                        </button>
-                    </div>
-                    <div class="card-body p-0">
-                        <table class="table table-bordered mb-0" id="calendarTable">
+            <div class="sb-home-tabpanel active" id="calendar-view" role="tabpanel" aria-labelledby="calendar-tab">
+                <div class="sb-home-calendar">
+                    <div class="sb-home-calendar-body">
+                        <table class="sb-home-calendar-table" id="calendarTable">
                             <thead>
-                                <tr class="text-center">
-                                    <th class="text-muted">Sun</th>
+                                <tr>
+                                    <th>Sun</th>
                                     <th>Mon</th>
                                     <th>Tue</th>
                                     <th>Wed</th>
                                     <th>Thu</th>
                                     <th>Fri</th>
-                                    <th class="text-muted">Sat</th>
+                                    <th>Sat</th>
                                 </tr>
                             </thead>
                                 <tbody id="calendarBody">
@@ -692,17 +576,22 @@
                                 </tbody>
                             </table>
                     </div>
-                    <div class="card-footer text-center">
-                        <button class="btn btn-outline-secondary btn-sm" id="todayBtn">
-                            <i class="bi bi-calendar-day"></i> Today
-                        </button>
-                    </div>
                 </div>
+                <footer class="sb-home-legend" aria-label="Calendar indicator legend">
+                    <span title="Cached Outlook meeting; create a note from it"><i class="bi bi-calendar-event" aria-hidden="true"></i> Ghost meeting</span>
+                    <span title="Outlook meeting needs a customer match"><i class="bi bi-question-circle" aria-hidden="true"></i> Unmatched customer</span>
+                    <span title="Note linked to a milestone"><i class="sb-home-rail-swatch" data-work-status="milestone" aria-hidden="true"></i> Milestone</span>
+                    <span title="Other MSX task attached"><i class="sb-home-rail-swatch" data-work-status="task" aria-hidden="true"></i> MSX task</span>
+                    <span title="High-Value Activity attached"><i class="sb-home-rail-swatch" data-work-status="hva" aria-hidden="true"></i> HVA</span>
+                    <span title="Note linked to an engagement"><i class="bi bi-diagram-3" aria-hidden="true"></i> Engagement</span>
+                    <span class="sb-home-legend-caption">Markers can combine</span>
+                </footer>
             </div>
             
             <!-- Engagements Tab -->
             {% if has_engagements %}
-            <div class="tab-pane fade" id="engagements-view" role="tabpanel" aria-labelledby="engagements-tab">
+            <div class="sb-home-tabpanel" id="engagements-view" role="tabpanel" aria-labelledby="engagements-tab" hidden>
+                <section class="sb-eng-directory sb-home-engagements" data-sb-home-engagements>
                 {% set eng_api_url = '/api/engagements/active' %}
                 {% set eng_auto_load = false %}
                 {% set eng_show_seller = not seller_mode %}
@@ -711,18 +600,24 @@
                 {% set eng_count_id = 'eng-panel-count' %}
                 {% set eng_empty_msg = 'No engagements match the current filter.' %}
                 {% include 'partials/engagements_panel.html' %}
+                <div class="sb-eng-reading" tabindex="0" aria-label="Home engagements">
+                    <div id="engagementsListBody" aria-live="polite">
+                        <p class="sb-eng-empty" role="status">Open Engagements to load this view.</p>
+                    </div>
+                </div>
+                </section>
             </div>
             {% endif %}
 
             <!-- Projects Tab -->
             {% if has_projects %}
-            <div class="tab-pane fade" id="projects-view" role="tabpanel" aria-labelledby="projects-tab">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-folder"></i> Active Projects</h5>
-                        <a href="{{ url_for('projects.project_create') }}" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle"></i> New Project</a>
+            <div class="sb-home-tabpanel" id="projects-view" role="tabpanel" aria-labelledby="projects-tab" hidden>
+                <div class="sb-hn-card">
+                    <div class="sb-hn-card-header sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-center">
+                        <h5 class="sb-hn-mb-0"><i class="bi bi-folder"></i> Active Projects</h5>
+                        <a href="{{ url_for('projects.project_create') }}" class="sb-hn-btn sb-hn-btn-sm sb-hn-btn-primary"><i class="bi bi-plus-circle"></i> New Project</a>
                     </div>
-                    <div class="list-group list-group-flush" id="projectsList">
+                    <div class="sb-hn-list-group sb-hn-list-group-flush" id="projectsList">
                     </div>
                 </div>
             </div>
@@ -730,38 +625,38 @@
 
             <!-- Tasks Tab -->
             {% if task_due_count > 0 %}
-            <div class="tab-pane fade" id="tasks-view" role="tabpanel" aria-labelledby="tasks-tab">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <button class="btn btn-outline-secondary btn-sm" id="tasksPrevMonthBtn">
-                            <i class="bi bi-chevron-left"></i>
+            <div class="sb-home-tabpanel" id="tasks-view" role="tabpanel" aria-labelledby="tasks-tab" hidden>
+                <div class="sb-home-calendar">
+                    <div class="sb-home-calendar-header">
+                        <button class="sb-home-button sb-home-icon-button" id="tasksPrevMonthBtn" aria-label="Previous action items month">
+                            <i class="bi bi-chevron-left" aria-hidden="true"></i>
                         </button>
-                        <h5 class="mb-0" id="tasksCalendarTitle">Loading...</h5>
-                        <button class="btn btn-outline-secondary btn-sm" id="tasksNextMonthBtn">
-                            <i class="bi bi-chevron-right"></i>
+                        <h2 id="tasksCalendarTitle" aria-live="polite">Loading...</h2>
+                        <button class="sb-home-button sb-home-icon-button" id="tasksNextMonthBtn" aria-label="Next action items month">
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
                         </button>
                     </div>
-                    <div id="tasksOverdueBar" class="px-3 py-2" style="display: none;">
+                    <div id="tasksOverdueBar" class="sb-hn-px-3 sb-hn-py-2" style="display: none;">
                     </div>
-                    <div class="card-body p-0">
-                        <table class="table table-bordered mb-0" id="tasksCalendarTable">
+                    <div class="sb-home-calendar-body">
+                        <table class="table table-bordered sb-hn-mb-0" id="tasksCalendarTable">
                             <thead>
-                                <tr class="text-center">
-                                    <th class="text-muted">Sun</th>
+                                <tr class="sb-hn-text-center">
+                                    <th class="sb-hn-text-muted">Sun</th>
                                     <th>Mon</th>
                                     <th>Tue</th>
                                     <th>Wed</th>
                                     <th>Thu</th>
                                     <th>Fri</th>
-                                    <th class="text-muted">Sat</th>
+                                    <th class="sb-hn-text-muted">Sat</th>
                                 </tr>
                             </thead>
                             <tbody id="tasksCalendarBody">
                             </tbody>
                         </table>
                     </div>
-                    <div class="card-footer text-center">
-                        <button class="btn btn-outline-secondary btn-sm" id="tasksTodayBtn">
+                    <div class="sb-home-calendar-footer">
+                        <button class="sb-home-button" id="tasksTodayBtn">
                             <i class="bi bi-calendar-day"></i> Today
                         </button>
                     </div>
@@ -769,35 +664,88 @@
             </div>
             {% endif %}
         </div>
-    </div>
+    </section>
+    {{ dashboard_rail }}
 </div>
+<div id="homeMeetingNotices" class="sb-home-meeting-notices"></div>
+<footer class="sb-home-status" aria-label="Workspace status">
+    <span id="homeViewSummary" class="sb-home-status-summary" aria-live="polite"></span>
+    <time id="homeCurrentDate" class="sb-home-status-date" title="Today's local date"></time>
+    <button type="button" id="homeFreshnessToggle" popovertarget="homeFreshnessPopover"
+            aria-expanded="false" title="Show data refresh status and timestamps">
+        <i class="bi bi-clock-history" aria-hidden="true"></i> Refresh status
+        <i class="bi bi-chevron-up" aria-hidden="true"></i>
+    </button>
+    <div id="homeFreshnessPopover" class="sb-home-freshness-popover" popover="auto"
+         role="region" aria-labelledby="homeFreshnessToggle">
+        <div class="sb-home-freshness">
+            <a href="{{ url_for('admin.admin_panel') }}#milestoneSyncStatus"
+               title="Last milestone refresh; open sync details">
+                <span id="homeMilestonesFreshness" aria-live="polite">Milestones: checking...</span>
+            </a>
+            <a href="{{ url_for('revenue.revenue_dashboard') }}"
+               title="Last ACR refresh; open revenue sync details">
+                <span id="homeACRFreshness" aria-live="polite">ACR: checking...</span>
+            </a>
+            <div title="Whether today's meetings have been refreshed today; this is not a calendar-wide refresh timestamp">
+                <span id="homeMeetingsFreshness" aria-live="polite">Today's Meetings: checking...</span>
+            </div>
+            <a href="{{ url_for('reports.report_u2c') }}"
+               title="Last U2C baseline refresh check; MSXi publishes weekly. Open U2C details">
+                <span id="homeU2CFreshness" aria-live="polite">U2C: checking...</span>
+            </a>
+            <a href="{{ url_for('admin.admin_panel') }}#accountsSyncStatus"
+               title="Last account refresh; open sync details">
+                <span id="homeAccountsFreshness" aria-live="polite">Accounts: checking...</span>
+            </a>
+        </div>
+        <button type="button" id="homeFreshnessRefresh"
+                title="Check refresh status without starting a sync">
+            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Check now
+        </button>
+    </div>
+</footer>
+</div>
+<script src="{{ url_for('static', filename='js/ui-home.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-home-calendar.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-home-summary.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/ui-home-freshness.js') }}"></script>
 
-<!-- Quick Create Customer Picker Modal -->
-<div class="modal fade" id="quickCreateModal" tabindex="-1" aria-labelledby="quickCreateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="quickCreateModalLabel">
-                    <i class="bi bi-plus-circle"></i> New Note for <span id="quickCreateDate"></span>
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Calendar customer picker -->
+<dialog class="sb-dialog sb-dialog-picker" id="quickCreateModal"
+        aria-labelledby="quickCreateModalLabel" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <div class="sb-dialog-eyebrow">Customer selection</div>
+                <h2 id="quickCreateModalLabel">New Note for <span id="quickCreateDate"></span></h2>
             </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="quickCreateSearch" class="form-label">Search for Customer</label>
-                    <input type="text" class="form-control" id="quickCreateSearch" placeholder="Search customers..." autocomplete="off">
-                </div>
-                <div id="quickCreateCustomerList" class="list-group" style="max-height: 400px; overflow-y: auto;"></div>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                    aria-label="Close calendar customer picker"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <div class="sb-dialog-body">
+            <label class="sb-picker-label" for="quickCreateSearch">Search for Customer</label>
+            <div class="sb-picker-field">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input type="search" class="sb-picker-input" id="quickCreateSearch"
+                       aria-controls="quickCreateCustomerList" placeholder="Search customers..."
+                       autocomplete="off" autofocus>
             </div>
+            <div id="quickCreateCustomerList" class="sb-picker-results" role="region"
+                 aria-label="Calendar note customer choices"></div>
+        </div>
+        <div class="sb-dialog-footer">
+            <small>Arrow keys to move; Enter or Space to choose a focused result.</small>
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
         </div>
     </div>
-</div>
+</dialog>
 
 <script>
     // ===== QUICK CREATE FROM CALENDAR =====
     let quickCreateDate = null;
     
-    function openQuickCreateModal(dateStr) {
+    function openQuickCreateModal(dateStr, meetingId = null) {
         quickCreateDate = dateStr;
         // Format date for display
         const dateObj = new Date(dateStr + 'T00:00:00');
@@ -805,12 +753,9 @@
         document.getElementById('quickCreateDate').textContent = dateObj.toLocaleDateString('en-US', options);
         
         // Update URLs on the shared picker to include the date parameter
-        if (window._quickCreateUpdateDate) {
-            window._quickCreateUpdateDate(dateStr);
-        }
-        
-        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('quickCreateModal'));
-        modal.show();
+        window._quickCreateUpdateDate(dateStr, meetingId);
+
+        window.SBDialog.open('quickCreateModal');
     }
 
     // ===== GHOST MEETING HANDLERS (Phase 3) =====
@@ -826,7 +771,7 @@
                 + `&from_meeting=${ghost.id}`;
             window.location.href = url;
         } else {
-            openQuickCreateModal(dateStr);
+            openQuickCreateModal(dateStr, ghost.id);
         }
     }
 
@@ -893,41 +838,46 @@
         
         // Sort by timestamp (newest first)
         drafts.sort((a, b) => b.timestamp - a.timestamp);
+
+        document.getElementById('homeDraftsButton').hidden = drafts.length === 0;
+        document.getElementById('homeClearDraftsButton').hidden = drafts.length === 0;
+        document.getElementById('homeDraftsEmpty').hidden = drafts.length > 0;
+        document.getElementById('draftCount').textContent = drafts.length;
         
         // Show/hide drafts section
         if (drafts.length > 0) {
             document.getElementById('draftsSection').style.display = 'block';
-            document.getElementById('draftCount').textContent = drafts.length;
             
             // Render draft list
             const draftsList = document.getElementById('draftsList');
-            draftsList.innerHTML = drafts.map(draft => {
+            draftsList.replaceChildren(...drafts.map(draft => {
                 const date = new Date(draft.timestamp);
                 const timeAgo = formatTimeAgo(date);
                 const topicCount = draft.data.topics ? draft.data.topics.length : 0;
-                
-                return `
-                    <a href="{{ url_for('notes.note_create') }}?customer_id=${draft.customerId}" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">
-                                    ${draft.data.customer_favicon ? '<img src="data:image/png;base64,' + draft.data.customer_favicon + '" width="16" height="16" alt="" style="vertical-align: middle;">' : '<i class="bi bi-building"></i>'} ${draft.customerName}
-                                    <span class="badge bg-warning text-dark ms-2"><i class="bi bi-pencil"></i> Draft</span>
-                                </h6>
-                                <small class="text-muted">
-                                    <i class="bi bi-clock"></i> ${timeAgo}
-                                    ${topicCount > 0 ? `<span class="ms-2"><i class="bi bi-tag"></i> ${topicCount} topic${topicCount > 1 ? 's' : ''}</span>` : ''}
-                                </small>
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDraft(event, '${draft.key}', ${draft.customerId})" title="Delete draft">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    </a>
-                `;
-            }).join('');
+                const row = document.createElement('div');
+                row.className = 'sb-home-draft-row';
+                const link = document.createElement('a');
+                link.className = 'sb-home-draft-link';
+                link.href = '{{ url_for("notes.note_create") }}?customer_id=' +
+                    encodeURIComponent(draft.customerId);
+                const title = document.createElement('strong');
+                title.textContent = draft.customerName;
+                const metadata = document.createElement('small');
+                metadata.textContent = timeAgo + (topicCount > 0 ?
+                    ` · ${topicCount} topic${topicCount > 1 ? 's' : ''}` : '');
+                link.append(title, metadata);
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'sb-dialog-button';
+                remove.setAttribute('aria-label', 'Delete draft for ' + draft.customerName);
+                remove.innerHTML = '<i class="bi bi-trash" aria-hidden="true"></i>';
+                remove.addEventListener('click', event => deleteDraft(event, draft.key));
+                row.append(link, remove);
+                return row;
+            }));
         } else {
             document.getElementById('draftsSection').style.display = 'none';
+            document.getElementById('draftsList').replaceChildren();
         }
     }
     
@@ -1024,6 +974,8 @@
     function _setSpinnerOnDate(dateStr, on) {
         const wrap = _findCurrentDayWrap(dateStr);
         if (!wrap) return;
+        wrap.disabled = on || !!wrap.closest('td').querySelector('.cal-aura-dots');
+        wrap.setAttribute('aria-busy', String(on));
         if (on) {
             wrap.classList.add('cal-day-syncing');
             wrap.style.pointerEvents = 'none';
@@ -1075,17 +1027,22 @@
         _inFlightDayRefreshes.add(dateStr);
         _setSpinnerOnDate(dateStr, true);
 
-        fetch('/api/meetings/refresh', {
+        return fetch('/api/meetings/refresh', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({date: dateStr}),
         })
-            .then(r => r.json().then(body => ({ok: r.ok, body})))
-            .then(({ok, body}) => {
+            .then(r => r.json().then(body => ({ok: r.ok, status: r.status, body})))
+            .then(({ok, status, body}) => {
                 if (!ok) {
-                    console.error('Day sync failed:', body && body.error);
-                    return;
+                    throw new Error(body?.error || `Meeting refresh HTTP ${status}.`);
                 }
+                if (typeof body?.synced_at !== 'string' ||
+                    !Number.isFinite(new Date(body.synced_at).getTime()) || body.date !== dateStr) {
+                    throw new Error('Meeting refresh did not confirm a valid cache timestamp.');
+                }
+                window.SBHomeCalendar.clearRefreshError(dateStr);
+                window.dispatchEvent(new CustomEvent('sb:meetings-cache-updated'));
                 // The cell may have been replaced (or may not currently
                 // be in view) if the user navigated months while we
                 // waited on WorkIQ. Repaint if the date is in the
@@ -1102,6 +1059,7 @@
             })
             .catch(err => {
                 console.error('Day sync error:', err);
+                window.SBHomeCalendar.showRefreshError(dateStr, err.message);
             })
             .finally(() => {
                 _inFlightDayRefreshes.delete(dateStr);
@@ -1121,18 +1079,16 @@
     }
     // Expose for the global sync card's reload callback.
     window.checkTodayStatus = checkTodayStatus;
+    window.addEventListener('sb:meetings-today-status', event => applyTodayStatus(event.detail));
 
     function applyTodayStatus(data) {
         // Tag the today <td> with cal-today-incomplete when this morning's
-        // sync didn't cover today, which colors the day-number badge orange.
+        // sync didn't cover today, which gives the date control a warning fill.
         // The actual re-sync is handled by the standard date-number hover
         // refresh icon (triggerDaySync) -- no special today click handler.
         const calendarBody = document.getElementById('calendarBody');
         if (!calendarBody) return;
-        const badges = calendarBody.querySelectorAll('.badge.bg-primary.rounded-circle');
-        badges.forEach(badge => {
-            const td = badge.closest('td');
-            if (!td) return;
+        calendarBody.querySelectorAll('.sb-home-today').forEach(td => {
             td.classList.toggle('cal-today-incomplete', !data.synced);
         });
     }
@@ -1197,6 +1153,10 @@
             wrap.title = auraOwns
                 ? 'Morning sync is already refreshing this day'
                 : 'Click to pull meetings for this day';
+            wrap.disabled = auraOwns || _inFlightDayRefreshes.has(dateStr);
+            wrap.setAttribute('aria-label', auraOwns
+                ? `Morning sync is already refreshing ${dateStr}`
+                : `Refresh meetings for ${dateStr}`);
         });
 
         // Add dots for any newly-pending dates not already in the DOM.
@@ -1204,12 +1164,14 @@
             const cell = document.querySelector(
                 `#calendarBody td[data-cal-date="${dateStr}"]`);
             if (!cell) return;
-            const header = cell.querySelector('.d-flex.justify-content-between');
+            const header = cell.querySelector('.sb-home-day-header');
             if (!header) return;
-            const numberSpan = header.firstElementChild;
-            if (!numberSpan) return;
+            const actions = header.querySelector('.sb-home-day-actions');
+            if (!actions) return;
 
-            const dots = document.createElement('span');
+            const dots = document.createElement('button');
+            dots.type = 'button';
+            dots.setAttribute('aria-label', `Open morning sync details for ${dateStr}`);
             dots.className = 'cal-aura-dots' + (isActive ? '' : ' cal-aura-queued');
             dots.title = (isActive
                 ? 'Syncing meetings for this day...'
@@ -1221,7 +1183,7 @@
                 e.stopPropagation();
                 if (window.SyncStatus) window.SyncStatus.check();
             });
-            numberSpan.appendChild(dots);
+            actions.insertBefore(dots, actions.firstChild);
         });
     }
 
@@ -1284,21 +1246,15 @@
     // Tab persistence with localStorage
     const TAB_STORAGE_KEY = 'salesbuddy_home_tab';
     
-    // Apply saved tab after Bootstrap is loaded
+    // Restore the saved activity view after its lazy-load listeners are attached.
     window.addEventListener('DOMContentLoaded', function() {
         const savedTab = localStorage.getItem(TAB_STORAGE_KEY);
         {% if has_engagements %}if (savedTab === 'engagements') {
-            const engTabEl = document.getElementById('engagements-tab');
-            const engTab = new bootstrap.Tab(engTabEl);
-            engTab.show();
+            SBHomeTabs.select('engagements-tab');
         } else {% endif %}{% if has_projects %}if (savedTab === 'projects') {
-            const projTabEl = document.getElementById('projects-tab');
-            const projTab = new bootstrap.Tab(projTabEl);
-            projTab.show();
+            SBHomeTabs.select('projects-tab');
         } else {% endif %}{% if task_due_count > 0 %}if (savedTab === 'tasks') {
-            const tasksTabEl = document.getElementById('tasks-tab');
-            const tasksTab = new bootstrap.Tab(tasksTabEl);
-            tasksTab.show();
+            SBHomeTabs.select('tasks-tab');
         } else {% endif %}{
             // Calendar is default - load it immediately
             if (!calendarLoaded) {
@@ -1309,15 +1265,13 @@
     });
     
     // Load calendar when tab is shown
-    {% if has_milestones %}
-    document.getElementById('calendar-tab').addEventListener('shown.bs.tab', function() {
+    document.getElementById('calendar-tab').addEventListener('sb:home-tab-selected', function() {
         localStorage.setItem(TAB_STORAGE_KEY, 'calendar');
         if (!calendarLoaded) {
             loadCalendar(calendarYear, calendarMonth);
             calendarLoaded = true;
         }
     });
-    {% endif %}
     
     // Month navigation
     document.getElementById('prevMonthBtn').addEventListener('click', function() {
@@ -1350,34 +1304,58 @@
         loadCalendar(calendarYear, calendarMonth);
     });
     
-    function loadCalendar(year, month) {
+    let calendarRead = null;
+
+    async function loadCalendar(year, month) {
         const calendarBody = document.getElementById('calendarBody');
         const calendarTitle = document.getElementById('calendarTitle');
-        
-        // Show loading state
-        calendarBody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm" role="status"></div> Loading...</td></tr>';
-        
-        fetch(`/api/notes/calendar?year=${year}&month=${month}`)
-            .then(response => response.json())
-            .then(data => {
-                calendarTitle.textContent = `${data.month_name} ${data.year}`;
-                renderCalendar(data);
-                // After the calendar paints, color the today badge based on
-                // whether this morning's sync covered today.
-                checkTodayStatus();
-                // Also paint typing dots on any aura-pending cells in view.
-                checkAuraSync();
-                // Re-apply per-day refresh spinners + drain any pending
-                // redraws for dates whose WorkIQ pull completed while
-                // the user was on a different month.
-                _restoreInFlightSpinners();
-            })
-            .catch(error => {
-                console.error('Error loading calendar:', error);
-                calendarBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error loading calendar</td></tr>';
+        const run = {controller: new AbortController()};
+        if (calendarRead) calendarRead.controller.abort();
+        calendarRead = run;
+        calendarTitle.textContent = new Date(year, month - 1, 1).toLocaleDateString('en-US',
+            {month: 'long', year: 'numeric'});
+        window.SBHomeCalendar.showReadState(calendarBody, 'loading');
+        try {
+            const response = await fetch(`/api/notes/calendar?year=${year}&month=${month}`,
+                {signal: run.controller.signal});
+            if (!response.ok) throw new Error(`Calendar request failed (HTTP ${response.status}).`);
+            const data = await response.json();
+            if (calendarRead !== run) return;
+            window.SBHomeCalendar.validateMonth(data, year, month);
+            renderCalendar(data);
+            calendarBody.dataset.sbCalendarState = 'ready';
+            checkTodayStatus();
+            checkAuraSync();
+            _restoreInFlightSpinners();
+        } catch (error) {
+            if (calendarRead !== run) return;
+            console.error('Error loading calendar:', {year, month}, error);
+            window.SBHomeCalendar.showReadState(calendarBody, 'error', () => {
+                if (calendarBody.contains(document.activeElement)) {
+                    document.getElementById('calendar-tab').focus({preventScroll: true});
+                }
+                return loadCalendar(year, month);
             });
+        } finally {
+            if (calendarRead === run) {
+                calendarRead = null;
+                calendarBody.setAttribute('aria-busy', 'false');
+            }
+        }
     }
-    
+
+    window.addEventListener('pagehide', () => {
+        const run = calendarRead;
+        calendarRead = null;
+        if (run) run.controller.abort();
+    });
+    window.addEventListener('pageshow', event => {
+        if (event.persisted &&
+            document.getElementById('calendarBody').dataset.sbCalendarState === 'loading') {
+            return loadCalendar(calendarYear, calendarMonth);
+        }
+    });
+
     function renderCalendar(data) {
         const calendarBody = document.getElementById('calendarBody');
         calendarBody.innerHTML = '';
@@ -1386,33 +1364,7 @@
         const daysInMonth = data.days_in_month;
         const todayDay = data.today_day;
         
-        // Helper to escape HTML
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // Build a map of customer_id -> color index for THIS month only.
-        // Include ghost meeting customers too so a ghost shares the color of
-        // any real notes for that customer (visual continuity).
-        const customerColorMap = {};
-        const allCustomerIds = new Set();
-        Object.values(days).forEach(logs => {
-            logs.forEach(log => {
-                if (log.customer_id) allCustomerIds.add(log.customer_id);
-            });
-        });
-        Object.values(data.ghosts || {}).forEach(ghosts => {
-            ghosts.forEach(g => {
-                if (g.customer_id) allCustomerIds.add(g.customer_id);
-            });
-        });
-        const customerList = Array.from(allCustomerIds);
-        customerList.forEach((id, index) => {
-            customerColorMap[id] = (index % 15) + 1;
-        });
+        const customerColorMap = window.SBHomeCalendar.customerColors(data);
         
         // Build array of day info for the month (all 7 days)
         // Column layout: 0=Sun, 1=Mon, ..., 6=Sat
@@ -1430,18 +1382,10 @@
             
             for (let col = 0; col < 7; col++) {
                 const cell = document.createElement('td');
-                cell.className = 'p-1';
-                cell.style.verticalAlign = 'top';
-                // Fixed height for every cell (weekday, weekend, and
-                // out-of-month filler) so all rows are visually consistent.
-                cell.style.height = '120px';
+                cell.className = 'sb-home-day';
                 const isWeekend = (col === 0 || col === 6);
                 if (isWeekend) {
-                    if (document.documentElement.getAttribute('data-bs-theme') === 'dark') {
-                        cell.style.backgroundColor = 'rgba(255,255,255,0.02)';
-                    } else {
-                        cell.style.backgroundColor = 'rgba(0,0,0,0.02)';
-                    }
+                    cell.classList.add('sb-home-weekend');
                 }
                 
                 // Check if we have a day for this column in this week
@@ -1456,27 +1400,28 @@
 
                     // Day number header
                     const dayHeader = document.createElement('div');
-                    dayHeader.className = 'd-flex justify-content-between align-items-center mb-1';
+                    dayHeader.className = 'sb-home-day-header';
                     
-                    const dayNumber = document.createElement('span');
-                    dayNumber.className = 'fw-bold cal-day-num-wrap';
+                    const dayNumber = document.createElement('button');
+                    dayNumber.type = 'button';
+                    dayNumber.className = 'cal-day-num-wrap';
+                    dayNumber.setAttribute('aria-label', `Refresh meetings for ${cellDateStr}`);
                     dayNumber.title = 'Click to pull meetings for this day';
                     dayNumber.setAttribute('data-date', cellDateStr);
-                    // Inner span holds the actual number/badge so we can
+                    // Inner span holds the number so we can
                     // hide just that on hover/sync and overlay the spinner.
                     const numInner = document.createElement('span');
                     numInner.className = 'cal-day-num';
                     if (dayNum === todayDay) {
-                        numInner.innerHTML = `<span class="badge bg-primary rounded-circle">${dayNum}</span>`;
-                    } else {
-                        numInner.textContent = dayNum;
+                        cell.classList.add('sb-home-today');
                     }
+                    numInner.textContent = dayNum;
                     dayNumber.appendChild(numInner);
-                    // Overlay is hidden by default; shown on hover (teal
-                    // static icon) or while syncing (teal spinning icon).
+                    // Overlay is static on hover and spins while syncing.
                     const syncOverlay = document.createElement('span');
                     syncOverlay.className = 'cal-day-sync-overlay';
-                    syncOverlay.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+                    syncOverlay.innerHTML = '<i class="bi bi-arrow-clockwise" aria-hidden="true"></i>';
+                    syncOverlay.setAttribute('aria-hidden', 'true');
                     dayNumber.appendChild(syncOverlay);
                     dayNumber.addEventListener('click', function(e) {
                         e.preventDefault();
@@ -1489,13 +1434,14 @@
                     
                     // Add icons container (right side)
                     const iconsContainer = document.createElement('span');
-                    iconsContainer.className = 'd-flex gap-1';
+                    iconsContainer.className = 'sb-home-day-actions';
 
                     // Add "+" button for quick create
-                    const addBtn = document.createElement('a');
-                    addBtn.href = '#';
-                    addBtn.className = 'text-muted text-decoration-none cal-add-btn';
-                    addBtn.innerHTML = '<i class="bi bi-plus-circle"></i>';
+                    const addBtn = document.createElement('button');
+                    addBtn.type = 'button';
+                    addBtn.className = 'cal-add-btn';
+                    addBtn.innerHTML = '<i class="bi bi-plus-circle" aria-hidden="true"></i>';
+                    addBtn.setAttribute('aria-label', `New note for ${dateStr}`);
                     addBtn.title = 'New note';
                     addBtn.setAttribute('data-date', dateStr);
                     addBtn.addEventListener('click', function(e) {
@@ -1507,73 +1453,35 @@
                     dayHeader.appendChild(iconsContainer);
                     
                     cell.appendChild(dayHeader);
+                    const dayEntries = document.createElement('div');
+                    dayEntries.className = 'sb-home-day-entries';
+                    cell.appendChild(dayEntries);
                     
                     // Note entries for this day
                     const noteEntries = days[dayNum] || [];
                     if (noteEntries.length > 0) {
                         const entriesContainer = document.createElement('div');
                         entriesContainer.className = 'calendar-entries';
-                        entriesContainer.style.fontSize = '0.75rem';
-                        entriesContainer.style.maxHeight = '70px';
-                        entriesContainer.style.overflowY = 'auto';
                         
                         noteEntries.forEach(log => {
-                            const entry = document.createElement('div');
-                            entry.style.cursor = 'pointer';
+                            const entry = document.createElement('button');
+                            entry.type = 'button';
                             entry.addEventListener('click', function(e) {
                                 openHomeNoteDetail(log.id, log.customer_name);
                             });
                             
                             if (log.is_general) {
-                                // General note: distinct muted style with sticky-note icon
-                                entry.className = 'd-block text-decoration-none text-truncate mb-1 px-1 rounded cal-general-note';
                                 entry.setAttribute('data-general-note', 'true');
                             } else {
-                                // Customer note: color-coded by customer
-                                const colorIndex = customerColorMap[log.customer_id];
-                                entry.className = `d-block text-decoration-none text-truncate mb-1 px-1 rounded cal-customer-${colorIndex}`;
                                 entry.setAttribute('data-customer-id', log.customer_id);
                             }
-                            entry.style.color = 'inherit';
-                            
-                            // Build entry content with indicators
-                            let indicators = '';
-                            if (log.is_general) {
-                                indicators += '<i class="bi bi-sticky text-secondary" title="General note"></i> ';
-                            }
-                            if (log.has_milestone && !log.has_task && !log.has_hva) {
-                                indicators += '<i class="bi bi-flag-fill text-success" title="Has milestone"></i> ';
-                            }
-                            if (log.has_engagement) {
-                                indicators += '<i class="bi bi-diagram-3 text-primary" title="Has engagement"></i> ';
-                            }
-                            if (log.has_hva) {
-                                indicators += '<i class="bi bi-star-fill text-warning" title="HVA task"></i> ';
-                            } else if (log.has_task) {
-                                indicators += '<i class="bi bi-check2-square text-info" title="Has task"></i> ';
-                            }
-                            let timePrefix = log.time ? `<small class="text-muted">${escapeHtml(log.time)}</small> ` : '';
-                            entry.innerHTML = indicators + timePrefix + escapeHtml(log.customer_name);
-                            entry.title = (log.time ? log.time + ' - ' : '') + log.customer_name + (log.has_milestone ? ' (Milestone)' : '') + (log.has_engagement ? ' (Engagement)' : '') + (log.has_task ? ' (Task)' : '') + (log.has_hva ? ' (HVA)' : '');
-                            
-                            // Hover: highlight all entries for this customer (skip for general notes)
-                            if (!log.is_general) {
-                                entry.addEventListener('mouseenter', function() {
-                                    document.querySelectorAll(`[data-customer-id="${log.customer_id}"]`).forEach(el => {
-                                        el.classList.add('cal-highlight');
-                                    });
-                                });
-                                entry.addEventListener('mouseleave', function() {
-                                    document.querySelectorAll(`[data-customer-id="${log.customer_id}"]`).forEach(el => {
-                                        el.classList.remove('cal-highlight');
-                                    });
-                                });
-                            }
+                            window.SBHomeCalendar.note(entry, log, customerColorMap[log.customer_id]);
+                            window.SBHomeCalendar.bindHighlight(entry);
                             
                             entriesContainer.appendChild(entry);
                         });
                         
-                        cell.appendChild(entriesContainer);
+                        dayEntries.appendChild(entriesContainer);
                     }
 
                     // Phase 3: ghost meetings (cached PrefetchedMeeting rows).
@@ -1582,16 +1490,13 @@
                     if (ghostEntries.length > 0) {
                         const ghostContainer = buildGhostsContainer(
                             ghostEntries, customerColorMap, dateStr);
-                        cell.appendChild(ghostContainer);
+                        dayEntries.appendChild(ghostContainer);
                     }
 
                     dayIndex++;
                 } else {
                     // Empty cell (day not in this week's column)
-                    cell.classList.add('bg-light');
-                    if (document.documentElement.getAttribute('data-bs-theme') === 'dark') {
-                        cell.style.backgroundColor = 'rgba(255,255,255,0.03)';
-                    }
+                    cell.classList.add('sb-home-empty-day');
                 }
                 
                 row.appendChild(cell);
@@ -1605,48 +1510,18 @@
     // both the full renderCalendar pass and the surgical per-day refresh
     // that runs after the aura finishes a date.
     function buildGhostsContainer(ghostEntries, customerColorMap, dateStr) {
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
         const ghostContainer = document.createElement('div');
         ghostContainer.className = 'calendar-entries cal-ghosts-container';
-        ghostContainer.style.fontSize = '0.75rem';
-        ghostContainer.style.maxHeight = '70px';
-        ghostContainer.style.overflowY = 'auto';
 
         ghostEntries.forEach(g => {
             const matched = !!g.customer_id;
-            const ghost = document.createElement(matched ? 'a' : 'div');
+            const ghost = document.createElement('div');
             const ghostColorIndex = matched ? customerColorMap[g.customer_id] : null;
-            ghost.className = 'd-block text-truncate mb-1 px-1 rounded cal-ghost'
-                + (matched ? ' text-decoration-none text-reset' : ' cal-ghost-unmatched')
-                + (ghostColorIndex ? ` cal-ghost-customer-${ghostColorIndex}` : '');
             ghost.setAttribute('data-ghost-id', g.id);
             if (matched) {
-                // Real anchor so Ctrl/middle/right-click "open in new window" works
-                // (same URL openGhostMeeting builds). Unmatched ghosts have no
-                // deterministic URL, so they stay a div that opens the picker.
-                ghost.href = `/note/new?customer_id=${g.customer_id}`
-                    + `&date=${encodeURIComponent(dateStr)}`
-                    + `&from_meeting=${g.id}`;
                 ghost.setAttribute('data-customer-id', g.customer_id);
             }
 
-            const labelText = matched
-                ? (g.customer_name || g.subject)
-                : g.subject;
-            const recurMarkup = g.is_recurring
-                ? '<span class="cal-ghost-recur" data-role="recur"'
-                  + ' title="Recurring meeting - hover to dismiss series">'
-                  + '<i class="bi bi-arrow-repeat text-muted"></i>'
-                  + '</span> '
-                : '';
-            const matchIcon = matched
-                ? '<i class="bi bi-calendar-event text-secondary" title="Cached meeting"></i> '
-                : '<i class="bi bi-question-circle text-warning" title="Unmatched - pick a customer"></i> ';
             let localTime = '';
             if (g.start_time_utc) {
                 const d = new Date(g.start_time_utc);
@@ -1657,10 +1532,14 @@
                     });
                 }
             }
-            const timePrefix = localTime
-                ? `<small class="text-muted">${escapeHtml(localTime)}</small> `
-                : '';
-            ghost.innerHTML = matchIcon + recurMarkup + timePrefix + escapeHtml(labelText);
+            const opener = window.SBHomeCalendar.ghost(ghost, g, ghostColorIndex, localTime);
+            if (matched) {
+                opener.href = `/note/new?customer_id=${g.customer_id}`
+                    + `&date=${encodeURIComponent(dateStr)}`
+                    + `&from_meeting=${g.id}`;
+            } else {
+                opener.addEventListener('click', () => openGhostMeeting(g, dateStr));
+            }
 
             const hint = matched
                 ? `Click to create a note for ${g.customer_name}`
@@ -1672,34 +1551,14 @@
             ghost.title = `${g.subject}\n${hint}`
                 + (attendeePreview ? `\nAttendees: ${attendeePreview}` : '');
 
-            ghost.addEventListener('click', function(e) {
-                if (e.target.closest('.cal-ghost-dismiss')) return;
-                if (e.target.closest('.cal-ghost-recur')) return;
-                // Matched ghosts are real anchors - let the browser handle the
-                // click (including Ctrl/middle/right for a new window).
-                if (matched) return;
-                // Unmatched: no URL yet, open the customer picker modal.
-                openGhostMeeting(g, dateStr);
-            });
-
-            if (matched) {
-                ghost.addEventListener('mouseenter', function() {
-                    document.querySelectorAll(`[data-customer-id="${g.customer_id}"]`).forEach(el => {
-                        el.classList.add('cal-highlight');
-                    });
-                });
-                ghost.addEventListener('mouseleave', function() {
-                    document.querySelectorAll(`[data-customer-id="${g.customer_id}"]`).forEach(el => {
-                        el.classList.remove('cal-highlight');
-                    });
-                });
-            }
+            window.SBHomeCalendar.bindHighlight(ghost);
 
             const dismiss = document.createElement('button');
             dismiss.type = 'button';
             dismiss.className = 'cal-ghost-dismiss';
             dismiss.innerHTML = '<i class="bi bi-x"></i>';
             dismiss.title = 'Hide this meeting';
+            dismiss.setAttribute('aria-label', `Hide meeting: ${g.subject}`);
             dismiss.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1710,8 +1569,8 @@
             if (g.is_recurring) {
                 const recurEl = ghost.querySelector('[data-role="recur"]');
                 if (recurEl) {
-                    const arrow = '<i class="bi bi-arrow-repeat text-muted"></i>';
-                    const killX = '<i class="bi bi-x-circle-fill text-danger"></i>';
+                    const arrow = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i>';
+                    const killX = '<i class="bi bi-x-circle-fill" aria-hidden="true"></i>';
                     recurEl.addEventListener('mouseenter', function() {
                         recurEl.innerHTML = killX;
                         recurEl.title = 'Hide this series (all future occurrences)';
@@ -1735,7 +1594,7 @@
     }
 
     // Surgically refresh just the days that finished syncing. Avoids the
-    // full-table rebuild flicker (yellow today badge briefly going blue,
+    // full-table rebuild flicker (Today losing its warning fill,
     // dots vanishing for a frame, etc.). Fetches the same calendar JSON
     // the full render uses, but only swaps the .cal-ghosts-container in
     // each completed cell, with a CSS fade-in.
@@ -1745,19 +1604,7 @@
         fetch(url)
             .then(r => r.json())
             .then(data => {
-                // Rebuild the customer color map from the fresh response so
-                // newly-cached ghosts pick up a stable color.
-                const allCustomerIds = new Set();
-                Object.values(data.days || {}).forEach(logs => {
-                    logs.forEach(log => { if (log.customer_id) allCustomerIds.add(log.customer_id); });
-                });
-                Object.values(data.ghosts || {}).forEach(ghosts => {
-                    ghosts.forEach(g => { if (g.customer_id) allCustomerIds.add(g.customer_id); });
-                });
-                const customerColorMap = {};
-                Array.from(allCustomerIds).forEach((id, i) => {
-                    customerColorMap[id] = (i % 15) + 1;
-                });
+                const customerColorMap = window.SBHomeCalendar.customerColors(data);
 
                 completedDates.forEach(dateStr => {
                     const cell = document.querySelector(
@@ -1781,7 +1628,7 @@
                     if (oldContainer) {
                         oldContainer.replaceWith(newContainer);
                     } else {
-                        cell.appendChild(newContainer);
+                        cell.querySelector('.sb-home-day-entries').appendChild(newContainer);
                     }
                     // Trigger the fade-in next frame so the transition
                     // animates from 0 to 1.
@@ -1790,7 +1637,7 @@
                     });
                 });
 
-                // Refresh today's badge color in case today just finished.
+                // Refresh today's control color in case today just finished.
                 if (typeof checkTodayStatus === 'function') checkTodayStatus();
             })
             .catch(err => console.error('refreshDaysInPlace failed:', err));
@@ -1799,7 +1646,7 @@
     {% if has_engagements %}
     // ===== ENGAGEMENTS TAB =====
     let engagementsLoaded = false;
-    document.getElementById('engagements-tab').addEventListener('shown.bs.tab', function() {
+    document.getElementById('engagements-tab').addEventListener('sb:home-tab-selected', function() {
         localStorage.setItem(TAB_STORAGE_KEY, 'engagements');
         if (!engagementsLoaded) {
             engagementsLoaded = true;
@@ -1811,7 +1658,7 @@
     {% if has_projects %}
     // ===== PROJECTS TAB =====
     let projectsLoaded = false;
-    document.getElementById('projects-tab').addEventListener('shown.bs.tab', function() {
+    document.getElementById('projects-tab').addEventListener('sb:home-tab-selected', function() {
         localStorage.setItem(TAB_STORAGE_KEY, 'projects');
         if (!projectsLoaded) {
             projectsLoaded = true;
@@ -1820,30 +1667,30 @@
     });
     function loadProjects() {
         var list = document.getElementById('projectsList');
-        list.innerHTML = '<div class="p-3 text-muted"><i class="bi bi-hourglass-split"></i> Loading...</div>';
+        list.innerHTML = '<div class="sb-hn-p-3 sb-hn-text-muted"><i class="bi bi-hourglass-split"></i> Loading...</div>';
         fetch('/api/projects/active')
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.projects || data.projects.length === 0) {
-                    list.innerHTML = '<div class="p-3 text-center text-muted">No active projects.</div>';
+                    list.innerHTML = '<div class="sb-hn-p-3 sb-hn-text-center sb-hn-text-muted">No active projects.</div>';
                     return;
                 }
                 var html = '';
                 data.projects.forEach(function(p) {
-                    html += '<a href="/project/' + p.id + '" class="list-group-item list-group-item-action py-2 px-3">';
-                    html += '<div class="d-flex justify-content-between align-items-start">';
+                    html += '<a href="/project/' + p.id + '" class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3">';
+                    html += '<div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">';
                     html += '<div>';
-                    html += '<div class="fw-semibold">' + p.title;
-                    html += ' <span class="badge bg-info ms-1" style="font-size: 0.65rem;">' + p.project_type + '</span>';
-                    if (p.status === 'On Hold') html += ' <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">On Hold</span>';
-                    if (p.status === 'Completed') html += ' <span class="badge bg-success ms-1" style="font-size: 0.65rem;">Completed</span>';
+                    html += '<div class="sb-hn-fw-semibold">' + p.title;
+                    html += ' <span class="sb-hn-badge sb-hn-bg-info sb-hn-ms-1" style="font-size: 0.65rem;">' + p.project_type + '</span>';
+                    if (p.status === 'On Hold') html += ' <span class="sb-hn-badge sb-hn-bg-warning sb-hn-text-dark sb-hn-ms-1" style="font-size: 0.65rem;">On Hold</span>';
+                    if (p.status === 'Completed') html += ' <span class="sb-hn-badge sb-hn-bg-success sb-hn-ms-1" style="font-size: 0.65rem;">Completed</span>';
                     html += '</div>';
-                    if (p.description) html += '<small class="text-muted">' + p.description + '</small>';
+                    if (p.description) html += '<small class="sb-hn-text-muted">' + p.description + '</small>';
                     html += '</div>';
-                    html += '<div class="text-end flex-shrink-0">';
-                    if (p.open_task_count) html += '<span class="badge bg-primary">' + p.open_task_count + ' task' + (p.open_task_count !== 1 ? 's' : '') + '</span>';
+                    html += '<div class="sb-hn-text-end sb-hn-flex-shrink-0">';
+                    if (p.open_task_count) html += '<span class="sb-hn-badge sb-hn-bg-primary">' + p.open_task_count + ' task' + (p.open_task_count !== 1 ? 's' : '') + '</span>';
                     if (p.due_date) {
-                        html += '<div><small class="' + (p.is_overdue ? 'text-danger fw-bold' : 'text-muted') + '">' + p.due_date;
+                        html += '<div><small class="' + (p.is_overdue ? 'sb-hn-text-danger sb-hn-fw-bold' : 'sb-hn-text-muted') + '">' + p.due_date;
                         if (p.is_overdue) html += ' <i class="bi bi-exclamation-triangle-fill"></i>';
                         html += '</small></div>';
                     }
@@ -1852,7 +1699,7 @@
                 list.innerHTML = html;
             })
             .catch(function() {
-                list.innerHTML = '<div class="p-3 text-danger"><i class="bi bi-exclamation-triangle"></i> Failed to load projects.</div>';
+                list.innerHTML = '<div class="sb-hn-p-3 sb-hn-text-danger"><i class="bi bi-exclamation-triangle"></i> Failed to load projects.</div>';
             });
     }
     {% endif %}
@@ -1863,7 +1710,7 @@
     let tasksYear = new Date().getFullYear();
     let tasksMonth = new Date().getMonth() + 1;
 
-    document.getElementById('tasks-tab').addEventListener('shown.bs.tab', function() {
+    document.getElementById('tasks-tab').addEventListener('sb:home-tab-selected', function() {
         localStorage.setItem(TAB_STORAGE_KEY, 'tasks');
         if (!tasksLoaded) {
             tasksLoaded = true;
@@ -1889,7 +1736,7 @@
     function loadTasksCalendar(year, month) {
         var body = document.getElementById('tasksCalendarBody');
         var title = document.getElementById('tasksCalendarTitle');
-        body.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm" role="status"></div> Loading...</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="sb-hn-text-center sb-hn-py-4"><div class="sb-hn-spinner-border sb-hn-spinner-border-sm" role="status"></div> Loading...</td></tr>';
 
         fetch('/api/action-items/calendar?year=' + year + '&month=' + month)
             .then(function(r) { return r.json(); })
@@ -1899,7 +1746,7 @@
                 renderOverdueBar(data.overdue || []);
             })
             .catch(function() {
-                body.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error loading tasks</td></tr>';
+                body.innerHTML = '<tr><td colspan="7" class="sb-hn-text-center sb-hn-py-4 sb-hn-text-danger">Error loading tasks</td></tr>';
             });
     }
 
@@ -1910,10 +1757,10 @@
             return;
         }
         bar.style.display = '';
-        var html = '<div class="alert alert-danger mb-0 py-2 px-3 d-flex align-items-center gap-2">';
+        var html = '<div class="sb-hn-alert sb-hn-alert-danger sb-hn-mb-0 sb-hn-py-2 sb-hn-px-3 sb-hn-d-flex sb-hn-align-items-center sb-hn-gap-2">';
         html += '<i class="bi bi-exclamation-triangle-fill"></i>';
         html += '<strong>' + overdue.length + ' overdue</strong>';
-        html += '<span class="text-truncate">';
+        html += '<span class="sb-hn-text-truncate">';
         overdue.slice(0, 3).forEach(function(t, i) {
             if (i > 0) html += ', ';
             html += escTaskHtml(t.title);
@@ -1951,7 +1798,7 @@
 
             for (var col = 0; col < 7; col++) {
                 var cell = document.createElement('td');
-                cell.className = 'p-1';
+                cell.className = 'sb-hn-p-1';
                 cell.style.verticalAlign = 'top';
                 // Fixed height for every cell (weekday, weekend, and
                 // out-of-month filler) so all rows are visually consistent.
@@ -1966,11 +1813,11 @@
 
                     // Day number
                     var dayHeader = document.createElement('div');
-                    dayHeader.className = 'd-flex justify-content-between align-items-center mb-1';
+                    dayHeader.className = 'sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-center sb-hn-mb-1';
                     var dayNumber = document.createElement('span');
-                    dayNumber.className = 'fw-bold';
+                    dayNumber.className = 'sb-hn-fw-bold';
                     if (dayNum === todayDay) {
-                        dayNumber.innerHTML = '<span class="badge bg-primary rounded-circle">' + dayNum + '</span>';
+                        dayNumber.innerHTML = '<span class="sb-hn-badge sb-hn-bg-primary rounded-circle">' + dayNum + '</span>';
                     } else {
                         dayNumber.textContent = dayNum;
                     }
@@ -1980,7 +1827,7 @@
                     var taskEntries = days[dayNum] || [];
                     if (taskEntries.length > 0) {
                         var countBadge = document.createElement('span');
-                        countBadge.className = 'badge bg-secondary';
+                        countBadge.className = 'sb-hn-badge sb-hn-bg-secondary';
                         countBadge.style.fontSize = '0.65rem';
                         countBadge.textContent = taskEntries.length;
                         dayHeader.appendChild(countBadge);
@@ -1996,26 +1843,27 @@
 
                         taskEntries.forEach(function(t) {
                             var entry = document.createElement('div');
-                            entry.className = 'd-block text-truncate mb-1 px-1 rounded';
+                            entry.className = 'sb-hn-d-block sb-hn-text-truncate sb-hn-mb-1 sb-hn-px-1 sb-hn-rounded';
+                            entry.setAttribute('data-action-item-id', t.id);
                             entry.style.cursor = 'pointer';
 
                             // Color by status
                             if (t.status === 'completed') {
-                                entry.classList.add('text-decoration-line-through', 'text-muted');
+                                entry.classList.add('sb-hn-text-decoration-line-through', 'sb-hn-text-muted');
                             } else if (t.is_overdue) {
                                 entry.style.backgroundColor = isDark ? 'rgba(220,53,69,0.2)' : 'rgba(220,53,69,0.1)';
-                                entry.style.borderLeft = '3px solid var(--bs-danger)';
+                                entry.style.borderLeft = '3px solid var(--sb-ui-danger)';
                             } else if (t.priority === 'high') {
                                 entry.style.backgroundColor = isDark ? 'rgba(255,193,7,0.15)' : 'rgba(255,193,7,0.1)';
-                                entry.style.borderLeft = '3px solid var(--bs-warning)';
+                                entry.style.borderLeft = '3px solid var(--sb-ui-warning)';
                             } else {
                                 entry.style.backgroundColor = isDark ? 'rgba(13,110,253,0.15)' : 'rgba(13,110,253,0.08)';
-                                entry.style.borderLeft = '3px solid var(--bs-primary)';
+                                entry.style.borderLeft = '3px solid var(--sb-ui-accent)';
                             }
 
                             var icons = '';
-                            if (t.priority === 'high') icons += '<i class="bi bi-exclamation-triangle-fill text-danger" style="font-size:0.65rem;"></i> ';
-                            if (t.status === 'completed') icons += '<i class="bi bi-check-circle-fill text-success" style="font-size:0.65rem;"></i> ';
+                            if (t.priority === 'high') icons += '<i class="bi bi-exclamation-triangle-fill sb-hn-text-danger" style="font-size:0.65rem;"></i> ';
+                            if (t.status === 'completed') icons += '<i class="bi bi-check-circle-fill sb-hn-text-success" style="font-size:0.65rem;"></i> ';
 
                             entry.innerHTML = icons + escTaskHtml(t.title);
                             entry.title = t.title + (t.context ? ' - ' + t.context : '') + (t.is_overdue ? ' (OVERDUE)' : '');
@@ -2030,7 +1878,7 @@
 
                     dayIndex++;
                 } else {
-                    cell.classList.add('bg-light');
+                    cell.classList.add('sb-hn-bg-light');
                     if (isDark) cell.style.backgroundColor = 'rgba(255,255,255,0.03)';
                 }
 
@@ -2045,174 +1893,69 @@
 {% include 'partials/_action_item_detail_modal.html' %}
 
 {% if upcoming_milestones or stale_milestones %}
-<!-- Milestone Detail Modal -->
-<div class="modal fade" id="homeMilestoneDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1100px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <div class="d-flex align-items-center gap-2">
-                    <h5 class="modal-title mb-0"><i class="bi bi-flag"></i> <span id="homeMsTitle">Loading...</span></h5>
-                    <span id="homeMsBadge"></span>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <a id="homeMsMsxLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary" style="display:none"><i class="bi bi-box-arrow-up-right"></i> MSX</a>
-                    <a id="homeMsFullLink" href="#" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrows-fullscreen"></i> Full Page</a>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-            </div>
-            <div class="modal-body p-3" id="homeMsBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 <script>
-(function() {
-    let msModal = null;
-    const titleEl = document.getElementById('homeMsTitle');
-    const bodyEl = document.getElementById('homeMsBody');
-    const badgeEl = document.getElementById('homeMsBadge');
-    const msxLink = document.getElementById('homeMsMsxLink');
-    const fullLink = document.getElementById('homeMsFullLink');
-
-    window.openHomeMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl) {
-        if (event.target.closest('a, button')) return;
-        if (!msModal) {
-            msModal = new bootstrap.Modal(document.getElementById('homeMilestoneDetailModal'));
-        }
-        titleEl.textContent = msTitle;
-        if (msStatus) {
-            const cls = {'On Track':'bg-success','At Risk':'bg-warning text-dark','Blocked':'bg-danger','Completed':'bg-info'}[msStatus] || 'bg-secondary';
-            badgeEl.innerHTML = '<span class="badge ' + cls + '">' + msStatus + '</span>';
-        } else {
-            badgeEl.innerHTML = '';
-        }
-        if (msUrl) { msxLink.href = msUrl; msxLink.style.display = ''; } else { msxLink.style.display = 'none'; }
-        fullLink.href = '/milestone/' + msId;
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        msModal.show();
-        fetch('/api/milestone/' + msId + '/detail')
-            .then(function(r) { if (!r.ok) throw new Error(); return r.text(); })
-            .then(function(html) {
-                bodyEl.innerHTML = html;
-                bodyEl.querySelectorAll('script').forEach(function(old) {
-                    var s = document.createElement('script');
-                    if (old.src) { s.src = old.src; } else { s.textContent = '(function(){' + old.textContent + '})();'; }
-                    old.replaceWith(s);
-                });
-            })
-            .catch(function() { bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load milestone details.</div>'; });
-    };
-})();
+window.openHomeMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl) {
+    if (event.target.closest('a, button')) return;
+    return SBMilestonePreview.open(msId, msTitle, msStatus, msUrl);
+};
 </script>
 {% endif %}
 
 {% if revenue_alerts %}
-<!-- Alert Detail Modal -->
-<div class="modal fade" id="homeAlertDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1100px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> <span id="homeAlertTitle">Loading...</span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-3" id="homeAlertBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% include 'partials/review_action.html' %}
-<script>
-(function() {
-    let alertModal = null;
-    let alertDirty = false;
-    const titleEl = document.getElementById('homeAlertTitle');
-    const bodyEl = document.getElementById('homeAlertBody');
-
-    window.openHomeAlertDetail = function(event, alertId, customerName, bucket) {
-        if (event.target.closest('a, button')) return;
-        if (!alertModal) {
-            alertModal = new bootstrap.Modal(document.getElementById('homeAlertDetailModal'));
-        }
-        alertDirty = false;
-        titleEl.textContent = customerName + ' - ' + bucket;
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        alertModal.show();
-        fetch('/api/revenue/analysis/' + alertId + '/detail')
-            .then(function(r) { if (!r.ok) throw new Error(); return r.text(); })
-            .then(function(html) { bodyEl.innerHTML = html; })
-            .catch(function() { bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load alert details.</div>'; });
-    };
-
-    document.getElementById('homeAlertDetailModal').addEventListener('hidden.bs.modal', function() {
-        if (alertDirty) location.reload();
-    });
-
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('#homeAlertDetailModal .review-action-btn')) {
-            alertDirty = true;
-        }
-    });
-})();
-</script>
+{% with revenue_preview_id='homeAlertDetailModal', revenue_preview_title_id='homeAlertTitle',
+        revenue_preview_body_id='homeAlertBody' %}
+{% include 'partials/revenue_alert_preview.html' %}
+{% endwith %}
 {% endif %}
 
-<!-- Note Detail Modal -->
-<div class="modal fade" id="homeNoteDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1100px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <h5 class="modal-title"><i class="bi bi-journal-text"></i> <span id="homeNoteTitle">Loading...</span></h5>
-                <div class="d-flex align-items-center gap-2">
-                    <a id="homeNoteFullLink" href="#" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrows-fullscreen"></i> Full Page</a>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
+<!-- Native note preview with the shared workbench body. -->
+<dialog class="sb-dialog sb-dialog-record" id="homeNoteDetailModal"
+        aria-labelledby="homeNoteTitle" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <div class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <div class="sb-dialog-eyebrow">Note preview</div>
+                <h2 id="homeNoteTitle" data-sb-record-title>Note</h2>
             </div>
-            <div class="modal-body p-3" id="homeNoteBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
+            <a id="homeNoteFullLink" href="#" class="sb-dialog-button" data-sb-record-full-link>
+                <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i> Full Page
+            </a>
+            <button class="sb-dialog-close" type="button" data-sb-dialog-close
+                    aria-label="Close note preview" autofocus>
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="sb-dialog-body">
+            <div class="sb-record-state" data-sb-record-loading role="status">Loading note...</div>
+            <div class="sb-record-state" data-sb-record-error hidden>
+                <p role="status">Unable to load this note. Try again, or open the full page.</p>
+                <button class="sb-dialog-button" type="button" data-sb-record-retry>
+                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Retry
+                </button>
             </div>
+            <div id="homeNoteBody" data-sb-record-content></div>
+        </div>
+        <div class="sb-dialog-footer">
+            <small data-sb-record-status role="status">Open the full page to edit this note.</small>
         </div>
     </div>
-</div>
+</dialog>
 <script>
 (function() {
-    let noteModal = null;
-    const titleEl = document.getElementById('homeNoteTitle');
-    const bodyEl = document.getElementById('homeNoteBody');
-    const fullLink = document.getElementById('homeNoteFullLink');
-
+    let preview = null;
     window.openHomeNoteDetail = function(noteId, customerName) {
-        if (!noteModal) {
-            noteModal = new bootstrap.Modal(document.getElementById('homeNoteDetailModal'));
+        if (!preview) {
+            preview = SBRecordDialog.create('homeNoteDetailModal', {
+                statusText: 'Open the full page to edit this note.',
+                errorText: 'Unable to load this note. Retry or open the full page.',
+                loadUrl: id => '/api/note/' + id + '/detail',
+                fullUrl: id => '/note/' + id,
+                fragmentSelector: '[data-sb-note-detail]',
+                identityAttribute: 'data-sb-note-id',
+                mount: root => SBNoteActions.mount(root),
+            });
         }
-        titleEl.textContent = customerName || 'Note';
-        fullLink.href = '/note/' + noteId;
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        noteModal.show();
-        fetch('/api/note/' + noteId + '/detail')
-            .then(function(r) { if (!r.ok) throw new Error(); return r.text(); })
-            .then(function(html) {
-                bodyEl.innerHTML = html;
-                bodyEl.querySelectorAll('script').forEach(function(old) {
-                    var s = document.createElement('script');
-                    if (old.src) { s.src = old.src; } else { s.textContent = '(function(){' + old.textContent + '})();'; }
-                    old.replaceWith(s);
-                });
-            })
-            .catch(function() { bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load note details.</div>'; });
+        return preview.open({id: noteId, title: customerName || 'Note'});
     };
 })();
 </script>
@@ -2228,12 +1971,3 @@ RevenueBucketFilter.init({
 </script>
 
 {% endblock %}
-
-
-
-
-
-
-
-
-

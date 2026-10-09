@@ -1,0 +1,37 @@
+{% if customers %}
+<table class="sb-revenue-table sb-product-customers" id="{{ 'directoryCustomersTable' if directory_comparison|default(false) else 'customersTable' }}"
+       data-sb-sortable data-sb-sort-key="product-customers" data-sb-sort-default-column="2"
+       data-sb-sort-default-direction="descending">
+    <caption>Customer and bucket entries using {{ product }}, ordered by all-history revenue</caption>
+    <thead><tr><th scope="col" data-sb-sort-type="text">Customer</th><th scope="col" data-sb-sort-type="text">Bucket</th><th scope="col" data-sb-sort-type="number">Total Revenue</th></tr></thead>
+    <tbody>
+        {% for c in customers %}
+        <tr id="product-entry-{{ loop.index }}" data-sb-product-entry="{{ loop.index }}"
+            data-customer-name="{{ c.customer_name }}" data-bucket="{{ c.bucket }}">
+            <th scope="row">
+                <span data-sb-product-search-value>
+                    {% if directory_comparison|default(false) %}
+                    <a href="{{ url_for('revenue.revenue_seller_product_view', seller_name=seller_name, product=product, customer=c.customer_name, bucket=c.bucket) if seller_name is defined else url_for('revenue.revenue_product_view', product=product, customer=c.customer_name, bucket=c.bucket) }}">{{ c.customer_name }}</a>
+                    {% elif c.customer_id %}
+                    <a href="{{ url_for('revenue.revenue_customer_view', customer_id=c.customer_id) }}">{{ c.customer_name }}</a>
+                    {% else %}{{ c.customer_name }}{% endif %}
+                    {% if c.customer_id %}
+                    <a href="{{ url_for('customers.customer_view', id=c.customer_id) }}"
+                       class="sb-product-hub" title="View Customer Hub" aria-label="View {{ c.customer_name }} Customer Hub"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                    {% endif %}
+                </span>
+                {% if not directory_comparison|default(false) %}
+                <button type="button" class="sb-product-select" data-sb-product-select
+                        aria-label="Show history for {{ c.customer_name }}, {{ c.bucket }}"
+                        title="Show revenue history" hidden><i class="bi bi-clock-history" aria-hidden="true"></i></button>
+                {% endif %}
+            </th>
+            <td data-sb-product-search-value>{{ c.bucket }}</td>
+            <td data-sb-product-search-value data-sb-sort-value="{{ c.total_revenue }}">${{ '{:,.0f}'.format(c.total_revenue) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<section class="sb-revenue-page-empty"><h2>No customers found</h2><p>No customers are currently using this product.</p></section>
+{% endif %}

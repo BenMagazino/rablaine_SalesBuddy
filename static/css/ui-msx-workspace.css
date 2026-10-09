@@ -1,0 +1,67 @@
+/* The cache browser owns three independent reading regions, not a directory/detail split. */
+.msx-heading { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.msx-heading h2 { margin: 0; font: 600 21px/1.3 var(--sb-ui-font); }
+.msx-heading p { margin: 5px 0 0; color: var(--sb-ui-muted); font-size: 12px; }
+.msx-scope { padding: 12px 24px; background: var(--sb-ui-context); border-bottom: 1px solid var(--sb-ui-line); }
+.msx-controls { display: flex; align-items: center; gap: 8px; }
+.msx-controls label { color: var(--sb-ui-muted); font-size: 12px; }
+.msx-input, .msx-command, .msx-status-picker summary { border: 1px solid var(--sb-ui-control-line); border-radius: 2px; background: var(--sb-ui-surface); color: var(--sb-ui-ink); font: 12px/1.4 var(--sb-ui-font); }
+.msx-input { padding: 5px 8px; min-width: 0; }
+#filterSeller { width: 180px; }
+#filterCustomer { width: 240px; }
+.msx-search { width: 270px; }
+.msx-command { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 5px 9px; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.msx-command:hover { color: var(--sb-ui-ink); background: var(--sb-ui-raised); }
+.msx-command.is-primary { background: var(--sb-ui-control-fill); border-color: var(--sb-ui-control-edge); color: var(--sb-ui-control-ink); }
+.msx-command:disabled { opacity: .6; cursor: wait; }
+.msx-command:focus-visible, .msx-input:focus-visible, .msx-status-picker summary:focus-visible, .msx-tab:focus-visible, .msx-reading:focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: -2px; }
+.msx-tabs { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.msx-tabs ul { display: flex; list-style: none; padding: 0; margin: 0; }
+.msx-tab { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--sb-ui-muted); padding: 11px 16px; font: 13px var(--sb-ui-font); cursor: pointer; }
+.msx-tab.active { color: var(--sb-ui-ink); border-bottom-color: var(--sb-ui-accent); }
+.msx-tab span { margin-left: 6px; font-size: 11px; font-variant-numeric: tabular-nums; }
+#resultCount { font-size: 12px; color: var(--sb-ui-muted); }
+.msx-content, .msx-pane, .msx-task-content { display: flex; flex-direction: column; min-height: 0; }
+.msx-pane, .msx-task-content { height: 100%; }
+.msx-pane[hidden] { display: none; }
+.msx-subscope { flex-shrink: 0; min-height: 52px; padding: 10px 24px; border-bottom: 1px solid var(--sb-ui-grid-line); }
+.msx-subscope select { max-width: 300px; }
+.msx-reading { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
+.msx-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.msx-table th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-context); text-align: left; font-weight: 600; white-space: nowrap; }
+.msx-table td, .msx-table th { padding: 9px 12px; border-bottom: 1px solid var(--sb-ui-grid-line); vertical-align: middle; }
+.sb-msx-workspace.sb-directory-frame .msx-table td:not(.msx-number, .msx-date) { overflow-wrap: anywhere; }
+.msx-table th:first-child, .msx-table td:first-child { padding-left: 24px; }
+.msx-table tr:hover > td { background: color-mix(in oklch, var(--sb-ui-raised) 40%, var(--sb-ui-surface)); }
+.msx-table a { color: var(--sb-ui-accent); }
+.msx-table code { color: var(--sb-ui-muted); font: inherit; white-space: nowrap; }
+.msx-table .msx-number { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.msx-table .msx-date { white-space: nowrap; }
+.msx-table [data-sb-sort-type="number"] .sb-table-sort-button { justify-content: flex-end; }
+.msx-message { padding: 28px !important; text-align: center; color: var(--sb-ui-muted); }
+.msx-error, .msx-danger { color: var(--sb-ui-danger); }
+.msx-warning { color: var(--sb-ui-warning); }
+.msx-tag { white-space: nowrap; font-size: 11px; color: var(--sb-ui-muted); }
+.msx-tag.is-success, .msx-command.on-team { color: var(--sb-ui-milestone-rail); }
+.msx-tag.is-warning { color: var(--sb-ui-warning); }
+.msx-tag.is-danger { color: var(--sb-ui-danger); }
+.msx-team .icon-leave { display: none; }
+.msx-team.on-team:hover .icon-default { display: none; }
+.msx-team.on-team:hover .icon-leave { display: inline; }
+.opp-expand i { display: inline-block; }
+.opp-expand.expanded i { transform: rotate(90deg); }
+.msx-inline-detail { padding: 8px 12px 12px; }
+.msx-detail-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 12px; }
+.msx-detail-fields span { white-space: pre-wrap; color: var(--sb-ui-muted); }
+.msx-status-picker { position: relative; font-size: 12px; }
+.msx-status-picker summary { cursor: pointer; padding: 5px 10px; min-width: 155px; }
+.msx-status-menu { position: absolute; z-index: 5; top: 100%; left: 0; list-style: none; padding: 12px; margin: 4px 0 0; min-width: 230px; border: 1px solid var(--sb-ui-line); background: var(--sb-ui-popup); }
+.msx-status-menu label { display: block; padding: 7px 0; color: var(--sb-ui-ink); cursor: pointer; }
+.msx-status-menu input { accent-color: var(--sb-ui-accent); }
+.msx-task-dialog { width: 560px; }
+.msx-task-fields { display: grid; gap: 16px; }
+.msx-task-fields label { display: block; margin-bottom: 5px; font-size: 12px; }
+.msx-task-fields .msx-input { width: 100%; }
+.msx-opportunity-dialog { width: min(1200px, calc(100vw - 48px)); }
+.msx-opportunity-dialog h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msx-feedback { position: fixed; bottom: 32px; right: 24px; z-index: 1090; max-width: 480px; padding: 12px; border: 1px solid var(--sb-ui-line); background: var(--sb-ui-popup); color: var(--sb-ui-ink); }

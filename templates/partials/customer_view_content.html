@@ -1,0 +1,1213 @@
+{% from 'partials/customer_favicon.html' import customer_favicon %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-customer-detail.css') }}">
+<section class="sb-customer-view sb-directory-frame sb-directory-frame-wide" data-sb-customer-detail="{{ customer.id }}" data-sb-page-surface>
+
+<!-- Header -->
+<header class="cd-header" data-sb-page-band>
+    <div style="min-width: 0; flex: 1; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="flex-shrink: 0; line-height: 1; margin-top: 4px; margin-right: 6px;">{{ customer_favicon(customer, size=34) }}</span>
+        <h1 title="{{ customer.name }}">
+            {% if customer.nickname %}
+                {{ customer.nickname }} <small class="cd-muted">({{ customer.name }})</small>
+            {% else %}
+                {{ customer.name }}
+            {% endif %}
+        </h1>
+    </div>
+    <div class="cd-commands">
+        <a href="{{ url_for('notes.note_create') }}?customer_id={{ customer.id }}" class="sb-dialog-button">
+            <i class="bi bi-plus-circle"></i> New Note
+        </a>
+        <a href="{{ url_for('engagements.engagement_create', customer_id=customer.id) }}" class="sb-dialog-button">
+            <i class="bi bi-plus-circle"></i> New Engagement
+        </a>
+        <a href="{{ url_for('customers.customer_edit', id=customer.id) }}" class="sb-dialog-button">
+            <i class="bi bi-pencil"></i> Edit Customer
+        </a>
+    </div>
+</header>
+
+<!-- Compute partner_dict for essentials card -->
+{% set partner_dict = {} %}
+{% for call in notes %}
+    {% for partner in call.partners %}
+        {% if partner.id not in partner_dict %}
+            {% set _ = partner_dict.update({partner.id: partner}) %}
+        {% endif %}
+    {% endfor %}
+{% endfor %}
+
+<!-- Main Layout: Sidebar (left) + Content (right) -->
+<div class="cd-layout" data-sb-page-body>
+    <!-- Sidebar -->
+    <aside class="cd-context" data-cd-reading="context" aria-label="Account context and contacts">
+        <!-- Account Context Card -->
+        <section class="cd-section">
+            <header class="cd-section-header">
+                <h2><i class="bi bi-sticky"></i> Account Context</h2>
+                <div class="cd-commands">
+                    <button type="button" class="sb-dialog-button" id="editContextBtn" onclick="toggleContextEdit()">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                </div>
+            </header>
+            <div class="cd-section-body">
+                <div id="contextDisplay" {% if not customer.account_context %}style="display: none;"{% endif %}>
+                    <p class="cd-account-context" style="white-space: pre-wrap;">{{ customer.account_context or '' }}</p>
+                </div>
+                <div id="contextEmpty" {% if customer.account_context %}style="display: none;"{% endif %}>
+                    <p class="cd-muted">Keep key contacts, strategic context and reminders here for your next call.</p>
+                </div>
+                <form id="contextForm" action="{{ url_for('customers.customer_update_overview', id=customer.id) }}" method="post" style="display: none;">
+                    <textarea name="account_context" id="contextTextarea" rows="10" aria-label="Account context" placeholder="High-level account context: key contacts, strategic priorities, ongoing initiatives...">{{ customer.account_context or '' }}</textarea>
+                    <div class="cd-commands">
+                        <button type="submit" class="sb-dialog-button">
+                            <i class="bi bi-check-lg"></i> Save
+                        </button>
+                        <button type="button" class="sb-dialog-button" onclick="cancelContextEdit()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Contacts Card -->
+        <section class="cd-section">
+            <header class="cd-section-header">
+                <h2><i class="bi bi-people"></i> Contacts</h2>
+                <div id="editContactsBtn" class="cd-commands">
+                    <button type="button" class="sb-dialog-button" id="scrapeContactsBtn" onclick="startContactScrape()">
+                        <i class="bi bi-magic"></i> Auto-fill
+                    </button>
+                    <button type="button" class="sb-dialog-button" onclick="toggleContactEdit()">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                </div>
+                <div id="editContactsDone" class="cd-commands" hidden>
+                    <button type="button" class="sb-dialog-button" onclick="cancelContactEdit()">Cancel</button>
+                    <button type="button" class="sb-dialog-button" onclick="saveAllContacts()">
+                        <i class="bi bi-check-lg"></i> Done
+                    </button>
+                </div>
+            </header>
+            <div class="cd-section-body" id="contactsCardBody">
+                <!-- Read-only display -->
+                <div id="contactsDisplay">
+                    {% if customer.contacts %}
+                        {% for contact in customer.contacts %}
+                        <div class="cd-contact">
+                            <button type="button" class="contact-photo-wrap" data-contact-id="{{ contact.id }}" data-contact-type="customer"
+                                 {% if contact.photo_full_b64 %}data-full-src="data:image/png;base64,{{ contact.photo_full_b64 }}"{% endif %}
+                                 onclick="openContactPhotoModal(this)" title="Click to add/view photo"
+                                 aria-label="Contact photo for {{ contact.name }}">
+                                {% if contact.photo_b64 %}
+                                    <img src="data:image/png;base64,{{ contact.photo_b64 }}" alt="{{ contact.name }}">
+                                {% else %}
+                                    <i class="bi bi-person-circle"></i>
+                                {% endif %}
+                            </button>
+                            <div>
+                                <div>{% if contact.email %}<a href="mailto:{{ contact.email }}">{{ contact.name }}</a>{% else %}<strong>{{ contact.name }}</strong>{% endif %}</div>
+                                {% if contact.title %}<div class="cd-muted">{{ contact.title }}</div>{% endif %}
+                                {% if contact.email %}<div class="cd-muted">{{ contact.email }}</div>{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="cd-muted" id="contactsEmpty">No contacts yet.</p>
+                    {% endif %}
+                </div>
+                <!-- Edit mode (hidden by default) -->
+                <div id="contactsEditMode" style="display: none;">
+                    <div id="contactsEditList">
+                        {% if customer.contacts %}
+                            {% for contact in customer.contacts %}
+                            <div class="cd-contact-editor" id="contact-edit-{{ contact.id }}">
+                                <div>
+                                    <div class="cd-section-header">
+                                        <strong><i class="bi bi-person-circle"></i> Edit Contact</strong>
+                                        <button type="button" class="sb-dialog-button cd-danger" onclick="deleteContactEdit({{ contact.id }})" aria-label="Delete {{ contact.name }}"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                    <div><input type="text" value="{{ contact.name }}" data-field="name" aria-label="Contact name" placeholder="Name *"></div>
+                                    <div><input type="text" value="{{ contact.title or '' }}" data-field="title" aria-label="Contact title" placeholder="Title"></div>
+                                    <div><input type="email" value="{{ contact.email or '' }}" data-field="email" aria-label="Contact email" placeholder="Email"></div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    <div id="contactsNewRows"></div>
+                    <button type="button" class="sb-dialog-button" onclick="addContactEditRow()">
+                        <i class="bi bi-plus"></i> Add Contact
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        {% if revenue_analyses %}
+        <section class="cd-section cd-panel" id="cdRevenue" aria-labelledby="cdRevenueTab">
+            <header class="cd-section-header">
+                <h2><i class="bi bi-graph-up"></i> Revenue Analyzer</h2>
+                <a href="{{ url_for('revenue.revenue_customer_view', customer_id=customer.id) }}" class="sb-dialog-button">
+                    <i class="bi bi-eye"></i> Details
+                </a>
+            </header>
+            <div class="cd-section-body">
+                <table class="cd-table" data-sb-sortable data-sb-sort-key="customer-{{ customer.id }}-analysis">
+                    <caption>Revenue analysis, initially ordered by priority. Details opens the complete revenue history and graphs.</caption>
+                    <thead><tr>
+                        <th data-sb-sort-type="text" data-export-label="Bucket">Bucket</th>
+                        <th data-sb-sort-type="text" data-export-label="Category">Category</th>
+                        <th data-sb-sort-type="number" data-export-label="Average revenue">Avg / mo</th>
+                        <th data-sb-sort-type="number" data-export-label="Trend">Trend</th>
+                        <th data-sb-sort-type="number" data-export-label="Dollars at risk">At risk</th>
+                        <th data-sb-sort-type="text" data-export-label="Recommended action">Recommended action</th>
+                    </tr></thead>
+                    <tbody>{% for analysis in revenue_analyses %}
+                        <tr data-category="{{ analysis.category }}">
+                            <th scope="row">{{ analysis.bucket }}</th>
+                            <td><span class="cd-analysis-category" data-category="{{ analysis.category }}">{% if analysis.category == 'DECLINING' %}Declining{% elif analysis.category == 'CHURNED' %}Inactive{% else %}{{ analysis.category|replace('_', ' ')|title }}{% endif %}</span></td>
+                            <td data-sb-sort-value="{{ analysis.avg_revenue }}">${{ "{:,.0f}".format(analysis.avg_revenue) }}/mo</td>
+                            <td data-sb-sort-value="{{ analysis.trend_slope if analysis.trend_slope else '' }}" class="{{ 'cd-success' if analysis.trend_slope and analysis.trend_slope > 0 else 'cd-danger' if analysis.trend_slope and analysis.trend_slope < 0 else '' }}">{% if analysis.trend_slope %}<i class="bi bi-{{ 'arrow-up' if analysis.trend_slope > 0 else 'arrow-down' }}"></i> {{ "{:.1f}%".format(analysis.trend_slope * 100) }}{% endif %}</td>
+                            <td data-sb-sort-value="{{ analysis.dollars_at_risk if analysis.dollars_at_risk and analysis.dollars_at_risk > 0 else '' }}" class="cd-danger">{% if analysis.dollars_at_risk and analysis.dollars_at_risk > 0 %}${{ "{:,.0f}".format(analysis.dollars_at_risk) }} at risk{% endif %}</td>
+                            <td>{% if analysis.recommended_action and analysis.recommended_action != 'NO ACTION' %}<i class="bi bi-exclamation-circle"></i> {{ analysis.recommended_action }}{% endif %}</td>
+                        </tr>
+                    {% endfor %}</tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Customer Opportunities Card -->
+        {% if customer.opportunities.count() > 0 %}
+        <section class="cd-section cd-panel" id="cdPipeline" aria-labelledby="cdPipelineTab">
+            <header class="cd-section-header">
+                <h2><i class="bi bi-cash-stack"></i> Opportunities</h2>
+                <label class="cd-search">Find in pipeline <input type="search" id="cdPipelineSearch" placeholder="Opportunity, milestone or workload"></label>
+            </header>
+            <div class="cd-section-body">
+                {% set opportunities = sorted_opps %}
+                {% include 'partials/_customer_opportunities.html' %}
+            </div>
+        </section>
+        {% endif %}
+    </aside>
+
+    <!-- Main Content -->
+    <div class="cd-work">
+        <nav class="cd-tabs" role="tablist" aria-label="Customer work">
+            <button type="button" id="cdWorkstreamsTab" role="tab" aria-controls="cdWorkstreams" aria-selected="true">Engagements ({{ engagements|length }})</button>
+            <button type="button" id="cdNotesTab" role="tab" aria-controls="cdNotes" aria-selected="false" tabindex="-1">Notes ({{ notes|length }})</button>
+            {% if customer.opportunities.count() > 0 %}<button type="button" id="cdPipelineTab" role="tab" aria-controls="cdPipeline" aria-selected="false" tabindex="-1">Opportunities ({{ opportunity_count }})</button>{% endif %}
+            {% if revenue_analyses %}<button type="button" id="cdRevenueTab" role="tab" aria-controls="cdRevenue" aria-selected="false" tabindex="-1">Revenue ({{ revenue_analyses|length }})</button>{% endif %}
+        </nav>
+        <div class="cd-reading" data-cd-reading="work">
+        <!-- Essentials panel (Azure portal style) -->
+        <section class="cd-section" id="cdEssentials" aria-label="Account identity and ownership">
+            <div class="cd-section-body">
+                <div class="cd-essentials">
+                    <div>
+                        {% if customer.tpid %}
+                        <div>
+                            <div class="cd-muted">TPID</div>
+                            <div>
+                                {% if customer.tpid_url %}
+                                    <a href="{{ customer.tpid_url }}" target="_blank">{{ customer.tpid }}</a>
+                                {% else %}
+                                    {{ customer.tpid }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if not seller_mode %}
+                        <div>
+                            <div class="cd-muted">Seller</div>
+                            <div>
+                                {% if customer.seller %}
+                                    <a href="{{ url_for('sellers.seller_view', id=customer.seller.id) }}" class="cd-tag is-muted"><i class="bi bi-person"></i> {{ customer.seller.name }}</a>
+                                    {% if customer.seller.seller_type %}
+                                        <span class="cd-tag {% if customer.seller.seller_type == 'Growth' %}is-success{% else %}is-info{% endif %}">{{ customer.seller.seller_type }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="cd-muted">Unassigned</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <div class="cd-muted">Territory</div>
+                            <div>
+                                {% if customer.territory %}
+                                    <a href="{{ url_for('territories.territory_view', id=customer.territory.id) }}" class="cd-tag is-info"><i class="bi bi-geo-alt"></i> {{ customer.territory.name }}</a>
+                                {% else %}
+                                    <span class="cd-muted">Unassigned</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if customer.dae_name or customer.dae_alias %}
+                        <div>
+                            <div class="cd-muted">DAE (Account Owner)</div>
+                            <div>
+                                {% if customer.dae_alias %}
+                                    <a href="mailto:{{ customer.dae_alias }}@microsoft.com">
+                                        <i class="bi bi-person-badge"></i> {{ customer.dae_name or customer.dae_alias }}
+                                    </a>
+                                {% else %}
+                                    <i class="bi bi-person-badge"></i> {{ customer.dae_name }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <div>
+                            <div class="cd-muted">Last Contact</div>
+                            <div>
+                                {% if last_contact %}
+                                    {{ last_contact.strftime('%b %d, %Y') }}
+                                {% else %}
+                                    <span class="cd-muted">-</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if customer.verticals|length > 0 %}
+                        <div>
+                            <div class="cd-muted">Verticals</div>
+                            <div>
+                                {% for vertical in customer.verticals|sort(attribute='name') %}
+                                    <span class="cd-tag is-primary">{{ vertical.name }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if customer.available_csams|length > 0 %}
+                        <div id="csamSection">
+                            <div class="cd-muted">CSAM</div>
+                            <div id="csamValue">
+                                {% if customer.csam %}
+                                    <span class="cd-tag is-muted"><i class="bi bi-person"></i> {{ customer.csam.name }}</span>
+                                {% else %}
+                                    <select id="csamSelect" aria-label="Primary CSAM, selection saves immediately" onchange="saveCsamSelection(this.value)">
+                                        <option value="" disabled selected>- Select CSAM -</option>
+                                        <option value="none">- No CSAM -</option>
+                                        {% for csam in customer.available_csams|sort(attribute='name') %}
+                                            <option value="{{ csam.id }}">{{ csam.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <span id="csamSaveStatus" class="cd-save-status" style="display: none;"></span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if partner_dict %}
+                        <div>
+                            <div class="cd-muted">Partners</div>
+                            <div>
+                                {% for partner_id, partner in partner_dict.items()|sort(attribute='1.name') %}
+                                    <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="cd-partner-link">
+                                        <i class="bi bi-building"></i> {{ partner.name }}
+                                    </a>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Engagements Section -->
+        {% if engagements %}
+        <section class="cd-section cd-panel" id="cdWorkstreams" aria-labelledby="cdWorkstreamsTab">
+            <header class="cd-section-header">
+                <h2><i class="bi bi-diagram-3"></i> Engagements</h2>
+                <div class="cd-commands">
+                    <select id="engStatusFilter" aria-label="Filter engagements by status">
+                        <option value="all">All Statuses</option>
+                        <option value="Active">Active</option>
+                        <option value="On Hold">On Hold</option>
+                        <option value="Won">Won</option>
+                        <option value="Lost">Lost</option>
+                    </select>
+                    <select id="engSortSelect" aria-label="Sort engagements">
+                        <option value="newest">Newest</option>
+                        <option value="story-asc">Story % (low first)</option>
+                        <option value="story-desc">Story % (high first)</option>
+                    </select>
+                    <a href="{{ url_for('engagements.engagement_create', customer_id=customer.id) }}" class="sb-dialog-button">
+                        <i class="bi bi-plus"></i> New
+                    </a>
+                </div>
+            </header>
+            <div class="cd-section-body">
+                <div id="engagementGrid">
+                    {% for eng in engagements %}
+                    <div class="eng-card-col cd-engagement" data-status="{{ eng.status }}" data-story-pct="{{ eng.story_completeness }}" data-created="{{ eng.created_at.isoformat() }}">
+                        <a href="{{ url_for('engagements.engagement_view', id=eng.id) }}" class="cd-engagement-link">
+                            <div>
+                                <div class="cd-section-header">
+                                    <h3>{{ eng.title }}</h3>
+                                    <span class="cd-status" data-status="{{ eng.status }}">{{ eng.status }}</span>
+                                </div>
+                                <!-- Story completeness -->
+                                <div class="cd-story">
+                                    <div>
+                                        <span class="cd-muted">Story {{ eng.story_completeness }}%</span>
+                                    </div>
+                                    <meter min="0" max="100" low="40" high="80" optimum="100" value="{{ eng.story_completeness }}" aria-label="Story completeness">{{ eng.story_completeness }}%</meter>
+                                </div>
+                                <!-- Quick stats -->
+                                <div class="cd-relationship-counts">
+                                    <span><i class="bi bi-journal-text"></i> {{ eng.linked_note_count }} note{{ 's' if eng.linked_note_count != 1 else '' }}</span>
+                                    {% if eng.opportunities|length > 0 %}
+                                    <span><i class="bi bi-cash-stack"></i> {{ eng.opportunities|length }}</span>
+                                    {% endif %}
+                                    {% if eng.milestones|length > 0 %}
+                                    <span><i class="bi bi-flag"></i> {{ eng.milestones|length }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if eng.target_date %}
+                                <div class="cd-muted">
+                                    <i class="bi bi-calendar"></i> Target: {{ eng.target_date.strftime('%b %d, %Y') }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% else %}
+        <!-- Empty engagement state -->
+        <section class="cd-section cd-panel" id="cdWorkstreams" aria-labelledby="cdWorkstreamsTab">
+            <div class="cd-section-body cd-empty">
+                <i class="bi bi-diagram-3 cd-muted" style="font-size: 2rem;"></i>
+                <p class="cd-empty-description">No engagements yet. Create one to organize your notes into workstreams.</p>
+                <a href="{{ url_for('engagements.engagement_create', customer_id=customer.id) }}" class="sb-dialog-button">
+                    <i class="bi bi-plus-circle"></i> Create First Engagement
+                </a>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Notes List -->
+        <section class="cd-section cd-panel" id="cdNotes" aria-labelledby="cdNotesTab">
+            <header class="cd-section-header">
+                <h2><i class="bi bi-journal-text"></i> Notes ({{ notes|length }})</h2>
+                <a href="{{ url_for('notes.note_create') }}?customer_id={{ customer.id }}" class="sb-dialog-button">
+                    <i class="bi bi-plus"></i> New Note
+                </a>
+            </header>
+            <div class="cd-section-body">
+                {% if notes %}
+                    {# Check if all notes are with the same seller as the customer's seller #}
+                    {% set all_same_seller = notes|selectattr('seller.id', 'equalto', customer.seller.id)|list|length == notes|length if customer.seller else false %}
+                    <div class="cd-notes">
+                        {% for call in notes %}
+                            <article class="clickable-call cd-note" data-note-id="{{ call.id }}">
+                                <div class="cd-note-heading">
+                                    <div>
+                                        <a class="cd-note-date" href="{{ url_for('notes.note_view', id=call.id) }}">{{ call.call_date.strftime('%b %d, %Y') }}{% if call.call_date.hour != 0 or call.call_date.minute != 0 %} {{ call.call_date.strftime('%I:%M %p') }}{% endif %}</a>
+                                        {% if call.engagements %}
+                                            {% for eng in call.engagements %}
+                                                <a href="{{ url_for('engagements.engagement_view', id=eng.id) }}" class="cd-tag is-engagement" style="font-size: 0.7rem;">
+                                                    <i class="bi bi-diagram-3"></i> {{ eng.title[:25] }}{% if eng.title|length > 25 %}...{% endif %}
+                                                </a>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
+                                    {% if call.seller and not all_same_seller %}
+                                        <a href="{{ url_for('sellers.seller_view', id=call.seller.id) }}" class="cd-tag is-seller {{ get_seller_color(call.seller.id) }}" onclick="event.stopPropagation();"><i class="bi bi-person"></i> {{ call.seller.name }}</a>
+                                    {% endif %}
+                                </div>
+                                <div class="call-content">{{ call.content|safe }}</div>
+                                {% if call.topics|length > 0 or call.partners|length > 0 or call.milestones|length > 0 or call.msx_tasks.count() > 0 %}
+                                    <div>
+                                        {% for topic in call.topics %}
+                                            <a href="{{ url_for('topics.topic_view', id=topic.id) }}" class="cd-tag is-topic" onclick="event.stopPropagation();"><i class="bi bi-tag"></i> {{ topic.name }}</a>
+                                        {% endfor %}
+                                        {% for partner in call.partners %}
+                                            <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="cd-tag is-partner" onclick="event.stopPropagation();"><i class="bi bi-building"></i> {{ partner.name }}</a>
+                                        {% endfor %}
+                                        {% for milestone in call.milestones %}
+                                            <a href="{{ url_for('milestones.milestone_view', id=milestone.id) }}" class="cd-tag is-success" title="{{ milestone.display_text }}" onclick="event.stopPropagation();"><i class="bi bi-flag"></i> {{ milestone.display_text[:25] }}{% if milestone.display_text|length > 25 %}...{% endif %}</a>
+                                        {% endfor %}
+                                        {% for task in call.msx_tasks %}
+                                            {% if task.msx_task_url %}
+                                            <a href="{{ task.msx_task_url }}" target="_blank" class="cd-tag is-muted" title="{{ task.subject }}" onclick="event.stopPropagation();"><i class="bi bi-check2-circle"></i> {{ task.subject[:20] }}{% if task.subject|length > 20 %}...{% endif %} <i class="bi bi-box-arrow-up-right"></i></a>
+                                            {% else %}
+                                            <span class="cd-tag is-muted" title="{{ task.subject }}"><i class="bi bi-check2-circle"></i> {{ task.subject[:20] }}{% if task.subject|length > 20 %}...{% endif %}</span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="cd-muted">No notes for this customer yet.</p>
+                {% endif %}
+            </div>
+        </section>
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/ui-customer-detail.js') }}"></script>
+<script>
+(function() {
+const root = document.currentScript.closest('[data-sb-customer-detail]');
+const fetch = (url, options) => SBCustomerDetail.request(root, url, options);
+window.copilotContext = {
+    page: 'customer_view',
+    customer_id: {{ customer.id }},
+    customer_name: {{ customer.name|tojson }}
+};
+function toggleContextEdit() {
+    document.getElementById('contextDisplay').style.display = 'none';
+    document.getElementById('contextEmpty').style.display = 'none';
+    document.getElementById('contextForm').style.display = 'block';
+    document.getElementById('editContextBtn').style.display = 'none';
+    document.getElementById('contextTextarea').focus();
+}
+
+function saveCsamSelection(csamId) {
+    const status = document.getElementById('csamSaveStatus');
+    const isNoCsam = csamId === 'none';
+    const actualCsamId = isNoCsam ? null : csamId;
+
+    fetch('{{ url_for("customers.customer_update_csam", id=customer.id) }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+        body: JSON.stringify({csam_id: actualCsamId})
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            if (isNoCsam) {
+                document.getElementById('csamSection').style.display = 'none';
+            } else {
+                const select = document.getElementById('csamSelect');
+                const csamName = select.options[select.selectedIndex].text;
+                const valueDiv = document.getElementById('csamValue');
+                const badge = document.createElement('span');
+                badge.className = 'cd-tag is-muted';
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-person';
+                badge.appendChild(icon);
+                badge.appendChild(document.createTextNode(' ' + csamName));
+                valueDiv.textContent = '';
+                valueDiv.appendChild(badge);
+            }
+        } else {
+            status.textContent = '✗ ' + (data.error || 'Error');
+            status.className = 'cd-save-status cd-danger';
+            status.style.display = 'inline';
+            setTimeout(() => { status.style.display = 'none'; }, 2000);
+        }
+    }).catch(() => {
+        status.textContent = '✗ Network error';
+        status.className = 'cd-save-status cd-danger';
+        status.style.display = 'inline';
+        setTimeout(() => { status.style.display = 'none'; }, 2000);
+    });
+}
+
+function cancelContextEdit() {
+    const textarea = document.getElementById('contextTextarea');
+    const hasContext = textarea.defaultValue.trim().length > 0;
+
+    // Reset textarea to original value
+    textarea.value = textarea.defaultValue;
+
+    document.getElementById('contextForm').style.display = 'none';
+    document.getElementById('editContextBtn').style.display = 'inline-block';
+    const genBtn = document.getElementById('generateContextBtn');
+    if (genBtn) genBtn.style.display = 'inline-block';
+
+    if (hasContext) {
+        document.getElementById('contextDisplay').style.display = 'block';
+        document.getElementById('contextEmpty').style.display = 'none';
+    } else {
+        document.getElementById('contextDisplay').style.display = 'none';
+        document.getElementById('contextEmpty').style.display = 'block';
+    }
+}
+
+// Engagement sort/filter with localStorage persistence
+(function() {
+    const grid = document.getElementById('engagementGrid');
+    if (!grid) return;
+
+    const STORAGE_KEY = 'engagements_{{ customer.id }}';
+    const filterSelect = document.getElementById('engStatusFilter');
+    const sortSelect = document.getElementById('engSortSelect');
+
+    // Restore saved selections
+    try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        if (saved.filter) filterSelect.value = saved.filter;
+        if (saved.sort) sortSelect.value = saved.sort;
+    } catch(e) {}
+
+    function saveSelections() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            filter: filterSelect.value,
+            sort: sortSelect.value
+        }));
+    }
+
+    function applyFilterSort() {
+        const statusVal = filterSelect.value;
+        const sortVal = sortSelect.value;
+        const cols = Array.from(grid.querySelectorAll('.eng-card-col'));
+
+        // Filter
+        cols.forEach(col => {
+            const match = statusVal === 'all' || col.dataset.status === statusVal;
+            col.style.display = match ? '' : 'none';
+        });
+
+        // Sort visible cards
+        const visible = cols.filter(c => c.style.display !== 'none');
+        visible.sort((a, b) => {
+            if (sortVal === 'story-asc') {
+                return parseInt(a.dataset.storyPct) - parseInt(b.dataset.storyPct);
+            } else if (sortVal === 'story-desc') {
+                return parseInt(b.dataset.storyPct) - parseInt(a.dataset.storyPct);
+            }
+            // newest: sort by created descending
+            return b.dataset.created.localeCompare(a.dataset.created);
+        });
+
+        // Re-append in sorted order (hidden cards stay at end)
+        visible.forEach(col => grid.appendChild(col));
+        cols.filter(c => c.style.display === 'none').forEach(col => grid.appendChild(col));
+
+        saveSelections();
+    }
+
+    filterSelect.addEventListener('change', applyFilterSort);
+    sortSelect.addEventListener('change', applyFilterSort);
+    applyFilterSort();
+})();
+
+// --- Contact Photo Paste & View ---
+var _photoContactId = null;
+var _photoContactType = null;
+
+function openContactPhotoModal(el) {
+    _photoContactId = el.dataset.contactId;
+    _photoContactType = el.dataset.contactType;
+    var img = el.querySelector('img');
+    var fullView = document.getElementById('contactPhotoFull');
+    var pasteZone = document.getElementById('contactPhotoPaste');
+    var removeBtn = document.getElementById('contactPhotoRemoveBtn');
+
+    if (img && img.src) {
+        // Show full version if available, otherwise show cropped
+        var fullSrc = el.dataset.fullSrc;
+        fullView.src = fullSrc || img.src;
+        fullView.style.display = 'block';
+        pasteZone.style.display = 'none';
+        removeBtn.style.display = '';
+    } else {
+        fullView.style.display = 'none';
+        pasteZone.style.display = 'flex';
+        removeBtn.style.display = 'none';
+    }
+    document.getElementById('contactPhotoStatus').textContent = '';
+    SBDialog.open(document.getElementById('contactPhotoModal'));
+    document.getElementById('contactPhotoPaste').focus();
+}
+
+// Handle paste - listen on document level when photo modal is open
+var _photoModalOpen = false;
+function bindContactPhotoPaste() {
+    var modal = document.getElementById('contactPhotoModal');
+    if (!modal) return;
+    modal.addEventListener('sb:dialog-opened', function() { _photoModalOpen = true; });
+    modal.addEventListener('sb:dialog-closed', function() { _photoModalOpen = false; });
+    document.addEventListener('paste', function(e) {
+        if (!_photoModalOpen) return;
+        var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+                var blob = items[i].getAsFile();
+                processContactPhoto(blob);
+                return;
+            }
+        }
+    });
+}
+
+function processContactPhoto(blob) {
+    var status = document.getElementById('contactPhotoStatus');
+    status.textContent = 'Processing...';
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        // Strip the data:image/...;base64, prefix
+        var b64 = e.target.result.split(',')[1];
+        saveContactPhoto(b64);
+    };
+    reader.readAsDataURL(blob);
+}
+
+function saveContactPhoto(b64) {
+    var status = document.getElementById('contactPhotoStatus');
+    var url = _photoContactType === 'customer'
+        ? '/api/customer/contact/' + _photoContactId + '/photo'
+        : '/api/partner/contact/' + _photoContactId + '/photo';
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photo_b64: b64 })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            status.textContent = 'Saved!';
+            var croppedB64 = data.photo_b64;
+            // Show the full image in the modal
+            var fullView = document.getElementById('contactPhotoFull');
+            fullView.src = 'data:image/png;base64,' + b64;
+            fullView.style.display = 'block';
+            document.getElementById('contactPhotoPaste').style.display = 'none';
+            document.getElementById('contactPhotoRemoveBtn').style.display = '';
+            // Update the thumbnail on the page with the cropped version
+            var wrap = document.querySelector('.contact-photo-wrap[data-contact-id="' + _photoContactId + '"][data-contact-type="' + _photoContactType + '"]');
+            if (wrap) {
+                wrap.innerHTML = '<img src="data:image/png;base64,' + croppedB64 + '" style="width: 100%; height: 100%; object-fit: cover;">';
+                wrap.dataset.fullSrc = 'data:image/png;base64,' + b64;
+            }
+            setTimeout(function() { status.textContent = ''; }, 2000);
+        } else {
+            status.textContent = 'Failed to save';
+        }
+    })
+    .catch(function() { status.textContent = 'Error saving photo'; });
+}
+
+function removeContactPhoto() {
+    var url = _photoContactType === 'customer'
+        ? '/api/customer/contact/' + _photoContactId + '/photo'
+        : '/api/partner/contact/' + _photoContactId + '/photo';
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photo_b64: null })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var wrap = document.querySelector('.contact-photo-wrap[data-contact-id="' + _photoContactId + '"][data-contact-type="' + _photoContactType + '"]');
+            if (wrap) {
+                wrap.innerHTML = '<i class="bi bi-person-circle cd-muted" style="font-size: 1.5rem;"></i>';
+            }
+            SBDialog.close(document.getElementById('contactPhotoModal'), 'saved');
+        }
+    });
+}
+
+// --- Contact editing ---
+let contactsToDelete = [];
+let editRowCounter = 0;
+
+function toggleContactEdit() {
+    document.getElementById('contactsDisplay').style.display = 'none';
+    document.getElementById('contactsEditMode').style.display = 'block';
+    document.getElementById('editContactsBtn').hidden = true;
+    document.getElementById('editContactsDone').hidden = false;
+    contactsToDelete = [];
+    editRowCounter = 0;
+    document.getElementById('contactsNewRows').innerHTML = '';
+}
+
+function cancelContactEdit() {
+    // Restore deleted rows
+    contactsToDelete.forEach(id => {
+        const row = document.getElementById('contact-edit-' + id);
+        if (row) row.style.display = '';
+    });
+    contactsToDelete = [];
+    document.getElementById('contactsDisplay').style.display = '';
+    document.getElementById('contactsEditMode').style.display = 'none';
+    document.getElementById('editContactsBtn').hidden = false;
+    document.getElementById('editContactsDone').hidden = true;
+    document.querySelectorAll('#contactsEditList input').forEach(input => {
+        input.value = input.defaultValue;
+    });
+    document.getElementById('contactsNewRows').innerHTML = '';
+}
+
+function addContactEditRow() {
+    editRowCounter++;
+    const container = document.getElementById('contactsNewRows');
+    const rowId = editRowCounter;
+    const div = document.createElement('div');
+    div.className = 'cd-contact-editor';
+    div.id = 'contact-new-' + rowId;
+    div.innerHTML = `
+        <div data-state="editing">
+            <div class="cd-section-header">
+                <strong><i class="bi bi-person-circle"></i> New Contact</strong>
+                <button type="button" class="sb-dialog-button cd-danger" onclick="this.closest('.cd-contact-editor').remove()" aria-label="Remove new contact"><i class="bi bi-trash"></i></button>
+            </div>
+            <div><input type="text" data-field="name" aria-label="Contact name" placeholder="Name *"></div>
+            <div><input type="text" data-field="title" aria-label="Contact title" placeholder="Title"></div>
+            <div><input type="email" data-field="email" aria-label="Contact email" placeholder="Email"></div>
+            <div class="cd-commands">
+                <button type="button" class="sb-dialog-button cd-contact-save" onclick="saveNewContactRow(${rowId})">
+                    <i class="bi bi-check-lg"></i> Save
+                </button>
+                <button type="button" class="sb-dialog-button" onclick="this.closest('.cd-contact-editor').remove()" title="Cancel">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
+    const nameInput = div.querySelector('[data-field="name"]');
+    nameInput.focus();
+    // Enter in any input saves
+    div.querySelectorAll('input').forEach(function(inp) {
+        inp.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); saveNewContactRow(rowId); }
+        });
+    });
+}
+
+// POST a new contact immediately so it gets a real id and a clickable avatar slot
+// without requiring the user to click "Save Changes" first.
+function saveNewContactRow(rowId) {
+    const customerId = {{ customer.id }};
+    const card = document.getElementById('contact-new-' + rowId);
+    if (!card) return;
+    const nameInput = card.querySelector('[data-field="name"]');
+    const titleInput = card.querySelector('[data-field="title"]');
+    const emailInput = card.querySelector('[data-field="email"]');
+    const name = nameInput.value.trim();
+    if (!name) { nameInput.classList.add('is-invalid'); nameInput.focus(); return; }
+    nameInput.classList.remove('is-invalid');
+
+    const saveBtn = card.querySelector('.cd-contact-save');
+    saveBtn.disabled = true;
+    const originalHtml = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i>';
+
+    fetch('/api/customer/' + customerId + '/contacts', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: name,
+            title: titleInput.value.trim(),
+            email: emailInput.value.trim()
+        })
+    })
+    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+    .then(function(res) {
+        if (!res.ok) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalHtml;
+            nameInput.classList.add('is-invalid');
+            return;
+        }
+        renderSavedNewContact(card, res.data);
+    })
+    .catch(function() {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalHtml;
+    });
+}
+
+// Replace the new-row editing card with a display card matching the read-only
+// contact list, including a clickable avatar wrap.
+function renderSavedNewContact(card, c) {
+    const safeName = _escContactHtml(c.name || '');
+    const safeTitle = c.title ? _escContactHtml(c.title) : '';
+    const safeEmail = c.email ? _escContactHtml(c.email) : '';
+    const emailHtml = safeEmail
+        ? '<div class="cd-muted">' + safeEmail + '</div>'
+        : '';
+    const titleHtml = safeTitle
+        ? '<div class="cd-muted">' + safeTitle + '</div>'
+        : '';
+    const nameHtml = safeEmail
+        ? '<a href="mailto:' + safeEmail + '" class="cd-contact-name">' + safeName + '</a>'
+        : '<span class="cd-contact-name">' + safeName + '</span>';
+
+    card.className = 'cd-contact-editor';
+    card.innerHTML =
+        '<div>' +
+            '<div class="cd-contact">' +
+                '<button type="button" class="contact-photo-wrap" data-contact-id="' + c.id + '" data-contact-type="customer" ' +
+                     'onclick="openContactPhotoModal(this)" title="Click to add/view photo" ' +
+                     'aria-label="Contact photo">' +
+                    '<i class="bi bi-person-circle"></i>' +
+                '</button>' +
+                '<div>' +
+                    '<div>' + nameHtml + '</div>' +
+                    titleHtml +
+                    emailHtml +
+                '</div>' +
+            '</div>' +
+        '</div>';
+}
+
+function _escContactHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+function deleteContactEdit(id) {
+    contactsToDelete.push(id);
+    document.getElementById('contact-edit-' + id).style.display = 'none';
+}
+
+async function saveAllContacts() {
+    const customerId = {{ customer.id }};
+    const button = document.querySelector('#editContactsDone button:last-child');
+    if (button.disabled) return;
+    const rows = document.querySelectorAll(
+        '#contactsEditList > div, #contactsNewRows > div');
+    for (const row of rows) {
+        if (row.style.display === 'none') continue;
+        const name = row.querySelector('[data-field="name"]');
+        if (name && !name.value.trim()) {
+            name.setAttribute('aria-invalid', 'true');
+            name.focus();
+            root._customerDetail.report('A contact name is required. Your entries are still here.');
+            return;
+        }
+    }
+    button.disabled = true;
+    try {
+
+    // Delete removed contacts
+    for (const id of contactsToDelete) {
+        await fetch('/api/customer/contact/' + id, { method: 'DELETE' });
+    }
+
+    // Update existing contacts
+    const editRows = document.querySelectorAll('#contactsEditList > div[id^="contact-edit-"]');
+    for (const row of editRows) {
+        if (row.style.display === 'none') continue;
+        const id = row.id.replace('contact-edit-', '');
+        const name = row.querySelector('[data-field="name"]').value.trim();
+        if (!name) continue;
+        const data = {
+            name: name,
+            title: row.querySelector('[data-field="title"]').value.trim(),
+            email: row.querySelector('[data-field="email"]').value.trim()
+        };
+        await fetch('/api/customer/contact/' + id, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+    }
+
+    // Create new contacts
+    // (rows that have already been saved per-row no longer have a name input)
+    const newRows = document.querySelectorAll('#contactsNewRows > div');
+    for (const row of newRows) {
+        const nameField = row.querySelector('[data-field="name"]');
+        if (!nameField) continue;
+        const name = nameField.value.trim();
+        if (!name) continue;
+        const data = {
+            name: name,
+            title: row.querySelector('[data-field="title"]').value.trim(),
+            email: row.querySelector('[data-field="email"]').value.trim()
+        };
+        await fetch('/api/customer/' + customerId + '/contacts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+    }
+
+    // Reload page to show updated contacts
+    SBCustomerDetail.contactsSaved(root);
+    SBCustomerDetail.reload(root);
+    } finally {
+        button.disabled = false;
+    }
+}
+
+// ---- Customer Contact Scrape (WorkIQ) ----
+var _custScrapeData = null;
+var _customerWebsite = {{ customer.website|tojson }};
+var _customerContactEmails = {{ customer.contacts|selectattr('email')|map(attribute='email')|list|tojson }};
+
+function _getCustDomain() {
+    if (_customerWebsite) return _customerWebsite;
+    for (var i = 0; i < _customerContactEmails.length; i++) {
+        var e = _customerContactEmails[i];
+        if (e && e.indexOf('@') >= 0) return e.split('@')[1].toLowerCase();
+    }
+    return '';
+}
+
+function startContactScrape() {
+    var domain = _getCustDomain();
+    if (!domain) {
+        // Show domain prompt
+        document.getElementById('custScrapeDomainInput').value = '';
+        document.getElementById('custScrapeDomainError').style.display = 'none';
+        SBDialog.open(document.getElementById('custScrapeDomainModal'));
+        document.getElementById('custScrapeDomainInput').focus();
+        return;
+    }
+    runContactScrape();
+}
+
+function confirmCustDomainAndScrape() {
+    var domain = document.getElementById('custScrapeDomainInput').value.trim().toLowerCase();
+    if (!domain) {
+        document.getElementById('custScrapeDomainError').textContent = 'Please enter a domain (e.g. contoso.com)';
+        document.getElementById('custScrapeDomainError').style.display = '';
+        return;
+    }
+    domain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+
+    var btn = document.getElementById('custScrapeDomainConfirmBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Saving...';
+
+    // Save domain to customer
+    fetch('/api/customer/{{ customer.id }}/update-website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ website: domain })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.success) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-search"></i> Search Meetings';
+            document.getElementById('custScrapeDomainError').textContent = data.error || 'Failed to save';
+            document.getElementById('custScrapeDomainError').style.display = '';
+            return;
+        }
+        _customerWebsite = domain;
+        SBDialog.close(document.getElementById('custScrapeDomainModal'), 'saved');
+        runContactScrape();
+    })
+    .catch(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-search"></i> Search Meetings';
+        document.getElementById('custScrapeDomainError').textContent = err.message;
+        document.getElementById('custScrapeDomainError').style.display = '';
+    });
+}
+
+function runContactScrape() {
+    var btn = document.getElementById('scrapeContactsBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Scanning...';
+
+    fetch('/api/customer/{{ customer.id }}/scrape-contacts', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-magic"></i> Auto-fill';
+            if (!data.success) { alert(data.error || 'Scrape failed'); return; }
+            _custScrapeData = data;
+            showContactScrapeReview(data);
+        })
+        .catch(function(err) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-magic"></i> Auto-fill';
+            alert('Error: ' + err.message);
+        });
+}
+
+function _esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function showContactScrapeReview(data) {
+    var body = document.getElementById('custScrapeReviewBody');
+    var html = '';
+
+    html += '<p class="cd-muted"><i class="bi bi-info-circle"></i> Found data from ' +
+        (data.meetings_found || 0) + ' meeting(s). Uncheck contacts you don\'t want to import.</p>';
+
+    if (data.contacts && data.contacts.length > 0) {
+        html += '<div class="cd-review-contacts">';
+        data.contacts.forEach(function(c, i) {
+            var checked = c.is_new || c.has_updates;
+            var disabled = !c.is_new && !c.has_updates;
+            html += '<label class="cd-review-contact">';
+            html += '<input type="checkbox" class="cust-scrape-contact" data-idx="' + i + '" ' +
+                (checked ? 'checked' : '') + (disabled ? ' disabled' : '') + '>';
+            html += '<div>';
+            html += '<strong>' + _esc(c.name) + '</strong>';
+            if (c.title) html += ' <small class="cd-muted">- ' + _esc(c.title) + '</small>';
+            if (c.email) html += '<br><small class="cd-muted">' + _esc(c.email) + '</small>';
+            if (!c.is_new && !c.has_updates) {
+                html += '<br><small class="cd-muted">(already exists, no new data)</small>';
+            } else if (!c.is_new && c.has_updates) {
+                html += '<br><small class="cd-success"><i class="bi bi-arrow-up-circle"></i> ' + c.updates.join(', ') + '</small>';
+            } else {
+                html += '<br><small class="cd-success"><i class="bi bi-plus-circle"></i> New contact</small>';
+            }
+            html += '</div></label>';
+        });
+        html += '</div>';
+    }
+
+    if (!data.contacts || data.contacts.length === 0) {
+        html += '<div class="cd-empty"><i class="bi bi-inbox"></i>';
+        html += '<p class="cd-empty-description">No results came back this time. WorkIQ can be inconsistent - it may return results on a second attempt.</p>';
+        html += '<button type="button" class="sb-dialog-button" onclick="retryContactScrape()"><i class="bi bi-arrow-clockwise"></i> Try Again</button></div>';
+    }
+
+    body.innerHTML = html;
+    SBDialog.open(document.getElementById('custScrapeReviewModal'));
+}
+
+function retryContactScrape() {
+    var body = document.getElementById('custScrapeReviewBody');
+    body.innerHTML = '<p class="cd-muted" role="status">Scanning meetings again...</p>';
+    fetch('/api/customer/{{ customer.id }}/scrape-contacts', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) { alert(data.error || 'Scrape failed'); return; }
+            _custScrapeData = data;
+            showContactScrapeReview(data);
+        })
+        .catch(function(err) { alert('Error: ' + err.message); });
+}
+
+function applyContactScrapeResults() {
+    if (!_custScrapeData) return;
+    var payload = { contacts: [] };
+    document.querySelectorAll('.cust-scrape-contact:checked:not(:disabled)').forEach(function(cb) {
+        var idx = parseInt(cb.dataset.idx);
+        payload.contacts.push(_custScrapeData.contacts[idx]);
+    });
+
+    var btn = document.getElementById('custScrapeApplyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Saving...';
+
+    fetch('/api/customer/{{ customer.id }}/scrape-contacts/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            SBDialog.close(document.getElementById('custScrapeReviewModal'), 'saved');
+            SBCustomerDetail.reload(root);
+        } else {
+            alert(data.error || 'Failed to save');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> Import Selected';
+        }
+    })
+    .catch(function(err) {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle"></i> Import Selected';
+    });
+}
+
+function bindContactDomain() {
+    var domainInput = document.getElementById('custScrapeDomainInput');
+    if (domainInput) {
+        domainInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); confirmCustDomainAndScrape(); }
+        });
+    }
+}
+root._customerActions = {
+    toggleContextEdit, cancelContextEdit, saveCsamSelection, openContactPhotoModal,
+    removeContactPhoto, toggleContactEdit, cancelContactEdit, addContactEditRow,
+    saveNewContactRow, deleteContactEdit, saveAllContacts, startContactScrape,
+    confirmCustDomainAndScrape, retryContactScrape, applyContactScrapeResults,
+    bindContactPhotoPaste, bindContactDomain,
+    deletedContacts: () => contactsToDelete.slice(),
+    clearDeletedContacts: () => { contactsToDelete = []; },
+};
+})();
+</script>
+
+<!-- Contact Photo Modal -->
+<dialog class="sb-dialog sb-dialog-compact cd-dialog" id="contactPhotoModal" aria-labelledby="contactPhotoTitle">
+            <header class="sb-dialog-header">
+                <h2 id="contactPhotoTitle"><i class="bi bi-camera"></i> Contact Photo</h2>
+                <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">×</button>
+            </header>
+            <div class="sb-dialog-body">
+                <img id="contactPhotoFull" src="" style="max-width: 100%; max-height: 300px; border-radius: 8px; display: none;">
+                <div id="contactPhotoPaste" class="cd-photo-paste" tabindex="0">
+                    <i class="bi bi-clipboard-plus" style="font-size: 2rem;"></i>
+                    <div>Click here, then Ctrl+V to paste a screenshot. Pasting saves the photo immediately.</div>
+                </div>
+                <div id="contactPhotoStatus" class="cd-success" role="status"></div>
+            </div>
+            <footer class="sb-dialog-footer">
+                <button type="button" class="sb-dialog-button cd-danger" id="contactPhotoRemoveBtn" onclick="removeContactPhoto()" style="display: none;">
+                    <i class="bi bi-trash"></i> Remove
+                </button>
+                <button type="button" class="sb-dialog-button" data-sb-dialog-close>Close</button>
+            </footer>
+</dialog>
+
+<!-- Customer Domain Prompt Modal -->
+<dialog class="sb-dialog sb-dialog-compact cd-dialog" id="custScrapeDomainModal" aria-labelledby="custScrapeDomainTitle">
+            <header class="sb-dialog-header">
+                <h2 id="custScrapeDomainTitle"><i class="bi bi-globe"></i> Customer Domain</h2>
+                <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">×</button>
+            </header>
+            <div class="sb-dialog-body">
+                <p class="cd-muted">We'll search your meetings for attendees with this email domain. Search Meetings saves the domain first.</p>
+                <div>
+                    <label for="custScrapeDomainInput">Email Domain</label>
+                    <input type="text" id="custScrapeDomainInput" placeholder="e.g. contoso.com">
+                    <small class="cd-danger" id="custScrapeDomainError" role="alert" style="display:none;"></small>
+                </div>
+            </div>
+            <footer class="sb-dialog-footer">
+                <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+                <button type="button" class="sb-dialog-button" id="custScrapeDomainConfirmBtn" onclick="confirmCustDomainAndScrape()">
+                    <i class="bi bi-search"></i> Search Meetings
+                </button>
+            </footer>
+</dialog>
+
+<!-- Customer Contact Scrape Review Modal -->
+<dialog class="sb-dialog cd-dialog cd-review" id="custScrapeReviewModal" aria-labelledby="custScrapeReviewTitle">
+            <header class="sb-dialog-header">
+                <h2 id="custScrapeReviewTitle"><i class="bi bi-magic"></i> Contacts from Meetings - {{ customer.name }}</h2>
+                <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">×</button>
+            </header>
+            <div class="sb-dialog-body" id="custScrapeReviewBody">
+                <p role="status">Loading contacts...</p>
+            </div>
+            <footer class="sb-dialog-footer">
+                <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+                <button type="button" class="sb-dialog-button" id="custScrapeApplyBtn" onclick="applyContactScrapeResults()">
+                    <i class="bi bi-check-circle"></i> Import Selected
+                </button>
+            </footer>
+</dialog>
+<script>
+const customerRoot = document.currentScript.closest('[data-sb-customer-detail]');
+customerRoot._customerActions.bindContactPhotoPaste();
+customerRoot._customerActions.bindContactDomain();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => SBCustomerDetail.mount(customerRoot),
+        {once: true});
+} else {
+    SBCustomerDetail.mount(customerRoot);
+}
+</script>
+</section>

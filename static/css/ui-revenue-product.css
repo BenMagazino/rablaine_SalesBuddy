@@ -1,0 +1,44 @@
+/* Product comparison is the navigator, not a duplicate customer queue. */
+.sb-product-summary { display: flex; gap: 36px; margin: 0; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-product-summary dt { margin: 0 0 4px; color: var(--sb-ui-muted); font-size: 12px; }
+.sb-product-summary dd { margin: 0; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sb-product-workarea { background: var(--sb-ui-surface); }
+.sb-page-frame .sb-revenue-product [data-sb-page-body] { overflow: auto; }
+.sb-revenue-product [hidden] { display: none !important; }
+.sb-product-notice { flex-shrink: 0; margin: 0; padding: 8px 24px; color: var(--sb-ui-danger); }
+.sb-product-comparison, .sb-product-reading { min-width: 0; padding: 16px 24px; }
+.sb-product-list-controls { padding-bottom: 12px; }
+.sb-product-list-controls label { display: block; margin-bottom: 5px; font-size: 12px; color: var(--sb-ui-muted); }
+.sb-product-search { display: flex; align-items: center; gap: 8px; }
+.sb-product-search input { flex: 1; min-width: 0; }
+.sb-product-list-scroll { overflow: auto; }
+.sb-product-customers { max-width: 1120px; min-width: 560px; }
+.sb-product-customers th:first-child { width: 56%; }
+.sb-product-customers :is(th, td):nth-child(2) { text-align: left; }
+.sb-product-hub { margin-left: 4px; color: var(--sb-ui-muted) !important; }
+.sb-product-select { margin-left: 4px; padding: 2px 5px; border: 1px solid transparent; background: transparent; color: var(--sb-ui-muted); font: inherit; cursor: pointer; }
+.sb-product-select:hover, .sb-product-select[aria-pressed="true"] { border-color: var(--sb-ui-control-line); color: var(--sb-ui-accent); }
+.sb-product-customers tr[data-active="true"] { background: var(--sb-ui-selection); }
+.sb-product-history { max-width: 640px; padding-bottom: 24px; }
+.sb-product-history h2, [data-sb-product-missing-title] { margin: 0; font: 600 15px/1.5 var(--sb-ui-font); }
+.sb-product-history .sb-revenue-products-header { align-items: flex-start; }
+.sb-product-history h2 { min-width: 0; }
+.sb-product-history .sb-revenue-history-table { min-width: 0; }
+.sb-product-trend { margin: 12px 0 20px; color: var(--sb-ui-muted); }
+.sb-product-trend figcaption { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.sb-product-trend-plot { position: relative; height: 220px; margin-top: 8px; color: var(--sb-ui-accent); border-color: var(--sb-ui-line); }
+.sb-product-trend p { margin: 4px 0 0; font-size: 12px; }
+.sb-product-members { max-width: 640px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-product-members summary { cursor: pointer; color: var(--sb-ui-muted); }
+.sb-product-members ul { padding-left: 20px; max-height: 240px; overflow: auto; }
+.sb-revenue-product :focus-visible { outline-offset: -2px; }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-workarea { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); overflow: hidden; }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-comparison { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--sb-ui-line); }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-list-scroll { flex: 1; min-height: 0; }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-list-controls { flex-shrink: 0; }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-customers thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); box-shadow: inset 0 -1px var(--sb-ui-line); }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-customers tbody tr { cursor: pointer; }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-customers { min-width: 0; }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-reading { min-height: 0; overflow: auto; }
+.sb-revenue-product[data-sb-product-enhanced="true"] :is(.sb-product-history, .sb-product-members) { max-width: none; }
+.sb-revenue-product[data-sb-product-enhanced="true"] .sb-product-history .sb-revenue-products-header { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); box-shadow: inset 0 -1px var(--sb-ui-line); }

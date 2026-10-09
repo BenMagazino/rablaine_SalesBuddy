@@ -1,108 +1,82 @@
 {% extends "base.html" %}
 {% block title %}{{ seller_name }} - Revenue Analyzer - Sales Buddy{% endblock %}
 
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% if not request.args.get('embed') %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-workbench.css') }}">
+{% endif %}
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+{% set status_total = alerts|length %}
+{% set status_unit = 'alerts' %}
+{% set status_table_id = 'alertsTable' if alerts else none %}
+{% set status_hint = 'Seller totals include all buckets' %}
+{% include 'partials/_page_status.html' %}
+{% endif %}
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid py-4">
+<div class="sb-revenue-workspace{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-revenue-page="seller" data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
     {% if not request.args.get('embed') %}
-    <div class="row mb-4">
-        <div class="col">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('revenue.revenue_dashboard') }}">Revenue Analyzer</a></li>
-                    <li class="breadcrumb-item active">{{ seller_name }}</li>
-                </ol>
-            </nav>
-            <h1>
-                <i class="bi bi-person"></i> {{ seller_name }}
-                {% if seller %}
-                <a href="{{ url_for('sellers.seller_view', id=seller.id) }}" class="btn btn-sm btn-outline-primary">
-                    View Seller Hub
-                </a>
-                {% endif %}
-            </h1>
-            <p class="text-muted">Customers needing attention</p>
+    <header class="sb-revenue-page-header" data-sb-page-band>
+        <div>
+            <h1><i class="bi bi-person" aria-hidden="true"></i> {{ seller_name }}</h1>
         </div>
-        <div class="col-auto">
-            <span id="bucketFilterContainer" class="me-2"></span>
-            <a href="{{ url_for('revenue.revenue_seller_products', seller_name=seller_name) }}" class="btn btn-outline-primary me-2">
-                <i class="bi bi-boxes"></i> Products
+        <div class="sb-revenue-command-group">
+            {% if alerts %}
+            <div class="sb-revenue-modes" data-sb-revenue-modes role="group" aria-label="Revenue view" hidden>
+                <button class="sb-revenue-command" type="button" data-sb-revenue-mode="queue" aria-pressed="false">Queue</button>
+                <button class="sb-revenue-command" type="button" data-sb-revenue-mode="table" aria-pressed="true">Table</button>
+            </div>
+            {% endif %}
+            {% if seller %}
+            <a href="{{ url_for('sellers.seller_view', id=seller.id) }}" class="sb-revenue-command">
+                <i class="bi bi-person" aria-hidden="true"></i> View Seller Hub
             </a>
-            <a href="{{ url_for('revenue.revenue_seller_export', seller_name=seller_name) }}" class="btn btn-primary">
-                <i class="bi bi-download"></i> Export CSV for Teams
+            {% endif %}
+            <span id="bucketFilterContainer"></span>
+            <a href="{{ url_for('revenue.revenue_seller_products', seller_name=seller_name) }}" class="sb-revenue-command">
+                <i class="bi bi-boxes" aria-hidden="true"></i> Products
+            </a>
+            <a href="{{ url_for('revenue.revenue_seller_export', seller_name=seller_name) }}" class="sb-revenue-command">
+                <i class="bi bi-download" aria-hidden="true"></i> Export CSV for Teams
             </a>
         </div>
-    </div>
+    </header>
     {% endif %}
 
 
-    {% set alert_clickable = true %}
-    {% include 'partials/revenue_alerts_content.html' %}
-</div>
-
-<!-- Alert Detail Modal -->
-<div class="modal fade" id="alertDetailModal" tabindex="-1" aria-labelledby="alertDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1100px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <h5 class="modal-title" id="alertDetailModalLabel"><i class="bi bi-exclamation-triangle"></i> <span id="alertDetailTitle">Loading...</span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-3" id="alertDetailBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
+    <div class="sb-revenue-workarea" data-sb-page-body>
+        {% set alert_clickable = true %}
+        {% if not request.args.get('embed') %}
+        {% set summary_count_label = 'Alerts Needing Attention' %}
+        {% endif %}
+        {% if alerts and not request.args.get('embed') %}
+        {% include 'partials/_revenue_alert_summary.html' %}
+        {% set summary = none %}
+        <div class="sb-revenue-workbench" data-sb-revenue-workbench>
+            <p class="sb-revenue-queue-error" data-sb-queue-error role="alert" hidden></p>
+            {% include 'partials/_revenue_queue.html' %}
+            <div class="sb-revenue-table-view" data-sb-table-view>
+                {% include 'partials/revenue_alerts_content.html' %}
             </div>
         </div>
+        {% else %}
+        {% include 'partials/revenue_alerts_content.html' %}
+        {% endif %}
     </div>
 </div>
 
-{% include 'partials/review_action.html' %}
-
-<script>
-// Alert Detail Modal
-(function() {
-    let detailModal = null;
-    let detailDirty = false;
-    const titleEl = document.getElementById('alertDetailTitle');
-    const bodyEl = document.getElementById('alertDetailBody');
-
-    window.openAlertDetail = function(event, alertId, customerName, bucket) {
-        if (event.target.closest('a, button')) return;
-
-        if (!detailModal) {
-            detailModal = new bootstrap.Modal(document.getElementById('alertDetailModal'));
-        }
-        detailDirty = false;
-        titleEl.textContent = customerName + ' - ' + bucket;
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        detailModal.show();
-
-        fetch('/api/revenue/analysis/' + alertId + '/detail')
-            .then(function(resp) {
-                if (!resp.ok) throw new Error('Failed to load');
-                return resp.text();
-            })
-            .then(function(html) {
-                bodyEl.innerHTML = html;
-            })
-            .catch(function() {
-                bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load alert details.</div>';
-            });
-    };
-
-    document.getElementById('alertDetailModal').addEventListener('hidden.bs.modal', function() {
-        if (detailDirty) location.reload();
-    });
-
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('#alertDetailModal .review-action-btn')) {
-            detailDirty = true;
-        }
-    });
-})();
-</script>
+{% include 'partials/revenue_alert_preview.html' %}
 <script src="{{ url_for('static', filename='js/revenue-bucket-filter.js') }}"></script>
 <script>RevenueBucketFilter.init({ containerId: 'bucketFilterContainer' });</script>
+{% endblock %}
+
+{% block extra_js %}
+{% if not request.args.get('embed') %}
+<script src="{{ url_for('static', filename='js/ui-revenue-workbench.js') }}" defer></script>
+{% endif %}
 {% endblock %}

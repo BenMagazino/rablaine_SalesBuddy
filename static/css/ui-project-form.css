@@ -1,0 +1,44 @@
+/* Focused project fields share the manual milestone form's native controls. */
+.sb-project-form .mf-reading { padding: 26px 32px; }
+.pf-fields { max-width: 880px; margin: 0 auto; }
+.pf-fields h2 { margin: 0 0 22px; font: 600 15px/1.4 var(--sb-ui-font); }
+.pf-fields textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--sb-ui-control-line);
+    border-radius: 0; background: var(--sb-ui-context); color: var(--sb-ui-ink);
+    font: 14px/1.5 var(--sb-ui-font); resize: vertical; min-height: 100px;
+}
+.pf-fields select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--sb-ui-control-line);
+    border-radius: 0; background: var(--sb-ui-context); color: var(--sb-ui-ink);
+    font: 14px/1.5 var(--sb-ui-font);
+}
+.pf-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.pf-row { margin-top: 26px; }
+.pf-row .mf-field + .mf-field { margin-top: 0; }
+.pf-notes { margin: 8px 0 0; padding: 20px 0 0; border: 0; border-top: 1px solid var(--sb-ui-line); }
+.pf-notes legend { float: none; width: auto; margin: 0 0 6px; font: 600 15px/1.4 var(--sb-ui-font); }
+.pf-notes legend span { margin-left: 8px; color: var(--sb-ui-muted); font-weight: 400; }
+.pf-notes p { margin: 0 0 12px; font-size: 12px; color: var(--sb-ui-muted); }
+.pf-choices { max-height: 260px; overflow: auto; scrollbar-width: thin; }
+.pf-choice { display: flex; gap: 10px; align-items: flex-start; padding: 8px 2px; font-size: 13px; cursor: pointer; }
+.pf-choice input { margin-top: 3px; accent-color: var(--sb-ui-accent); }
+.pf-commands { display: flex; gap: 8px; align-items: center; padding: 12px 24px; border-top: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }
+.pf-commands > span { flex: 1; font-size: 12px; color: var(--sb-ui-muted); }
+.pf-commands a { color: var(--sb-ui-ink); }
+.sb-project-form :is(textarea, select):focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.pf-flyout .pf-field { margin-bottom: 16px; }
+.pf-flyout label { display: block; margin-bottom: 6px; font-weight: 600; }
+.pf-flyout .pf-field :is(input, select, textarea) {
+    display: block; width: 100%; padding: 6px 10px;
+    border: 1px solid var(--sb-ui-control-line); border-radius: 2px;
+    background: var(--sb-ui-surface); color: var(--sb-ui-ink); font: inherit;
+}
+.pf-flyout textarea { resize: vertical; }
+.pf-flyout .pf-field-error { display: none; font-size: 12px; color: var(--sb-ui-danger); }
+.pf-flyout .is-invalid { border-color: var(--sb-ui-danger); }
+.pf-flyout .is-invalid + .pf-field-error { display: block; }
+.pf-flyout-notes { margin: 0; padding: 0; border: 0; }
+.pf-flyout-notes legend { margin-bottom: 6px; font-size: inherit; font-weight: 600; }
+.pf-flyout-notes .pf-choices { max-height: 200px; border: 1px solid var(--sb-ui-line); padding: 8px; }
+.pf-flyout-notes .pf-choice { display: flex; margin: 0; font-weight: 400; }
+.pf-flyout-notes small { color: var(--sb-ui-muted); }

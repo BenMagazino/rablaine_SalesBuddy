@@ -8,8 +8,8 @@ const template = fs.readFileSync(
     path.join(__dirname, '../../templates/partials/milestone_view_content.html'), 'utf8'
 );
 const script = template.slice(
-    template.indexOf('window.createTask = function()'),
-    template.indexOf('// Modal chaining:')
+    template.indexOf('function createTask()'),
+    template.indexOf('function openNewTaskModal()')
 );
 
 async function submit(response, rejection = null) {
@@ -26,6 +26,7 @@ async function submit(response, rejection = null) {
     const context = {
         document: {getElementById: id => elements[id]},
         window: {location: {reload: () => reloads++}},
+        workflow: {reload: () => reloads++},
         showTaskError: message => { error = message; },
         hideTaskError: () => { error = ''; },
         fetch: (_url, options) => {
@@ -34,7 +35,7 @@ async function submit(response, rejection = null) {
         },
     };
     vm.runInNewContext(script, context);
-    context.window.createTask();
+    context.createTask();
     await new Promise(resolve => setImmediate(resolve));
     return {error, reloads, request, button: elements.create_task_btn};
 }

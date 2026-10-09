@@ -1,119 +1,53 @@
 {% extends "base.html" %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
-
+{% macro heading(label, kind='text') %}<th scope="col" data-sb-sort-type="{{ kind }}" data-export-label="{{ label }}">{{ label }}</th>{% endmacro %}
 {% block title %}{{ topic.name }} - Sales Buddy{% endblock %}
-
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-tag"></i> {{ topic.name }}</h1>
-    <div>
-        <a href="{{ url_for('topics.topic_edit', id=topic.id) }}" class="btn btn-primary me-2">
-            <i class="bi bi-pencil"></i> Edit Topic
-        </a>
-        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteTopicModal">
-            <i class="bi bi-trash"></i> Delete
-        </button>
-    </div>
-</div>
-
-<!-- Delete Topic Modal -->
-<div class="modal fade" id="deleteTopicModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Delete Topic</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete the topic <strong>{{ topic.name }}</strong>?</p>
-                {% if notes|length > 0 %}
-                    <p class="text-warning"><i class="bi bi-exclamation-triangle"></i> This topic is currently associated with {{ notes|length }} note(s). The topic will be removed from all associated notes.</p>
-                {% endif %}
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="POST" action="{{ url_for('topics.topic_delete', id=topic.id) }}" style="display: inline;">
-                    <button type="submit" class="btn btn-danger">Delete Topic</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">
-                <h5 class="mb-0">Details</h5>
-            </div>
-            <div class="card-body">
-                {% if topic.description %}
-                    <p><strong>Description:</strong></p>
-                    <p>{{ topic.description }}</p>
-                {% else %}
-                    <p class="text-muted">No description provided</p>
-                {% endif %}
-                <p><strong>Total Notes:</strong> {{ notes|length }}</p>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-8">
-        <div class="card mb-3">
-            <div class="card-header">
-                <h5 class="mb-0">Notes (most recent first)</h5>
-            </div>
-            <div class="card-body">
-                {% if notes %}
-                    {% for call in notes %}
-                        <div class="card mb-3 row-link">
-                            <a href="{{ url_for('notes.note_view', id=call.id) }}" class="stretched-link" aria-label="View note"></a>
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h5 class="mb-0">
-                                        {% if call.customer %}
-                                            <a href="{{ url_for('customers.customer_view', id=call.customer.id) }}" class="text-decoration-none" onclick="event.stopPropagation();">
-                                                {{ customer_favicon(call.customer) }} {{ call.customer.name }}
-                                            </a>
-                                        {% else %}
-                                            <span class="text-muted">No Customer</span>
-                                        {% endif %}
-                                    </h5>
-                                    <small class="text-muted">{{ call.call_date.strftime('%b %d, %Y') }}{% if call.call_date.hour != 0 or call.call_date.minute != 0 %} {{ call.call_date.strftime('%I:%M %p') }}{% endif %}</small>
-                                </div>
-                                <div class="mb-2">
-                                    {% if call.seller %}
-                                        <a href="{{ url_for('sellers.seller_view', id=call.seller.id) }}" class="badge {{ get_seller_color(call.seller.id) }} text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-person"></i> {{ call.seller.name }}</a>
-                                    {% endif %}
-                                    {% if call.territory %}
-                                        <a href="{{ url_for('territories.territory_view', id=call.territory.id) }}" class="badge bg-info text-dark text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-geo-alt"></i> {{ call.territory.name }}</a>
-                                    {% endif %}
-                                    {% for topic in call.topics %}
-                                        <a href="{{ url_for('topics.topic_view', id=topic.id) }}" class="badge bg-warning text-dark text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-tag"></i> {{ topic.name }}</a>
-                                    {% endfor %}
-                                    {% for partner in call.partners %}
-                                        <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="badge bg-purple text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-building"></i> {{ partner.name }}</a>
-                                    {% endfor %}
-                                </div>
-                                <div class="text-muted">{{ call.content|striptags|truncate(200, true) }}</div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <p class="text-muted">No notes tagged with this topic yet.</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-topic-detail.css') }}">
 {% endblock %}
-
-
-
-
-
-
-
-
-
-
+{% block content %}
+<section class="sb-topic-detail sb-directory-frame" data-topic-detail="{{ topic.id }}" data-sb-page-surface aria-labelledby="topicTitle">
+    <header class="topic-heading" data-sb-page-band>
+        <h1 id="topicTitle"><i class="bi bi-tag" aria-hidden="true"></i> {{ topic.name }}</h1>
+        <a class="sb-dialog-button" href="{{ url_for('topics.topic_edit', id=topic.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit Topic</a>
+        <button class="sb-dialog-button topic-danger" type="button" data-sb-dialog="deleteTopicDialog"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
+    </header>
+    {% if topic.description %}<div class="topic-description" data-sb-page-band><h2>Description</h2><p>{{ topic.description }}</p></div>{% endif %}
+    <header class="topic-band" data-sb-page-band><h2>Tagged notes <span>{{ notes|length }}</span></h2><span>All notes with this topic · Newest first by default</span></header>
+    <p class="topic-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="topic-reading" data-sb-page-body tabindex="0" aria-label="Topic notes">
+        {% if notes %}
+        <table class="topic-table" data-sb-sortable data-sb-sort-key="topic-{{ topic.id }}-notes">
+            <thead><tr>{{ heading('Name') }}{{ heading('Note date', 'number') }}{{ heading('Seller') }}{{ heading('Territory') }}{{ heading('Topics') }}{{ heading('Partners') }}</tr></thead>
+            <tbody>{% for call in notes %}
+                <tr data-note-id="{{ call.id }}" data-topic-note-href="{{ url_for('notes.note_view', id=call.id) }}">
+                    <td data-sb-sort-value="{{ call.customer.name if call.customer else '' }}">
+                        <a class="topic-note-link" href="{{ url_for('notes.note_view', id=call.id) }}" aria-label="View note{% if call.customer %} for {{ call.customer.name }}{% endif %}"><i class="bi bi-journal-text" aria-hidden="true"></i> View note</a>
+                        {% if call.customer %}<a class="topic-customer" href="{{ url_for('customers.customer_view', id=call.customer.id) }}">{{ customer_favicon(call.customer) }} {{ call.customer.name }}</a>{% else %}<span class="topic-muted">No Customer</span>{% endif %}
+                        <p class="topic-excerpt">{{ call.content|striptags|truncate(200, true) }}</p>
+                    </td>
+                    <td class="topic-date" data-sb-sort-value="{{ call.call_date.timestamp() }}">{{ call.call_date.strftime('%b %d, %Y') }}{% if call.call_date.hour != 0 or call.call_date.minute != 0 %} {{ call.call_date.strftime('%I:%M %p') }}{% endif %}</td>
+                    <td data-sb-sort-value="{{ call.seller.name if call.seller else '' }}">{% if call.seller %}<a class="topic-relation topic-seller" href="{{ url_for('sellers.seller_view', id=call.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ call.seller.name }}</a>{% endif %}</td>
+                    <td data-sb-sort-value="{{ call.territory.name if call.territory else '' }}">{% if call.territory %}<a class="topic-relation topic-territory" href="{{ url_for('territories.territory_view', id=call.territory.id) }}"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ call.territory.name }}</a>{% endif %}</td>
+                    <td data-sb-sort-value="{{ call.topics|map(attribute='name')|join(', ') }}">{% for related_topic in call.topics %}<a class="topic-relation topic-tag" href="{{ url_for('topics.topic_view', id=related_topic.id) }}"><i class="bi bi-tag" aria-hidden="true"></i> {{ related_topic.name }}</a>{% endfor %}</td>
+                    <td data-sb-sort-value="{{ call.partners|map(attribute='name')|join(', ') }}">{% for partner in call.partners %}<a class="topic-relation topic-partner" href="{{ url_for('partners.partner_view', id=partner.id) }}"><i class="bi bi-building" aria-hidden="true"></i> {{ partner.name }}</a>{% endfor %}</td>
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}<p class="topic-empty">No notes tagged with this topic yet.</p>{% endif %}
+    </div>
+    <dialog id="deleteTopicDialog" class="sb-dialog sb-dialog--compact" aria-labelledby="deleteTopicTitle" data-sb-backdrop-close="true">
+        <form class="sb-dialog-shell" method="POST" action="{{ url_for('topics.topic_delete', id=topic.id) }}">
+            <header class="sb-dialog-header"><h2 id="deleteTopicTitle">Delete Topic</h2><button class="sb-dialog-close" type="button" data-sb-dialog-close aria-label="Cancel deletion">×</button></header>
+            <div class="sb-dialog-body"><p>Are you sure you want to delete the topic <strong>{{ topic.name }}</strong>?</p>{% if notes %}<p>This topic is currently associated with {{ notes|length }} note(s). The topic will be removed from all associated notes.</p>{% endif %}</div>
+            <footer class="sb-dialog-footer"><p data-topic-delete-status role="status"></p><button class="sb-dialog-button" type="button" data-sb-dialog-close autofocus>Cancel</button><button class="sb-dialog-button topic-danger" type="submit">Delete Topic</button></footer>
+        </form>
+    </dialog>
+</section>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Topic status"><span>{{ notes|length }} notes</span><span>All tagged notes · No role or date restriction</span></footer>
+{% endblock %}
+{% block extra_js %}<script src="{{ url_for('static', filename='js/ui-topic-detail.js') }}"></script>{% endblock %}

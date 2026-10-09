@@ -1,0 +1,41 @@
+/* SalesIQ is a persistent workbench pane, not a blocking dialog. */
+body.copilot-chat-open { --sb-chat-context-inset: 500px; }
+.sb-chat { position: fixed; top: var(--sb-ui-header-height, 46px); right: 0; bottom: 0; z-index: 1040; width: 500px; display: flex; flex-direction: column; border-left: 1px solid var(--sb-ui-line); background: var(--sb-ui-surface); color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); box-sizing: border-box; }
+.sb-chat[hidden] { display: none; }
+.sb-chat *, .sb-chat *::before, .sb-chat *::after { box-sizing: border-box; }
+.sb-chat-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }
+.sb-chat-header h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 600; }
+.sb-chat-development { color: var(--sb-ui-warning); font-size: 10px; font-weight: 600; letter-spacing: .06em; }
+.sb-chat-actions { display: flex; gap: 4px; }
+.sb-chat-button { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; min-height: 30px; border: 1px solid transparent; border-radius: 0; background: transparent; color: var(--sb-ui-muted); font: inherit; cursor: pointer; }
+.sb-chat-button:hover { border-color: var(--sb-ui-control-line); background: var(--sb-ui-raised); color: var(--sb-ui-ink); }
+.sb-chat :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.sb-chat :disabled { opacity: .5; cursor: wait; }
+.sb-chat-body { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.sb-chat-messages { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 18px 16px; }
+.sb-chat-welcome { padding: 36px 16px; color: var(--sb-ui-muted); text-align: center; }
+.sb-chat-welcome > .bi { font-size: 24px; }
+.sb-chat-welcome p { margin: 12px 0 0; }
+.sb-chat .copilot-msg { margin-bottom: 14px; padding: 10px 12px; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+.sb-chat .copilot-msg-user { margin-left: 36px; background: var(--sb-ui-context); border: 1px solid var(--sb-ui-line); white-space: pre-wrap; }
+.sb-chat .copilot-msg-assistant { padding-left: 0; padding-right: 0; }
+.sb-chat .copilot-msg-assistant p { margin: 0 0 10px; }
+.sb-chat .copilot-msg-assistant p:last-child { margin-bottom: 0; }
+.sb-chat .copilot-msg-assistant pre { overflow: auto; padding: 10px; background: var(--sb-ui-context); }
+.sb-chat .copilot-msg-assistant a { color: var(--sb-ui-accent); }
+.sb-chat .copilot-msg-assistant h5, .sb-chat .copilot-msg-assistant h6 { margin: 14px 0 8px; font-size: 14px; }
+.sb-chat-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
+.sb-chat-table th, .sb-chat-table td { padding: 6px 8px; border: 1px solid var(--sb-ui-line); text-align: left; vertical-align: top; }
+.sb-chat-table th { background: var(--sb-ui-context); font-weight: 600; }
+.sb-chat .copilot-tools-badge { color: var(--sb-ui-muted); font-size: 11px; margin: -6px 0 16px; overflow-wrap: anywhere; }
+.sb-chat .copilot-typing { display: flex; align-items: center; gap: 6px; color: var(--sb-ui-muted); }
+.sb-chat .copilot-typing span { width: 5px; height: 5px; background: currentColor; border-radius: 50%; animation: sb-chat-pulse 1.2s ease-in-out infinite; }
+.sb-chat .copilot-typing span:nth-child(2) { animation-delay: .15s; }
+.sb-chat .copilot-typing span:nth-child(3) { animation-delay: .3s; }
+.sb-chat-composer { padding: 12px 14px 8px; border-top: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }
+.sb-chat-input-row { display: flex; gap: 8px; align-items: end; }
+.sb-chat-input-row textarea { flex: 1; min-width: 0; padding: 7px 9px; max-height: 120px; resize: none; border: 1px solid var(--sb-ui-control-line); border-radius: 0; background: var(--sb-ui-surface); color: var(--sb-ui-ink); font: inherit; }
+.sb-chat-send { min-height: 36px; color: var(--sb-ui-accent); border-color: var(--sb-ui-control-line); }
+.sb-chat-hint { margin: 6px 0 0; color: var(--sb-ui-muted); font-size: 11px; }
+@keyframes sb-chat-pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .sb-chat .copilot-typing span { animation: none; } }

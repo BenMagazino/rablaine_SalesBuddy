@@ -1,0 +1,77 @@
+{% from 'partials/customer_favicon.html' import customer_favicon %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-territory-detail.css') }}">
+{% macro accounts_table(customers, label) %}
+<section aria-label="{{ label }} accounts">
+    <h3 class="td-group" data-type="{{ label|lower }}">{{ label }} <span>{{ customers|length }} accounts</span></h3>
+    <table class="td-table" data-sb-sortable data-sb-sort-key="territory-{{ territory.id }}-{{ label|lower }}">
+        <thead><tr><th scope="col" data-sb-sort-type="text" data-export-label="Name">Name</th><th scope="col" data-sb-sort-type="number" data-export-label="Notes">Notes</th></tr></thead>
+        <tbody>{% for customer in customers %}
+            <tr data-customer-id="{{ customer.id }}">
+                <td data-sb-sort-value="{{ customer.name }}"><a href="{{ url_for('customers.customer_view', id=customer.id) }}">{{ customer_favicon(customer) }} {{ customer.name }}</a></td>
+                <td data-sb-sort-value="{{ customer.call_count }}">{{ customer.call_count }} notes</td>
+            </tr>
+        {% endfor %}</tbody>
+    </table>
+</section>
+{% endmacro %}
+<section class="sb-territory-detail sb-directory-frame sb-directory-frame-wide" data-sb-territory-detail="{{ territory.id }}" data-td-mode="{{ 'accounts' if show_accounts else 'notes' }}" data-sb-page-surface>
+    <header class="td-header" data-sb-page-band>
+        <h1><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ territory.name }}</h1>
+        {% if territory.pod %}<a class="td-pod" href="{{ url_for('pods.pod_view', id=territory.pod.id) }}"><i class="bi bi-diagram-2" aria-hidden="true"></i> POD: {{ territory.pod.name }}</a>{% endif %}
+        <a class="sb-dialog-button" href="{{ url_for('territories.territory_edit', id=territory.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit Territory</a>
+    </header>
+    <p class="td-notice" role="alert" data-td-notice hidden></p>
+    <div class="td-layout" data-sb-page-body>
+        <aside class="td-roster" aria-label="Territory sellers">
+            <header class="td-band"><h2>Sellers in this Territory <span>{{ sellers|length }}</span></h2></header>
+            <p class="td-scope">Customer counts include each seller's full coverage.</p>
+            <div class="td-reading" data-td-scroll="sellers">
+                {% if sellers %}
+                <table class="td-table" data-sb-sortable data-sb-sort-key="territory-{{ territory.id }}-sellers">
+                    <thead><tr><th scope="col" data-sb-sort-type="text" data-export-label="Name">Name</th><th scope="col" data-sb-sort-type="number" data-export-label="Customers">Customers</th></tr></thead>
+                    <tbody>{% for seller in sellers %}
+                        <tr data-seller-id="{{ seller.id }}">
+                            <td data-sb-sort-value="{{ seller.name }}"><a class="td-seller" href="{{ url_for('sellers.seller_view', id=seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ seller.name }}</a></td>
+                            <td data-sb-sort-value="{{ seller.customers|length }}">{{ seller.customers|length }} customers</td>
+                        </tr>
+                    {% endfor %}</tbody>
+                </table>
+                {% else %}<p class="td-empty">No sellers in this territory yet.</p>{% endif %}
+            </div>
+        </aside>
+        <section class="td-work" aria-label="Territory activity">
+            <header class="td-band">
+                <h2>{% if show_accounts %}Accounts in Territory{% else %}Recent Notes (Last 7 Days){% endif %}</h2>
+                <fieldset class="td-toggle">
+                    <legend class="td-sr-only">Territory view</legend>
+                    <input type="radio" name="territoryViewToggle" id="viewCalls" value="notes" {{ 'checked' if not show_accounts else '' }}>
+                    <label for="viewCalls"><i class="bi bi-telephone" aria-hidden="true"></i> Recent Notes</label>
+                    <input type="radio" name="territoryViewToggle" id="viewAccounts" value="accounts" {{ 'checked' if show_accounts else '' }}>
+                    <label for="viewAccounts"><i class="bi bi-building" aria-hidden="true"></i> Accounts</label>
+                </fieldset>
+                <span class="td-save-status" role="status" data-td-status></span>
+            </header>
+            <p class="td-scope">{% if show_accounts %}Owned by Growth and Acquisition sellers assigned to this territory.{% else %}Notes for customers directly assigned to this territory, newest first.{% endif %}</p>
+            <div class="td-reading" data-td-scroll="work">
+                <div class="td-records">
+                {% if show_accounts %}
+                    {% if growth_customers %}{{ accounts_table(growth_customers, 'Growth') }}{% endif %}
+                    {% if acquisition_customers %}{{ accounts_table(acquisition_customers, 'Acquisition') }}{% endif %}
+                    {% if not growth_customers and not acquisition_customers %}<p class="td-empty">No accounts in this territory yet.</p>{% endif %}
+                {% elif recent_calls %}
+                    <table class="td-table" data-sb-sortable data-sb-sort-key="territory-{{ territory.id }}-notes">
+                        <thead><tr><th scope="col" data-sb-sort-type="text" data-export-label="Name">Name</th><th scope="col" data-sb-sort-type="number" data-export-label="Note date">Note date</th></tr></thead>
+                        <tbody>{% for call in recent_calls %}
+                            <tr data-note-id="{{ call.id }}">
+                                <td data-sb-sort-value="{{ call.customer.name }}"><a href="{{ url_for('notes.note_view', id=call.id) }}">{{ customer_favicon(call.customer) }} {{ call.customer.name }}</a></td>
+                                <td data-sb-sort-value="{{ call.call_date.timestamp() }}">{{ call.call_date.strftime('%b %d, %Y') }}{% if call.call_date.hour != 0 or call.call_date.minute != 0 %} {{ call.call_date.strftime('%I:%M %p') }}{% endif %}</td>
+                            </tr>
+                        {% endfor %}</tbody>
+                    </table>
+                {% else %}<p class="td-empty">No recent notes in this territory.</p>{% endif %}
+                </div>
+            </div>
+        </section>
+    </div>
+</section>
+<script src="{{ url_for('static', filename='js/ui-territory-detail.js') }}"></script>

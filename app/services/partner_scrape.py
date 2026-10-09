@@ -89,6 +89,8 @@ def apply_scrape_results(
         if existing_id:
             # Update existing contact
             contact = db.session.get(PartnerContact, existing_id)
+            if contact and contact.partner_id != partner.id:
+                raise ValueError("Contact does not belong to this partner")
             if contact:
                 updated = False
                 if c.get("email") and not contact.email:
@@ -229,12 +231,7 @@ def _parse_response(raw: str) -> Dict[str, Any]:
                               failure_type='parse_partner_json')
         except Exception:
             pass
-        return {
-            "contacts": [],
-            "specialties": [],
-            "overview": "",
-            "meetings_found": 0,
-        }
+        raise ValueError("WorkIQ returned unreadable results. Try again.") from e
 
 
 def _match_contacts(

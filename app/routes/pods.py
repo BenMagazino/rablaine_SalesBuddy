@@ -2,7 +2,8 @@
 POD routes for Sales Buddy.
 Handles POD listing, viewing, and editing.
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, current_app, jsonify, render_template, request
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import db, POD, Territory, SolutionEngineer, TerritoryDSSSelection
 
@@ -134,7 +135,12 @@ def territory_update_dss(territory_id):
     """Update the selected DSS for a territory + specialty via AJAX."""
     territory = Territory.query.filter_by(id=territory_id).first_or_404()
     data = request.get_json(silent=True) or {}
-    specialty = data.get('specialty', '').strip()
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Invalid DSS selection'}), 400
+    specialty = data.get('specialty', '')
+    if not isinstance(specialty, str):
+        return jsonify({'success': False, 'error': 'Specialty is required'}), 400
+    specialty = specialty.strip()
     se_id = data.get('solution_engineer_id')
 
     if not specialty:
@@ -145,7 +151,12 @@ def territory_update_dss(territory_id):
     ).first()
 
     if se_id is not None and se_id != '' and se_id != 'none':
-        se_id = int(se_id)
+        try:
+            if isinstance(se_id, bool) or not isinstance(se_id, (str, int)):
+                raise ValueError
+            se_id = int(se_id)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid DSS selection'}), 400
         # Validate the SE is linked to this territory with this specialty
         valid = SolutionEngineer.query.filter_by(id=se_id, specialty=specialty).first()
         if not valid or territory not in valid.territories:
@@ -164,6 +175,13 @@ def territory_update_dss(territory_id):
         if existing:
             db.session.delete(existing)
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception(
+            'Could not save DSS selection for territory %s, specialty %s',
+            territory.id, specialty,
+        )
+        return jsonify({'success': False, 'error': 'Could not save DSS selection'}), 500
     return jsonify({'success': True, 'solution_engineer_id': se_id if se_id not in (None, '', 'none') else None})
-

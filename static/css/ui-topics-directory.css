@@ -1,0 +1,26 @@
+.sb-topics-directory { color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); }
+.sb-topics-directory * { box-sizing: border-box; }
+.sb-topics-directory [hidden] { display: none !important; }
+.topics-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.topics-heading h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.topics-commands { display: flex; align-items: center; gap: 8px; }
+.topics-commands .sb-dialog-button { gap: 6px; text-decoration: none; }
+.topics-commands a:hover { text-decoration: underline; }
+.topics-primary { color: var(--sb-ui-accent); }
+.sb-topics-directory .topics-reading { overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }
+.topics-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.topics-table :is(th, td) { padding: 8px 16px; border-bottom: 1px solid var(--sb-ui-grid-line); text-align: left; vertical-align: middle; }
+.topics-table :is(th, td):first-child { padding-left: 24px; width: 27%; }
+.topics-table-brief :is(th, td):first-child { width: auto; }
+.topics-table :is(th, td):last-child { width: 100px; text-align: right; }
+.topics-table th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-context); color: var(--sb-ui-muted); font-size: 12px; font-weight: 500; }
+.topics-table tbody tr { cursor: pointer; }
+.topics-table tbody tr:hover { background: var(--sb-ui-raised); }
+.topics-name { color: var(--sb-ui-warning); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.topics-name:hover { text-decoration: underline; }
+.topics-description { display: block; color: var(--sb-ui-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topics-notes { color: var(--sb-ui-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.topics-empty, .topics-notice { margin: 0; padding: 12px 24px; color: var(--sb-ui-muted); }
+.topics-empty a { color: var(--sb-ui-accent); }
+.topics-notice { color: var(--sb-ui-danger); }
+.sb-topics-directory :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }

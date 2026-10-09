@@ -2,7 +2,18 @@
 
 {% block title %}Note - Sales Buddy{% endblock %}
 
-{% block content %}
-{% include 'partials/note_view_content.html' %}
+{% block body_class %}sb-page-frame sb-note-reading-page{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-note.css') }}">
 {% endblock %}
 
+{% block content %}
+{% include 'partials/note_view_content.html' %}
+<footer class="sb-note-status" aria-label="Note status">
+    <span>Note {{ note.id }} · {{ 'Customer note' if note.customer else 'General note' }}</span>
+    <span>{{ note.call_date.strftime('%b %d, %Y') }}</span>
+</footer>
+{% endblock %}

@@ -1,205 +1,91 @@
-{# Revenue Alerts Content Partial #}
-{# Usage: {% include 'partials/revenue_alerts_content.html' with context %} #}
-{# Required context: alerts (list of alert dicts) #}
-{# Optional context: summary (dict with count, total_at_risk, total_opportunity) #}
-{# Optional context: alert_clickable (bool) - enables onclick to open detail modal #}
+{# Shared Revenue alert list. Optional: summary, show_seller and alert_clickable. #}
 {% from 'partials/review_action.html' import review_badge, action_buttons, previous_review_hint %}
-
-{# Summary cards (shown when summary is provided) #}
-{% if summary %}
-<div class="row mb-3">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body text-center py-2">
-                <h4 class="mb-0" id="revenueSummaryCount">{{ summary.count }}</h4>
-                <small class="text-muted">Customers Needing Attention</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body text-center py-2">
-                <h4 class="text-danger mb-0">${{ '{:,.0f}'.format(summary.total_at_risk) }}</h4>
-                <small class="text-muted">Total Monthly $ at Risk</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body text-center py-2">
-                <h4 class="text-success mb-0">${{ '{:,.0f}'.format(summary.total_opportunity) }}</h4>
-                <small class="text-muted">Total Monthly $ Opportunity</small>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-{% if alerts %}
-<div class="table-responsive">
-    <table class="table table-hover table-sm align-middle mb-0" id="alertsTable">
-        <thead>
-            <tr>
-                <th class="sortable" data-sort-type="number" style="cursor:pointer; width: 2.5em;" title="Priority score (0-100)"><i class="bi bi-chevron-expand text-muted"></i></th>
-                <th class="sortable" data-sort-type="text" style="cursor:pointer">Customer <i class="bi bi-chevron-expand text-muted"></i></th>
-                <th class="sortable" data-sort-type="text" style="cursor:pointer; white-space:nowrap;">Bucket <i class="bi bi-chevron-expand text-muted"></i></th>
-                <th class="sortable" data-sort-type="text" style="cursor:pointer">Category <i class="bi bi-chevron-expand text-muted"></i></th>
-                <th class="sortable" data-sort-type="text" style="cursor:pointer">Action <i class="bi bi-chevron-expand text-muted"></i></th>
-                <th class="sortable" data-sort-type="currency" style="cursor:pointer; white-space:nowrap;">Avg ACR <i class="bi bi-chevron-expand text-muted"></i></th>
-                <th class="sortable" data-sort-type="currency" style="cursor:pointer; white-space:nowrap;">$ Impact <i class="bi bi-chevron-expand text-muted"></i></th>
-                {% if show_seller %}<th class="sortable" data-sort-type="text" style="cursor:pointer">Seller <i class="bi bi-chevron-expand text-muted"></i></th>{% endif %}
-                <th style="max-width: 250px;">Rationale</th>
-                <th class="sortable" data-sort-type="text" style="cursor:pointer">Status <i class="bi bi-chevron-expand text-muted"></i></th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for a in alerts %}
-            <tr data-analysis-id="{{ a.id }}" data-bucket="{{ a.bucket }}" style="{% if alert_clickable %}cursor: pointer;{% endif %}{% if a.review_status not in ('new', 'to_be_reviewed') %} opacity: 0.6;{% endif %}"
-                {% if alert_clickable %}onclick="openAlertDetail(event, {{ a.id }}, '{{ a.customer_name|replace("'", "\\'") }}', '{{ a.bucket|replace("'", "\\'") }}')"{% endif %}>
-                <td>
-                    <span class="badge {% if a.priority_score >= 80 %}bg-danger{% elif a.priority_score >= 60 %}bg-warning text-dark{% elif a.priority_score >= 40 %}bg-info{% else %}bg-secondary{% endif %}">
-                        {{ a.priority_score }}
-                    </span>
-                </td>
-                <td{% if a.customer and a.customer.tpid_url %} data-export-url="{{ a.customer.tpid_url }}"{% endif %}>
-                    {% if a.customer_id %}
-                    <a href="{{ url_for('revenue.revenue_customer_view', customer_id=a.customer_id) }}">
+{% from 'partials/_revenue_priority.html' import priority_tone %}
+{% set category_labels = {
+    'DECLINING': 'Declining', 'RECENT_DIP': 'Recent Dip',
+    'EXPANSION_OPPORTUNITY': 'Expansion', 'VOLATILE': 'Volatile',
+    'NEW_CUSTOMER': 'New Customer'
+} %}
+{% set category_tones = {
+    'DECLINING': 'danger', 'RECENT_DIP': 'warning',
+    'EXPANSION_OPPORTUNITY': 'positive', 'NEW_CUSTOMER': 'accent'
+} %}
+<section class="sb-revenue-alerts" data-sb-revenue-alerts aria-label="Revenue alerts">
+    {% if summary %}
+    {% include 'partials/_revenue_alert_summary.html' %}
+    {% endif %}
+    {% if alerts %}
+    <div class="sb-revenue-alerts-scroll" tabindex="0" aria-label="Scrollable revenue alerts">
+        <table class="sb-revenue-alerts-table" id="alertsTable" data-sb-sortable
+               data-sb-sort-key="revenue-alerts" data-sb-sort-default-column="0"
+               data-sb-sort-default-direction="descending">
+            <caption>Revenue alerts. Default order: highest priority first. Use column buttons to sort.</caption>
+            <thead>
+                <tr>
+                    {% for label, kind in [
+                        ('Priority', 'number'), ('Customer', 'text'), ('Bucket', 'text'),
+                        ('Category', 'text'), ('Action', 'text'), ('Avg ACR', 'number'),
+                        ('$ Impact', 'number')
+                    ] %}
+                    <th scope="col" data-sb-sort-type="{{ kind }}" data-export-label="{{ label }}"{% if loop.first %} title="Priority score (0-100)"{% endif %}>{{ label }}</th>
+                    {% endfor %}
+                    {% if show_seller %}
+                    <th scope="col" data-sb-sort-type="text" data-export-label="Seller">Seller</th>
+                    {% endif %}
+                    <th scope="col" data-sb-sort-type="text">Rationale</th>
+                    <th scope="col" data-sb-sort-type="text" data-export-label="Status">Status</th>
+                    <th scope="col" data-export-label="Actions"{% if revenue_actions_sortable | default(true) %} data-sb-sort-type="text"{% endif %}>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in alerts %}
+                <tr data-analysis-id="{{ a.id }}" data-bucket="{{ a.bucket }}"
+                    data-customer-name="{{ a.customer_name }}" data-alert-clickable="{{ 'true' if alert_clickable else 'false' }}">
+                    <td class="sb-revenue-number" data-sb-sort-value="{{ a.priority_score }}" data-tone="{{ priority_tone(a.priority_score) }}">{{ a.priority_score }}</td>
+                    <td{% if a.customer and a.customer.tpid_url %} data-export-url="{{ a.customer.tpid_url }}"{% endif %}>
+                        {% if a.customer_id %}
+                        <a href="{{ url_for('revenue.revenue_customer_view', customer_id=a.customer_id) }}">{{ a.customer_name }}</a>
+                        <a href="{{ url_for('customers.customer_view', id=a.customer_id) }}" class="sb-revenue-hub-link" title="View Customer Hub" aria-label="View Customer Hub for {{ a.customer_name }}"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                        {% else %}
                         {{ a.customer_name }}
-                    </a>
-                    <a href="{{ url_for('customers.customer_view', id=a.customer_id) }}" class="text-muted" title="View Customer Hub">
-                        <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                    {% else %}
-                    {{ a.customer_name }}
+                        {% endif %}
+                    </td>
+                    <td>{{ a.bucket }}</td>
+                    <td><span class="sb-revenue-category" data-tone="{{ category_tones.get(a.category, 'neutral') }}">{{ category_labels.get(a.category, a.category) }}</span></td>
+                    <td>{{ a.recommended_action }}</td>
+                    <td class="sb-revenue-money" data-sb-sort-value="{{ a.avg_revenue }}">${{ '{:,.0f}'.format(a.avg_revenue) }}</td>
+                    <td class="sb-revenue-money" data-sb-sort-value="{{ a.dollars_at_risk if a.dollars_at_risk > 0 else a.dollars_opportunity if a.dollars_opportunity > 0 else '' }}">
+                        {% if a.dollars_at_risk > 0 %}
+                        <span data-tone="danger">${{ '{:,.0f}'.format(a.dollars_at_risk) }}/mo risk</span>
+                        {% elif a.dollars_opportunity > 0 %}
+                        <span data-tone="positive">${{ '{:,.0f}'.format(a.dollars_opportunity) }}/mo opp</span>
+                        {% else %}-{% endif %}
+                    </td>
+                    {% if show_seller %}
+                    <td>
+                        {% if a.seller_name %}
+                        <a href="{{ url_for('revenue.revenue_seller_view', seller_name=a.seller_name) }}" class="sb-revenue-seller"><i class="bi bi-person" aria-hidden="true"></i> {{ a.seller_name }}</a>
+                        {% else %}<span data-tone="neutral">-</span>{% endif %}
+                    </td>
                     {% endif %}
-                </td>
-                <td><small>{{ a.bucket }}</small></td>
-                <td class="text-nowrap">
-                    {% if a.category == 'DECLINING' %}
-                    <span class="badge bg-danger">Declining</span>
-                    {% elif a.category == 'RECENT_DIP' %}
-                    <span class="badge bg-warning text-dark">Recent Dip</span>
-                    {% elif a.category == 'EXPANSION_OPPORTUNITY' %}
-                    <span class="badge bg-success">Expansion</span>
-                    {% elif a.category == 'VOLATILE' %}
-                    <span class="badge bg-secondary">Volatile</span>
-                    {% elif a.category == 'NEW_CUSTOMER' %}
-                    <span class="badge bg-info">New Customer</span>
-                    {% else %}
-                    <span class="badge bg-light text-dark">{{ a.category }}</span>
-                    {% endif %}
-                </td>
-                <td>{{ a.recommended_action }}</td>
-                <td>${{ '{:,.0f}'.format(a.avg_revenue) }}</td>
-                <td>
-                    {% if a.dollars_at_risk > 0 %}
-                    <span class="text-danger">${{ '{:,.0f}'.format(a.dollars_at_risk) }}/mo risk</span>
-                    {% elif a.dollars_opportunity > 0 %}
-                    <span class="text-success">${{ '{:,.0f}'.format(a.dollars_opportunity) }}/mo opp</span>
-                    {% else %}
-                    -
-                    {% endif %}
-                </td>
-                {% if show_seller %}
-                <td>
-                    {% if a.seller_name %}
-                    <a href="{{ url_for('revenue.revenue_seller_view', seller_name=a.seller_name) }}" class="badge {{ get_seller_color(seller_id_map[a.seller_name]) if a.seller_name in seller_id_map else 'bg-primary' }} text-decoration-none">
-                        <i class="bi bi-person"></i> {{ a.seller_name }}
-                    </a>
-                    {% else %}
-                    <span class="text-muted">-</span>
-                    {% endif %}
-                </td>
-                {% endif %}
-                <td><small>{{ a.engagement_rationale }}</small></td>
-                <td data-review-id="{{ a.id }}">{{ review_badge(a) }}{{ previous_review_hint(a) }}</td>
-                <td>
-                    {{ action_buttons(a) }}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% else %}
-<div class="text-center py-4">
-    <i class="bi bi-check-circle display-4 text-success"></i>
-    <h5 class="mt-3">No alerts</h5>
-    <p class="text-muted mb-0">All customers are healthy or below thresholds.</p>
-</div>
-{% endif %}
-
-<script>
-(function() {
-    const table = document.getElementById('alertsTable');
-    if (!table) return;
-    const headers = table.querySelectorAll('th.sortable');
-    let currentSort = { col: null, asc: true };
-
-    function parseCurrency(text) {
-        const cleaned = text.replace(/[^\d.\-]/g, '');
-        return parseFloat(cleaned) || 0;
-    }
-
-    function getCellText(row, colIdx) {
-        const cell = row.cells[colIdx];
-        return (cell.textContent || '').trim();
-    }
-
-    function sortTable(colIdx, sortType) {
-        const tbody = table.tBodies[0];
-        const rows = Array.from(tbody.rows);
-        const asc = currentSort.col === colIdx ? !currentSort.asc : true;
-        currentSort = { col: colIdx, asc: asc };
-
-        rows.sort((a, b) => {
-            let va = getCellText(a, colIdx);
-            let vb = getCellText(b, colIdx);
-            let cmp = 0;
-            if (sortType === 'number') {
-                cmp = (parseFloat(va) || 0) - (parseFloat(vb) || 0);
-            } else if (sortType === 'currency') {
-                cmp = parseCurrency(va) - parseCurrency(vb);
-            } else {
-                cmp = va.localeCompare(vb, undefined, { sensitivity: 'base' });
-            }
-            return asc ? cmp : -cmp;
-        });
-
-        rows.forEach(r => tbody.appendChild(r));
-
-        // Update header icons
-        headers.forEach(h => {
-            const icon = h.querySelector('i');
-            if (icon) {
-                icon.className = 'bi bi-chevron-expand text-muted';
-                icon.style.fontWeight = '';
-            }
-            h.style.color = '';
-        });
-        const activeHeader = table.querySelectorAll('th')[colIdx];
-        const activeIcon = activeHeader.querySelector('i');
-        if (activeIcon) {
-            activeIcon.className = asc ? 'bi bi-sort-up' : 'bi bi-sort-down';
-            activeIcon.classList.remove('text-muted');
-            activeIcon.style.fontWeight = 'bold';
-        }
-        activeHeader.style.color = 'var(--bs-primary)';
-    }
-
-    headers.forEach(h => {
-        h.addEventListener('click', () => {
-            const allTh = Array.from(table.querySelectorAll('thead th'));
-            const colIdx = allTh.indexOf(h);
-            sortTable(colIdx, h.dataset.sortType);
-        });
-    });
-
-    // Default sort: Priority descending (matches server-side order)
-    const allTh = Array.from(table.querySelectorAll('thead th'));
-    const priorityTh = allTh[0];
-    currentSort = { col: 0, asc: true };  // pretend asc so toggle flips to desc
-    sortTable(0, priorityTh.dataset.sortType);
-})();
-</script>
+                    <td class="sb-revenue-rationale">{{ a.engagement_rationale }}</td>
+                    <td data-review-id="{{ a.id }}">{{ review_badge(a) }}{{ previous_review_hint(a) }}</td>
+                    <td class="sb-revenue-row-actions" data-sb-sort-value="{{ 'Open alert; ' if alert_clickable else '' }}Set review status">
+                        {% if alert_clickable %}
+                        <button type="button" class="sb-review-button" data-sb-revenue-open title="Open revenue alert" aria-label="Open revenue alert for {{ a.customer_name }}, {{ a.bucket }}"><i class="bi bi-arrows-fullscreen" aria-hidden="true"></i></button>
+                        {% endif %}
+                        {{ action_buttons(a) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="sb-revenue-list-empty" role="status">
+        <h3>No alerts</h3>
+        <p>All customers are healthy or below thresholds.</p>
+    </div>
+    {% endif %}
+</section>
+<script src="{{ url_for('static', filename='js/ui-revenue-alerts.js') }}" defer></script>

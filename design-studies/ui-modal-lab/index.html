@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Centered modal studies | Sales Buddy</title>
+  <link rel="icon" href="brand.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="navigation.css">
+  <link rel="stylesheet" href="themes.css">
+  <link rel="stylesheet" href="outlook.css">
+  <link rel="stylesheet" href="status-rails.css">
+  <link rel="stylesheet" href="customer-colors.css">
+  <link rel="stylesheet" href="blue-controls.css">
+  <link rel="stylesheet" href="theme-pairs.css">
+  <link rel="stylesheet" href="modals.css">
+  <script src="themes.js" defer></script>
+  <script src="gallery.js" defer></script>
+  <link rel="stylesheet" href="../archive.css">
+</head>
+<body class="gallery color-gallery paired-gallery">
+  <nav class="archive-nav" aria-label="Design archive"><a href="../index.html">Design archive</a><span aria-hidden="true">/</span><a href="index.html">Iteration gallery</a><span>Fictional data only</span></nav>
+  <header class="gallery-header">
+    <div class="gallery-topline">
+      <div><img src="brand.svg" alt=""><span>Round twelve / Centered modals</span></div>
+      <a href="preview.html?theme=graphite-dark&modal=milestone">Open Graphite milestone modal</a>
+    </div>
+    <h1>A focused window, not another sidebar.</h1>
+    <p>Centered modal treatments for the selected themes. Action items use a compact dialog with completion and edit controls. Milestones and notes use wider, scrollable detail layouts with persistent headers and footers. All content is fictional; the live homepage was inspected for structure only.</p>
+  </header>
+  <main class="gallery-main">
+    <div class="gallery-controls" role="group" aria-label="Choose screenshot state">
+      <span>Compare the workspace or its menus. Click a sample for the interactive preview.</span>
+      <button data-state="workspace" aria-pressed="false">Workspace</button>
+      <button data-state="reports" aria-pressed="false">Reports open</button>
+      <button data-state="browse" aria-pressed="false">Browse open</button>
+      <button data-state="action" aria-pressed="false">Action item</button>
+      <button data-state="milestone" aria-pressed="true">Milestone</button>
+      <button data-state="note" aria-pressed="false">Note</button>
+    </div>
+    <div class="study-grid" id="study-grid"></div>
+  </main>
+  <footer class="gallery-footer">
+    Dark mode uses restrained customer fills and bright status rails. Light mode translates those hues into tinted fills, dark text, and deeper rails; ghost meetings keep dashed outlines and striped rails in both.<br>
+    All pairs preserve the layout, typography, customer assignments and highlighting, status precedence, and 23 fictional entries. The preview toolbar switches mode within the selected family.<br>
+    Click an action item, milestone, saved calendar note, or New note to open a centered modal. Escape, the close button, or the backdrop dismiss it; keyboard focus stays inside and returns to the trigger.<br>
+    Edit, completion, and save controls are local demonstrations only. Full page and MSX buttons never navigate outside the preview.<br>
+    <a href="../ui-theme-pairs-lab/index.html">Round eleven preserves the original side-drawer previews.</a> No application or database changes.
+  </footer>
+</body>
+</html>

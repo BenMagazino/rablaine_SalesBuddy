@@ -1,246 +1,157 @@
 {% extends "base.html" %}
 {% block title %}Revenue Analyzer - Sales Buddy{% endblock %}
 
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+{% set status_total = analyses|length %}
+{% set status_unit = 'alerts' %}
+{% set status_table_id = 'alertsTable' if analyses else none %}
+{% set status_hint %}
+{% if latest_import %}
+Last import: {{ latest_import.imported_at.strftime('%b %d, %Y') }}
+{% if months_data %}({{ months_data|length }} months){% endif %}
+{% endif %}
+{% endset %}
+{% include 'partials/_page_status.html' %}
+{% endif %}
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid py-2">
-    {% if import_status and import_status.state == 'incomplete' %}
-    <div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        <div>
+<div class="sb-revenue-workspace" data-sb-revenue-page="analyzer" data-sb-page-surface>
+    {% if import_status and import_status.state in ['incomplete', 'failed'] %}
+    <div class="sb-notice sb-revenue-job-notice" data-sb-tone="{{ 'danger' if import_status.state == 'failed' else 'warning' }}" role="alert">
+        <i class="bi bi-exclamation-triangle sb-notice-icon" aria-hidden="true"></i>
+        <div class="sb-notice-body">
+            {% if import_status.state == 'incomplete' %}
             <strong>Last revenue import didn't finish.</strong>
-            Your revenue data may be incomplete. <a href="{{ url_for('revenue.revenue_import') }}" class="alert-link">Re-sync your data</a> to get a full sync.
+            Your revenue data may be incomplete. <a href="{{ url_for('revenue.revenue_import') }}">Re-sync your data</a> to get a full sync.
             {% if import_status.started_at %}
-                <span class="text-muted small">(Started <span class="local-datetime" data-utc="{{ import_status.started_at.isoformat() }}" data-fmt="short"></span>)</span>
+            <span class="sb-revenue-page-meta">(Started <span class="local-datetime" data-utc="{{ import_status.started_at.isoformat() }}" data-fmt="short"></span>)</span>
             {% endif %}
-        </div>
-    </div>
-    {% elif import_status and import_status.state == 'failed' %}
-    <div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
-        <i class="bi bi-x-circle-fill me-2"></i>
-        <div>
+            {% else %}
             <strong>Last revenue import failed.</strong>
-            <a href="{{ url_for('revenue.revenue_import') }}" class="alert-link">Re-sync your data</a> to get accurate results.
-            {% if import_status.details %}
-                <span class="text-muted small">({{ import_status.details }})</span>
+            <a href="{{ url_for('revenue.revenue_import') }}">Re-sync your data</a> to get accurate results.
+            {% if import_status.details %}<span class="sb-revenue-page-meta">({{ import_status.details }})</span>{% endif %}
             {% endif %}
         </div>
     </div>
     {% endif %}
-    {% if analysis_status and analysis_status.state == 'incomplete' %}
-    <div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        <div>
+    {% if analysis_status and analysis_status.state in ['incomplete', 'failed'] %}
+    <div class="sb-notice sb-revenue-job-notice" data-sb-tone="{{ 'danger' if analysis_status.state == 'failed' else 'warning' }}" role="alert">
+        <i class="bi bi-exclamation-triangle sb-notice-icon" aria-hidden="true"></i>
+        <div class="sb-notice-body">
+            {% if analysis_status.state == 'incomplete' %}
             <strong>Last revenue analysis didn't finish.</strong>
             Some customers may not have been analyzed.
-            <form action="{{ url_for('revenue.revenue_analyze') }}" method="post" class="d-inline">
-                <button type="submit" class="btn btn-link alert-link p-0 align-baseline">Re-run analysis</button>
-            </form>
-            to complete it.
-        </div>
-    </div>
-    {% elif analysis_status and analysis_status.state == 'failed' %}
-    <div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
-        <i class="bi bi-x-circle-fill me-2"></i>
-        <div>
+            {% else %}
             <strong>Last revenue analysis failed.</strong>
-            <form action="{{ url_for('revenue.revenue_analyze') }}" method="post" class="d-inline">
-                <button type="submit" class="btn btn-link alert-link p-0 align-baseline">Re-run analysis</button>
+            {% endif %}
+            <form action="{{ url_for('revenue.revenue_analyze') }}" method="post" class="sb-revenue-inline-form">
+                <button type="submit" class="sb-revenue-text-command">Re-run analysis</button>
             </form>
-            to try again.
-            {% if analysis_status.details %}
-                <span class="text-muted small">({{ analysis_status.details }})</span>
+            {{ 'to complete it.' if analysis_status.state == 'incomplete' else 'to try again.' }}
+            {% if analysis_status.state == 'failed' and analysis_status.details %}
+            <span class="sb-revenue-page-meta">({{ analysis_status.details }})</span>
             {% endif %}
         </div>
     </div>
     {% endif %}
-    <div class="d-flex justify-content-between align-items-start mb-3">
+
+    <header class="sb-revenue-page-header" data-sb-page-band>
         <div>
-            <h2><i class="bi bi-currency-dollar"></i> Revenue Analyzer</h2>
-            <p class="text-muted mb-0">Customers needing attention based on revenue trends</p>
+            <h1>Revenue Analyzer</h1>
+            <p>Customers needing attention based on revenue trends</p>
         </div>
-        <div class="d-flex flex-column align-items-end gap-1">
-            <div class="d-flex gap-2">
-                {% set export_table_id = '#alertsTable' %}
-                {% set export_filename = 'revenue-analyzer' %}
-                {% include 'partials/_report_export.html' %}
+        <div class="sb-revenue-page-commands">
+            {% set export_table_id = '#alertsTable' %}
+            {% set export_filename = 'revenue-analyzer' %}
+            {% set export_title = 'Revenue Analyzer' %}
+            {% include 'partials/_report_export.html' %}
+            <div class="sb-revenue-command-group" role="group" aria-label="Revenue data commands">
+                <a href="{{ url_for('revenue.revenue_import') }}" class="sb-revenue-command">
+                    <i class="bi bi-upload" aria-hidden="true"></i> Import Data
+                </a>
+                <a href="{{ url_for('revenue.revenue_products_list') }}" class="sb-revenue-command">
+                    <i class="bi bi-boxes" aria-hidden="true"></i> Products
+                </a>
+                <button type="submit" form="reanalyze-form" class="sb-revenue-command" title="Re-run analysis on all data">
+                    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Re-analyze
+                </button>
+                <a href="{{ url_for('revenue.revenue_config') }}" class="sb-revenue-command">
+                    <i class="bi bi-gear" aria-hidden="true"></i> Configure
+                </a>
             </div>
-            <div class="d-flex gap-2">
-                <div class="btn-group">
-                    <a href="{{ url_for('revenue.revenue_import') }}" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-upload"></i> Import Data
-                    </a>
-                    <a href="{{ url_for('revenue.revenue_products_list') }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-boxes"></i> Products
-                    </a>
-                    <button type="submit" form="reanalyze-form" class="btn btn-sm btn-outline-secondary" title="Re-run analysis on all data">
-                        <i class="bi bi-arrow-clockwise"></i> Re-analyze
-                    </button>
-                    <a href="{{ url_for('revenue.revenue_config') }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-gear"></i> Configure
-                    </a>
-                </div>
-                <form id="reanalyze-form" action="{{ url_for('revenue.revenue_analyze') }}" method="post"></form>
-            </div>
+            <form id="reanalyze-form" action="{{ url_for('revenue.revenue_analyze') }}" method="post"></form>
         </div>
-    </div>
+    </header>
 
-    <!-- Summary Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-exclamation-triangle"></i> Declining</h6>
-                    <h3>{{ category_counts.get('DECLINING', {}).get('count', 0) }}</h3>
-                    <small>${{ '{:,.0f}'.format(category_counts.get('DECLINING', {}).get('total_at_risk', 0)) }}/mo at risk</small>
-                </div>
-            </div>
+    <dl class="sb-revenue-categories" data-sb-page-band aria-label="Revenue alert categories">
+        {% for category, label, tone, metric, suffix in [
+            ('DECLINING', 'Declining', 'danger', 'total_at_risk', '/mo at risk'),
+            ('RECENT_DIP', 'Recent Dip', 'warning', 'total_at_risk', '/mo at risk'),
+            ('EXPANSION_OPPORTUNITY', 'Expansion', 'positive', 'total_opportunity', '/mo opportunity'),
+            ('VOLATILE', 'Volatile', 'muted', none, 'Needs review')
+        ] %}
+        <div data-category="{{ category }}">
+            <dt data-tone="{{ tone }}">{{ label }}</dt>
+            <dd>
+                <span class="sb-revenue-category-count">{{ category_counts.get(category, {}).get('count', 0) }}</span>
+                <span class="sb-revenue-page-meta">{% if metric %}${{ '{:,.0f}'.format(category_counts.get(category, {}).get(metric, 0)) }}{% endif %}{{ suffix }}</span>
+            </dd>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-dark">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-graph-down"></i> Recent Dip</h6>
-                    <h3>{{ category_counts.get('RECENT_DIP', {}).get('count', 0) }}</h3>
-                    <small>${{ '{:,.0f}'.format(category_counts.get('RECENT_DIP', {}).get('total_at_risk', 0)) }}/mo at risk</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-graph-up-arrow"></i> Expansion</h6>
-                    <h3>{{ category_counts.get('EXPANSION_OPPORTUNITY', {}).get('count', 0) }}</h3>
-                    <small>${{ '{:,.0f}'.format(category_counts.get('EXPANSION_OPPORTUNITY', {}).get('total_opportunity', 0)) }}/mo opportunity</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-secondary text-white">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-activity"></i> Volatile</h6>
-                    <h3>{{ category_counts.get('VOLATILE', {}).get('count', 0) }}</h3>
-                    <small>Needs review</small>
-                </div>
-            </div>
-        </div>
-    </div>
+        {% endfor %}
+    </dl>
 
-    <div class="row">
-        <!-- Main Alert List -->
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="bi bi-list-check"></i> Actionable Customers ({{ analyses|length }})</h5>
-                    <div class="d-flex align-items-center gap-2">
-                        <span id="bucketFilterContainer"></span>
-                        {% if sellers_with_alerts and not seller_mode %}
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-people"></i> Sellers ({{ sellers_with_alerts|length }})
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                {% for seller_name in sellers_with_alerts %}
-                                <li>
-                                    <a class="dropdown-item" href="{{ url_for('revenue.revenue_seller_view', seller_name=seller_name) }}">
-                                        <i class="bi bi-person"></i> {{ seller_name }}
-                                    </a>
-                                </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        {% endif %}
-                        {% if latest_import %}
-                        <small class="text-muted">
-                            Last import: {{ latest_import.imported_at.strftime('%b %d, %Y') }}
-                            {% if months_data %}({{ months_data|length }} months){% endif %}
-                        </small>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    {% if analyses %}
-                    {% set alerts = analyses %}
-                    {% set show_seller = not seller_mode %}
-                    {% set alert_clickable = true %}
-                    {% include 'partials/revenue_alerts_content.html' %}
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="bi bi-inbox display-1 text-muted"></i>
-                        <h4 class="mt-3">No alerts yet</h4>
-                        <p class="text-muted">Import revenue data to see customer alerts.</p>
-                        <a href="{{ url_for('revenue.revenue_import') }}" class="btn btn-primary">
-                            <i class="bi bi-upload"></i> Import Data
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
+    <section class="sb-revenue-page-list sb-revenue-workarea" data-sb-page-body aria-labelledby="revenueCustomersHeading">
+        <header class="sb-revenue-list-header" data-sb-page-band>
+            <div>
+                <h2 id="revenueCustomersHeading">Actionable Customers <span class="sb-revenue-page-meta">({{ analyses|length }})</span></h2>
+                {% if latest_import and request.args.get('embed') %}
+                <p class="sb-revenue-page-meta">
+                    Last import: {{ latest_import.imported_at.strftime('%b %d, %Y') }}
+                    {% if months_data %}({{ months_data|length }} months){% endif %}
+                </p>
+                {% endif %}
             </div>
+            <div class="sb-revenue-command-group">
+                <span id="bucketFilterContainer"></span>
+                {% if sellers_with_alerts and not seller_mode %}
+                <button class="sb-revenue-command" type="button" data-sb-menu="revenueSellersMenu" data-sb-menu-anchor="trigger" aria-controls="revenueSellersMenu" aria-haspopup="menu" aria-expanded="false">
+                    <i class="bi bi-people" aria-hidden="true"></i> Sellers ({{ sellers_with_alerts|length }})
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+                <ul id="revenueSellersMenu" class="sb-nav-menu" popover="manual" role="menu" aria-label="Sellers with revenue alerts">
+                    {% for seller_name in sellers_with_alerts %}
+                    <li><a class="sb-nav-link" href="{{ url_for('revenue.revenue_seller_view', seller_name=seller_name) }}">
+                        <i class="bi bi-person" aria-hidden="true"></i> {{ seller_name }}
+                    </a></li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </header>
+        {% if analyses %}
+        {% set alerts = analyses %}
+        {% set show_seller = not seller_mode %}
+        {% set alert_clickable = true %}
+        {% include 'partials/revenue_alerts_content.html' %}
+        {% else %}
+        <div class="sb-revenue-page-empty">
+            <h3>No alerts yet</h3>
+            <p>Import revenue data to see customer alerts.</p>
+            <a href="{{ url_for('revenue.revenue_import') }}" class="sb-revenue-command">
+                <i class="bi bi-upload" aria-hidden="true"></i> Import Data
+            </a>
         </div>
-    </div>
+        {% endif %}
+    </section>
 </div>
 
-{% include 'partials/review_action.html' %}
-
-<!-- Alert Detail Modal -->
-<div class="modal fade" id="alertDetailModal" tabindex="-1" aria-labelledby="alertDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1100px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <h5 class="modal-title" id="alertDetailModalLabel"><i class="bi bi-exclamation-triangle"></i> <span id="alertDetailTitle">Loading...</span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-3" id="alertDetailBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-(function() {
-    let detailModal = null;
-    let detailDirty = false;
-    const titleEl = document.getElementById('alertDetailTitle');
-    const bodyEl = document.getElementById('alertDetailBody');
-
-    window.openAlertDetail = function(event, alertId, customerName, bucket) {
-        if (event.target.closest('a, button')) return;
-
-        if (!detailModal) {
-            detailModal = new bootstrap.Modal(document.getElementById('alertDetailModal'));
-        }
-        detailDirty = false;
-        titleEl.textContent = customerName + ' - ' + bucket;
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        detailModal.show();
-
-        fetch('/api/revenue/analysis/' + alertId + '/detail')
-            .then(function(resp) {
-                if (!resp.ok) throw new Error('Failed to load');
-                return resp.text();
-            })
-            .then(function(html) {
-                bodyEl.innerHTML = html;
-            })
-            .catch(function() {
-                bodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load alert details.</div>';
-            });
-    };
-
-    document.getElementById('alertDetailModal').addEventListener('hidden.bs.modal', function() {
-        if (detailDirty) location.reload();
-    });
-
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('#alertDetailModal .review-action-btn')) {
-            detailDirty = true;
-        }
-    });
-})();
-</script>
+{% include 'partials/revenue_alert_preview.html' %}
 <script src="{{ url_for('static', filename='js/revenue-bucket-filter.js') }}"></script>
 <script>RevenueBucketFilter.init({ containerId: 'bucketFilterContainer' });</script>
 {% endblock %}

@@ -1,0 +1,43 @@
+{% from 'partials/_revenue_cells.html' import revenue_cell %}
+{% set recent_months = bucket_data.get('recent_months', []) %}
+{% set product_summary = bucket_data.get('product_summary', []) %}
+{% set bucket_month_revenues = bucket_data.get('bucket_month_revenues', {}) %}
+{% set bucket_total = bucket_data.get('bucket_total', 0) %}
+<div class="sb-revenue-table-scroll" tabindex="0" role="region"
+     aria-label="{{ revenue_bucket }} product revenue by month">
+    <table class="sb-revenue-table" data-sb-sortable
+           data-sb-sort-key="{{ table_sort_key|default('products:' ~ revenue_bucket) }}"
+           data-sb-sort-default-column="{{ recent_months|length + 1 }}"
+           data-sb-sort-default-direction="descending">
+        <caption>{{ revenue_bucket }} monthly product revenue and totals</caption>
+        <thead>
+            <tr>
+                <th scope="col" data-sb-sort-type="text">Product</th>
+                {% for month in recent_months %}<th scope="col" data-sb-sort-type="number">{{ month }}</th>{% endfor %}
+                <th scope="col" data-sb-sort-type="number">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if show_bucket_total|default(true) %}
+            <tr class="sb-revenue-total" data-sb-sort-fixed>
+                <th scope="row">{{ revenue_bucket }} Total</th>
+                {% for month in recent_months %}
+                {% set prev_month = recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
+                <td data-sb-sort-value="{{ bucket_month_revenues.get(month, '') }}">{{ revenue_cell(bucket_month_revenues.get(month, 0), bucket_month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
+                {% endfor %}
+                <td data-sb-sort-value="{{ bucket_total }}">${{ '{:,.0f}'.format(bucket_total) }}</td>
+            </tr>
+            {% endif %}
+            {% for p in product_summary %}
+            <tr>
+                <th scope="row"><a href="{{ url_for('revenue.revenue_product_view', product=p.product) }}">{{ p.product }}</a></th>
+                {% for month in recent_months %}
+                {% set prev_month = recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
+                <td data-sb-sort-value="{{ p.month_revenues.get(month, '') }}">{{ revenue_cell(p.month_revenues.get(month, 0), p.month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>
+                {% endfor %}
+                <td data-sb-sort-value="{{ p.total_revenue }}">${{ '{:,.0f}'.format(p.total_revenue) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,18 @@
+/* Manual identity and coverage editing in the native desktop frame. */
+.sb-se-form .mf-reading { padding: 28px 32px; }
+.sef-layout { max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 48px; }
+.sef-layout h2 { margin: 0 0 24px; font: 600 15px/1.4 var(--sb-ui-font); }
+.sef-layout select { width: 100%; padding: 8px 10px; border: 1px solid var(--sb-ui-control-line); border-radius: 0; background: var(--sb-ui-context); color: var(--sb-ui-ink); font: 14px/1.5 var(--sb-ui-font); }
+.sef-layout select:focus-visible, .sef-choices input:focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.sef-alias { display: flex; align-items: stretch; }
+.sef-alias input { min-width: 0; }
+.sef-alias > span { display: flex; align-items: center; padding: 0 10px; border: 1px solid var(--sb-ui-control-line); border-left: 0; color: var(--sb-ui-muted); background: var(--sb-ui-context); font-size: 13px; }
+.sef-pods { padding-left: 32px; border-left: 1px solid var(--sb-ui-line); }
+.sef-pods > p { color: var(--sb-ui-muted); font-size: 12px; margin: 0 0 16px; }
+.sef-choices { max-height: 360px; overflow: auto; scrollbar-width: thin; }
+.sef-choices label { display: flex; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--sb-ui-grid-line); cursor: pointer; font-size: 14px; }
+.sef-choices input { accent-color: var(--sb-ui-accent); margin: 0; }
+.sef-choices i { color: var(--sb-ui-muted); margin-right: 4px; }
+.sef-commands { display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-top: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }
+.sef-commands > span { flex: 1; color: var(--sb-ui-muted); font-size: 12px; }
+.sef-commands a { color: var(--sb-ui-ink); }

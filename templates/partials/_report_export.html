@@ -11,23 +11,33 @@
         export_title     - title shown in the copied HTML (defaults to page <h2> text)
 #}
 
-<div class="btn-group btn-group-sm" role="group" id="reportExportBtnGroup">
-    <button type="button" class="btn btn-outline-secondary" onclick="exportReportCSV()" title="Download as CSV">
+<div class="sb-revenue-export" role="group" aria-label="Export report" id="reportExportBtnGroup">
+    <button type="button" class="sb-revenue-command" onclick="exportReportCSV()" title="Download as CSV">
         <i class="bi bi-filetype-csv"></i> CSV
     </button>
-    <button type="button" class="btn btn-outline-secondary" onclick="copyReportForEmail()" title="Copy table for pasting into Teams or Outlook email">
+    <button type="button" class="sb-revenue-command" onclick="copyReportForEmail()" title="Copy table for pasting into Teams or Outlook email">
         <i class="bi bi-clipboard"></i> Copy to Clipboard
     </button>
-    <button type="button" class="btn btn-outline-secondary" onclick="downloadReportEmail()" title="Download .eml file to open in Outlook as a ready-to-send email">
+    <button type="button" class="sb-revenue-command" onclick="downloadReportEmail()" title="Download .eml file to open in Outlook as a ready-to-send email">
         <i class="bi bi-envelope"></i> Email
     </button>
 </div>
 
+<template id="reportExportNoticeTemplate">
+    <div class="sb-notice sb-revenue-export-notice">
+        <i class="bi bi-info-circle sb-notice-icon" aria-hidden="true"></i>
+        <div class="sb-notice-body"></div>
+        <button type="button" class="sb-notice-dismiss" data-sb-notice-dismiss aria-label="Dismiss export notification">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+    </div>
+</template>
+
 <script>
 (function() {
-    const TABLE_SELECTOR = '{{ export_table_id }}';
-    const FILENAME = '{{ export_filename | default("report", true) }}';
-    const CUSTOM_TITLE = '{{ export_title | default("", true) }}';
+    const TABLE_SELECTOR = {{ export_table_id|tojson }};
+    const FILENAME = {{ export_filename|default("report", true)|tojson }};
+    const CUSTOM_TITLE = {{ export_title|default("", true)|tojson }};
 
     /**
      * Find all target tables. Excludes tables inside modals or popovers
@@ -35,7 +45,7 @@
      */
     function getTables() {
         return Array.from(document.querySelectorAll(TABLE_SELECTOR))
-            .filter(t => !t.closest('.modal, .popover'));
+            .filter(t => !t.closest('dialog, [popover]'));
     }
 
     /**
@@ -72,7 +82,6 @@
 
         // Body rows (skip hidden rows)
         table.querySelectorAll('tbody tr').forEach(tr => {
-            if (tr.offsetParent === null && !tr.closest('.collapse.show') && tr.style.display === 'none') return;
             // Skip rows hidden by filters
             if (tr.style.display === 'none') return;
             const cells = [];
@@ -86,9 +95,13 @@
 
     /**
      * Clean cell text: strip extra whitespace, pull text content,
-     * handle badges/spans, skip icon-only elements.
+     * handle badges/spans, skip icon-only elements. Native interactive headers
+     * supply data-export-label so removing buttons does not remove their labels.
      */
     function cleanCellText(cell) {
+        if (cell.hasAttribute('data-export-label')) {
+            return cell.getAttribute('data-export-label');
+        }
         // Boolean columns: render as Yes/blank for CSV
         if (cell.hasAttribute('data-export-bool')) {
             return cell.getAttribute('data-export-bool') === 'true' ? 'Yes' : '';
@@ -96,9 +109,9 @@
         // Clone to avoid modifying DOM
         const clone = cell.cloneNode(true);
         // Remove icon-only elements (bi-* icons, spinners)
-        clone.querySelectorAll('i.bi, .spinner-border').forEach(el => el.remove());
+        clone.querySelectorAll('i.bi, [aria-hidden="true"]').forEach(el => el.remove());
         // Remove buttons that aren't text content
-        clone.querySelectorAll('button, .btn-close').forEach(el => el.remove());
+        clone.querySelectorAll('button').forEach(el => el.remove());
         // Get text, collapse whitespace
         let text = (clone.textContent || '').replace(/\s+/g, ' ').trim();
         // Strip currency symbols for cleaner CSV (keep the number)
@@ -259,9 +272,10 @@
 
         const blob = new Blob([html], { type: 'text/html' });
         const tables = getTables();
-        const plainText = tables.length > 0
-            ? tableToRows(tables[0]).map(r => r.join('\t')).join('\n')
-            : '';
+        const plainRows = tables.flatMap((table, index) => [
+            ...(index ? [[]] : []), ...tableToRows(table),
+        ]);
+        const plainText = plainRows.map(r => r.join('\t')).join('\n');
 
         navigator.clipboard.write([
             new ClipboardItem({
@@ -390,19 +404,18 @@
         const existing = document.getElementById('exportToast');
         if (existing) existing.remove();
 
-        const toast = document.createElement('div');
+        const toast = document.getElementById('reportExportNoticeTemplate')
+            .content.firstElementChild.cloneNode(true);
         toast.id = 'exportToast';
-        toast.className = 'alert alert-' + type + ' position-fixed shadow-sm';
-        toast.style.cssText = 'bottom: 1.5rem; right: 1.5rem; z-index: 9999; min-width: 250px; font-size: 0.9em; padding: 0.6rem 1rem; opacity: 0; transition: opacity 0.3s;';
-        toast.innerHTML = '<i class="bi bi-' + (type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle') + '"></i> ' + message;
+        toast.dataset.sbTone = type;
+        toast.setAttribute('role', type === 'danger' || type === 'warning' ? 'alert' : 'status');
+        toast.querySelector('.sb-notice-body').textContent = message;
         document.body.appendChild(toast);
-        // Fade in
-        requestAnimationFrame(() => { toast.style.opacity = '1'; });
-        // Auto-remove after 3 seconds
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        if (type !== 'danger' && type !== 'warning') {
+            setTimeout(() => {
+                if (!toast.contains(document.activeElement)) toast.remove();
+            }, 3000);
+        }
     }
 })();
 </script>

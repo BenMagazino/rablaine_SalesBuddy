@@ -831,5 +831,6 @@ class TestCallsToNotesRename:
         """Topics list should say 'notes' not 'calls'."""
         resp = client.get('/topics')
         html = resp.data.decode()
-        assert 'By Notes' in html
+        assert 'data-export-label="Notes"' in html
+        assert 'Alphabetical' in html
         assert 'By Calls' not in html

@@ -1,0 +1,22 @@
+const themes = [
+  { id: 'ice-cyan', number: '01', name: 'Ice Cyan',
+    tone: 'Cool / closest to the logo',
+    description: 'An icy, blue-leaning cyan for Today, selections, and primary actions. Crisp without the original mint-green highlights.',
+    distinction: 'Closest to the logo palette. The accent is lighter and more cyan than the subdued blue notes.' },
+  { id: 'lavender', number: '02', name: 'Muted Lavender',
+    tone: 'Distinct / calm contrast',
+    description: 'A soft lavender accent against charcoal and blue notes. Clearly different from the content color, without a saturated purple surface.',
+    distinction: 'Strong hue separation without looking like a warning. No gradients or changes to the logo.' },
+  { id: 'copper', number: '03', name: 'Soft Copper',
+    tone: 'Warm / cool-content contrast',
+    description: 'A muted peach-copper accent warms the controls while the notes stay blue. The surface itself remains neutral charcoal.',
+    distinction: 'The warmest accent option. Copper controls remain separate from the amber warning and rose alert markers.' },
+  { id: 'ivory', number: '04', name: 'Warm Ivory',
+    tone: 'Understated / logo-forward',
+    description: 'A pale, warm ivory for highlighted controls and Today. Quiet and almost monochrome, letting the unchanged logo carry the color.',
+    distinction: 'Light-versus-dark contrast does most of the work. The filled blue notes remain visually distinct.' },
+  { id: 'silver-blue', number: '05', name: 'Silver Blue',
+    tone: 'Familiar / subtle contrast',
+    description: 'A silver-blue accent with very little saturation. Familiar tool styling, with light controls above the darker blue note content.',
+    distinction: 'The least dramatic option. Compare it at full size to decide whether it separates highlights from notes enough.' }
+];

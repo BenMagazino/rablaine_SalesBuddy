@@ -1,0 +1,40 @@
+.sb-revenue-customer .sb-revenue-page-header h1 { min-width: 0; }
+.sb-page-frame .sb-revenue-customer [data-sb-page-body] { overflow: auto; }
+.sb-revenue-customer-scroll { background: var(--sb-ui-surface); }
+.sb-revenue-customer-scroll:focus-visible { outline-offset: -2px; }
+.sb-revenue-customer-analyses > h2 { margin: 0; padding: 12px 24px; font: 600 13px/1.5 var(--sb-ui-font); color: var(--sb-ui-muted); background: var(--sb-ui-surface); border-bottom: 1px solid var(--sb-ui-line); }
+.sb-revenue-customer-analysis, .sb-revenue-customer-history { padding: 16px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-revenue-customer-analysis .sb-revenue-detail-header { padding-bottom: 10px; border-bottom: 0; }
+.sb-revenue-customer-analysis .sb-revenue-summary { padding: 8px 0; }
+.sb-revenue-customer-analysis .sb-review-previous { margin: 8px 0 0; }
+.sb-revenue-customer-history { scroll-margin-top: 0; }
+.sb-revenue-customer-history h2 { margin: 0; font: 600 15px/1.5 var(--sb-ui-font); }
+.sb-revenue-customer-history .sb-revenue-products-header { padding-bottom: 12px; }
+.sb-revenue-customer .sb-revenue-table-scroll:focus-visible { outline-offset: -2px; }
+.sb-revenue-customer-filter-empty { margin: 0; padding: 24px; color: var(--sb-ui-muted); }
+.sb-revenue-customer [hidden] { display: none !important; }
+.sb-revenue-customer-view-notice { flex-shrink: 0; margin: 0; padding: 8px 24px; color: var(--sb-ui-danger); }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-customer-scroll { display: grid; grid-template-columns: 340px minmax(0, 1fr); overflow: hidden; }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-customer-context { min-height: 0; overflow: auto; border-right: 1px solid var(--sb-ui-line); }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-customer-history-area { min-height: 0; overflow: auto; }
+.sb-revenue-customer-context:focus-visible, .sb-revenue-customer-history-area:focus-visible { outline-offset: -2px; }
+.sb-revenue-customer-nav { padding: 8px 16px; border-bottom: 1px solid var(--sb-ui-line); background: var(--sb-ui-surface); }
+.sb-revenue-customer-nav h2 { margin: 10px 8px 4px; font: 500 11px/1.5 var(--sb-ui-font); color: var(--sb-ui-muted); }
+.sb-revenue-customer-nav a { display: flex; justify-content: space-between; gap: 12px; padding: 5px 8px; color: var(--sb-ui-ink); font-size: 12px; text-decoration: none; overflow-wrap: anywhere; }
+.sb-revenue-customer-nav a span { color: var(--sb-ui-muted); white-space: nowrap; }
+.sb-revenue-customer-nav a:hover { background: var(--sb-ui-control-hover); }
+.sb-revenue-customer-nav a[aria-current="true"] { color: var(--sb-ui-accent); background: var(--sb-ui-selection); }
+.sb-revenue-customer-nav a:focus-visible { outline-offset: -2px; }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-customer-analyses > h2 { display: none; }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-customer-analysis { padding: 16px 24px; border-bottom: 0; }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-detail-header { display: block; }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-header-meta { justify-content: flex-start; gap: 8px; margin-top: 10px; }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-review-meta { width: 100%; }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-summary { display: block; }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-guidance { margin-top: 20px; padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--sb-ui-line); }
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-customer-history .sb-revenue-table-scroll,
+.sb-revenue-customer[data-sb-customer-enhanced="true"] .sb-revenue-customer-history .sb-revenue-products-header { max-width: 1120px; }
+.sb-revenue-customer-overview-context, .sb-revenue-customer-no-analysis { padding: 16px 24px; }
+.sb-revenue-customer-overview-context h2, .sb-revenue-customer-no-analysis h2 { margin: 0 0 16px; font: 600 15px/1.5 var(--sb-ui-font); }
+.sb-revenue-customer-overview-context p, .sb-revenue-customer-no-analysis p { margin-top: 16px; color: var(--sb-ui-muted); }

@@ -1,0 +1,50 @@
+{% from 'partials/review_action.html' import review_badge %}
+{% from 'partials/_revenue_priority.html' import priority_tone %}
+{% set categories = {'DECLINING': 'Declining', 'RECENT_DIP': 'Recent Dip',
+    'EXPANSION_OPPORTUNITY': 'Expansion', 'VOLATILE': 'Volatile', 'NEW_CUSTOMER': 'New Customer'} %}
+<div class="sb-revenue-queue-view" data-sb-queue-view hidden>
+    <section class="sb-revenue-queue" aria-labelledby="revenueQueueHeading">
+        <header class="sb-revenue-queue-heading">
+            <h2 id="revenueQueueHeading">Alert queue</h2><span>Matches Table order</span>
+        </header>
+        <div class="sb-revenue-queue-items" data-sb-queue-list role="listbox" aria-label="Revenue alerts">
+            {% for a in alerts %}
+            <button type="button" class="sb-revenue-queue-item" role="option"
+                    aria-selected="false" tabindex="-1" data-sb-queue-alert="{{ a.id }}"
+                    data-customer-name="{{ a.customer_name }}"
+                    data-full-url="{{ url_for('customers.customer_view', id=a.customer_id) if a.customer_id else url_for('revenue.revenue_dashboard') }}"
+                    data-full-label="{{ 'Customer Hub' if a.customer_id else 'Revenue Analyzer' }}">
+                <span class="sb-revenue-queue-identity">
+                    <strong>{{ a.customer_name }}</strong>
+                    <span data-tone="{{ priority_tone(a.priority_score) }}"
+                          title="Priority {{ a.priority_score }}"
+                          aria-label="Priority {{ a.priority_score }}">{{ a.priority_score }}</span>
+                </span>
+                <span class="sb-revenue-queue-context">{{ a.bucket }} <span>{{ categories.get(a.category, a.category|replace('_', ' ')|title) }}</span></span>
+                <span class="sb-revenue-queue-outcome">
+                    {% if a.dollars_at_risk > 0 %}<span data-tone="danger">${{ '{:,.0f}'.format(a.dollars_at_risk) }}/mo at risk</span>
+                    {% elif a.dollars_opportunity > 0 %}<span data-tone="positive">${{ '{:,.0f}'.format(a.dollars_opportunity) }}/mo opportunity</span>
+                    {% else %}<span>Needs review</span>{% endif %}
+                    <span data-review-id="{{ a.id }}">{{ review_badge(a) }}</span>
+                </span>
+            </button>
+            {% endfor %}
+        </div>
+        <p class="sb-revenue-queue-empty" data-sb-queue-empty role="status" hidden>No alerts in these buckets. Choose different buckets to see alerts.</p>
+    </section>
+    <section class="sb-revenue-inspector" data-sb-queue-inspector aria-labelledby="revenueInspectorTitle">
+        <header class="sb-revenue-inspector-heading">
+            <h2 id="revenueInspectorTitle" data-sb-record-title tabindex="-1">Select an alert</h2>
+            <a class="sb-revenue-command" data-sb-record-full-link href="{{ url_for('revenue.revenue_dashboard') }}">Revenue Analyzer</a>
+        </header>
+        <div class="sb-revenue-inspector-body">
+            <p data-sb-record-loading role="status" hidden>Loading alert details...</p>
+            <div data-sb-record-error role="alert" hidden>
+                <p>Could not load this alert.</p>
+                <button class="sb-revenue-command" data-sb-record-retry type="button">Retry</button>
+            </div>
+            <div data-sb-record-content hidden></div>
+        </div>
+        <p class="sb-revenue-inspector-status" data-sb-record-status role="status" aria-live="polite"></p>
+    </section>
+</div>

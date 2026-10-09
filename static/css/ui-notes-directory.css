@@ -1,0 +1,76 @@
+/* A chronological reading stream, not a sortable rich-text table. */
+.sb-notes-directory { color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); }
+.sb-notes-directory * { box-sizing: border-box; }
+.sb-notes-directory [hidden] { display: none !important; }
+.notes-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--sb-ui-line);
+}
+.notes-heading h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.notes-commands, .notes-filters { display: flex; align-items: center; gap: 8px; }
+.notes-commands label { margin-left: 16px; color: var(--sb-ui-muted); font-size: 12px; }
+.notes-commands select {
+    padding: 4px 8px;
+    border: 1px solid var(--sb-ui-line);
+    border-radius: var(--sb-ui-radius);
+    background: var(--sb-ui-surface);
+    color: var(--sb-ui-ink);
+    font: 12px var(--sb-ui-font);
+}
+.notes-filters a, .notes-pagination a, .notes-pagination > span {
+    padding: 4px 9px;
+    border-radius: var(--sb-ui-radius);
+    color: var(--sb-ui-muted);
+    font-size: 12px;
+    text-decoration: none;
+}
+.notes-filters a[aria-current], .notes-pagination a[aria-current] {
+    background: var(--sb-ui-selection);
+    color: var(--sb-ui-accent);
+}
+.notes-filters a:hover, .notes-pagination a:hover { background: var(--sb-ui-raised); color: var(--sb-ui-ink); }
+.sb-notes-directory .notes-reading { overflow: auto; overscroll-behavior: contain; overflow-anchor: none; scrollbar-gutter: stable; }
+.notes-stream { max-width: 1120px; padding: 0 24px; }
+.notes-entry { padding: 16px 0; border-bottom: 1px solid var(--sb-ui-line); cursor: pointer; }
+.notes-entry:hover { background: var(--sb-ui-raised); }
+.notes-entry-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; }
+.notes-entry-heading h2 { min-width: 0; margin: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.notes-entry a { text-decoration: none; }
+.notes-entry a:hover { text-decoration: underline; }
+.notes-customer, .notes-tpid a { color: var(--sb-ui-accent); }
+.notes-tpid, .notes-general { color: var(--sb-ui-muted); }
+.notes-tpid { font-size: 12px; font-weight: 400; }
+.notes-date { flex-shrink: 0; color: var(--sb-ui-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.notes-excerpt { display: block; margin: 8px 0; color: var(--sb-ui-ink); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.notes-relationships { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.notes-tag {
+    --notes-tag-ink: var(--sb-ui-accent);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    max-width: 100%;
+    padding: 2px 6px;
+    border: 1px solid color-mix(in oklab, var(--notes-tag-ink) 30%, var(--sb-ui-line));
+    border-radius: var(--sb-ui-radius);
+    background: color-mix(in oklab, var(--notes-tag-ink) 8%, var(--sb-ui-surface));
+    color: var(--notes-tag-ink);
+    font-size: 11px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+.notes-tag .bi { flex-shrink: 0; }
+.notes-tag-territory { --notes-tag-ink: var(--sb-ui-accent); }
+.notes-tag-topic { --notes-tag-ink: var(--sb-ui-warning); }
+.notes-tag-partner { --notes-tag-ink: var(--sb-ui-task-rail); }
+.notes-tag-engagement { --notes-tag-ink: var(--sb-ui-milestone-rail); }
+.notes-pagination { display: flex; align-items: center; gap: 4px; padding: 8px 24px; border-top: 1px solid var(--sb-ui-line); }
+.notes-pagination [aria-disabled] { opacity: .5; }
+.notes-empty { margin: 24px; color: var(--sb-ui-muted); font-size: 14px; }
+.notes-empty-create { padding: 0; border: 0; background: none; color: var(--sb-ui-accent); font: inherit; text-decoration: underline; cursor: pointer; }
+.notes-notice { margin: 0; padding: 8px 24px; background: var(--sb-ui-danger-bg); color: var(--sb-ui-danger); font-size: 12px; }
+.sb-notes-directory :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.sb-notes-directory .notes-reading:focus-visible { outline-offset: -3px; }

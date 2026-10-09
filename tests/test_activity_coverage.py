@@ -28,6 +28,79 @@ from app.services import activity_coverage
 from app.services import activity_enrichment
 
 
+@pytest.mark.parametrize('query,label', [
+    ('?view=all', 'Meeting audit'),
+    ('?lens=milestones', 'Fiscal-year milestone HVA audit'),
+    ('?lens=milestones&coverage=caip', 'CAIP milestone audit'),
+])
+def test_coverage_native_frame_owns_reading_and_status(client, query, label):
+    """Every methodology shares native bands, a reading area and the window footer."""
+    response = client.get('/reports/activity-coverage' + query)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, 'html.parser')
+    assert 'sb-page-frame' in soup.body.get('class', [])
+    surface = soup.select_one('.sb-activity-coverage[data-sb-page-surface]')
+    assert surface is not None
+    assert surface['data-embedded'] == 'false'
+    assert surface.select_one('h1#activityCoverageTitle').text == 'Activity Coverage'
+    reading = surface.select_one('#activityCoverageReading[data-sb-page-body]')
+    assert reading['aria-label'] == label
+    assert reading.parent == surface
+    assert surface.select_one('.coverage-header[data-sb-page-band]')
+    assert surface.select_one('.coverage-navigation[data-sb-page-band]')
+    assert soup.select_one('body > footer.sb-page-status #activityCoverageRows')
+    assert not surface.select('[data-bs-toggle], .btn, .badge, .form-control, .form-select')
+    assert not surface.select('style')
+    assert soup.select_one('link[href$="css/ui-activity-coverage.css"]')
+    assert surface.select_one('script[src$="js/ui-activity-coverage.js"]')
+
+
+@pytest.mark.parametrize('query', [
+    '?view=all', '?lens=milestones', '?lens=milestones&coverage=caip',
+])
+def test_coverage_embed_leaves_window_ownership_to_host(client, query):
+    """Embedded audits retain workflows without claiming the host frame or status footer."""
+    response = client.get('/reports/activity-coverage' + query + '&embed=1')
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, 'html.parser')
+    assert 'sb-page-frame' not in soup.body.get('class', [])
+    assert soup.select_one('.sb-activity-coverage')['data-embedded'] == 'true'
+    assert not soup.select_one('footer.sb-page-status')
+    assert soup.select_one('#activityCoverageReading')
+
+
+def test_caip_does_not_claim_the_fy_data_filter(client):
+    """Retain scope for navigation without mislabeling the independent CAIP population."""
+    fy = client.get('/reports/activity-coverage?lens=milestones&scope=fy27-data')
+    caip = client.get(
+        '/reports/activity-coverage?lens=milestones&coverage=caip&scope=fy27-data'
+    )
+    assert BeautifulSoup(fy.data, 'html.parser').select_one('.coverage-scope')
+    assert not BeautifulSoup(caip.data, 'html.parser').select_one('.coverage-scope')
+
+
+def test_recurring_meeting_uses_native_dismiss_popover(client, app, coverage_data):
+    """A recurring provider snapshot renders the existing occurrence/series contracts."""
+    with app.app_context():
+        meeting = db.session.get(PrefetchedMeeting, coverage_data['meeting_id'])
+        meeting.is_recurring = True
+        db.session.commit()
+        report_data = activity_coverage.get_report_data(view_all=True)
+        assert report_data['meetings'][0]['is_recurring']
+        with patch('app.services.activity_coverage.get_report_data', return_value=report_data):
+            response = client.get('/reports/activity-coverage?view=all')
+    soup = BeautifulSoup(response.data, 'html.parser')
+    row = soup.select_one(f'.meeting-row[data-meeting-id="{coverage_data["meeting_id"]}"]')
+    trigger = row.select_one('[popovertarget]')
+    assert trigger is not None, str(row.select_one('.meeting-actions'))
+    assert trigger['type'] == 'button'
+    popup = row.select_one(f'#{trigger["popovertarget"]}[popover]')
+    assert [button['data-series'] for button in popup.select('.dismiss-meeting')] == [
+        'false', 'true',
+    ]
+    assert not row.select('[data-bs-toggle], .dropdown-menu')
+
+
 @pytest.fixture
 def coverage_data(app):
     """Create one matched meeting and milestone for coverage tests."""

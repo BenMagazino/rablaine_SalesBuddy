@@ -2,14 +2,44 @@
 Territory routes for Sales Buddy.
 Handles territory listing, creation, viewing, and editing.
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, session
 from datetime import timedelta
+import logging
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import db, Territory, Seller, Customer, Note, POD, UserPreference, utc_now
 
 # Create blueprint
 territories_bp = Blueprint('territories', __name__)
+logger = logging.getLogger(__name__)
+
+
+def _render_territory_form(territory: Territory | None, values: dict | None = None):
+    """Render the original alphabetical duplicate reference and retained input."""
+    query = Territory.query
+    if territory:
+        query = query.filter(Territory.id != territory.id)
+    return render_template(
+        'territory_form.html', territory=territory,
+        existing_territories=query.order_by(Territory.name).all(), form_values=values,
+    )
+
+
+def _retain_territory_input() -> None:
+    """Retain raw input once across the original validation redirect."""
+    session['territory_form_failure'] = {
+        'path': request.path, 'values': {'name': request.form.get('name', '')},
+    }
+
+
+def _territory_failed_input() -> dict | None:
+    """Consume failed entries only on their matching New or Edit endpoint."""
+    draft = session.get('territory_form_failure')
+    if draft and draft.get('path') == request.path:
+        session.pop('territory_form_failure')
+        return draft['values']
+    return None
 
 
 @territories_bp.route('/territories')
@@ -31,6 +61,7 @@ def territory_create():
         
         if not name:
             flash('Territory name is required.', 'danger')
+            _retain_territory_input()
             return redirect(url_for('territories.territory_create'))
         
         # Check for duplicate
@@ -39,16 +70,20 @@ def territory_create():
             flash(f'Territory "{name}" already exists.', 'warning')
             return redirect(url_for('territories.territory_view', id=existing.id))
         
-        territory = Territory(name=name)
-        db.session.add(territory)
-        db.session.commit()
+        try:
+            territory = Territory(name=name)
+            db.session.add(territory)
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            logger.exception('Could not create territory from manual form')
+            flash('Could not save the territory. Your entries are still here.', 'danger')
+            return _render_territory_form(None, {'name': request.form.get('name', '')}), 500
         
         flash(f'Territory "{name}" created successfully!', 'success')
         return redirect(url_for('territories.territories_list'))
     
-    # Show existing territories to prevent duplicates
-    existing_territories = Territory.query.order_by(Territory.name).all()
-    return render_template('territory_form.html', territory=None, existing_territories=existing_territories)
+    return _render_territory_form(None, _territory_failed_input())
 
 
 @territories_bp.route('/territory/<int:id>')
@@ -121,6 +156,7 @@ def territory_edit(id):
         
         if not name:
             flash('Territory name is required.', 'danger')
+            _retain_territory_input()
             return redirect(url_for('territories.territory_edit', id=id))
         
         # Check for duplicate (excluding current territory)
@@ -130,16 +166,24 @@ def territory_edit(id):
         ).first()
         if existing:
             flash(f'Territory "{name}" already exists.', 'warning')
+            _retain_territory_input()
             return redirect(url_for('territories.territory_edit', id=id))
         
-        territory.name = name
-        db.session.commit()
+        try:
+            territory.name = name
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            logger.exception('Could not edit territory %s from manual form', id)
+            flash('Could not save the territory. Your entries are still here.', 'danger')
+            return _render_territory_form(
+                territory, {'name': request.form.get('name', '')},
+            ), 500
         
         flash(f'Territory "{name}" updated successfully!', 'success')
         return redirect(url_for('territories.territory_view', id=territory.id))
     
-    existing_territories = Territory.query.filter(Territory.id != id).order_by(Territory.name).all()
-    return render_template('territory_form.html', territory=territory, existing_territories=existing_territories)
+    return _render_territory_form(territory, _territory_failed_input())
 
 
 @territories_bp.route('/territory/create-inline', methods=['POST'])
@@ -159,4 +203,3 @@ def territory_create_inline():
             flash(f'Territory "{name}" already exists.', 'info')
     
     return redirect(redirect_to)
-

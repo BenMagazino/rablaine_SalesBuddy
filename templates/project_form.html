@@ -1,20 +1,53 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Edit' if project else 'New' }} Project - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestone-form.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-project-form.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Project form status">
+    <span id="projectFormState">{{ 'Existing project' if project else 'New project' }}</span>
+    <span>Manual save · Title required · General notes only</span>
+</footer>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-folder"></i> {{ 'Edit' if project else 'New' }} Project</h1>
-</div>
-
-<form method="POST" class="card">
-    <div class="card-body">
-        {% with flyout_mode=False %}
+<form method="POST" id="projectForm" class="sb-milestone-form sb-project-form sb-directory-frame"
+      data-sb-page-surface data-form-key="{{ 'edit-' ~ project.id if project else 'new' }}"
+      data-posted="{{ 'true' if request.method == 'POST' else 'false' }}"
+      aria-labelledby="projectFormTitle">
+    <header class="mf-heading" data-sb-page-band>
+        <div>
+            <h1 id="projectFormTitle">{{ 'Edit' if project else 'New' }} Project</h1>
+            <p>Internal work, learning and achievements.</p>
+        </div>
+    </header>
+    <p id="projectFormNotice" class="mf-notice" data-sb-page-band role="alert" hidden></p>
+    <div class="mf-reading" data-sb-page-body>
+        {% with flyout_mode=False, native_project_form=True %}
         {% include 'partials/_project_form_fields.html' %}
         {% endwith %}
     </div>
-    <div class="card-footer d-flex justify-content-between">
-        <a href="{{ url_for('projects.project_view', id=project.id) if project else url_for('engagements.engagements_hub') }}" class="btn btn-outline-secondary">Cancel</a>
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> {{ 'Save' if project else 'Create' }}</button>
-    </div>
+    <footer class="pf-commands" data-sb-page-band>
+        <span>Changes stay in this form until you {{ 'save' if project else 'create' }} the project.</span>
+        <a href="{{ url_for('projects.project_view', id=project.id) if project else url_for('engagements.engagements_hub') }}" class="sb-dialog-button">Cancel</a>
+        <button id="projectFormSave" type="submit" class="sb-dialog-button mf-save">
+            <i class="bi bi-check-lg" aria-hidden="true"></i> {{ 'Save' if project else 'Create' }}
+        </button>
+    </footer>
 </form>
+<dialog class="sb-dialog sb-dialog-compact" id="projectFormDiscard"
+        aria-labelledby="projectFormDiscardTitle">
+    <header class="sb-dialog-header"><h2 id="projectFormDiscardTitle">Discard project changes?</h2></header>
+    <div class="sb-dialog-body"><p>These changes have not been saved. Keep editing, or discard them to continue.</p></div>
+    <footer class="sb-dialog-footer">
+        <button type="button" class="sb-dialog-button" data-sb-dialog-close autofocus>Keep editing</button>
+        <button type="button" class="sb-dialog-button" id="projectFormDiscardConfirm">Discard changes</button>
+    </footer>
+</dialog>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-milestone-form.js') }}"></script>
 {% endblock %}

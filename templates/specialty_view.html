@@ -1,87 +1,51 @@
 {% extends "base.html" %}
 {% from 'partials/partner_favicon.html' import partner_favicon %}
 {% block title %}{{ specialty.name }} - Specialties - Sales Buddy{% endblock %}
-
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-specialty-detail.css') }}">
+{% endblock %}
 {% block content %}
-<div class="container-fluid py-4">
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('partners.partners_list') }}">Partners</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('partners.specialties_list') }}">Specialties</a></li>
-            <li class="breadcrumb-item active">{{ specialty.name }}</li>
-        </ol>
-    </nav>
-
-    <div class="row mb-4">
-        <div class="col">
-            <h1>
-                <span class="badge bg-warning text-dark">
-                    <i class="bi bi-star"></i> {{ specialty.name }}
-                </span>
-            </h1>
-            {% if specialty.description %}
-            <p class="text-muted">{{ specialty.description }}</p>
-            {% endif %}
-        </div>
-        <div class="col-auto">
-            <a href="{{ url_for('partners.specialty_edit', id=specialty.id) }}" class="btn btn-outline-primary">
-                <i class="bi bi-pencil"></i> Edit
-            </a>
-            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                <i class="bi bi-trash"></i> Delete
-            </button>
-        </div>
+<section class="sb-specialty-detail sb-directory-frame" data-specialty-detail="{{ specialty.id }}" data-sb-page-surface aria-labelledby="specialtyTitle">
+    <header class="specialty-heading" data-sb-page-band>
+        <h1 id="specialtyTitle"><i class="bi bi-star" aria-hidden="true"></i> {{ specialty.name }}</h1>
+        <a class="sb-dialog-button" href="{{ url_for('partners.specialty_edit', id=specialty.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</a>
+        <button class="sb-dialog-button specialty-danger" type="button" data-sb-dialog="deleteSpecialtyDialog"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
+    </header>
+    {% if specialty.description %}<div class="specialty-description" data-sb-page-band><h2>Description</h2><p>{{ specialty.description }}</p></div>{% endif %}
+    <header class="specialty-band" data-sb-page-band><h2>Partners with this Specialty <span>{{ specialty.partners|length }}</span></h2><span>All associated partners</span></header>
+    <p class="specialty-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="specialty-reading" data-sb-page-body tabindex="0" aria-label="Specialty partners">
+        {% if specialty.partners %}
+        <table class="specialty-table" data-sb-sortable data-sb-sort-key="specialty-{{ specialty.id }}-partners">
+            <thead><tr>
+                <th scope="col" data-sb-sort-type="text" data-export-label="Name">Name</th>
+                <th scope="col" data-sb-sort-type="number" data-export-label="Contacts">Contacts</th>
+                <th scope="col" data-sb-sort-type="number" data-export-label="Notes">Notes</th>
+            </tr></thead>
+            <tbody>{% for partner in specialty.partners|sort(attribute='name') %}
+                <tr data-partner-id="{{ partner.id }}" data-specialty-partner-href="{{ url_for('partners.partner_view', id=partner.id) }}">
+                    <td data-sb-sort-value="{{ partner.name }}"><a class="specialty-partner" href="{{ url_for('partners.partner_view', id=partner.id) }}">{{ partner_favicon(partner) }} {{ partner.name }}</a></td>
+                    <td class="specialty-count" data-sb-sort-value="{{ partner.contacts|length }}">{% if partner.contacts %}{{ partner.contacts|length }} contact{{ 's' if partner.contacts|length != 1 else '' }}{% endif %}</td>
+                    <td class="specialty-count" data-sb-sort-value="{{ partner.notes|length }}">{{ partner.notes|length }} notes</td>
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}<p class="specialty-empty">No partners have this specialty yet</p>{% endif %}
     </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0"><i class="bi bi-building"></i> Partners with this Specialty ({{ specialty.partners|length }})</h5>
-        </div>
-        <div class="card-body p-0">
-            {% if specialty.partners %}
-            <ul class="list-group list-group-flush">
-                {% for partner in specialty.partners|sort(attribute='name') %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                        <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="text-decoration-none">
-                            {{ partner_favicon(partner) }} {{ partner.name }}
-                        </a>
-                        {% if partner.contacts %}
-                        <br><small class="text-muted">{{ partner.contacts|length }} contact{{ 's' if partner.contacts|length != 1 else '' }}</small>
-                        {% endif %}
-                    </div>
-                    <span class="badge bg-secondary">{{ partner.notes|length }} notes</span>
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <div class="p-3 text-center text-muted">
-                No partners have this specialty yet
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Delete Specialty</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete <strong>{{ specialty.name }}</strong>?</p>
-                <p class="text-muted mb-0">This will remove the specialty from all associated partners but will not delete the partners themselves.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ url_for('partners.specialty_delete', id=specialty.id) }}" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-danger">Delete Specialty</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+    <dialog id="deleteSpecialtyDialog" class="sb-dialog sb-dialog--compact" aria-labelledby="deleteSpecialtyTitle" data-sb-backdrop-close="true">
+        <form class="sb-dialog-shell" method="post" action="{{ url_for('partners.specialty_delete', id=specialty.id) }}">
+            <header class="sb-dialog-header"><h2 id="deleteSpecialtyTitle">Delete Specialty</h2><button class="sb-dialog-close" type="button" data-sb-dialog-close aria-label="Cancel deletion">×</button></header>
+            <div class="sb-dialog-body"><p>Are you sure you want to delete <strong>{{ specialty.name }}</strong>?</p><p>This will remove the specialty from all associated partners but will not delete the partners themselves.</p></div>
+            <footer class="sb-dialog-footer"><p data-specialty-delete-status role="status"></p><button class="sb-dialog-button" type="button" data-sb-dialog-close autofocus>Cancel</button><button class="sb-dialog-button specialty-danger" type="submit">Delete Specialty</button></footer>
+        </form>
+    </dialog>
+</section>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Specialty status"><span>{{ specialty.partners|length }} Partners</span><span>All associated partners · Name order by default</span></footer>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-specialty-detail.js') }}"></script>
 {% endblock %}

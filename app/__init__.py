@@ -182,6 +182,8 @@ def create_app():
     # Initialize diagnostic logging (correlation IDs, error capture, pruning)
     from app.services.diagnostic_log import init_diagnostic_log
     init_diagnostic_log(app)
+    from app.routes.errors import register_error_handlers
+    register_error_handlers(app)
 
     # Drain background milestone tracking notifications into flash
     @app.before_request
@@ -240,6 +242,9 @@ def create_app():
     app.register_blueprint(one_on_one_bp)
     from app.routes.alignment import alignment_bp
     app.register_blueprint(alignment_bp)
+
+    from app.services.breadcrumbs import get_breadcrumbs
+    app.jinja_env.globals["get_breadcrumbs"] = get_breadcrumbs
     
     # Start MSX token refresh job (background thread)
     # This keeps the az login token fresh for CRM API calls

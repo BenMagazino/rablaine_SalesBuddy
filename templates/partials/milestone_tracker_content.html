@@ -3,103 +3,84 @@
 {# Optional context: locked_seller (Seller object) - when set, seller filter is fixed #}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 
-<style>
-    .milestone-tracker-instance [data-customer-option].enter-target:not(.active) {
-        background-color: var(--bs-dropdown-link-hover-bg);
-        color: var(--bs-dropdown-link-hover-color);
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-milestone-tracker.css') }}">
+<script src="{{ url_for('static', filename='js/ui-milestone-tracker-actions.js') }}" defer></script>
 
 <div class="milestone-tracker-instance" data-total="{{ milestones|length }}" {% if locked_seller %}data-locked-seller="{{ locked_seller.id }}"{% endif %}>
 
-<!-- Summary Cards -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-                <h3 class="mb-0 text-primary" data-role="totalCount">{{ summary.total_count }}</h3>
-                <p class="text-muted mb-0 small">Milestones</p>
-            </div>
-        </div>
+<div class="mt-summary" data-sb-page-band aria-label="Filtered milestone totals">
+    <div class="mt-metric">
+                <strong data-role="totalCount">{{ summary.total_count }}</strong>
+                <span>Milestones</span>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-                <h3 class="text-success mb-0" data-role="totalValue">
+    <div class="mt-metric">
+                <strong data-role="totalValue">
                     {% if summary.total_monthly_usage %}
                         ${{ "{:,.0f}".format(summary.total_monthly_usage) }}
                     {% else %}
                         $0
                     {% endif %}
-                </h3>
-                <p class="text-muted mb-0 small">Total $ACR/mo</p>
-            </div>
-        </div>
+                </strong>
+                <span>Total $ACR/mo</span>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-                <h3 class="text-danger mb-0" data-role="pastDueCount">{{ summary.past_due_count }}</h3>
-                <p class="text-muted mb-0 small">Past Due</p>
-            </div>
-        </div>
+    <div class="mt-metric">
+                <strong class="mt-danger" data-role="pastDueCount">{{ summary.past_due_count }}</strong>
+                <span>Past Due</span>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-                <h3 class="text-warning mb-0" data-role="thisWeekCount">{{ summary.this_week_count }}</h3>
-                <p class="text-muted mb-0 small">Due This Week</p>
-            </div>
-        </div>
+    <div class="mt-metric">
+                <strong class="mt-warning" data-role="thisWeekCount">{{ summary.this_week_count }}</strong>
+                <span>Due This Week</span>
+    </div>
+    <div class="mt-filter-count">
+        <span data-role="filteredCount" class="mt-muted">{{ milestones|length }} milestones</span>
     </div>
 </div>
 
 <!-- Filters -->
-<div class="card mb-4" data-role="filterCard" style="overflow: visible;">
-    <div class="card-body py-3">
-        <div class="row align-items-center g-2 mb-2" data-role="primaryFilters">
-            <div class="{{ 'col-6' if locked_seller else 'col-5' }}">
-                <input type="search" class="form-control form-control-sm"
+<div class="mt-scope" data-role="filterCard" data-sb-page-band>
+    <div class="mt-filter-row">
+        <div class="mt-controls" data-role="primaryFilters">
+            <div class="mt-search-slot">
+                <input type="search" class="mt-input"
                        data-role="searchFilter" aria-label="Search milestones"
                        placeholder="Search all milestone fields..."
                        title="Search all saved milestone fields, including cached forecast comments">
             </div>
-            <div class="{{ 'col-6' if locked_seller else 'col-4' }}">
+            <div class="mt-customer-slot">
                 <select data-role="customerFilter" hidden aria-hidden="true" tabindex="-1">
                     <option value="">All Customers</option>
                     {% for customer in milestones|map(attribute='customer')|select|unique(attribute='id')|sort(attribute='name') %}
                     <option value="{{ customer.id }}">{{ customer.name }}</option>
                     {% endfor %}
                 </select>
-                <div class="dropdown">
-                    <button type="button" data-role="customerDropdownBtn"
-                            class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-start text-truncate"
-                            data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                <details class="mt-picker">
+                    <summary data-role="customerDropdownBtn"
+                            class="mt-command"
                             aria-expanded="false" aria-label="Customers">
                         All Customers
-                    </button>
-                    <div class="dropdown-menu w-100 p-2">
+                    </summary>
+                    <div class="mt-menu">
                         <input type="search" data-role="customerSearch"
-                               class="form-control form-control-sm mb-2" autocomplete="off"
+                               class="mt-input" autocomplete="off"
                                placeholder="Find a customer..." aria-label="Find a customer">
-                        <button type="button" class="dropdown-item rounded"
+                        <button type="button" class="mt-option"
                                 data-role="customerAll">All Customers</button>
-                        <hr class="dropdown-divider my-2">
+                        <hr>
                         <div data-role="customerOptions" style="max-height: 16rem; overflow-y: auto;">
                             {% for customer in milestones|map(attribute='customer')|select|unique(attribute='id')|sort(attribute='name') %}
-                            <button type="button" class="dropdown-item rounded text-truncate"
+                            <button type="button" class="mt-option"
                                     data-customer-option="{{ customer.id }}"
                                     title="{{ customer.name }}">{{ customer.name }}</button>
                             {% endfor %}
                         </div>
-                        <div data-role="customerNoMatches" class="small text-muted px-2 py-1 d-none"
+                        <div data-role="customerNoMatches" class="mt-muted sb-hidden"
                              role="status">No matching customers</div>
                     </div>
-                </div>
+                </details>
             </div>
             {% if not locked_seller %}
-            <div class="col-3">
-                <select data-role="sellerFilter" class="form-select form-select-sm"
+            <div class="mt-seller-slot">
+                <select data-role="sellerFilter" class="mt-input"
                         aria-label="Sellers">
                     <option value="">All Sellers</option>
                     {% for seller in sellers %}
@@ -109,124 +90,123 @@
             </div>
             {% endif %}
         </div>
-        <div class="row align-items-center g-2" data-role="secondaryFilters">
-            <div class="col-md">
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" data-role="quarterDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+        <div class="mt-controls" data-role="secondaryFilters">
+            <div>
+                <details class="mt-picker">
+                    <summary class="mt-command" data-role="quarterDropdown">
                         <i class="bi bi-calendar3"></i> Quarters
-                    </button>
-                    <ul class="dropdown-menu" style="min-width: 100%;">
+                    </summary>
+                    <ul class="mt-menu">
                         <li>
-                            <button class="dropdown-item small" type="button" data-role="quarterSelectAll">Select All</button>
+                            <button class="mt-option" type="button" data-role="quarterSelectAll">Select All</button>
                         </li>
                         <li>
-                            <button class="dropdown-item small" type="button" data-role="quarterSelectNone">Clear All</button>
+                            <button class="mt-option" type="button" data-role="quarterSelectNone">Clear All</button>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li><hr></li>
                         {% for q in quarters %}
                         <li>
-                            <label class="dropdown-item small mb-0">
-                                <input class="form-check-input me-2 quarter-checkbox" type="checkbox" value="{{ q }}" checked>
+                            <label class="mt-option">
+                                <input class="quarter-checkbox" type="checkbox" value="{{ q }}" checked>
                                 {{ q }}
                             </label>
                         </li>
                         {% endfor %}
                     </ul>
-                </div>
+                </details>
             </div>
-            <div class="col-md-auto">
-                <select class="form-select form-select-sm" data-role="myTeamFilter">
+            <div>
+                <select class="mt-input" data-role="myTeamFilter" aria-label="Milestone team">
                     <option value="">All Team</option>
                     <option value="on">On Team</option>
                     <option value="off">Off Team</option>
                 </select>
             </div>
-            <div class="col-md">
-                <div class="dropdown" style="width: 100%;">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start" type="button" data-role="statusDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="font-size: 0.875rem;">All Statuses</button>
-                    <ul class="dropdown-menu" style="min-width: 200px; z-index: 1060;">
-                        <li><button class="dropdown-item small" type="button" data-role="statusSelectAll">Select All</button></li>
-                        <li><button class="dropdown-item small" type="button" data-role="statusClear">Clear All</button></li>
-                        <li><hr class="dropdown-divider my-1"></li>
+            <div>
+                <details class="mt-picker">
+                    <summary class="mt-command" data-role="statusDropdownBtn">All Statuses</summary>
+                    <ul class="mt-menu">
+                        <li><button class="mt-option" type="button" data-role="statusSelectAll">Select All</button></li>
+                        <li><button class="mt-option" type="button" data-role="statusClear">Clear All</button></li>
+                        <li><hr></li>
                         {% for sv in ['On Track', 'At Risk', 'Blocked', 'Completed', 'Cancelled', 'Lost to Competitor', 'Hygiene/Duplicate'] %}
                         <li>
-                            <label class="dropdown-item small py-1 d-flex align-items-center gap-2" style="cursor: pointer;">
-                                <input class="form-check-input m-0 status-checkbox" type="checkbox" value="{{ sv }}">
+                            <label class="mt-option">
+                                <input class="status-checkbox" type="checkbox" value="{{ sv }}">
                                 {{ sv }}
                             </label>
                         </li>
                         {% endfor %}
                     </ul>
-                </div>
+                </details>
             </div>
-            <div class="col-md-auto">
-                <select class="form-select form-select-sm" data-role="commitmentFilter">
+            <div>
+                <select class="mt-input" data-role="commitmentFilter" aria-label="Customer commitment">
                     <option value="">All Commitment</option>
                     <option value="Committed">Committed</option>
                     <option value="Uncommitted">Uncommitted</option>
                 </select>
             </div>
-            <div class="col-md">
-                <select data-role="urgencyFilter" class="form-select form-select-sm">
+            <div>
+                <select data-role="urgencyFilter" class="mt-input" aria-label="Due date urgency">
                     <option value="">All Urgency</option>
                     <option value="past_due">Past Due</option>
                     <option value="this_week">Due This Week</option>
                     <option value="this_month">Due This Month</option>
                 </select>
             </div>
-            <div class="col-md">
+            <div>
                 {% if areas %}
-                <div class="dropdown" style="width: 100%;">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start" type="button" data-role="areaDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="font-size: 0.875rem;">All Areas</button>
-                    <ul class="dropdown-menu" style="min-width: 180px; z-index: 1060;">
-                        <li><button class="dropdown-item small" type="button" data-role="areaSelectAll">Select All</button></li>
-                        <li><button class="dropdown-item small" type="button" data-role="areaClear">Clear All</button></li>
-                        <li><hr class="dropdown-divider my-1"></li>
+                <details class="mt-picker">
+                    <summary class="mt-command" data-role="areaDropdownBtn">All Areas</summary>
+                    <ul class="mt-menu">
+                        <li><button class="mt-option" type="button" data-role="areaSelectAll">Select All</button></li>
+                        <li><button class="mt-option" type="button" data-role="areaClear">Clear All</button></li>
+                        <li><hr></li>
                         {% for area in areas %}
                         <li>
-                            <label class="dropdown-item small py-1 d-flex align-items-center gap-2" style="cursor: pointer;">
-                                <input class="form-check-input m-0 area-checkbox" type="checkbox" value="{{ area }}">
+                            <label class="mt-option">
+                                <input class="area-checkbox" type="checkbox" value="{{ area }}">
                                 {{ area }}
                             </label>
                         </li>
                         {% endfor %}
                     </ul>
-                </div>
+                </details>
                 {% endif %}
             </div>
-            <div class="col-md-auto">
-                <button type="button" class="btn btn-sm btn-outline-warning" data-role="favoritesOnlyBtn" title="Show favorites only">
+            <div>
+                <button type="button" class="mt-command" data-role="favoritesOnlyBtn" title="Show favorites only" aria-label="Show favorites only" aria-pressed="false">
                     <i class="bi bi-star"></i>
                 </button>
             </div>
-            <div class="col-md-auto text-end">
-                <span data-role="filteredCount" class="text-muted small">{{ milestones|length }} milestones</span>
-                <button type="button" class="btn btn-sm btn-outline-secondary ms-1" data-role="resetFiltersBtn" title="Reset all filters" style="display: none;">
-                    <i class="bi bi-x-circle"></i> Reset
-                </button>
-            </div>
+            <button type="button" class="mt-command" data-role="resetFiltersBtn" title="Reset all filters" style="display: none;">
+                <i class="bi bi-x-circle"></i> Reset
+            </button>
         </div>
     </div>
 </div>
 
 <!-- Milestones Table -->
+<div class="mt-reading" tabindex="0" aria-label="Milestone reading region" data-sb-page-body>
+<div class="mt-list">
 {% if milestones %}
-<div class="table-responsive">
-    <table class="table table-hover align-middle" id="msListTable" data-role="milestonesTable">
+<div>
+    <table class="mt-table" id="msListTable" data-role="milestonesTable" data-sb-sortable data-sb-sort-key="milestone-tracker-{{ locked_seller.id if locked_seller else 'all' }}">
         <thead>
             <tr>
-                <th style="width: 22%;">Milestone</th>
-                <th style="width: 6%;" class="text-center">Team</th>
-                <th style="width: 14%; cursor: pointer;" class="sortable" data-sort="customer">Customer <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                <th data-sb-sort-type="text" data-export-label="Milestone">Milestone</th>
+                <th data-sb-sort-type="number" data-export-label="Team">Team</th>
+                <th data-sb-sort-type="text" data-export-label="Customer">Customer</th>
                 {% if not locked_seller %}
-                <th style="width: 11%; cursor: pointer;" class="sortable" data-sort="seller">Seller <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                <th data-sb-sort-type="text" data-export-label="Seller">Seller</th>
                 {% endif %}
-                <th style="width: 10%; cursor: pointer;" class="sortable" data-sort="status">Status <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                <th style="width: 11%; cursor: pointer;" class="sortable" data-sort="due-date">Due Date <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                <th style="width: 11%; cursor: pointer;" class="sortable text-end" data-sort="monthly">$ACR/mo <i class="bi bi-arrow-down-up text-muted small"></i></th>
-                <th style="width: 9%;">Workload</th>
-                <th style="width: 3%;" class="text-center" title="Favorites" data-export-skip="always"><i class="bi bi-star text-muted small"></i></th>
-                <th style="width: 5%;" class="text-center" data-export-skip="if-links">MSX</th>
+                <th data-sb-sort-type="number" data-export-label="Status">Status</th>
+                <th data-sb-sort-type="date" data-export-label="Due Date">Due Date</th>
+                <th data-sb-sort-type="number" data-export-label="$ACR/mo">$ACR/mo</th>
+                <th data-sb-sort-type="text" data-export-label="Workload">Workload</th>
+                <th style="width: 3%;" class="mt-centered" title="Favorites" data-export-skip="always"><i class="bi bi-star mt-muted mt-small"></i></th>
+                <th style="width: 5%;" class="mt-centered" data-export-skip="if-links">MSX</th>
             </tr>
         </thead>
         <tbody>
@@ -250,96 +230,96 @@
                 data-search="{{ ms.search_text }}">
                 
                 <!-- Milestone Info -->
-                <td data-export-url="{{ ms.url }}">
-                    <div class="fw-semibold">
+                <td data-sb-sort-value="{{ ms.title }}" data-export-url="{{ ms.url }}">
+                    <div class="mt-title">
                         {{ ms.title }}
                     </div>
                     {% if ms.opportunity_name %}
-                        <div class="text-muted small">
+                        <div class="mt-muted mt-small">
                             <i class="bi bi-cash-stack"></i>
                             {% if ms.opportunity and ms.opportunity.msx_url %}
-                            <a href="{{ ms.opportunity.msx_url }}" class="text-muted text-decoration-none" data-export-url="{{ ms.opportunity.msx_url }}" onclick="event.stopPropagation();" target="_blank">{{ ms.opportunity_name }}</a>
+                            <a href="{{ ms.opportunity.msx_url }}" class="mt-muted mt-link" data-export-url="{{ ms.opportunity.msx_url }}" onclick="event.stopPropagation();" target="_blank">{{ ms.opportunity_name }}</a>
                             {% else %}
                             {{ ms.opportunity_name }}
                             {% endif %}
                         </div>
                     {% endif %}
                     {% if ms.milestone_number %}
-                        <div class="text-muted small">
+                        <div class="mt-muted mt-small">
                             <i class="bi bi-hash"></i> {{ ms.milestone_number }}
                         </div>
                     {% endif %}
                 </td>
                 
                 <!-- Team Status -->
-                <td class="text-center" data-export-bool="{{ 'true' if ms.on_my_team else 'false' }}" onclick="event.stopPropagation();">
+                <td class="mt-team" data-sb-sort-value="{{ 1 if ms.on_my_team else 0 }}" data-export-bool="{{ 'true' if ms.on_my_team else 'false' }}" onclick="event.stopPropagation();">
                     {% if ms.on_my_team %}
-                    <button class="btn btn-sm btn-success team-toggle on-team" data-id="{{ ms.id }}" data-on-team="1" title="On milestone team (click to leave)" onclick="toggleTrackerTeam(this, {{ ms.id }})">
+                    <button class="mt-command team-toggle on-team" data-id="{{ ms.id }}" data-on-team="1" title="On milestone team (click to leave)" aria-label="Leave milestone team" onclick="toggleTrackerTeam(this, {{ ms.id }})">
                         <i class="bi bi-people-fill icon-default"></i><i class="bi bi-person-dash icon-leave"></i>
                     </button>
                     {% elif ms.msx_milestone_id %}
-                    <button class="btn btn-sm btn-outline-success team-toggle" data-id="{{ ms.id }}" data-on-team="0" title="Join milestone team" onclick="toggleTrackerTeam(this, {{ ms.id }})">
+                    <button class="mt-command team-toggle" data-id="{{ ms.id }}" data-on-team="0" title="Join milestone team" aria-label="Join milestone team" onclick="toggleTrackerTeam(this, {{ ms.id }})">
                         <i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i>
                     </button>
                     {% else %}
-                    <span class="text-muted">-</span>
+                    <span class="mt-muted">-</span>
                     {% endif %}
                 </td>
                 
                 <!-- Customer -->
-                <td{% if ms.customer and ms.customer.tpid_url %} data-export-url="{{ ms.customer.tpid_url }}"{% endif %}>
+                <td data-sb-sort-value="{{ ms.customer.name if ms.customer else '' }}"{% if ms.customer and ms.customer.tpid_url %} data-export-url="{{ ms.customer.tpid_url }}"{% endif %}>
                     {% if ms.customer %}
-                        <a href="{{ url_for('customers.customer_view', id=ms.customer.id) }}" class="text-decoration-none" onclick="event.stopPropagation();">
+                        <a href="{{ url_for('customers.customer_view', id=ms.customer.id) }}" class="mt-link" onclick="event.stopPropagation();">
                             {{ customer_favicon(ms.customer) }} {{ ms.customer.name }}
                         </a>
                     {% else %}
-                        <span class="text-muted">-</span>
+                        <span class="mt-muted">-</span>
                     {% endif %}
                 </td>
                 
                 {% if not locked_seller %}
                 <!-- Seller -->
-                <td>
+                <td data-sb-sort-value="{{ ms.seller.name if ms.seller else '' }}">
                     {% if ms.seller %}
                         <a href="{{ url_for('sellers.seller_view', id=ms.seller.id) }}" 
-                           class="badge {{ get_seller_color(ms.seller.id) }} text-decoration-none"
+                           class="mt-tag mt-seller {{ get_seller_color(ms.seller.id) }}"
                            onclick="event.stopPropagation();">
                             <i class="bi bi-person"></i> {{ ms.seller.name }}
                         </a>
                     {% else %}
-                        <span class="text-muted small">Unassigned</span>
+                        <span class="mt-muted mt-small">Unassigned</span>
                     {% endif %}
                 </td>
                 {% endif %}
                 
                 <!-- Status -->
-                <td>
+                <td data-sb-sort-value="{{ ms.status_sort }}">
                     {% if ms.status == 'On Track' %}
-                        <span class="badge bg-success">{{ ms.status }}</span>
+                        <span class="mt-tag is-success">{{ ms.status }}</span>
                     {% elif ms.status == 'At Risk' %}
-                        <span class="badge bg-warning text-dark">{{ ms.status }}</span>
+                        <span class="mt-tag is-warning">{{ ms.status }}</span>
                     {% elif ms.status == 'Blocked' %}
-                        <span class="badge bg-danger">{{ ms.status }}</span>
+                        <span class="mt-tag is-danger">{{ ms.status }}</span>
                     {% elif ms.status == 'Completed' %}
-                        <span class="badge bg-info">{{ ms.status }}</span>
+                        <span class="mt-tag is-info">{{ ms.status }}</span>
                     {% elif ms.status == 'Cancelled' %}
-                        <span class="badge bg-secondary">{{ ms.status }}</span>
+                        <span class="mt-tag is-muted">{{ ms.status }}</span>
                     {% else %}
-                        <span class="badge bg-secondary">{{ ms.status }}</span>
+                        <span class="mt-tag is-muted">{{ ms.status }}</span>
                     {% endif %}
                     {% if ms.customer_commitment == 'Committed' %}
-                        <i class="bi bi-check-circle-fill text-success small" title="Committed"></i>
+                        <i class="bi bi-check-circle-fill mt-success mt-small" title="Committed"></i>
                     {% endif %}
                 </td>
                 
                 <!-- Due Date -->
-                <td>
+                <td class="mt-date" data-sb-sort-value="{{ ms.due_date.strftime('%Y-%m-%d') if ms.due_date else '' }}">
                     {% if ms.due_date %}
-                        <span class="{% if ms.urgency == 'past_due' %}text-danger fw-bold{% elif ms.urgency == 'this_week' %}text-warning fw-semibold{% endif %}">
+                        <span class="{% if ms.urgency == 'past_due' %}mt-danger mt-urgent{% elif ms.urgency == 'this_week' %}mt-warning mt-title{% endif %}">
                             {{ ms.due_date.strftime('%b %d, %Y') }}
                         </span>
                         {% if ms.days_until_due is not none and ms.customer_commitment != 'Committed' %}
-                            <div class="small {% if ms.urgency == 'past_due' %}text-danger{% elif ms.days_until_due <= 7 %}text-warning{% else %}text-muted{% endif %}">
+                            <div class="mt-small {% if ms.urgency == 'past_due' %}mt-danger{% elif ms.days_until_due <= 7 %}mt-warning{% else %}mt-muted{% endif %}">
                                 {% if ms.urgency == 'past_due' %}
                                     {{ (-ms.days_until_due) }}d overdue
                                 {% elif ms.days_until_due == 0 %}
@@ -352,41 +332,42 @@
                             </div>
                         {% endif %}
                     {% else %}
-                        <span class="text-muted">-</span>
+                        <span class="mt-muted">-</span>
                     {% endif %}
                 </td>
                 
                 <!-- Est. Monthly Usage -->
-                <td class="text-end">
+                <td class="mt-number" data-sb-sort-value="{{ ms.monthly_usage if ms.monthly_usage is not none else '' }}">
                     {% if ms.monthly_usage %}
-                        <span class="fw-semibold">${{ "{:,.0f}".format(ms.monthly_usage) }}</span>
+                        <span class="mt-title">${{ "{:,.0f}".format(ms.monthly_usage) }}</span>
                     {% else %}
-                        <span class="text-muted">-</span>
+                        <span class="mt-muted">-</span>
                     {% endif %}
                 </td>
                 
                 <!-- Workload -->
-                <td>
+                <td data-sb-sort-value="{{ ms.workload or '' }}">
                     {% if ms.workload %}
-                        <span class="small">{{ ms.workload }}</span>
+                        <span class="mt-small">{{ ms.workload }}</span>
                     {% else %}
-                        <span class="text-muted">-</span>
+                        <span class="mt-muted">-</span>
                     {% endif %}
                 </td>
                 
                 <!-- Favorite -->
-                <td class="text-center" data-export-skip="always" onclick="event.stopPropagation();">
-                    <button class="btn btn-sm p-0 border-0 bg-transparent"
+                <td class="mt-centered" data-export-skip="always" onclick="event.stopPropagation();">
+                    <button class="mt-command mt-favorite"
                             onclick="toggleMilestoneFavorite(this, {{ ms.id }})"
+                            aria-label="Toggle milestone favorite"
                             title="{% if ms.id in favorited_ms_ids %}Remove from favorites{% else %}Add to favorites{% endif %}">
-                        <i class="bi {% if ms.id in favorited_ms_ids %}bi-star-fill text-warning{% else %}bi-star text-muted{% endif %}"></i>
+                        <i class="bi {% if ms.id in favorited_ms_ids %}bi-star-fill mt-warning{% else %}bi-star mt-muted{% endif %}"></i>
                     </button>
                 </td>
                 
                 <!-- MSX Link -->
-                <td class="text-center" data-export-skip="if-links">
+                <td class="mt-centered" data-export-skip="if-links">
                     {% if ms.url %}
-                        <a href="{{ ms.url }}" target="_blank" class="btn btn-sm btn-external" title="Open in MSX" onclick="event.stopPropagation();">
+                        <a href="{{ ms.url }}" target="_blank" class="mt-command" title="Open in MSX" aria-label="Open milestone in MSX" onclick="event.stopPropagation();">
                             <i class="bi bi-box-arrow-up-right"></i>
                         </a>
                     {% endif %}
@@ -398,10 +379,9 @@
 </div>
 
 {% else %}
-<div class="text-center py-5">
-    <i class="bi bi-flag display-1 text-muted"></i>
-    <h4 class="mt-3 text-muted">No Active Milestones</h4>
-    <p class="text-muted">
+<div class="mt-empty">
+    <h3>No Active Milestones</h3>
+    <p class="mt-muted">
         {% if locked_seller %}
         No active milestones for this seller's customers.
         {% else %}
@@ -410,12 +390,15 @@
         {% endif %}
     </p>
     {% if not locked_seller %}
-    <button id="syncBtnEmpty" class="btn btn-primary" onclick="syncMilestones()">
+    <button id="syncBtnEmpty" class="mt-command is-primary" onclick="syncMilestones()">
         <i class="bi bi-arrow-repeat"></i> Sync from MSX
     </button>
     {% endif %}
 </div>
 {% endif %}
+<p class="mt-empty" data-role="noResults" hidden>No milestones match these filters. Reset filters to return to the full scope.</p>
+</div>
+</div>
 
 </div>{# /.milestone-tracker-instance #}
 
@@ -431,6 +414,17 @@
         container = container.previousElementSibling;
     }
     if (!container) return;
+    container.querySelectorAll('details.mt-picker').forEach(function(picker) {
+        picker.addEventListener('keydown', function(event) {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            picker.open = false;
+            picker.querySelector('summary').focus();
+        });
+        picker.addEventListener('focusout', function(event) {
+            if (event.relatedTarget && !picker.contains(event.relatedTarget)) picker.open = false;
+        });
+    });
 
     var totalMilestones = parseInt(container.dataset.total) || 0;
     var isLocked = container.hasAttribute('data-locked-seller');
@@ -471,8 +465,6 @@
         ? 'salesbuddy_milestone_filters_seller_' + container.dataset.lockedSeller
         : 'salesbuddy_milestone_filters';
 
-    var currentSort = { column: 'monthly', direction: 'desc' };
-
     function highlightCustomerOption(target) {
         qa('[data-customer-option]').forEach(function(button) {
             button.classList.toggle('enter-target', button === target);
@@ -484,11 +476,11 @@
         var matches = [];
         qa('[data-customer-option]').forEach(function(button) {
             var match = button.textContent.toLowerCase().includes(search);
-            button.classList.toggle('d-none', !match);
+            button.classList.toggle('sb-hidden', !match);
             if (match) matches.push(button);
         });
         highlightCustomerOption(search ? matches[0] : null);
-        customerNoMatches.classList.toggle('d-none', matches.length > 0);
+        customerNoMatches.classList.toggle('sb-hidden', matches.length > 0);
         return matches;
     }
 
@@ -506,7 +498,7 @@
     function selectCustomer(customerId) {
         customerFilter.value = customerId;
         applyFilters();
-        bootstrap.Dropdown.getOrCreateInstance(customerDropdownBtn).hide();
+        customerDropdownBtn.closest('details').open = false;
         customerDropdownBtn.focus();
     }
 
@@ -528,10 +520,19 @@
             favoritesOnly: favoritesOnly
         };
         localStorage.setItem(FILTER_KEY, JSON.stringify(state));
+        if (container.closest('[data-sb-page-surface]')) {
+            var entry = window.history.state || {};
+            window.history.replaceState({...entry, milestoneTracker: {
+                ...entry.milestoneTracker, filters: state
+            }}, '');
+        }
     }
 
     function restoreFilters() {
-        var raw = localStorage.getItem(FILTER_KEY);
+        var entry = window.history && window.history.state;
+        var saved = container.closest('[data-sb-page-surface]') && entry
+            && entry.milestoneTracker && entry.milestoneTracker.filters;
+        var raw = saved ? JSON.stringify(saved) : localStorage.getItem(FILTER_KEY);
         if (!raw) return;
         try {
             var state = JSON.parse(raw);
@@ -561,8 +562,7 @@
             if (state.favoritesOnly) {
                 favoritesOnly = true;
                 if (favoritesOnlyBtn) {
-                    favoritesOnlyBtn.classList.remove('btn-outline-warning');
-                    favoritesOnlyBtn.classList.add('btn-warning');
+                    favoritesOnlyBtn.classList.add('is-favorites');
                 }
             }
         } catch (e) {
@@ -602,8 +602,7 @@
         if (commitmentFilter) commitmentFilter.value = '';
         favoritesOnly = false;
         if (favoritesOnlyBtn) {
-            favoritesOnlyBtn.classList.remove('btn-warning');
-            favoritesOnlyBtn.classList.add('btn-outline-warning');
+            favoritesOnlyBtn.classList.remove('is-favorites');
         }
         saveFilters();
         applyFilters();
@@ -656,6 +655,10 @@
             : '$0';
         pastDueCountEl.textContent = visiblePastDue;
         thisWeekCountEl.textContent = visibleThisWeek;
+        if (q('noResults')) q('noResults').hidden = visibleCount > 0 || totalMilestones === 0;
+        var status = document.getElementById('trackerStatus');
+        if (status) status.textContent = filteredCount.textContent;
+        if (favoritesOnlyBtn) favoritesOnlyBtn.setAttribute('aria-pressed', String(favoritesOnly));
         updateQuarterButtonText();
         updateCustomerButtonText();
         updateStatusButtonText();
@@ -690,6 +693,7 @@
             var selected = Array.from(qa('.quarter-checkbox:checked')).map(function(cb) { return cb.value; });
             quarterDropdown.innerHTML = '<i class="bi bi-calendar3"></i> ' + selected.join(', ');
         }
+        quarterDropdown.title = quarterDropdown.textContent.trim();
     }
 
     function updateStatusButtonText() {
@@ -702,6 +706,7 @@
         } else {
             statusDropdownBtn.textContent = checked.length + ' Statuses';
         }
+        statusDropdownBtn.title = statusDropdownBtn.textContent;
     }
 
     function updateAreaButtonText() {
@@ -714,48 +719,7 @@
         } else {
             areaDropdownBtn.textContent = checked.length + ' Areas';
         }
-    }
-
-    // ---- Sorting ----
-    function sortTable(column) {
-        if (!table) return;
-        var tbody = table.querySelector('tbody');
-        var rows = Array.from(tbody.querySelectorAll('.milestone-row'));
-
-        if (currentSort.column === column) {
-            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-            currentSort.column = column;
-            currentSort.direction = (column === 'monthly') ? 'desc' : 'asc';
-        }
-        var dir = currentSort.direction === 'asc' ? 1 : -1;
-
-        rows.sort(function(a, b) {
-            var va, vb;
-            switch (column) {
-                case 'customer': va = a.dataset.customer || ''; vb = b.dataset.customer || ''; return dir * va.localeCompare(vb);
-                case 'seller': va = a.dataset.sellerName || 'zzz'; vb = b.dataset.sellerName || 'zzz'; return dir * va.localeCompare(vb);
-                case 'status': va = parseInt(a.dataset.statusSort) || 99; vb = parseInt(b.dataset.statusSort) || 99; return dir * (va - vb);
-                case 'due-date': va = a.dataset.dueDate || '9999-12-31'; vb = b.dataset.dueDate || '9999-12-31'; return dir * va.localeCompare(vb);
-                case 'monthly': va = parseFloat(a.dataset.monthly) || 0; vb = parseFloat(b.dataset.monthly) || 0; return dir * (va - vb);
-                default: return 0;
-            }
-        });
-        rows.forEach(function(r) { tbody.appendChild(r); });
-        updateSortIndicators();
-    }
-
-    function updateSortIndicators() {
-        qa('.sortable i').forEach(function(icon) {
-            icon.className = 'bi bi-arrow-down-up text-muted small';
-        });
-        var activeHeader = container.querySelector('.sortable[data-sort="' + currentSort.column + '"]');
-        if (activeHeader) {
-            var icon = activeHeader.querySelector('i');
-            icon.className = currentSort.direction === 'asc'
-                ? 'bi bi-sort-up small text-info'
-                : 'bi bi-sort-down small text-info';
-        }
+        areaDropdownBtn.title = areaDropdownBtn.textContent;
     }
 
     // ---- Wire up event listeners ----
@@ -770,7 +734,9 @@
     });
     if (sellerFilter) sellerFilter.addEventListener('change', applyFilters);
     customerFilter.addEventListener('change', applyFilters);
-    customerDropdownBtn.addEventListener('shown.bs.dropdown', function() {
+    customerDropdownBtn.closest('details').addEventListener('toggle', function() {
+        customerDropdownBtn.setAttribute('aria-expanded', String(this.open));
+        if (!this.open) return;
         customerSearch.value = '';
         filterCustomerOptions();
         customerSearch.focus();
@@ -827,16 +793,10 @@
     if (favoritesOnlyBtn) {
         favoritesOnlyBtn.addEventListener('click', function() {
             favoritesOnly = !favoritesOnly;
-            this.classList.toggle('btn-warning', favoritesOnly);
-            this.classList.toggle('btn-outline-warning', !favoritesOnly);
+            this.classList.toggle('is-favorites', favoritesOnly);
             applyFilters();
         });
     }
-
-    // Sortable header clicks (delegated)
-    qa('.sortable[data-sort]').forEach(function(th) {
-        th.addEventListener('click', function() { sortTable(th.dataset.sort); });
-    });
 
     // URL param override for standalone page: ?seller=ID
     var params = new URLSearchParams(window.location.search);
@@ -848,7 +808,7 @@
     // Initialize
     restoreFilters();
     applyFilters();
-    updateSortIndicators();
+    if (table && window.SBTableSort) window.SBTableSort.mount(container);
 })();
 
 function toggleMilestoneFavorite(btn, milestoneId) {
@@ -859,11 +819,11 @@ function toggleMilestoneFavorite(btn, milestoneId) {
             var icon = btn.querySelector('i');
             var row = btn.closest('tr');
             if (data.is_favorited) {
-                icon.className = 'bi bi-star-fill text-warning';
+                icon.className = 'bi bi-star-fill mt-warning';
                 btn.title = 'Remove from favorites';
                 if (row) row.dataset.favorited = 'true';
             } else {
-                icon.className = 'bi bi-star text-muted';
+                icon.className = 'bi bi-star mt-muted';
                 btn.title = 'Add to favorites';
                 if (row) row.dataset.favorited = 'false';
             }
@@ -873,94 +833,9 @@ function toggleMilestoneFavorite(btn, milestoneId) {
 </script>
 
 <!-- Milestone Detail Modal -->
-<div class="modal fade" id="milestoneDetailModal" tabindex="-1" aria-labelledby="milestoneDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width: min(1200px, calc(100vw - 3rem)); width: calc(100vw - 3rem);">
-        <div class="modal-content" style="max-height: 90vh;">
-            <div class="modal-header py-2">
-                <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
-                    <h5 class="modal-title mb-0 text-truncate" style="min-width: 0;"><i class="bi bi-flag"></i> <span id="milestoneDetailTitle">Loading...</span></h5>
-                    <span id="milestoneDetailBadge"></span>
-                </div>
-                <div class="d-flex gap-2 flex-shrink-0 ms-2">
-                    <a href="#" id="milestoneDetailMsxLink" target="_blank" class="btn btn-outline-success btn-sm text-nowrap" style="display:none;">
-                        <i class="bi bi-box-arrow-up-right"></i> Open in MSX
-                    </a>
-                    <a href="#" id="milestoneDetailFullLink" class="btn btn-outline-secondary btn-sm text-nowrap">
-                        <i class="bi bi-arrows-fullscreen"></i> Full Page
-                    </a>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-            </div>
-            <div class="modal-body p-3" id="milestoneDetailBody">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
-// Milestone Detail Modal - click row to open, fetch partial, activate scripts
-(function() {
-    let msModal = null;
-    const msTitleEl = document.getElementById('milestoneDetailTitle');
-    const msBodyEl = document.getElementById('milestoneDetailBody');
-
-    window.openMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl) {
-        // Don't open modal when clicking links/buttons inside the row
-        if (event.target.closest('a, button')) return;
-
-        if (!msModal) {
-            msModal = new bootstrap.Modal(document.getElementById('milestoneDetailModal'));
-        }
-        msTitleEl.textContent = msTitle;
-
-        // Status badge
-        const badgeEl = document.getElementById('milestoneDetailBadge');
-        if (msStatus) {
-            const cls = {'On Track':'bg-success','At Risk':'bg-warning text-dark','Blocked':'bg-danger','Completed':'bg-info'}[msStatus] || 'bg-secondary';
-            badgeEl.innerHTML = '<span class="badge ' + cls + '">' + msStatus + '</span>';
-        } else {
-            badgeEl.innerHTML = '';
-        }
-
-        // Action links
-        const msxLink = document.getElementById('milestoneDetailMsxLink');
-        if (msUrl) {
-            msxLink.href = msUrl;
-            msxLink.style.display = '';
-        } else {
-            msxLink.style.display = 'none';
-        }
-        document.getElementById('milestoneDetailFullLink').href = '/milestone/' + msId;
-
-        msBodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        msModal.show();
-
-        fetch('/api/milestone/' + msId + '/detail')
-            .then(function(resp) {
-                if (!resp.ok) throw new Error('Failed to load');
-                return resp.text();
-            })
-            .then(function(html) {
-                msBodyEl.innerHTML = html;
-                // Activate <script> tags (innerHTML doesn't auto-execute them)
-                msBodyEl.querySelectorAll('script').forEach(function(oldScript) {
-                    var newScript = document.createElement('script');
-                    if (oldScript.src) {
-                        newScript.src = oldScript.src;
-                    } else {
-                        newScript.textContent = '(function(){' + oldScript.textContent + '})();';
-                    }
-                    oldScript.replaceWith(newScript);
-                });
-            })
-            .catch(function() {
-                msBodyEl.innerHTML = '<div class="text-danger p-3"><i class="bi bi-exclamation-triangle"></i> Failed to load milestone details.</div>';
-            });
-    };
-})();
+window.openMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl) {
+    if (event.target.closest('a, button')) return;
+    return SBMilestonePreview.open(msId, msTitle, msStatus, msUrl);
+};
 </script>

@@ -1,0 +1,5 @@
+<dl class="sb-product-summary" data-sb-page-band>
+    <div><dt>Customer entries</dt><dd data-sb-product-metric>{{ customers|length }}</dd></div>
+    <div><dt>All imported revenue</dt><dd data-sb-product-metric>${{ '{:,.0f}'.format(customers|sum(attribute='total_revenue')) }}</dd></div>
+    <div><dt>Avg per entry</dt><dd data-sb-product-metric>${{ '{:,.0f}'.format((customers|sum(attribute='total_revenue')) / customers|length if customers else 0) }}</dd></div>
+</dl>

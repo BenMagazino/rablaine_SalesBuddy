@@ -892,8 +892,8 @@ them as part of v1.
 **Boundary**
 
 - The widget assists with territory execution.
-- It should not claim official quota attainment unless Sales Buddy receives the
-  official quota and attainment source.
+- It should not claim official performance results without an authoritative
+  source for those results.
 
 ## Widget contract
 

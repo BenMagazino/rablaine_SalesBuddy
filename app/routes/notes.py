@@ -656,6 +656,11 @@ def note_view(id):
     # Capture where the user came from so Edit → Save/Cancel can return there.
     # Ignore self-referrals (the note view or edit page itself).
     back_url = request.args.get('next') or ''
+    if back_url and (
+        not back_url.startswith('/') or back_url.startswith('//')
+        or '\\' in back_url or any(ord(character) < 32 for character in back_url)
+    ):
+        back_url = ''
     if not back_url and request.referrer:
         from urllib.parse import urlparse
         ref_path = urlparse(request.referrer).path
