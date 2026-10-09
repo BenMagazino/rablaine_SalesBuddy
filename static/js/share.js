@@ -380,6 +380,10 @@ const Share = (function () {
   }
 
   function acceptOffer(senderEmail, offerId) {
+    if (!socket || !connected) {
+      _showToast('Sharing disconnected. Reconnect before accepting a share.', 'warning');
+      return;
+    }
     if (previewing || _pendingImport || importing) {
       _showToast('Finish or cancel the current partner review before accepting another share.',
         'warning');
@@ -391,6 +395,11 @@ const Share = (function () {
   }
 
   function declineOffer(senderEmail, offerId) {
+    if (!socket || !connected) {
+      document.getElementById(offerId)?.remove();
+      _showToast('Sharing disconnected. The offer was dismissed locally.', 'warning');
+      return;
+    }
     socket.emit('share_decline', { sender_email: senderEmail });
     document.getElementById(offerId)?.remove();
   }

@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const template = fs.readFileSync(path.join(__dirname,
     '../../templates/partials/_report_export.html'), 'utf8');
 
-async function copyFixture(native = true, failHtml = false) {
+async function copyFixture(failHtml = false) {
     const cell = label => ({
         hasAttribute: key => key === 'data-export-label',
         getAttribute: key => key === 'data-export-label' ? label : null,
@@ -31,7 +31,6 @@ async function copyFixture(native = true, failHtml = false) {
     const toast = {cloneNode() { return this; }, dataset: {}, setAttribute() {},
         querySelector: () => ({}), contains: () => false, remove() {}, style: {}};
     const script = template.match(/<script>([\s\S]*?)<\/script>/)[1]
-        .replace(/const NATIVE_EXPORT = .*?;/, `const NATIVE_EXPORT = ${native};`)
         .replace(/const TABLE_SELECTOR = .*?;/, "const TABLE_SELECTOR = 'table';")
         .replace(/const FILENAME = .*?;/, "const FILENAME = 'hygiene';")
         .replace(/const CUSTOM_TITLE = .*?;/, "const CUSTOM_TITLE = 'Hygiene';");
@@ -72,17 +71,18 @@ test('native clipboard exports both queues in HTML and text with seller and conf
     }
 });
 test('native plaintext clipboard fallback retains every filtered export table', async () => {
-    const h = await copyFixture(true, true);
+    const h = await copyFixture(true);
     assert.equal(h.fallback.length, 1);
     assert.ok(h.fallback[0].includes('SQL Migration'));
     assert.ok(h.fallback[0].includes('SQLMI migration'));
     assert.ok(!h.fallback[0].includes('Filtered off-team'));
 });
-test('legacy consumers keep the previous first-table plaintext contract', async () => {
-    const h = await copyFixture(false);
+test('default consumers preserve every table in both clipboard formats', async () => {
+    const h = await copyFixture();
     const html = await h.copied[0].types['text/html'].text();
     const plain = await h.copied[0].types['text/plain'].text();
     assert.ok(html.includes('SQLMI migration'));
     assert.ok(plain.includes('SQL Migration'));
-    assert.ok(!plain.includes('SQLMI migration'));
+    assert.ok(plain.includes('SQLMI migration'));
+    assert.doesNotMatch(template, /NATIVE_EXPORT/);
 });

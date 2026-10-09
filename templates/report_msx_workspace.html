@@ -164,10 +164,10 @@
         <div id="tasksContent" class="msx-task-content">
             <div class="msx-controls msx-subscope">
                 <span id="taskContext">Open tasks from your local MSX cache</span>
-                <button class="msx-command is-primary d-none" id="btnCreateTask" data-sb-dialog="createTaskModal">
+                <button class="msx-command is-primary sb-hidden" id="btnCreateTask" data-sb-dialog="createTaskModal">
                     <i class="bi bi-plus-lg"></i> Create Task
                 </button>
-                <button class="msx-command d-none" id="btnBackToMilestones">
+                <button class="msx-command sb-hidden" id="btnBackToMilestones">
                     <i class="bi bi-arrow-left"></i> Back to Milestones
                 </button>
             </div>
@@ -635,7 +635,7 @@ window.addEventListener('DOMContentLoaded', function() {
                 if (opp.msx_url) {
                     tpl.querySelector('.opp-msx-link').href = opp.msx_url;
                 } else {
-                    tpl.querySelector('.opp-msx-link').classList.add('d-none');
+                    tpl.querySelector('.opp-msx-link').classList.add('sb-hidden');
                 }
                 tpl.querySelector('.opp-sb-link').dataset.oppId = opp.id;
                 tpl.querySelector('.opp-sb-link').dataset.oppName = opp.name || '-';
@@ -810,8 +810,8 @@ window.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('taskMilestoneName').value = title;
                 filteredMilestoneId = msId;
                 filteredMilestoneTitle = title;
-                document.getElementById('btnCreateTask').classList.remove('d-none');
-                document.getElementById('btnBackToMilestones').classList.remove('d-none');
+                document.getElementById('btnCreateTask').classList.remove('sb-hidden');
+                document.getElementById('btnBackToMilestones').classList.remove('sb-hidden');
                 // Load tasks filtered to this milestone
                 const params = new URLSearchParams();
                 params.set('milestone_id', msId);
@@ -1058,8 +1058,8 @@ window.addEventListener('DOMContentLoaded', function() {
         document.getElementById('taskContext').textContent = '';
         document.getElementById('taskMilestoneId').value = '';
         document.getElementById('taskMilestoneName').value = '';
-        document.getElementById('btnCreateTask').classList.add('d-none');
-        document.getElementById('btnBackToMilestones').classList.add('d-none');
+        document.getElementById('btnCreateTask').classList.add('sb-hidden');
+        document.getElementById('btnBackToMilestones').classList.add('sb-hidden');
     }
 
     // ----- Filter events -----
@@ -1191,8 +1191,8 @@ window.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('taskMilestoneId').value = view.milestoneMsxId;
                 document.getElementById('taskMilestoneName').value = view.milestoneTitle;
                 document.getElementById('taskContext').textContent = 'Tasks for: ' + view.milestoneTitle;
-                document.getElementById('btnCreateTask').classList.remove('d-none');
-                document.getElementById('btnBackToMilestones').classList.remove('d-none');
+                document.getElementById('btnCreateTask').classList.remove('sb-hidden');
+                document.getElementById('btnBackToMilestones').classList.remove('sb-hidden');
                 await loadTasks();
             }
             if (view) {

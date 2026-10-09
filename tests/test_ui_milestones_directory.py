@@ -64,6 +64,6 @@ def test_empty_directory_keeps_creation_explanation_and_commands(client) -> None
     assert "add a milestone URL to a note" in surface.get_text()
     assert len(surface.select('a[href="/milestone/new"]')) == 2
     assert not surface.select("table")
-    assert "0 milestones" in soup.footer.get_text()
+    assert "0 milestones" in soup.select_one("body > footer.sb-page-status").get_text()
     assert surface.select_one('[data-sb-page-body][tabindex="0"]')
     assert surface.select_one("[data-sb-report-context-notice][hidden]")

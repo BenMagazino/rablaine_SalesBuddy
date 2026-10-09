@@ -23,7 +23,7 @@
             panels[position].hidden = !selected;
             panels[position].classList.toggle('active', selected);
         });
-        const event = new CustomEvent('shown.bs.tab', {bubbles: true});
+        const event = new CustomEvent('sb:home-tab-selected', {bubbles: true});
         event.relatedTarget = previous;
         tabs[index].dispatchEvent(event);
     }

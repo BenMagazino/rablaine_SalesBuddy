@@ -3,6 +3,7 @@
     'use strict';
 
     const root = document.querySelector('[data-sb-dashboard-settings]');
+    if (!root) return;
     const refresh = root.querySelector('#refreshCopilotBtn');
     const result = root.querySelector('#dashboardRefreshResult');
 

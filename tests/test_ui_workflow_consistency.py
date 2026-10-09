@@ -41,9 +41,14 @@ def test_project_paired_reading_has_no_inner_width_clamp() -> None:
 
 
 def test_note_reading_width_is_scoped_to_standalone_page() -> None:
-    """A 1344px reading surface plus legacy container gutters leaves embeds unchanged."""
+    """Shared standalone roots replace private clamps without narrowing embedded notes."""
     source = (ROOT / "static" / "css" / "ui-note.css").read_text(encoding="utf-8")
     rule = source.split(".sb-note-reading-page #main-content {", 1)[1].split("}", 1)[0]
-    assert "max-width: 1368px" in rule
-    legacy = (ROOT / "templates" / "note_form.html").read_text(encoding="utf-8")
-    assert "mainContainer.style.maxWidth = 'min(100%, 1900px)'" in legacy
+    assert "max-width:none;" in rule
+    assert "1368px" not in source
+    detail = (ROOT / "templates" / "partials" / "note_view_content.html").read_text("utf-8")
+    assert "sb-directory-frame sb-directory-frame-wide" in detail
+    editor = (ROOT / "templates" / "note_form.html").read_text(encoding="utf-8")
+    assert "mainContainer.style.maxWidth" not in editor
+    assert "1900px" not in editor
+    assert "row.classList.toggle('sb-directory-frame', !rightHasContent);" in editor

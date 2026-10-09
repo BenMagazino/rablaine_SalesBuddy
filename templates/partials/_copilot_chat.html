@@ -1,0 +1,41 @@
+    {% if config.DEBUG %}
+    <!-- Copilot Chat Flyout (dev-only) -->
+    <aside class="sb-chat" id="copilotChatFlyout" hidden
+           aria-labelledby="copilotChatFlyoutLabel" aria-label="SalesIQ conversation">
+        <header class="sb-chat-header">
+            <h2 id="copilotChatFlyoutLabel">
+                <i class="bi bi-chat-dots"></i> SalesIQ
+                <span class="sb-chat-development">DEV</span>
+            </h2>
+            <div class="sb-chat-actions">
+                <button type="button" class="sb-chat-button" id="copilotChatClear"
+                        title="Clear conversation" aria-label="Clear conversation">
+                    <i class="bi bi-trash"></i>
+                </button>
+                <button type="button" class="sb-chat-button" id="copilotChatClose"
+                        aria-label="Close SalesIQ"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </header>
+        <div class="sb-chat-body">
+            <div id="copilotChatMessages" class="sb-chat-messages" role="log"
+                 aria-label="Conversation" aria-live="polite" aria-relevant="additions">
+                <div class="sb-chat-welcome">
+                    <i class="bi bi-chat-dots" aria-hidden="true"></i>
+                    <p>Ask me anything about your Sales Buddy data.</p>
+                </div>
+            </div>
+            <div class="sb-chat-composer">
+                <div class="sb-chat-input-row">
+                    <textarea id="copilotChatInput" rows="1"
+                              placeholder="Ask SalesIQ..." aria-label="Chat message"
+                              aria-describedby="copilotChatHint"></textarea>
+                    <button class="sb-chat-button sb-chat-send" id="copilotChatSend"
+                            type="button" title="Send message" aria-label="Send message">
+                        <i class="bi bi-send"></i>
+                    </button>
+                </div>
+                <p id="copilotChatHint" class="sb-chat-hint">Enter to send · Shift+Enter for a new line</p>
+            </div>
+        </div>
+    </aside>
+    {% endif %}

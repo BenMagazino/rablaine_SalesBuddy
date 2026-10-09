@@ -3,6 +3,7 @@
      data-api-url="{{ eng_api_url }}" data-body-id="{{ eng_body_id }}"
      data-count-id="{{ eng_count_id }}" data-show-seller="{{ 'true' if eng_show_seller else 'false' }}"
      data-empty-msg="{{ eng_empty_msg }}"
+     data-auto-load="{{ 'true' if eng_auto_load|default(true) else 'false' }}"
      {% if eng_seller_scope | default(false) %}data-seller-scope="true"{% endif %}>
     <div role="group" aria-label="Status filter" id="{{ eng_body_id }}_statusFilter">
         {% for status in (['', 'Active', 'On Hold'] if eng_seller_scope | default(false) else ['', 'Active', 'On Hold', 'Won', 'Lost']) %}

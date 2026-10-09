@@ -9,7 +9,6 @@
 .sb-import-sync-band #syncResults p { margin: 0 0 4px; }
 .sb-revenue-import [data-tone="danger"] { color: var(--sb-ui-danger); }
 .sb-revenue-import [data-tone="positive"] { color: var(--sb-ui-milestone-rail); }
-.sb-revenue-import .brainrot-card-toggle.d-none { display: none !important; }
 .sb-revenue-import #bucketNotice { padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); color: var(--sb-ui-warning); }
 .sb-revenue-import #bucketNotice h2 { margin: 0 0 6px; font-size: 14px; }
 .sb-revenue-import #bucketNotice p { margin: 4px 0; font-size: 12px; }

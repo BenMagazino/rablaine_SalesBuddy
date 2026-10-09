@@ -37,6 +37,9 @@ the offline studies already have production feature parity.
   screenshots in its review handoff and one generic Discord review-ready message
   through the reusable notifier. No reminder or new authorization is needed.
   Do not send private screenshots, customer data, code or URLs through Discord.
+- October8 final-batch instruction supersedes per-checkpoint notifications:
+  complete checkpoints91-105, assemble one fresh audit gallery and send only
+  one readiness notification after all15 are implemented and verified.
 
 The tracker is the durable source of progress across chats and working days.
 Do not rely on conversation memory or a screenshot to declare a page complete.

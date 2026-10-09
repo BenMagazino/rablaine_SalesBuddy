@@ -5,11 +5,9 @@
         COMMENT_ENTITY_ID   - the entity's DB ID (e.g. MS_ID or OPP_ID)
         COMMENT_API_PREFIX  - API URL prefix (e.g. "/api/milestone" or "/api/opportunity")
         COMMENT_ENTITY_LABEL - display name for confirms (e.g. "milestone" or "opportunity")
-        COMMENT_WORKBENCH - optional bool: native milestone presentation only
 #}
 
-const commentWorkbench = typeof COMMENT_WORKBENCH !== 'undefined' && COMMENT_WORKBENCH;
-const commentUi = commentWorkbench ? {
+const commentUi = {
     form: 'sb-comment-form', compose: 'sb-comment-compose', field: 'sb-record-field',
     button: 'sb-dialog-button', muted: 'sb-ms-muted', list: 'sb-comment-list',
     item: 'sb-comment-item', header: 'sb-comment-header', actions: 'sb-comment-actions',
@@ -19,15 +17,6 @@ const commentUi = commentWorkbench ? {
     warning: 'sb-ms-error', vpn: 'sb-ms-error',
     saving: '<i class="bi bi-hourglass-split" aria-hidden="true"></i>',
     ref: 'sb-ms-ref'
-} : {
-    form: 'mb-4', compose: 'input-group', field: 'form-control',
-    button: 'btn btn-primary', muted: 'text-muted', list: 'list-group',
-    item: 'list-group-item', header: 'd-flex w-100 justify-content-between mb-1', actions: '',
-    edit: 'btn btn-sm btn-outline-secondary py-0 px-1 me-1',
-    delete: 'btn btn-sm btn-outline-danger py-0 px-1', text: 'mb-0',
-    editor: 'form-control mb-2', editorActions: '', cancel: 'btn btn-sm btn-secondary',
-    warning: 'alert alert-warning mb-0', vpn: 'alert alert-secondary mb-0',
-    saving: '<span class="spinner-border spinner-border-sm"></span>', ref: 'link-info'
 };
 let _skipCommentRestore = false;
 
@@ -111,7 +100,7 @@ function renderComments(entity) {
     let html = `
         <form id="commentFormMsx" class="${commentUi.form}">
             <div class="${commentUi.compose}">
-                <textarea class="${commentUi.field}" id="commentText" rows="2" placeholder="Add a forecast comment..." ${commentWorkbench ? 'aria-label="Forecast comment"' : ''} required></textarea>
+                <textarea class="${commentUi.field}" id="commentText" rows="2" placeholder="Add a forecast comment..." aria-label="Forecast comment" required></textarea>
                 <button type="submit" class="${commentUi.button}" id="postCommentBtn">
                     <i class="bi bi-send"></i> Post
                 </button>
@@ -130,12 +119,12 @@ function renderComments(entity) {
                     <div class="${commentUi.header}">
                         <strong>${escapeHtml(c.displayName || c.userId || 'Unknown')}</strong>
                         <div class="${commentUi.actions}">
-                            <small class="${commentWorkbench ? commentUi.muted : 'text-muted me-2'}"><i class="bi bi-clock"></i> ${formatCommentTimestamp(c.modifiedOn)}</small>
-                            <button class="${commentUi.edit}" title="Edit" ${commentWorkbench ? 'aria-label="Edit forecast comment"' : ''}
+                            <small class="${commentUi.muted}"><i class="bi bi-clock"></i> ${formatCommentTimestamp(c.modifiedOn)}</small>
+                            <button class="${commentUi.edit}" title="Edit" aria-label="Edit forecast comment"
                                 data-action="edit" data-idx="${i}">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="${commentUi.delete}" title="Delete" ${commentWorkbench ? 'aria-label="Delete forecast comment"' : ''}
+                            <button class="${commentUi.delete}" title="Delete" aria-label="Delete forecast comment"
                                 data-action="delete" data-idx="${i}">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -206,12 +195,12 @@ function renderCommentsError(errorMsg, vpnBlocked) {
         const commErr = document.getElementById('commentsError');
         commErr.style.display = '';
         if (vpnBlocked) {
-            commErr.innerHTML = `<div class="${commentUi.vpn}" ${commentWorkbench ? 'role="alert"' : ''}>
+            commErr.innerHTML = `<div class="${commentUi.vpn}" role="alert">
                 <i class="bi bi-shield-lock"></i> <strong>VPN Required</strong><br>
                 <small>Connect to VPN to load forecast comments.</small>
             </div>`;
         } else {
-            commErr.innerHTML = `<div class="${commentUi.warning}" ${commentWorkbench ? 'role="alert"' : ''}>
+            commErr.innerHTML = `<div class="${commentUi.warning}" role="alert">
                 <i class="bi bi-exclamation-triangle"></i> Could not load comments: ${escapeHtml(errorMsg)}
             </div>`;
         }
@@ -262,9 +251,9 @@ function startEditComment(idx, modifiedOn, userId) {
     const currentHtml = bodyEl.innerHTML;
     const currentText = isHtml ? bodyEl.querySelector('div').innerHTML : bodyEl.querySelector('p').textContent;
     bodyEl.innerHTML = `
-        <textarea class="${commentUi.editor}" id="editText-${idx}" rows="6" ${commentWorkbench ? 'aria-label="Edit forecast comment"' : ''}>${escapeHtml(isHtml ? currentText : currentText)}</textarea>
+        <textarea class="${commentUi.editor}" id="editText-${idx}" rows="6" aria-label="Edit forecast comment">${escapeHtml(isHtml ? currentText : currentText)}</textarea>
         <div class="${commentUi.editorActions}">
-            <button class="${commentWorkbench ? commentUi.button : 'btn btn-sm btn-primary me-1'}" id="saveEdit-${idx}">
+            <button class="${commentUi.button}" id="saveEdit-${idx}">
                 <i class="bi bi-check"></i> Save
             </button>
             <button class="${commentUi.cancel}" id="cancelEdit-${idx}">Cancel</button>

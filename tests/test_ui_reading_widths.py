@@ -25,9 +25,11 @@ WORKFLOW_WIDTHS = {
     "partials/one_on_one_workspace_content.html": 1344,
     "partials/opportunity_view_content.html": 1344,
     "partials/project_view_content.html": 1344,
+    "partials/note_view_content.html": 1344,
 }
-SURFACE_WIDTHS: dict[str, int | None] = {
+SURFACE_WIDTHS: dict[str, int | None | tuple[int, int | None]] = {
     **WORKFLOW_WIDTHS,
+    "note_form.html": (1152, None),
     **dict.fromkeys([
         "customers_list.html", "sellers_list.html", "customer_form.html",
         "partners_list.html", "partner_form.html", "topics_list.html",
@@ -39,6 +41,7 @@ SURFACE_WIDTHS: dict[str, int | None] = {
         "report_u2c.html",
         "revenue_seller_product_view.html", "revenue_reports_list.html",
         "revenue_report_synapse_customers.html",
+        "settings.html", "metrics.html", "connect_export.html", "admin_favicons.html",
     ], 1152),
     **dict.fromkeys([
         "partner_view.html", "report_connect_impact.html",
@@ -51,25 +54,35 @@ SURFACE_WIDTHS: dict[str, int | None] = {
         "revenue_customer_view.html",
         "report_manager_one_on_one.html",
         "revenue_seller_alerts.html", "revenue_import.html",
+        "admin_panel.html", "analytics.html", "admin_ai_logs.html",
     ], 1344),
     **dict.fromkeys([
         "report_marketing_insights.html", "report_whats_new.html", "report_whitespace.html",
         "partials/seller_view_content.html",
         "revenue_bucket_products.html", "revenue_dashboard.html",
+        "index.html",
     ], None),
 }
-SURFACE_DECLARATION = r"<[a-z][a-z0-9-]*\b[^>]*\bdata-sb-page-surface\b"
+SURFACE_DECLARATION = r"<[a-z][a-z0-9-]*\b[^>]*\bdata-sb-page-surface\b[^>]*>"
 
 
 @pytest.mark.parametrize("template,width", SURFACE_WIDTHS.items())
-def test_surface_has_explicit_reading_width(template: str, width: int | None) -> None:
+def test_surface_has_explicit_reading_width(
+    template: str, width: int | None | tuple[int, int | None],
+) -> None:
     """Each native root has an explicit bounded or genuine-wide composition decision."""
     source = (ROOT / "templates" / template).read_text(encoding="utf-8")
     surfaces = re.findall(SURFACE_DECLARATION, source)
     assert surfaces
     for surface in surfaces:
         assert ("sb-directory-frame" in surface) == (width is not None)
-        assert ("sb-directory-frame-wide" in surface) == (width == 1344)
+        if isinstance(width, tuple):
+            assert width == (1152, None)
+            assert 'data-sb-note-paired=' in surface
+            assert "{% if is_general_note %} sb-directory-frame" in surface
+            assert "sb-directory-frame-wide" not in surface
+        else:
+            assert ("sb-directory-frame-wide" in surface) == (width == 1344)
 
 
 def test_native_surface_inventory_is_exhaustive() -> None:

@@ -25,7 +25,7 @@ test('native sort headers export their literal labels instead of losing button t
     assert.equal(clean(cell('<Literal "label">')), '<Literal "label">');
 });
 
-test('legacy boolean and ordinary cell exports retain their original behavior', () => {
+test('boolean and ordinary cell exports retain their original behavior', () => {
     const clean = helper('cleanCellText');
     assert.equal(clean({hasAttribute: key => key === 'data-export-bool',
         getAttribute: () => 'true'}), 'Yes');
@@ -36,9 +36,9 @@ test('legacy boolean and ordinary cell exports retain their original behavior', 
     })}), '$5,000 /mo risk');
 });
 
-test('report tables exclude both legacy and native popup containers', () => {
+test('report tables exclude native popup containers', () => {
     const pageTable = {closest: () => null}, popupTable = {closest: selector => {
-        assert.equal(selector, '.modal, .popover, dialog, [popover]');
+        assert.equal(selector, 'dialog, [popover]');
         return {};
     }};
     const get = helper('getTables', {TABLE_SELECTOR: '#alertsTable',
@@ -49,7 +49,7 @@ test('report tables exclude both legacy and native popup containers', () => {
     assert.deepEqual(Array.from(get()), [pageTable]);
 });
 
-function noticeFixture(native = true) {
+function noticeFixture() {
     const timers = [], appended = [], removed = [];
     const body = {};
     const toast = {dataset: {}, style: {}, body, attributes: {},
@@ -66,8 +66,7 @@ function noticeFixture(native = true) {
         createElement: () => toast,
         body: {appendChild(node) { appended.push(node); }},
     };
-    const show = helper('showExportToast', {NATIVE_EXPORT: native, document,
-        requestAnimationFrame: callback => callback(),
+    const show = helper('showExportToast', {document,
         setTimeout: callback => { timers.push(callback); }});
     return {show, document, toast, previous, appended, removed, timers};
 }
@@ -100,13 +99,8 @@ test('native warning/error feedback persists and success feedback never removes 
     assert.deepEqual(fixture.removed, [fixture.previous]);
 });
 
-test('legacy report feedback retains its existing presentation and fade timers', () => {
-    const fixture = noticeFixture(false);
-    fixture.show('Copied', 'success');
-    assert.equal(fixture.toast.className, 'alert alert-success position-fixed shadow-sm');
-    assert.equal(fixture.toast.style.opacity, '1');
-    fixture.timers[0]();
-    assert.equal(fixture.toast.style.opacity, '0');
-    fixture.timers[1]();
-    assert.equal(fixture.removed.at(-1), fixture.toast);
+test('report export defaults to native commands and feedback without a presentation flag', () => {
+    assert.match(template, /class="sb-revenue-export" role="group"/);
+    assert.match(template, /<template id="reportExportNoticeTemplate">/);
+    assert.doesNotMatch(template, /report_export_native|NATIVE_EXPORT|btn-group|alert alert-/);
 });

@@ -54,7 +54,7 @@
             </header>
             <div class="cd-section-body">
                 <div id="contextDisplay" {% if not customer.account_context %}style="display: none;"{% endif %}>
-                    <p class="mb-0" style="white-space: pre-wrap;">{{ customer.account_context or '' }}</p>
+                    <p class="cd-account-context" style="white-space: pre-wrap;">{{ customer.account_context or '' }}</p>
                 </div>
                 <div id="contextEmpty" {% if customer.account_context %}style="display: none;"{% endif %}>
                     <p class="cd-muted">Keep key contacts, strategic context and reminders here for your next call.</p>
@@ -210,8 +210,8 @@
                 <div class="cd-essentials">
                     <div>
                         {% if customer.tpid %}
-                        <div class="mb-2">
-                            <div class="text-muted small">TPID</div>
+                        <div>
+                            <div class="cd-muted">TPID</div>
                             <div>
                                 {% if customer.tpid_url %}
                                     <a href="{{ customer.tpid_url }}" target="_blank">{{ customer.tpid }}</a>
@@ -222,36 +222,36 @@
                         </div>
                         {% endif %}
                         {% if not seller_mode %}
-                        <div class="mb-2">
-                            <div class="text-muted small">Seller</div>
+                        <div>
+                            <div class="cd-muted">Seller</div>
                             <div>
                                 {% if customer.seller %}
-                                    <a href="{{ url_for('sellers.seller_view', id=customer.seller.id) }}" class="badge bg-secondary text-decoration-none"><i class="bi bi-person"></i> {{ customer.seller.name }}</a>
+                                    <a href="{{ url_for('sellers.seller_view', id=customer.seller.id) }}" class="cd-tag is-muted"><i class="bi bi-person"></i> {{ customer.seller.name }}</a>
                                     {% if customer.seller.seller_type %}
-                                        <span class="badge {% if customer.seller.seller_type == 'Growth' %}bg-success{% else %}bg-info{% endif %}">{{ customer.seller.seller_type }}</span>
+                                        <span class="cd-tag {% if customer.seller.seller_type == 'Growth' %}is-success{% else %}is-info{% endif %}">{{ customer.seller.seller_type }}</span>
                                     {% endif %}
                                 {% else %}
-                                    <span class="text-muted">Unassigned</span>
+                                    <span class="cd-muted">Unassigned</span>
                                 {% endif %}
                             </div>
                         </div>
                         {% endif %}
-                        <div class="mb-2">
-                            <div class="text-muted small">Territory</div>
+                        <div>
+                            <div class="cd-muted">Territory</div>
                             <div>
                                 {% if customer.territory %}
-                                    <a href="{{ url_for('territories.territory_view', id=customer.territory.id) }}" class="badge bg-info text-dark text-decoration-none"><i class="bi bi-geo-alt"></i> {{ customer.territory.name }}</a>
+                                    <a href="{{ url_for('territories.territory_view', id=customer.territory.id) }}" class="cd-tag is-info"><i class="bi bi-geo-alt"></i> {{ customer.territory.name }}</a>
                                 {% else %}
-                                    <span class="text-muted">Unassigned</span>
+                                    <span class="cd-muted">Unassigned</span>
                                 {% endif %}
                             </div>
                         </div>
                         {% if customer.dae_name or customer.dae_alias %}
-                        <div class="mb-2">
-                            <div class="text-muted small">DAE (Account Owner)</div>
+                        <div>
+                            <div class="cd-muted">DAE (Account Owner)</div>
                             <div>
                                 {% if customer.dae_alias %}
-                                    <a href="mailto:{{ customer.dae_alias }}@microsoft.com" class="text-decoration-none">
+                                    <a href="mailto:{{ customer.dae_alias }}@microsoft.com">
                                         <i class="bi bi-person-badge"></i> {{ customer.dae_name or customer.dae_alias }}
                                     </a>
                                 {% else %}
@@ -262,32 +262,32 @@
                         {% endif %}
                     </div>
                     <div>
-                        <div class="mb-2">
-                            <div class="text-muted small">Last Contact</div>
+                        <div>
+                            <div class="cd-muted">Last Contact</div>
                             <div>
                                 {% if last_contact %}
                                     {{ last_contact.strftime('%b %d, %Y') }}
                                 {% else %}
-                                    <span class="text-muted">--</span>
+                                    <span class="cd-muted">-</span>
                                 {% endif %}
                             </div>
                         </div>
                         {% if customer.verticals|length > 0 %}
-                        <div class="mb-2">
-                            <div class="text-muted small">Verticals</div>
+                        <div>
+                            <div class="cd-muted">Verticals</div>
                             <div>
                                 {% for vertical in customer.verticals|sort(attribute='name') %}
-                                    <span class="badge bg-primary">{{ vertical.name }}</span>
+                                    <span class="cd-tag is-primary">{{ vertical.name }}</span>
                                 {% endfor %}
                             </div>
                         </div>
                         {% endif %}
                         {% if customer.available_csams|length > 0 %}
-                        <div class="mb-2" id="csamSection">
-                            <div class="text-muted small">CSAM</div>
+                        <div id="csamSection">
+                            <div class="cd-muted">CSAM</div>
                             <div id="csamValue">
                                 {% if customer.csam %}
-                                    <span class="badge bg-secondary"><i class="bi bi-person"></i> {{ customer.csam.name }}</span>
+                                    <span class="cd-tag is-muted"><i class="bi bi-person"></i> {{ customer.csam.name }}</span>
                                 {% else %}
                                     <select id="csamSelect" aria-label="Primary CSAM, selection saves immediately" onchange="saveCsamSelection(this.value)">
                                         <option value="" disabled selected>- Select CSAM -</option>
@@ -296,17 +296,17 @@
                                             <option value="{{ csam.id }}">{{ csam.name }}</option>
                                         {% endfor %}
                                     </select>
-                                    <span id="csamSaveStatus" class="ms-1 small" style="display: none;"></span>
+                                    <span id="csamSaveStatus" class="cd-save-status" style="display: none;"></span>
                                 {% endif %}
                             </div>
                         </div>
                         {% endif %}
                         {% if partner_dict %}
-                        <div class="mb-2">
-                            <div class="text-muted small">Partners</div>
+                        <div>
+                            <div class="cd-muted">Partners</div>
                             <div>
                                 {% for partner_id, partner in partner_dict.items()|sort(attribute='1.name') %}
-                                    <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="text-decoration-none text-purple">
+                                    <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="cd-partner-link">
                                         <i class="bi bi-building"></i> {{ partner.name }}
                                     </a>{% if not loop.last %}, {% endif %}
                                 {% endfor %}
@@ -384,8 +384,8 @@
         <!-- Empty engagement state -->
         <section class="cd-section cd-panel" id="cdWorkstreams" aria-labelledby="cdWorkstreamsTab">
             <div class="cd-section-body cd-empty">
-                <i class="bi bi-diagram-3 text-muted" style="font-size: 2rem;"></i>
-                <p class="text-muted mt-2 mb-2">No engagements yet. Create one to organize your notes into workstreams.</p>
+                <i class="bi bi-diagram-3 cd-muted" style="font-size: 2rem;"></i>
+                <p class="cd-empty-description">No engagements yet. Create one to organize your notes into workstreams.</p>
                 <a href="{{ url_for('engagements.engagement_create', customer_id=customer.id) }}" class="sb-dialog-button">
                     <i class="bi bi-plus-circle"></i> Create First Engagement
                 </a>
@@ -413,33 +413,33 @@
                                         <a class="cd-note-date" href="{{ url_for('notes.note_view', id=call.id) }}">{{ call.call_date.strftime('%b %d, %Y') }}{% if call.call_date.hour != 0 or call.call_date.minute != 0 %} {{ call.call_date.strftime('%I:%M %p') }}{% endif %}</a>
                                         {% if call.engagements %}
                                             {% for eng in call.engagements %}
-                                                <a href="{{ url_for('engagements.engagement_view', id=eng.id) }}" class="badge bg-primary bg-opacity-25 text-primary ms-1 text-decoration-none" style="font-size: 0.7rem;">
+                                                <a href="{{ url_for('engagements.engagement_view', id=eng.id) }}" class="cd-tag is-engagement" style="font-size: 0.7rem;">
                                                     <i class="bi bi-diagram-3"></i> {{ eng.title[:25] }}{% if eng.title|length > 25 %}...{% endif %}
                                                 </a>
                                             {% endfor %}
                                         {% endif %}
                                     </div>
                                     {% if call.seller and not all_same_seller %}
-                                        <a href="{{ url_for('sellers.seller_view', id=call.seller.id) }}" class="badge {{ get_seller_color(call.seller.id) }} text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-person"></i> {{ call.seller.name }}</a>
+                                        <a href="{{ url_for('sellers.seller_view', id=call.seller.id) }}" class="cd-tag is-seller {{ get_seller_color(call.seller.id) }}" onclick="event.stopPropagation();"><i class="bi bi-person"></i> {{ call.seller.name }}</a>
                                     {% endif %}
                                 </div>
                                 <div class="call-content">{{ call.content|safe }}</div>
                                 {% if call.topics|length > 0 or call.partners|length > 0 or call.milestones|length > 0 or call.msx_tasks.count() > 0 %}
                                     <div>
                                         {% for topic in call.topics %}
-                                            <a href="{{ url_for('topics.topic_view', id=topic.id) }}" class="badge bg-warning text-dark text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-tag"></i> {{ topic.name }}</a>
+                                            <a href="{{ url_for('topics.topic_view', id=topic.id) }}" class="cd-tag is-topic" onclick="event.stopPropagation();"><i class="bi bi-tag"></i> {{ topic.name }}</a>
                                         {% endfor %}
                                         {% for partner in call.partners %}
-                                            <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="badge bg-purple text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-building"></i> {{ partner.name }}</a>
+                                            <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="cd-tag is-partner" onclick="event.stopPropagation();"><i class="bi bi-building"></i> {{ partner.name }}</a>
                                         {% endfor %}
                                         {% for milestone in call.milestones %}
-                                            <a href="{{ url_for('milestones.milestone_view', id=milestone.id) }}" class="badge bg-success text-decoration-none" title="{{ milestone.display_text }}" onclick="event.stopPropagation();"><i class="bi bi-flag"></i> {{ milestone.display_text[:25] }}{% if milestone.display_text|length > 25 %}...{% endif %}</a>
+                                            <a href="{{ url_for('milestones.milestone_view', id=milestone.id) }}" class="cd-tag is-success" title="{{ milestone.display_text }}" onclick="event.stopPropagation();"><i class="bi bi-flag"></i> {{ milestone.display_text[:25] }}{% if milestone.display_text|length > 25 %}...{% endif %}</a>
                                         {% endfor %}
                                         {% for task in call.msx_tasks %}
                                             {% if task.msx_task_url %}
-                                            <a href="{{ task.msx_task_url }}" target="_blank" class="badge bg-secondary text-decoration-none" title="{{ task.subject }}" onclick="event.stopPropagation();"><i class="bi bi-check2-circle"></i> {{ task.subject[:20] }}{% if task.subject|length > 20 %}...{% endif %} <i class="bi bi-box-arrow-up-right"></i></a>
+                                            <a href="{{ task.msx_task_url }}" target="_blank" class="cd-tag is-muted" title="{{ task.subject }}" onclick="event.stopPropagation();"><i class="bi bi-check2-circle"></i> {{ task.subject[:20] }}{% if task.subject|length > 20 %}...{% endif %} <i class="bi bi-box-arrow-up-right"></i></a>
                                             {% else %}
-                                            <span class="badge bg-secondary" title="{{ task.subject }}"><i class="bi bi-check2-circle"></i> {{ task.subject[:20] }}{% if task.subject|length > 20 %}...{% endif %}</span>
+                                            <span class="cd-tag is-muted" title="{{ task.subject }}"><i class="bi bi-check2-circle"></i> {{ task.subject[:20] }}{% if task.subject|length > 20 %}...{% endif %}</span>
                                             {% endif %}
                                         {% endfor %}
                                     </div>
@@ -448,7 +448,7 @@
                         {% endfor %}
                     </div>
                 {% else %}
-                    <p class="text-muted">No notes for this customer yet.</p>
+                    <p class="cd-muted">No notes for this customer yet.</p>
                 {% endif %}
             </div>
         </section>
@@ -491,7 +491,7 @@ function saveCsamSelection(csamId) {
                 const csamName = select.options[select.selectedIndex].text;
                 const valueDiv = document.getElementById('csamValue');
                 const badge = document.createElement('span');
-                badge.className = 'badge bg-secondary';
+                badge.className = 'cd-tag is-muted';
                 const icon = document.createElement('i');
                 icon.className = 'bi bi-person';
                 badge.appendChild(icon);
@@ -501,13 +501,13 @@ function saveCsamSelection(csamId) {
             }
         } else {
             status.textContent = '✗ ' + (data.error || 'Error');
-            status.className = 'ms-1 small text-danger';
+            status.className = 'cd-save-status cd-danger';
             status.style.display = 'inline';
             setTimeout(() => { status.style.display = 'none'; }, 2000);
         }
     }).catch(() => {
         status.textContent = '✗ Network error';
-        status.className = 'ms-1 small text-danger';
+        status.className = 'cd-save-status cd-danger';
         status.style.display = 'inline';
         setTimeout(() => { status.style.display = 'none'; }, 2000);
     });
@@ -706,7 +706,7 @@ function removeContactPhoto() {
         if (data.success) {
             var wrap = document.querySelector('.contact-photo-wrap[data-contact-id="' + _photoContactId + '"][data-contact-type="' + _photoContactType + '"]');
             if (wrap) {
-                wrap.innerHTML = '<i class="bi bi-person-circle text-muted" style="font-size: 1.5rem;"></i>';
+                wrap.innerHTML = '<i class="bi bi-person-circle cd-muted" style="font-size: 1.5rem;"></i>';
             }
             SBDialog.close(document.getElementById('contactPhotoModal'), 'saved');
         }
@@ -797,7 +797,7 @@ function saveNewContactRow(rowId) {
     const saveBtn = card.querySelector('.cd-contact-save');
     saveBtn.disabled = true;
     const originalHtml = saveBtn.innerHTML;
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    saveBtn.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i>';
 
     fetch('/api/customer/' + customerId + '/contacts', {
         method: 'POST',
@@ -831,14 +831,14 @@ function renderSavedNewContact(card, c) {
     const safeTitle = c.title ? _escContactHtml(c.title) : '';
     const safeEmail = c.email ? _escContactHtml(c.email) : '';
     const emailHtml = safeEmail
-        ? '<div class="text-muted small">' + safeEmail + '</div>'
+        ? '<div class="cd-muted">' + safeEmail + '</div>'
         : '';
     const titleHtml = safeTitle
-        ? '<div class="text-muted small">' + safeTitle + '</div>'
+        ? '<div class="cd-muted">' + safeTitle + '</div>'
         : '';
     const nameHtml = safeEmail
-        ? '<a href="mailto:' + safeEmail + '" class="text-decoration-none fw-semibold">' + safeName + '</a>'
-        : '<span class="fw-semibold">' + safeName + '</span>';
+        ? '<a href="mailto:' + safeEmail + '" class="cd-contact-name">' + safeName + '</a>'
+        : '<span class="cd-contact-name">' + safeName + '</span>';
 
     card.className = 'cd-contact-editor';
     card.innerHTML =
@@ -978,7 +978,7 @@ function confirmCustDomainAndScrape() {
 
     var btn = document.getElementById('custScrapeDomainConfirmBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+    btn.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Saving...';
 
     // Save domain to customer
     fetch('/api/customer/{{ customer.id }}/update-website', {
@@ -1010,7 +1010,7 @@ function confirmCustDomainAndScrape() {
 function runContactScrape() {
     var btn = document.getElementById('scrapeContactsBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Scanning...';
+    btn.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Scanning...';
 
     fetch('/api/customer/{{ customer.id }}/scrape-contacts', { method: 'POST' })
         .then(function(r) { return r.json(); })
@@ -1047,14 +1047,14 @@ function showContactScrapeReview(data) {
                 (checked ? 'checked' : '') + (disabled ? ' disabled' : '') + '>';
             html += '<div>';
             html += '<strong>' + _esc(c.name) + '</strong>';
-            if (c.title) html += ' <small class="text-muted">- ' + _esc(c.title) + '</small>';
-            if (c.email) html += '<br><small class="text-muted">' + _esc(c.email) + '</small>';
+            if (c.title) html += ' <small class="cd-muted">- ' + _esc(c.title) + '</small>';
+            if (c.email) html += '<br><small class="cd-muted">' + _esc(c.email) + '</small>';
             if (!c.is_new && !c.has_updates) {
-                html += '<br><small class="text-muted">(already exists, no new data)</small>';
+                html += '<br><small class="cd-muted">(already exists, no new data)</small>';
             } else if (!c.is_new && c.has_updates) {
-                html += '<br><small class="text-success"><i class="bi bi-arrow-up-circle"></i> ' + c.updates.join(', ') + '</small>';
+                html += '<br><small class="cd-success"><i class="bi bi-arrow-up-circle"></i> ' + c.updates.join(', ') + '</small>';
             } else {
-                html += '<br><small class="text-success"><i class="bi bi-plus-circle"></i> New contact</small>';
+                html += '<br><small class="cd-success"><i class="bi bi-plus-circle"></i> New contact</small>';
             }
             html += '</div></label>';
         });
@@ -1063,7 +1063,7 @@ function showContactScrapeReview(data) {
 
     if (!data.contacts || data.contacts.length === 0) {
         html += '<div class="cd-empty"><i class="bi bi-inbox"></i>';
-        html += '<p class="mt-2 text-muted">No results came back this time. WorkIQ can be inconsistent - it may return results on a second attempt.</p>';
+        html += '<p class="cd-empty-description">No results came back this time. WorkIQ can be inconsistent - it may return results on a second attempt.</p>';
         html += '<button type="button" class="sb-dialog-button" onclick="retryContactScrape()"><i class="bi bi-arrow-clockwise"></i> Try Again</button></div>';
     }
 
@@ -1094,7 +1094,7 @@ function applyContactScrapeResults() {
 
     var btn = document.getElementById('custScrapeApplyBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+    btn.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Saving...';
 
     fetch('/api/customer/{{ customer.id }}/scrape-contacts/apply', {
         method: 'POST',

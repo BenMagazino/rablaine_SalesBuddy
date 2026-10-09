@@ -148,9 +148,8 @@ test('Tab closes without preventing the normal focus transition', () => {
     assert.equal(nav.menus[0].open, false);
 });
 
-test('outside pointer/focus and opening native or legacy overlays dismiss menus', () => {
-    for (const name of ['pointerdown', 'focusin', 'show.bs.modal', 'show.bs.offcanvas',
-        'sb:dialog-opening']) {
+test('outside pointer/focus and opening native dialogs dismiss menus', () => {
+    for (const name of ['pointerdown', 'focusin', 'sb:dialog-opening']) {
         const nav = navigation();
         nav.triggers[0].emit('click');
         nav.emit(name, {});

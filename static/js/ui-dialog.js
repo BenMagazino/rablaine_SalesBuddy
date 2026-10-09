@@ -23,6 +23,10 @@
             if (!dialog.dispatchEvent(new CustomEvent('sb:dialog-before-close', {
                 bubbles: true, cancelable: true, detail: {reason},
             }))) return;
+            const frame = frames.find(item => item.dialog === dialog);
+            if (frame) {
+                frame.restoreFocus = frame.modal || dialog.contains(document.activeElement);
+            }
             dialog.close(reason);
             // Native close events are queued; finish before a dialog can reopen.
             finishClose(dialog);
@@ -37,11 +41,12 @@
         for (const child of frames) {
             if (dialog.contains(child.opener)) child.opener = frame.opener;
         }
-        if (wasTop) {
+        if (wasTop && frame.restoreFocus !== false) {
             const current = top();
             const opener = frame.opener;
             if (opener?.isConnected && !opener.disabled &&
-                !opener.closest('[inert]') && (!current || current.contains(opener))) {
+                !opener.closest('[inert]') &&
+                (!current || current.dataset.sbNonmodal === 'true' || current.contains(opener))) {
                 opener.focus();
             } else if (current) {
                 (current.querySelector('[autofocus], button, a[href], input') || current).focus();
@@ -91,8 +96,10 @@
         dialog.dispatchEvent(new CustomEvent('sb:dialog-opening', {bubbles: true}));
         const opener = document.activeElement;
         dialog.returnValue = '';
-        dialog.showModal();
-        frames.push({dialog, opener});
+        const modal = dialog.dataset.sbNonmodal !== 'true';
+        if (modal) dialog.showModal();
+        else dialog.show();
+        frames.push({dialog, opener, modal, restoreFocus: true});
         dialog.dispatchEvent(new CustomEvent('sb:dialog-opened', {bubbles: true}));
     }
 
@@ -115,7 +122,9 @@
         }
     });
     document.addEventListener('keydown', event => {
-        const dialog = top();
+        const frame = frames.findLast(item => item.modal) ||
+            frames.findLast(item => item.dialog.contains(event.target));
+        const dialog = frame?.dialog;
         if (event.key !== 'Escape' || !dialog) return;
         const popup = event.target.closest?.(
             '[data-sb-dialog-escape-owner][aria-expanded="true"]');

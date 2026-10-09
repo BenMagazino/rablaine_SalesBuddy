@@ -124,7 +124,7 @@ function harness(workloadFilter = null) {
         'managerWorkBody',
     ]) {
         elements[name] = {
-            dataset: {}, classList: classes(['d-none']), textContent: '', focus() {},
+            dataset: {}, classList: classes(['sb-hidden']), textContent: '', focus() {},
             children: [],
             replaceChildren() { this.children = []; },
             append(...children) { this.children.push(...children); },
@@ -166,7 +166,7 @@ function harness(workloadFilter = null) {
             }
             return field.dataset.dirty === 'true' ? field : null;
         },
-        querySelectorAll: selector => selector === '.work-picker:not(.d-none)'
+        querySelectorAll: selector => selector === '.work-picker:not(.sb-hidden)'
             ? activePickers : field.dataset.dirty === 'true' ? [field] : [],
     };
     const context = {
@@ -356,7 +356,7 @@ test('Full Page waits for workspace edits and preserves the inline workspace on 
     await failed.pending;
     assert.equal(failed.event.prevented, true);
     assert.equal(ui.navigations.length, 0);
-    assert.equal(ui.elements.reportError.classList.contains('d-none'), false);
+    assert.equal(ui.elements.reportError.classList.contains('sb-hidden'), false);
     ui.window.SBOneOnOneWorkspace.flush = async () => {};
     await ui.fullPage().pending;
     assert.deepEqual(ui.navigations, ['/one-on-one/42']);
@@ -477,7 +477,7 @@ test('Back waits for picker results before restoring scroll and never overwrites
     const reading = {scrollTop: 0, addEventListener() {}};
     const type = {value: ''}, query = {value: ''};
     const picker = {
-        id: 'picker-1', dataset: {}, classList: classes(['d-none']),
+        id: 'picker-1', dataset: {}, classList: classes(['sb-hidden']),
         matches: selector => ['.it-editor', '.work-picker'].includes(selector),
         querySelector: selector => selector.startsWith('select') ? type
             : selector.startsWith('input') ? query : {scrollTop: 0},
@@ -555,15 +555,15 @@ test('a failed save stays dirty and exposes a retry that clears the error on suc
     await settle();
     assert.equal(ui.field.dataset.dirty, 'true');
     assert.equal(ui.input.attributes['aria-invalid'], 'true');
-    assert.equal(ui.elements.reportError.classList.contains('d-none'), false);
-    assert.equal(ui.elements.retryTalkingPoints.classList.contains('d-none'), false);
+    assert.equal(ui.elements.reportError.classList.contains('sb-hidden'), false);
+    assert.equal(ui.elements.retryTalkingPoints.classList.contains('sb-hidden'), false);
     ui.retry();
     assert.equal(ui.requests.length, 2);
     ui.requests[1].finish();
     await settle();
     assert.equal(ui.field.dataset.dirty, 'false');
     assert.equal(ui.input.attributes['aria-invalid'], undefined);
-    assert.equal(ui.elements.reportError.classList.contains('d-none'), true);
+    assert.equal(ui.elements.reportError.classList.contains('sb-hidden'), true);
 });
 
 test('leaving a field saves immediately without a duplicate debounce request', async () => {
@@ -648,7 +648,7 @@ test('a failed archive keeps the saved current block and exposes its error in th
     await settle();
     assert.equal(ui.input.value, 'Keep this agenda');
     assert.equal(ui.input.disabled, false);
-    assert.equal(ui.elements.pointsModalError.classList.contains('d-none'), false);
+    assert.equal(ui.elements.pointsModalError.classList.contains('sb-hidden'), false);
     assert.equal(ui.elements.discussPoints.disabled, false);
 });
 
@@ -662,7 +662,7 @@ test('closing with unsaved points flushes immediately and stays open on failure'
     await settle();
     assert.equal(ui.field.dataset.dirty, 'true');
     assert.equal(ui.input.value, 'Do not lose this');
-    assert.equal(ui.elements.pointsModalError.classList.contains('d-none'), false);
+    assert.equal(ui.elements.pointsModalError.classList.contains('sb-hidden'), false);
 });
 
 test('a nested work modal closing does not reset the visible detail context', () => {
@@ -670,6 +670,13 @@ test('a nested work modal closing does not reset the visible detail context', ()
     ui.window.copilotContext = {page: 'engagement_view'};
     ui.workModalEvent('sb:dialog-closed', 'taskEditModal');
     assert.equal(ui.window.copilotContext.page, 'engagement_view');
+});
+
+test('native detail activation no longer relocates legacy framework modals', () => {
+    const source = fs.readFileSync(path.join(
+        __dirname, '..', '..', 'static', 'js', 'manager_one_on_one.js',
+    ), 'utf8');
+    assert.doesNotMatch(source, /\bbootstrap\.|\.bs\.modal|workspaceParentModal/);
 });
 
 test('seller notes fetch the shared workspace fragment without navigation', async () => {
@@ -718,7 +725,7 @@ test('project selection resets U2C source and displays projects without customer
     picker.source('u2c');
     picker.type('project');
     assert.equal(picker.dataset.source, 'search');
-    assert.equal(picker.parts['.milestone-source'].classList.contains('d-none'), true);
+    assert.equal(picker.parts['.milestone-source'].classList.contains('sb-hidden'), true);
     assert.match(ui.requests[1].url, /type=project&source=search/);
     assert.equal(
         picker.parts['.candidate-search'].elements.q.placeholder,
@@ -782,7 +789,7 @@ test('a late assisted response cannot overwrite a subsequent engagement search',
     ui.requests[0].finish(true, undefined, u2cPayload());
     await settle();
     assert.equal(picker.parts['.picker-status'].textContent, message);
-    assert.equal(picker.parts['.milestone-source'].classList.contains('d-none'), true);
+    assert.equal(picker.parts['.milestone-source'].classList.contains('sb-hidden'), true);
 });
 
 test('missing snapshots show their explicit message, without a results table', async () => {

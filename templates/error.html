@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en" data-sb-family="graphite"{% if dark_mode is not none %} data-sb-mode="{{ 'dark' if dark_mode else 'light' }}"{% endif %}>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ error_name }} - Sales Buddy</title>
+    <link rel="icon" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-errors.css') }}">
+</head>
+<body>
+    <header class="sb-error-heading"><a href="{{ url_for('main.index') }}">Sales Buddy</a><span>Local desktop workspace</span></header>
+    <nav class="sb-error-context" aria-label="Breadcrumb"><a href="{{ url_for('main.index') }}">Home</a><span aria-hidden="true">&gt;</span><span>{{ error_name }}</span></nav>
+    <main class="sb-error-workspace">
+        <section class="sb-error-reading" aria-labelledby="error-title">
+            <p class="sb-error-eyebrow">Request status / {{ code }}</p>
+            <h1 id="error-title">{{ 'Page or record not found' if code == 404 else error_name }}</h1>
+            {% if code == 404 %}
+            <p>This link no longer points to an available page or record. It may have been removed, or the address may be incomplete.</p>
+            {% endif %}
+            <p class="sb-error-description">{{ description }}</p>
+            <div class="sb-error-actions">
+                <a class="sb-error-primary" href="{{ url_for('main.index') }}">Go to Home</a>
+                {% if can_retry %}<button type="button" id="error-retry">Try again</button>{% endif %}
+                <button type="button" id="error-back" hidden>Go back</button>
+            </div>
+            {% if reference %}<p class="sb-error-reference">Diagnostic reference: <code>{{ reference }}</code></p>{% endif %}
+            {% if code >= 500 %}<p class="sb-error-help">A failed save may not have completed. Check the record before submitting it again.</p>{% endif %}
+        </section>
+    </main>
+    <footer class="sb-error-footer"><span>HTTP {{ code }}</span><span>You can return to your workspace</span></footer>
+    <script src="{{ url_for('static', filename='js/ui-errors.js') }}"></script>
+</body>
+</html>

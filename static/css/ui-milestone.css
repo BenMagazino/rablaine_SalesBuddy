@@ -80,16 +80,26 @@
 }
 .sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-record-badge {
     --sb-record-tag-ink: var(--sb-ui-accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+    white-space: nowrap;
+    text-decoration: none;
+    border-radius: 4px;
 }
-.sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-record-badge.bg-secondary {
+.sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-record-badge.is-muted {
     --sb-record-tag-ink: var(--sb-ui-muted);
 }
-.sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-record-badge.bg-success,
+.sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-record-badge.is-success,
 .sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-record-tag[data-status="On Track"] {
     --sb-record-tag-ink: var(--sb-ui-milestone-rail);
 }
 .sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-record-tag[data-status="At Risk"],
-.sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-ms-task .sb-record-badge.bg-warning {
+.sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-ms-task .sb-record-badge.is-warning {
     --sb-record-tag-ink: var(--sb-ui-warning);
 }
 .sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-record-tag[data-status="Blocked"] {
@@ -98,7 +108,7 @@
 .sb-milestone-view[data-sb-milestone-detail] .sb-ms-context .sb-record-tag[data-status="Completed"] {
     --sb-record-tag-ink: var(--sb-ui-accent);
 }
-.sb-milestone-view[data-sb-milestone-detail] .sb-ms-context a.badge.sb-record-badge:hover {
+.sb-milestone-view[data-sb-milestone-detail] .sb-ms-context a.sb-record-badge:hover {
     border-color: transparent;
     background: color-mix(in oklab, var(--sb-record-tag-ink) 20%, var(--sb-ui-context)) !important;
     color: var(--sb-record-tag-ink) !important;
@@ -108,6 +118,7 @@
 }
 .sb-milestone-view a:hover { text-decoration: underline; }
 .sb-ms-muted { color: var(--sb-ui-muted); font-size: 12px; }
+.sb-ms-story-heading { color: var(--sb-ui-muted); font-size: 12px; text-transform: uppercase; font-weight: 600; }
 .sb-milestone-view p.sb-ms-muted { margin: 0; }
 .sb-ms-loading { display: flex; align-items: baseline; gap: 8px; margin: 14px 0; color: var(--sb-ui-muted); font-size: 12px; }
 .sb-ms-refresh { margin-top: 12px; }

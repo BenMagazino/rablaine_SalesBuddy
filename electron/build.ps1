@@ -59,6 +59,9 @@ try {
         }
     }
 
+    # Bundle the same approved palettes without depending on a running backend.
+    Copy-Item (Join-Path $repoRoot 'static\css\ui-tokens.css') `
+        (Join-Path $scriptDir 'theme-tokens.css') -Force
     Write-Host "`nBuilding unpacked app (electron-builder --dir)..." -ForegroundColor Yellow
     & npx electron-builder --dir
     if ($LASTEXITCODE -ne 0) { throw "electron-builder failed" }

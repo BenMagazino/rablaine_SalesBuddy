@@ -26,6 +26,11 @@
     "files": [
       "main.js",
       "preload.js",
+      "status-screen.js",
+      "status.html",
+      "status.css",
+      "status.js",
+      "theme-tokens.css",
       "package.json"
     ],
     "asar": true,

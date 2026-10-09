@@ -123,8 +123,6 @@
             close(true);
         }
     }, true);
-    document.addEventListener('show.bs.modal', () => close());
-    document.addEventListener('show.bs.offcanvas', () => close());
     document.addEventListener('sb:dialog-opening', () =>
         close(Boolean(active && menuFor(active).contains(document.activeElement))));
     window.addEventListener('resize', place);

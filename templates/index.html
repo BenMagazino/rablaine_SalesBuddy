@@ -2,9 +2,14 @@
 
 {% block title %}Home - Sales Buddy{% endblock %}
 
+{% block body_class %}{{ super() }} sb-page-frame sb-home-page{% endblock %}
+
 {% block context_bar %}{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home-native.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-engagements-directory.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-home-calendar.css') }}">
 {% endblock %}
@@ -35,24 +40,24 @@
                     {% endif %}
                 {% endfor %}
                 {% if engagement_tasks %}
-                <div class="list-group list-group-flush">
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
                     {% for task in engagement_tasks %}
-                    <div class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: true})">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate{% if task.priority == 'high' %} text-danger{% endif %}">
-                                    {% if task.priority == 'high' %}<i class="bi bi-exclamation-triangle-fill me-1"></i>{% endif %}{{ task.title }}
+                    <div class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: true})">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate{% if task.priority == 'high' %} sb-hn-text-danger{% endif %}">
+                                    {% if task.priority == 'high' %}<i class="bi bi-exclamation-triangle-fill sb-hn-me-1"></i>{% endif %}{{ task.title }}
                                 </div>
-                                <div class="text-muted small text-truncate">
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
                                     {% if task.source == 'project' and task.project %}
-                                        <i class="bi bi-folder text-info me-1"></i>{{ task.project.title }}
+                                        <i class="bi bi-folder sb-hn-text-info sb-hn-me-1"></i>{{ task.project.title }}
                                     {% elif task.engagement %}
                                         {{ task.engagement.customer.name if task.engagement.customer else '' }}{% if task.engagement.customer %} &middot; {% endif %}{{ task.engagement.title }}
                                     {% endif %}
                                 </div>
                             </div>
                             {% if task.due_date %}
-                            <span class="badge flex-shrink-0 {% if task.is_overdue %}bg-danger{% else %}bg-secondary{% endif %}">
+                            <span class="sb-hn-badge sb-hn-flex-shrink-0 {% if task.is_overdue %}sb-hn-bg-danger{% else %}sb-hn-bg-secondary{% endif %}">
                                 {{ task.due_date.strftime('%b %d') }}
                             </span>
                             {% endif %}
@@ -62,21 +67,21 @@
                 </div>
                 {% endif %}
                 {% if copilot_tasks or _saved %}
-                {% if engagement_tasks %}<hr class="my-0">{% endif %}
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item bg-info bg-opacity-10 py-1 px-3" title="AI-generated action items from your emails, chats, and meetings via WorkIQ">
-                        <small class="fw-semibold text-muted"><i class="bi bi-stars"></i> Copilot Suggestions</small>
+                {% if engagement_tasks %}<hr class="sb-hn-my-0">{% endif %}
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
+                    <div class="sb-hn-list-group-item sb-hn-bg-info sb-hn-bg-opacity-10 sb-hn-py-1 sb-hn-px-3" title="AI-generated action items from your emails, chats, and meetings via WorkIQ">
+                        <small class="sb-hn-fw-semibold sb-hn-text-muted"><i class="bi bi-stars"></i> Copilot Suggestions</small>
                     </div>
                     {% for task in _saved %}
-                    <div class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">
-                                    <i class="bi bi-pin-angle text-info me-1"></i>{{ task.title }}
+                    <div class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">
+                                    <i class="bi bi-pin-angle sb-hn-text-info sb-hn-me-1"></i>{{ task.title }}
                                 </div>
                             </div>
                             {% if task.due_date %}
-                            <span class="badge flex-shrink-0 {% if task.is_overdue %}bg-danger{% else %}bg-secondary{% endif %}">
+                            <span class="sb-hn-badge sb-hn-flex-shrink-0 {% if task.is_overdue %}sb-hn-bg-danger{% else %}sb-hn-bg-secondary{% endif %}">
                                 {{ task.due_date.strftime('%b %d') }}
                             </span>
                             {% endif %}
@@ -84,15 +89,15 @@
                     </div>
                     {% endfor %}
                     {% for task in copilot_tasks %}
-                    <div class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">
+                    <div class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">
                                     {{ task.title }}
                                 </div>
                             </div>
                             {% if task.due_date %}
-                            <span class="badge flex-shrink-0 {% if task.is_overdue %}bg-danger{% else %}bg-secondary{% endif %}">
+                            <span class="sb-hn-badge sb-hn-flex-shrink-0 {% if task.is_overdue %}sb-hn-bg-danger{% else %}sb-hn-bg-secondary{% endif %}">
                                 {{ task.due_date.strftime('%b %d') }}
                             </span>
                             {% endif %}
@@ -102,24 +107,24 @@
                 </div>
                 {% endif %}
                 {% if _project_tasks %}
-                {% if engagement_tasks or copilot_tasks or _saved %}<hr class="my-0">{% endif %}
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item bg-info bg-opacity-10 py-1 px-3">
-                        <small class="fw-semibold text-muted"><i class="bi bi-folder"></i> Project Tasks</small>
+                {% if engagement_tasks or copilot_tasks or _saved %}<hr class="sb-hn-my-0">{% endif %}
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
+                    <div class="sb-hn-list-group-item sb-hn-bg-info sb-hn-bg-opacity-10 sb-hn-py-1 sb-hn-px-3">
+                        <small class="sb-hn-fw-semibold sb-hn-text-muted"><i class="bi bi-folder"></i> Project Tasks</small>
                     </div>
                     {% for task in _project_tasks %}
-                    <div class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate{% if task.priority == 'high' %} text-danger{% endif %}">
-                                    {% if task.priority == 'high' %}<i class="bi bi-exclamation-triangle-fill me-1"></i>{% endif %}{{ task.title }}
+                    <div class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0" onclick="viewActionItem({{ task.id }}, {showEngagementLink: false})">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate{% if task.priority == 'high' %} sb-hn-text-danger{% endif %}">
+                                    {% if task.priority == 'high' %}<i class="bi bi-exclamation-triangle-fill sb-hn-me-1"></i>{% endif %}{{ task.title }}
                                 </div>
-                                <div class="text-muted small text-truncate">
-                                    {% if task.project %}<i class="bi bi-folder text-info me-1"></i>{{ task.project.title }}{% endif %}
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
+                                    {% if task.project %}<i class="bi bi-folder sb-hn-text-info sb-hn-me-1"></i>{{ task.project.title }}{% endif %}
                                 </div>
                             </div>
                             {% if task.due_date %}
-                            <span class="badge flex-shrink-0 {% if task.is_overdue %}bg-danger{% else %}bg-secondary{% endif %}">
+                            <span class="sb-hn-badge sb-hn-flex-shrink-0 {% if task.is_overdue %}sb-hn-bg-danger{% else %}sb-hn-bg-secondary{% endif %}">
                                 {{ task.due_date.strftime('%b %d') }}
                             </span>
                             {% endif %}
@@ -129,33 +134,33 @@
                 </div>
                 {% endif %}
                 {% if stale_milestones %}
-                {% if engagement_tasks or copilot_tasks or _saved or _project_tasks %}<hr class="my-0">{% endif %}
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item bg-warning bg-opacity-10 py-1 px-3" title="Milestones where you're on the team but haven't updated comments in 2 weeks or more">
-                        <small class="fw-semibold text-muted"><i class="bi bi-clock-history"></i> Stale Milestones</small>
+                {% if engagement_tasks or copilot_tasks or _saved or _project_tasks %}<hr class="sb-hn-my-0">{% endif %}
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
+                    <div class="sb-hn-list-group-item sb-hn-bg-warning sb-hn-bg-opacity-10 sb-hn-py-1 sb-hn-px-3" title="Milestones where you're on the team but haven't updated comments in 2 weeks or more">
+                        <small class="sb-hn-fw-semibold sb-hn-text-muted"><i class="bi bi-clock-history"></i> Stale Milestones</small>
                     </div>
                     {% for ms in stale_milestones %}
                     <div onclick="openHomeMilestoneDetail(event, {{ ms.id }}, '{{ (ms.title or ms.opportunity_name or '')|replace("'", "\\'") }}', '{{ ms.msx_status }}', '{{ ms.url or '' }}')"
-                         class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">
+                         class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">
                                     {{ ms.title or ms.opportunity_name or 'Milestone #' ~ ms.id }}
                                 </div>
-                                <div class="text-muted small text-truncate">
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
                                     {% if ms.customer %}{{ ms.customer.name }}{% endif %}
                                     {% if ms.workload %} - {{ ms.workload }}{% endif %}
                                 </div>
                             </div>
-                            <div class="text-end flex-shrink-0">
+                            <div class="sb-hn-text-end sb-hn-flex-shrink-0">
                                 {% if ms.customer and ms.customer.seller %}
                                 <div>
-                                    <a href="{{ url_for('sellers.seller_view', id=ms.customer.seller.id) }}" class="badge bg-primary text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-person"></i> {{ ms.customer.seller.name }}</a>
+                                    <a href="{{ url_for('sellers.seller_view', id=ms.customer.seller.id) }}" class="sb-hn-badge sb-hn-bg-primary sb-hn-text-decoration-none" onclick="event.stopPropagation();"><i class="bi bi-person"></i> {{ ms.customer.seller.name }}</a>
                                 </div>
                                 {% endif %}
                                 {% if ms.monthly_usage %}
                                 <div>
-                                    <span class="badge bg-success" style="font-size: 0.65rem;">
+                                    <span class="sb-hn-badge sb-hn-bg-success" style="font-size: 0.65rem;">
                                         {{ '${:,.0f}'.format(ms.monthly_usage) }}/mo
                                     </span>
                                 </div>
@@ -167,19 +172,19 @@
                 </div>
                 {% endif %}
                 {% if hygiene_tasks %}
-                {% if open_tasks or stale_milestones %}<hr class="my-0">{% endif %}
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item bg-light bg-opacity-10 py-1 px-3" title="Data quality issues that need attention">
-                        <small class="fw-semibold text-muted"><i class="bi bi-wrench"></i> Hygiene</small>
+                {% if open_tasks or stale_milestones %}<hr class="sb-hn-my-0">{% endif %}
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
+                    <div class="sb-hn-list-group-item sb-hn-bg-light sb-hn-bg-opacity-10 sb-hn-py-1 sb-hn-px-3" title="Data quality issues that need attention">
+                        <small class="sb-hn-fw-semibold sb-hn-text-muted"><i class="bi bi-wrench"></i> Hygiene</small>
                     </div>
                     {% for ht in hygiene_tasks %}
-                    <a href="{{ ht.url }}" class="list-group-item list-group-item-action py-2 px-3">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">
-                                    <i class="bi {{ ht.icon }} text-muted me-1"></i>{{ ht.title }}
+                    <a href="{{ ht.url }}" class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">
+                                    <i class="bi {{ ht.icon }} sb-hn-text-muted sb-hn-me-1"></i>{{ ht.title }}
                                 </div>
-                                <div class="text-muted small text-truncate">
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
                                     {{ ht.subtitle }}{% if ht.type == 'engagement_no_milestone' %} - no milestone linked{% elif ht.type == 'milestone_no_acr' %} - no ACR set{% endif %}
                                 </div>
                             </div>
@@ -189,15 +194,15 @@
                 </div>
                 {% endif %}
                 {% if not engagement_tasks and not copilot_tasks and not _saved and not _project_tasks and not stale_milestones and not hygiene_tasks %}
-                <div class="text-center text-muted py-4">
+                <div class="sb-hn-text-center sb-hn-text-muted sb-hn-py-4">
                     <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
-                    <p class="mb-0 mt-2">No open action items yet.</p>
-                    <p class="small mb-0 mt-1">Go to an <a href="{{ url_for('engagements.engagements_hub') }}">engagement</a> to create action items.</p>
+                    <p class="sb-hn-mb-0 sb-hn-mt-2">No open action items yet.</p>
+                    <p class="sb-hn-small sb-hn-mb-0 sb-hn-mt-1">Go to an <a href="{{ url_for('engagements.engagements_hub') }}">engagement</a> to create action items.</p>
                 </div>
                 {% endif %}
             </div>
             <footer class="sb-home-panel-footer">
-                <a href="{{ url_for('main.action_items_hub') }}" class="text-decoration-none small">View all action items <i class="bi bi-arrow-right"></i></a>
+                <a href="{{ url_for('main.action_items_hub') }}" class="sb-hn-text-decoration-none sb-hn-small">View all action items <i class="bi bi-arrow-right"></i></a>
             </footer>
         </section>
 
@@ -208,30 +213,30 @@
             </header>
             <div class="sb-home-panel-body" tabindex="0" aria-label="Milestones due list">
                 {% if upcoming_milestones %}
-                <div class="list-group list-group-flush">
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
                     {% for ms in upcoming_milestones %}
                     <div onclick="openHomeMilestoneDetail(event, {{ ms.id }}, '{{ (ms.title or ms.opportunity_name or '')|replace("'", "\\'") }}', '{{ ms.msx_status }}', '{{ ms.url or '' }}')"
-                         class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">
+                         class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">
                                     {{ ms.title or ms.opportunity_name or 'Milestone #' ~ ms.id }}
                                 </div>
-                                <div class="text-muted small text-truncate">
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
                                     {% if ms.customer %}{{ ms.customer.name }}{% endif %}
                                     {% if ms.workload %} - {{ ms.workload }}{% endif %}
                                 </div>
                             </div>
-                            <div class="text-end flex-shrink-0">
+                            <div class="sb-hn-text-end sb-hn-flex-shrink-0">
                                 {% if ms.due_date %}
-                                <span class="badge {% if ms.due_date_urgency == 'past_due' %}bg-danger{% elif ms.due_date_urgency == 'this_week' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                <span class="sb-hn-badge {% if ms.due_date_urgency == 'past_due' %}sb-hn-bg-danger{% elif ms.due_date_urgency == 'this_week' %}sb-hn-bg-warning sb-hn-text-dark{% else %}sb-hn-bg-secondary{% endif %}">
                                     {{ ms.due_date.strftime('%b %d') }}
                                 </span>
                                 {% endif %}
                                 {% if ms.msx_status == 'On Track' and ms.monthly_usage %}
-                                <div class="text-success small fw-semibold">${{ '{:,.0f}'.format(ms.monthly_usage) }}/mo</div>
+                                <div class="sb-hn-text-success sb-hn-small sb-hn-fw-semibold">${{ '{:,.0f}'.format(ms.monthly_usage) }}/mo</div>
                                 {% elif ms.msx_status != 'On Track' %}
-                                <div class="small fw-semibold {% if ms.msx_status == 'At Risk' %}text-warning{% elif ms.msx_status == 'Blocked' %}text-danger{% else %}text-muted{% endif %}">
+                                <div class="sb-hn-small sb-hn-fw-semibold {% if ms.msx_status == 'At Risk' %}sb-hn-text-warning{% elif ms.msx_status == 'Blocked' %}sb-hn-text-danger{% else %}sb-hn-text-muted{% endif %}">
                                     {{ ms.msx_status }}
                                 </div>
                                 {% endif %}
@@ -241,15 +246,15 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center text-muted py-4">
+                <div class="sb-hn-text-center sb-hn-text-muted sb-hn-py-4">
                     <i class="bi bi-flag" style="font-size: 2rem;"></i>
-                    <p class="mb-0 mt-2">No milestones due in the next 30 days.</p>
+                    <p class="sb-hn-mb-0 sb-hn-mt-2">No milestones due in the next 30 days.</p>
                 </div>
                 {% endif %}
             </div>
             {% if upcoming_milestones %}
             <footer class="sb-home-panel-footer">
-                <a href="{{ url_for('milestones.milestone_tracker') }}" class="text-decoration-none small">View all milestones <i class="bi bi-arrow-right"></i></a>
+                <a href="{{ url_for('milestones.milestone_tracker') }}" class="sb-hn-text-decoration-none sb-hn-small">View all milestones <i class="bi bi-arrow-right"></i></a>
             </footer>
             {% endif %}
         </section>
@@ -258,39 +263,39 @@
         <section class="sb-home-panel" aria-labelledby="homeRevenueHeading">
             <header class="sb-home-panel-header">
                 <h2 id="homeRevenueHeading" title="Top 10 unactioned revenue alerts across your accounts"><i class="bi bi-exclamation-diamond"></i> Revenue Alerts</h2>
-                <div class="d-flex align-items-center gap-2">
+                <div class="sb-hn-d-flex sb-hn-align-items-center sb-hn-gap-2">
                     <span id="homeBucketFilterContainer"></span>
                 </div>
             </header>
             <div class="sb-home-panel-body" tabindex="0" aria-label="Revenue alerts list">
                 {% if not has_revenue %}
-                <div class="text-center text-muted py-4">
+                <div class="sb-hn-text-center sb-hn-text-muted sb-hn-py-4">
                     <i class="bi bi-cloud-arrow-up" style="font-size: 2rem;"></i>
-                    <p class="mb-0 mt-2">Revenue not imported yet.</p>
+                    <p class="sb-hn-mb-0 sb-hn-mt-2">Revenue not imported yet.</p>
                     <a href="{{ url_for('revenue.revenue_import') }}" class="sb-home-button">
                         <i class="bi bi-upload"></i> Import Revenue
                     </a>
                 </div>
                 {% elif revenue_alerts %}
-                <div class="list-group list-group-flush">
+                <div class="sb-hn-list-group sb-hn-list-group-flush">
                     {% for alert in revenue_alerts %}
                     <div data-bucket="{{ alert.bucket }}" onclick="openHomeAlertDetail(event, {{ alert.id }}, '{{ alert.customer_name|replace("'", "\\'") }}', '{{ alert.bucket|replace("'", "\\'") }}')"
-                         class="list-group-item list-group-item-action py-2 px-3 sb-home-preview" role="button" tabindex="0">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="min-width: 0;">
-                                <div class="fw-semibold text-truncate">{{ alert.customer_name }}</div>
-                                <div class="text-muted small text-truncate">
+                         class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3 sb-home-preview" role="button" tabindex="0">
+                        <div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">
+                            <div class="sb-hn-me-2" style="min-width: 0;">
+                                <div class="sb-hn-fw-semibold sb-hn-text-truncate">{{ alert.customer_name }}</div>
+                                <div class="sb-hn-text-muted sb-hn-small sb-hn-text-truncate">
                                     {{ alert.bucket }} - {{ alert.recommended_action|replace('_', ' ')|title }}
                                 </div>
                             </div>
-                            <div class="text-end flex-shrink-0">
-                                <span class="badge {% if alert.category == 'DECLINING' %}bg-danger{% elif alert.category == 'RECENT_DIP' %}bg-warning text-dark{% elif alert.category == 'EXPANSION_OPPORTUNITY' %}bg-success{% else %}bg-info{% endif %}">
+                            <div class="sb-hn-text-end sb-hn-flex-shrink-0">
+                                <span class="sb-hn-badge {% if alert.category == 'DECLINING' %}sb-hn-bg-danger{% elif alert.category == 'RECENT_DIP' %}sb-hn-bg-warning sb-hn-text-dark{% elif alert.category == 'EXPANSION_OPPORTUNITY' %}sb-hn-bg-success{% else %}sb-hn-bg-info{% endif %}">
                                     {% if alert.category == 'DECLINING' %}Declining{% elif alert.category == 'CHURNED' %}Inactive{% else %}{{ alert.category|replace('_', ' ')|title }}{% endif %}
                                 </span>
                                 {% if alert.dollars_at_risk %}
-                                <div class="text-danger small fw-semibold">${{ '{:,.0f}'.format(alert.dollars_at_risk) }}</div>
+                                <div class="sb-hn-text-danger sb-hn-small sb-hn-fw-semibold">${{ '{:,.0f}'.format(alert.dollars_at_risk) }}</div>
                                 {% elif alert.dollars_opportunity %}
-                                <div class="text-success small fw-semibold">${{ '{:,.0f}'.format(alert.dollars_opportunity) }}</div>
+                                <div class="sb-hn-text-success sb-hn-small sb-hn-fw-semibold">${{ '{:,.0f}'.format(alert.dollars_opportunity) }}</div>
                                 {% endif %}
                             </div>
                         </div>
@@ -298,15 +303,15 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center text-muted py-4">
+                <div class="sb-hn-text-center sb-hn-text-muted sb-hn-py-4">
                     <i class="bi bi-shield-check" style="font-size: 2rem;"></i>
-                    <p class="mb-0 mt-2">No unactioned revenue alerts.</p>
+                    <p class="sb-hn-mb-0 sb-hn-mt-2">No unactioned revenue alerts.</p>
                 </div>
                 {% endif %}
             </div>
             {% if revenue_alerts %}
             <footer class="sb-home-panel-footer">
-                <a href="{{ url_for('revenue.revenue_dashboard') }}" class="text-decoration-none small">View all alerts <i class="bi bi-arrow-right"></i></a>
+                <a href="{{ url_for('revenue.revenue_dashboard') }}" class="sb-hn-text-decoration-none sb-hn-small">View all alerts <i class="bi bi-arrow-right"></i></a>
             </footer>
             {% endif %}
         </section>
@@ -357,9 +362,9 @@
         min-width: 0;
         width: 100%;
     }
-    .calendar-entries .text-truncate,
-    .cal-ghosts-container .text-truncate,
-    #tasksCalendarTable .text-truncate {
+    .calendar-entries .sb-hn-text-truncate,
+    .cal-ghosts-container .sb-hn-text-truncate,
+    #tasksCalendarTable .sb-hn-text-truncate {
         display: block;
         max-width: 100%;
     }
@@ -374,7 +379,7 @@
         background-color: rgba(255,255,255,0.2);
     }
     .cal-add-btn { opacity: 0.3; transition: opacity 0.15s; font-size: 0.85rem; }
-    .cal-add-btn:hover { opacity: 1; color: var(--bs-primary) !important; }
+    .cal-add-btn:hover { opacity: 1; color: var(--sb-ui-accent) !important; }
     /* Per-day sync control lives inside the day-number span and only
        appears when the user hovers the date. Click replaces the number
        with a spinning teal refresh icon until the WorkIQ pull finishes. */
@@ -416,7 +421,7 @@
     }
     @keyframes cal-sync-spin { to { transform: rotate(360deg); } }
     .cal-fill-btn { opacity: 0.3; transition: opacity 0.15s; font-size: 0.85rem; }
-    .cal-fill-btn:hover { opacity: 1; color: var(--bs-warning) !important; }
+    .cal-fill-btn:hover { opacity: 1; color: var(--sb-ui-warning) !important; }
     #calendarTable td:hover .cal-add-btn { opacity: 0.7; }
     #calendarTable td:hover .cal-fill-btn { opacity: 0.7; }
 
@@ -465,7 +470,7 @@
 <!-- Meeting-sync feedback lives in base.html as a draggable, non-blocking
      floating card. The today-cell click handler routes through window.SyncStatus. -->
 
-<div class="sb-home-page" data-sb-home>
+<div class="sb-home-page" data-sb-home data-sb-page-surface>
 <nav class="sb-context-bar sb-home-context" aria-label="Breadcrumb">
     <div class="sb-home-breadcrumb">
         <i class="bi bi-house-door" aria-hidden="true"></i>
@@ -528,21 +533,21 @@
                 {% if has_engagements %}
                 <li class="nav-item" role="presentation">
                     <button class="sb-home-tab" id="engagements-tab" type="button" role="tab" aria-controls="engagements-view" aria-selected="false" tabindex="-1">
-                        <i class="bi bi-diagram-3"></i> Engagements <span class="fw-normal" id="engagements-count" style="font-size:0.8em; opacity:0.85;">({{ engagement_count }})</span>
+                        <i class="bi bi-diagram-3"></i> Engagements <span class="sb-hn-fw-normal" id="engagements-count" style="font-size:0.8em; opacity:0.85;">({{ engagement_count }})</span>
                     </button>
                 </li>
                 {% endif %}
                 {% if has_projects %}
                 <li class="nav-item" role="presentation">
                     <button class="sb-home-tab" id="projects-tab" type="button" role="tab" aria-controls="projects-view" aria-selected="false" tabindex="-1">
-                        <i class="bi bi-folder"></i> Projects <span class="fw-normal" style="font-size:0.8em; opacity:0.85;">({{ project_count }})</span>
+                        <i class="bi bi-folder"></i> Projects <span class="sb-hn-fw-normal" style="font-size:0.8em; opacity:0.85;">({{ project_count }})</span>
                     </button>
                 </li>
                 {% endif %}
                 {% if task_due_count > 0 %}
                 <li class="nav-item" role="presentation">
                     <button class="sb-home-tab" id="tasks-tab" type="button" role="tab" aria-controls="tasks-view" aria-selected="false" tabindex="-1">
-                        <i class="bi bi-check2-square"></i> Action Items <span class="fw-normal" style="font-size:0.8em; opacity:0.85;">({{ task_due_count }})</span>
+                        <i class="bi bi-check2-square"></i> Action Items <span class="sb-hn-fw-normal" style="font-size:0.8em; opacity:0.85;">({{ task_due_count }})</span>
                     </button>
                 </li>
                 {% endif %}
@@ -586,6 +591,7 @@
             <!-- Engagements Tab -->
             {% if has_engagements %}
             <div class="sb-home-tabpanel" id="engagements-view" role="tabpanel" aria-labelledby="engagements-tab" hidden>
+                <section class="sb-eng-directory sb-home-engagements" data-sb-home-engagements>
                 {% set eng_api_url = '/api/engagements/active' %}
                 {% set eng_auto_load = false %}
                 {% set eng_show_seller = not seller_mode %}
@@ -594,18 +600,24 @@
                 {% set eng_count_id = 'eng-panel-count' %}
                 {% set eng_empty_msg = 'No engagements match the current filter.' %}
                 {% include 'partials/engagements_panel.html' %}
+                <div class="sb-eng-reading" tabindex="0" aria-label="Home engagements">
+                    <div id="engagementsListBody" aria-live="polite">
+                        <p class="sb-eng-empty" role="status">Open Engagements to load this view.</p>
+                    </div>
+                </div>
+                </section>
             </div>
             {% endif %}
 
             <!-- Projects Tab -->
             {% if has_projects %}
             <div class="sb-home-tabpanel" id="projects-view" role="tabpanel" aria-labelledby="projects-tab" hidden>
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-folder"></i> Active Projects</h5>
-                        <a href="{{ url_for('projects.project_create') }}" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle"></i> New Project</a>
+                <div class="sb-hn-card">
+                    <div class="sb-hn-card-header sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-center">
+                        <h5 class="sb-hn-mb-0"><i class="bi bi-folder"></i> Active Projects</h5>
+                        <a href="{{ url_for('projects.project_create') }}" class="sb-hn-btn sb-hn-btn-sm sb-hn-btn-primary"><i class="bi bi-plus-circle"></i> New Project</a>
                     </div>
-                    <div class="list-group list-group-flush" id="projectsList">
+                    <div class="sb-hn-list-group sb-hn-list-group-flush" id="projectsList">
                     </div>
                 </div>
             </div>
@@ -624,19 +636,19 @@
                             <i class="bi bi-chevron-right" aria-hidden="true"></i>
                         </button>
                     </div>
-                    <div id="tasksOverdueBar" class="px-3 py-2" style="display: none;">
+                    <div id="tasksOverdueBar" class="sb-hn-px-3 sb-hn-py-2" style="display: none;">
                     </div>
                     <div class="sb-home-calendar-body">
-                        <table class="table table-bordered mb-0" id="tasksCalendarTable">
+                        <table class="table table-bordered sb-hn-mb-0" id="tasksCalendarTable">
                             <thead>
-                                <tr class="text-center">
-                                    <th class="text-muted">Sun</th>
+                                <tr class="sb-hn-text-center">
+                                    <th class="sb-hn-text-muted">Sun</th>
                                     <th>Mon</th>
                                     <th>Tue</th>
                                     <th>Wed</th>
                                     <th>Thu</th>
                                     <th>Fri</th>
-                                    <th class="text-muted">Sat</th>
+                                    <th class="sb-hn-text-muted">Sat</th>
                                 </tr>
                             </thead>
                             <tbody id="tasksCalendarBody">
@@ -1253,7 +1265,7 @@
     });
     
     // Load calendar when tab is shown
-    document.getElementById('calendar-tab').addEventListener('shown.bs.tab', function() {
+    document.getElementById('calendar-tab').addEventListener('sb:home-tab-selected', function() {
         localStorage.setItem(TAB_STORAGE_KEY, 'calendar');
         if (!calendarLoaded) {
             loadCalendar(calendarYear, calendarMonth);
@@ -1634,7 +1646,7 @@
     {% if has_engagements %}
     // ===== ENGAGEMENTS TAB =====
     let engagementsLoaded = false;
-    document.getElementById('engagements-tab').addEventListener('shown.bs.tab', function() {
+    document.getElementById('engagements-tab').addEventListener('sb:home-tab-selected', function() {
         localStorage.setItem(TAB_STORAGE_KEY, 'engagements');
         if (!engagementsLoaded) {
             engagementsLoaded = true;
@@ -1646,7 +1658,7 @@
     {% if has_projects %}
     // ===== PROJECTS TAB =====
     let projectsLoaded = false;
-    document.getElementById('projects-tab').addEventListener('shown.bs.tab', function() {
+    document.getElementById('projects-tab').addEventListener('sb:home-tab-selected', function() {
         localStorage.setItem(TAB_STORAGE_KEY, 'projects');
         if (!projectsLoaded) {
             projectsLoaded = true;
@@ -1655,30 +1667,30 @@
     });
     function loadProjects() {
         var list = document.getElementById('projectsList');
-        list.innerHTML = '<div class="p-3 text-muted"><i class="bi bi-hourglass-split"></i> Loading...</div>';
+        list.innerHTML = '<div class="sb-hn-p-3 sb-hn-text-muted"><i class="bi bi-hourglass-split"></i> Loading...</div>';
         fetch('/api/projects/active')
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.projects || data.projects.length === 0) {
-                    list.innerHTML = '<div class="p-3 text-center text-muted">No active projects.</div>';
+                    list.innerHTML = '<div class="sb-hn-p-3 sb-hn-text-center sb-hn-text-muted">No active projects.</div>';
                     return;
                 }
                 var html = '';
                 data.projects.forEach(function(p) {
-                    html += '<a href="/project/' + p.id + '" class="list-group-item list-group-item-action py-2 px-3">';
-                    html += '<div class="d-flex justify-content-between align-items-start">';
+                    html += '<a href="/project/' + p.id + '" class="sb-hn-list-group-item sb-hn-list-group-item-action sb-hn-py-2 sb-hn-px-3">';
+                    html += '<div class="sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-start">';
                     html += '<div>';
-                    html += '<div class="fw-semibold">' + p.title;
-                    html += ' <span class="badge bg-info ms-1" style="font-size: 0.65rem;">' + p.project_type + '</span>';
-                    if (p.status === 'On Hold') html += ' <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">On Hold</span>';
-                    if (p.status === 'Completed') html += ' <span class="badge bg-success ms-1" style="font-size: 0.65rem;">Completed</span>';
+                    html += '<div class="sb-hn-fw-semibold">' + p.title;
+                    html += ' <span class="sb-hn-badge sb-hn-bg-info sb-hn-ms-1" style="font-size: 0.65rem;">' + p.project_type + '</span>';
+                    if (p.status === 'On Hold') html += ' <span class="sb-hn-badge sb-hn-bg-warning sb-hn-text-dark sb-hn-ms-1" style="font-size: 0.65rem;">On Hold</span>';
+                    if (p.status === 'Completed') html += ' <span class="sb-hn-badge sb-hn-bg-success sb-hn-ms-1" style="font-size: 0.65rem;">Completed</span>';
                     html += '</div>';
-                    if (p.description) html += '<small class="text-muted">' + p.description + '</small>';
+                    if (p.description) html += '<small class="sb-hn-text-muted">' + p.description + '</small>';
                     html += '</div>';
-                    html += '<div class="text-end flex-shrink-0">';
-                    if (p.open_task_count) html += '<span class="badge bg-primary">' + p.open_task_count + ' task' + (p.open_task_count !== 1 ? 's' : '') + '</span>';
+                    html += '<div class="sb-hn-text-end sb-hn-flex-shrink-0">';
+                    if (p.open_task_count) html += '<span class="sb-hn-badge sb-hn-bg-primary">' + p.open_task_count + ' task' + (p.open_task_count !== 1 ? 's' : '') + '</span>';
                     if (p.due_date) {
-                        html += '<div><small class="' + (p.is_overdue ? 'text-danger fw-bold' : 'text-muted') + '">' + p.due_date;
+                        html += '<div><small class="' + (p.is_overdue ? 'sb-hn-text-danger sb-hn-fw-bold' : 'sb-hn-text-muted') + '">' + p.due_date;
                         if (p.is_overdue) html += ' <i class="bi bi-exclamation-triangle-fill"></i>';
                         html += '</small></div>';
                     }
@@ -1687,7 +1699,7 @@
                 list.innerHTML = html;
             })
             .catch(function() {
-                list.innerHTML = '<div class="p-3 text-danger"><i class="bi bi-exclamation-triangle"></i> Failed to load projects.</div>';
+                list.innerHTML = '<div class="sb-hn-p-3 sb-hn-text-danger"><i class="bi bi-exclamation-triangle"></i> Failed to load projects.</div>';
             });
     }
     {% endif %}
@@ -1698,7 +1710,7 @@
     let tasksYear = new Date().getFullYear();
     let tasksMonth = new Date().getMonth() + 1;
 
-    document.getElementById('tasks-tab').addEventListener('shown.bs.tab', function() {
+    document.getElementById('tasks-tab').addEventListener('sb:home-tab-selected', function() {
         localStorage.setItem(TAB_STORAGE_KEY, 'tasks');
         if (!tasksLoaded) {
             tasksLoaded = true;
@@ -1724,7 +1736,7 @@
     function loadTasksCalendar(year, month) {
         var body = document.getElementById('tasksCalendarBody');
         var title = document.getElementById('tasksCalendarTitle');
-        body.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm" role="status"></div> Loading...</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="sb-hn-text-center sb-hn-py-4"><div class="sb-hn-spinner-border sb-hn-spinner-border-sm" role="status"></div> Loading...</td></tr>';
 
         fetch('/api/action-items/calendar?year=' + year + '&month=' + month)
             .then(function(r) { return r.json(); })
@@ -1734,7 +1746,7 @@
                 renderOverdueBar(data.overdue || []);
             })
             .catch(function() {
-                body.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error loading tasks</td></tr>';
+                body.innerHTML = '<tr><td colspan="7" class="sb-hn-text-center sb-hn-py-4 sb-hn-text-danger">Error loading tasks</td></tr>';
             });
     }
 
@@ -1745,10 +1757,10 @@
             return;
         }
         bar.style.display = '';
-        var html = '<div class="alert alert-danger mb-0 py-2 px-3 d-flex align-items-center gap-2">';
+        var html = '<div class="sb-hn-alert sb-hn-alert-danger sb-hn-mb-0 sb-hn-py-2 sb-hn-px-3 sb-hn-d-flex sb-hn-align-items-center sb-hn-gap-2">';
         html += '<i class="bi bi-exclamation-triangle-fill"></i>';
         html += '<strong>' + overdue.length + ' overdue</strong>';
-        html += '<span class="text-truncate">';
+        html += '<span class="sb-hn-text-truncate">';
         overdue.slice(0, 3).forEach(function(t, i) {
             if (i > 0) html += ', ';
             html += escTaskHtml(t.title);
@@ -1786,7 +1798,7 @@
 
             for (var col = 0; col < 7; col++) {
                 var cell = document.createElement('td');
-                cell.className = 'p-1';
+                cell.className = 'sb-hn-p-1';
                 cell.style.verticalAlign = 'top';
                 // Fixed height for every cell (weekday, weekend, and
                 // out-of-month filler) so all rows are visually consistent.
@@ -1801,11 +1813,11 @@
 
                     // Day number
                     var dayHeader = document.createElement('div');
-                    dayHeader.className = 'd-flex justify-content-between align-items-center mb-1';
+                    dayHeader.className = 'sb-hn-d-flex sb-hn-justify-content-between sb-hn-align-items-center sb-hn-mb-1';
                     var dayNumber = document.createElement('span');
-                    dayNumber.className = 'fw-bold';
+                    dayNumber.className = 'sb-hn-fw-bold';
                     if (dayNum === todayDay) {
-                        dayNumber.innerHTML = '<span class="badge bg-primary rounded-circle">' + dayNum + '</span>';
+                        dayNumber.innerHTML = '<span class="sb-hn-badge sb-hn-bg-primary rounded-circle">' + dayNum + '</span>';
                     } else {
                         dayNumber.textContent = dayNum;
                     }
@@ -1815,7 +1827,7 @@
                     var taskEntries = days[dayNum] || [];
                     if (taskEntries.length > 0) {
                         var countBadge = document.createElement('span');
-                        countBadge.className = 'badge bg-secondary';
+                        countBadge.className = 'sb-hn-badge sb-hn-bg-secondary';
                         countBadge.style.fontSize = '0.65rem';
                         countBadge.textContent = taskEntries.length;
                         dayHeader.appendChild(countBadge);
@@ -1831,27 +1843,27 @@
 
                         taskEntries.forEach(function(t) {
                             var entry = document.createElement('div');
-                            entry.className = 'd-block text-truncate mb-1 px-1 rounded';
+                            entry.className = 'sb-hn-d-block sb-hn-text-truncate sb-hn-mb-1 sb-hn-px-1 sb-hn-rounded';
                             entry.setAttribute('data-action-item-id', t.id);
                             entry.style.cursor = 'pointer';
 
                             // Color by status
                             if (t.status === 'completed') {
-                                entry.classList.add('text-decoration-line-through', 'text-muted');
+                                entry.classList.add('sb-hn-text-decoration-line-through', 'sb-hn-text-muted');
                             } else if (t.is_overdue) {
                                 entry.style.backgroundColor = isDark ? 'rgba(220,53,69,0.2)' : 'rgba(220,53,69,0.1)';
-                                entry.style.borderLeft = '3px solid var(--bs-danger)';
+                                entry.style.borderLeft = '3px solid var(--sb-ui-danger)';
                             } else if (t.priority === 'high') {
                                 entry.style.backgroundColor = isDark ? 'rgba(255,193,7,0.15)' : 'rgba(255,193,7,0.1)';
-                                entry.style.borderLeft = '3px solid var(--bs-warning)';
+                                entry.style.borderLeft = '3px solid var(--sb-ui-warning)';
                             } else {
                                 entry.style.backgroundColor = isDark ? 'rgba(13,110,253,0.15)' : 'rgba(13,110,253,0.08)';
-                                entry.style.borderLeft = '3px solid var(--bs-primary)';
+                                entry.style.borderLeft = '3px solid var(--sb-ui-accent)';
                             }
 
                             var icons = '';
-                            if (t.priority === 'high') icons += '<i class="bi bi-exclamation-triangle-fill text-danger" style="font-size:0.65rem;"></i> ';
-                            if (t.status === 'completed') icons += '<i class="bi bi-check-circle-fill text-success" style="font-size:0.65rem;"></i> ';
+                            if (t.priority === 'high') icons += '<i class="bi bi-exclamation-triangle-fill sb-hn-text-danger" style="font-size:0.65rem;"></i> ';
+                            if (t.status === 'completed') icons += '<i class="bi bi-check-circle-fill sb-hn-text-success" style="font-size:0.65rem;"></i> ';
 
                             entry.innerHTML = icons + escTaskHtml(t.title);
                             entry.title = t.title + (t.context ? ' - ' + t.context : '') + (t.is_overdue ? ' (OVERDUE)' : '');
@@ -1866,7 +1878,7 @@
 
                     dayIndex++;
                 } else {
-                    cell.classList.add('bg-light');
+                    cell.classList.add('sb-hn-bg-light');
                     if (isDark) cell.style.backgroundColor = 'rgba(255,255,255,0.03)';
                 }
 
@@ -1924,7 +1936,7 @@ window.openHomeMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl)
             <div id="homeNoteBody" data-sb-record-content></div>
         </div>
         <div class="sb-dialog-footer">
-            <small data-sb-record-status role="status">Action items save immediately when submitted.</small>
+            <small data-sb-record-status role="status">Open the full page to edit this note.</small>
         </div>
     </div>
 </dialog>
@@ -1934,6 +1946,8 @@ window.openHomeMilestoneDetail = function(event, msId, msTitle, msStatus, msUrl)
     window.openHomeNoteDetail = function(noteId, customerName) {
         if (!preview) {
             preview = SBRecordDialog.create('homeNoteDetailModal', {
+                statusText: 'Open the full page to edit this note.',
+                errorText: 'Unable to load this note. Retry or open the full page.',
                 loadUrl: id => '/api/note/' + id + '/detail',
                 fullUrl: id => '/note/' + id,
                 fragmentSelector: '[data-sb-note-detail]',

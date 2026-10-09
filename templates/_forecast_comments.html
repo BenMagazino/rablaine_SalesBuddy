@@ -7,9 +7,7 @@
         entity_label     - "milestone" or "opportunity" (for display text)
         show_comments    - bool: whether to show the comments section at all
                            (False when milestone has no MSX ID)
-        forecast_workbench - optional bool: native milestone presentation only
 #}
-{% set native_forecast = forecast_workbench|default(false) %}
 {% set forecast_ui = {
     'pane': 'sb-ms-comments', 'header': 'sb-ms-section-header', 'heading': 'sb-ms-heading',
     'body': 'sb-ms-comments-body', 'count': 'sb-record-tag', 'form': 'sb-comment-form',
@@ -17,17 +15,10 @@
     'muted': 'sb-ms-muted', 'loading': 'sb-ms-loading', 'list': 'sb-comment-list',
     'item': 'sb-comment-item', 'item_header': 'sb-comment-header',
     'text': 'comment-text sb-comment-text'
-} if native_forecast else {
-    'pane': 'card mb-3', 'header': 'card-header d-flex justify-content-between align-items-center',
-    'heading': 'mb-0', 'body': 'card-body', 'count': 'badge bg-secondary', 'form': 'mb-4',
-    'compose': 'input-group', 'field': 'form-control', 'button': 'btn btn-primary',
-    'muted': 'text-muted', 'loading': 'text-center py-3 mb-3', 'list': 'list-group',
-    'item': 'list-group-item', 'item_header': 'd-flex w-100 justify-content-between mb-1',
-    'text': 'mb-0 comment-text'
 } %}
 <div class="{{ forecast_ui.pane }}">
     <div class="{{ forecast_ui.header }}">
-        <{{ 'h2' if native_forecast else 'h5' }} class="{{ forecast_ui.heading }}"><i class="bi bi-chat-dots" {% if native_forecast %}aria-hidden="true"{% endif %}></i> Forecast Comments</{{ 'h2' if native_forecast else 'h5' }}>
+        <h2 class="{{ forecast_ui.heading }}"><i class="bi bi-chat-dots" aria-hidden="true"></i> Forecast Comments</h2>
         <span class="{{ forecast_ui.count }}" id="commentCount" {% if not cached_comments %}style="display:none;"{% endif %}>{% if cached_comments %}{{ cached_comments|length }} comment{{ 's' if cached_comments|length != 1 else '' }}{% endif %}</span>
     </div>
     <div class="{{ forecast_ui.body }}" id="commentsBody">
@@ -37,7 +28,7 @@
             {% if cached_comments is not none %}
             <form action="{{ comment_form_action }}" method="post" class="{{ forecast_ui.form }}">
                 <div class="{{ forecast_ui.compose }}">
-                    <textarea class="{{ forecast_ui.field }}" name="comment" rows="2" placeholder="Add a forecast comment..." {% if native_forecast %}aria-label="Forecast comment"{% endif %} required></textarea>
+                    <textarea class="{{ forecast_ui.field }}" name="comment" rows="2" placeholder="Add a forecast comment..." aria-label="Forecast comment" required></textarea>
                     <button type="submit" class="{{ forecast_ui.button }}">
                         <i class="bi bi-send"></i> Post
                     </button>
@@ -47,9 +38,9 @@
             {% endif %}
         </div>
         <!-- Spinner while fetching -->
-        <div id="commentsSpinner" class="{{ forecast_ui.loading }}" {% if native_forecast %}role="status"{% endif %}>
-            {% if native_forecast %}<i class="bi bi-hourglass-split" aria-hidden="true"></i>{% else %}<div class="spinner-border spinner-border-sm" role="status"></div>{% endif %}
-            <span class="{{ forecast_ui.muted }}{% if not native_forecast %} ms-1{% endif %}">{% if cached_comments is not none %}Refreshing comments from MSX...{% else %}Loading comments from MSX...{% endif %}</span>
+        <div id="commentsSpinner" class="{{ forecast_ui.loading }}" role="status">
+            <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+            <span class="{{ forecast_ui.muted }}">{% if cached_comments is not none %}Refreshing comments from MSX...{% else %}Loading comments from MSX...{% endif %}</span>
         </div>
         <!-- Cached comments shown immediately -->
         <div id="commentsCached" {% if not cached_comments %}style="display:none;"{% endif %}>

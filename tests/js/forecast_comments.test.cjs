@@ -95,7 +95,7 @@ function harness(native, cached = []) {
 }
 
 for (const native of [false, true, 'opportunity']) {
-    const label = native === true ? 'native milestone' : native ? 'native opportunity' : 'legacy opportunity';
+    const label = native === true ? 'native milestone' : native ? 'native opportunity' : 'default opportunity';
     test(`${label}: fresh comments keep sorting, escaping, tables, ref links and handlers`, () => {
         const h = harness(native);
         const comments = [
@@ -111,10 +111,10 @@ for (const native of [false, true, 'opportunity']) {
         assert.ok(html.includes('<table><tr><td>Plan'));
         assert.ok(html.includes('href="/note/12"'));
         assert.ok(html.includes('href="/engagement/9"'));
-        assert.ok(html.includes(native ? 'sb-comment-item' : 'list-group-item'));
-        assert.equal(html.includes('aria-label="Edit forecast comment"'), Boolean(native));
-        assert.equal(html.includes('aria-label="Delete forecast comment"'), Boolean(native));
-        assert.equal(/\b(card|list-group-item|btn-primary|form-control)\b/.test(html), !native);
+        assert.ok(html.includes('sb-comment-item'));
+        assert.ok(html.includes('aria-label="Edit forecast comment"'));
+        assert.ok(html.includes('aria-label="Delete forecast comment"'));
+        assert.equal(/\b(card|list-group-item|btn-primary|form-control)\b/.test(html), false);
         assert.equal(h.elements.get('commentCount').textContent, '2 comments');
         assert.ok(h.elements.get('commentFormMsx').listeners.has('submit'));
         assert.equal(h.elements.get('commentsMsx').actions.filter(b => b.listeners.has('click')).length, 4);
@@ -157,7 +157,7 @@ for (const native of [false, true, 'opportunity']) {
         let body = h.body('<p>Original &lt;plain&gt;</p>');
         h.api.startEditComment(0, 'modified', 'owner');
         assert.equal(h.elements.get('editText-0').value, 'Original <plain>');
-        assert.ok(body.innerHTML.includes(native ? 'sb-record-field' : 'form-control'));
+        assert.ok(body.innerHTML.includes('sb-record-field'));
         h.elements.get('cancelEdit-0').listeners.get('click')();
         assert.equal(body.innerHTML, '<p>Original &lt;plain&gt;</p>');
         body = h.body('<div><table><tr><td>Plan</td></tr></table></div>');
@@ -258,7 +258,7 @@ for (const native of [false, true, 'opportunity']) {
         h.elements.get('commentsCached').style.display = 'none';
         h.api.renderCommentsError('Failed <read>', false);
         assert.match(h.elements.get('commentsError').innerHTML, /Failed &lt;read&gt;/);
-        assert.ok(h.elements.get('commentsError').innerHTML.includes(native ? 'sb-ms-error' : 'alert alert-warning'));
+        assert.ok(h.elements.get('commentsError').innerHTML.includes('sb-ms-error'));
         h.api.renderCommentsError('VPN', true);
         assert.match(h.elements.get('commentsError').innerHTML, /VPN Required/);
         assert.equal(h.elements.get('commentsSpinner').style.display, 'none');

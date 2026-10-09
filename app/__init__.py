@@ -182,6 +182,8 @@ def create_app():
     # Initialize diagnostic logging (correlation IDs, error capture, pruning)
     from app.services.diagnostic_log import init_diagnostic_log
     init_diagnostic_log(app)
+    from app.routes.errors import register_error_handlers
+    register_error_handlers(app)
 
     # Drain background milestone tracking notifications into flash
     @app.before_request

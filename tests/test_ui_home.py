@@ -24,6 +24,30 @@ def render_home(app: Flask, **overrides: object) -> BeautifulSoup:
         return BeautifulSoup(render_template("index.html", **context), "html.parser")
 
 
+def test_complete_home_has_native_content_and_embedded_engagement_reading(app: Flask) -> None:
+    """The final page supplies the full shared directory contract, not controls alone."""
+    soup = render_home(app, has_engagements=True, has_projects=True, task_due_count=1)
+    assert soup.select_one("body.sb-page-frame.sb-home-page")
+    root = soup.select_one("[data-sb-home]")
+    assert root.has_attr("data-sb-page-surface")
+    assert soup.select_one('link[href="/static/css/ui-page-frame.css"]')
+    assert not root.select(
+        ".btn,.badge,.card,.row,.form-control,.form-select,.list-group,"
+        "[data-bs-toggle],[data-bs-dismiss],[data-bs-target]"
+    )
+    panel = root.select_one("[data-sb-home-engagements]")
+    assert panel.select_one('[data-auto-load="false"]')
+    assert panel.select_one(".sb-eng-reading #engagementsListBody")
+    assert panel.select_one("#engagementsListBody_sortSelect")
+    assert panel.select_one("#engagementsListBody_groupToggle")
+    assert panel.select_one("#engagementsListBody_favoritesBtn")
+    assert soup.select_one('link[href="/static/css/ui-home-native.css"]')
+    assert soup.select_one('link[href="/static/css/ui-engagements-directory.css"]')
+    assert "Open the full page to edit this note." in soup.select_one(
+        "#homeNoteDetailModal [data-sb-record-status]"
+    ).get_text()
+
+
 @pytest.mark.parametrize("preference", [
     "copilot_actions_enabled", "show_stale_milestones", "show_hygiene_tasks",
 ])
@@ -239,7 +263,7 @@ def test_home_rail_retains_every_task_source_and_original_preview_options(app: F
         option = "true" if task.source == "engagement" else "false"
         row = panel.find(onclick=f"viewActionItem({task.id}, {{showEngagementLink: {option}}})")
         assert row["role"] == "button" and row["tabindex"] == "0"
-        assert row.select_one(".badge.bg-danger")
+        assert row.select_one(".sb-hn-badge.sb-hn-bg-danger")
     assert "Copilot Suggestions" in panel.get_text()
     assert "Project Tasks" in panel.get_text()
     assert "Stale Milestones" in panel.get_text()
@@ -267,7 +291,7 @@ def test_home_milestones_and_revenue_preserve_metadata_filters_and_destinations(
     rail = soup.select_one(".sb-home-rail")
     row = rail.find(onclick=lambda value: value and "event, 81," in value)
     assert row["tabindex"] == "0" and row["role"] == "button"
-    assert row.select_one(".text-danger").get_text(strip=True) == "Blocked"
+    assert row.select_one(".sb-hn-text-danger").get_text(strip=True) == "Blocked"
     with app.test_request_context("/"):
         assert rail.select_one(f'a[href="{url_for("milestones.milestone_tracker")}"]')
     revenue = rail.select_one('[data-bucket="Data"]')

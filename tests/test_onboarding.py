@@ -15,15 +15,18 @@ class TestOnboardingWizardDisplay:
         """Onboarding wizard should appear when first_run_modal_dismissed is False."""
         response = client.get('/')
         assert response.status_code == 200
-        # The wizard modal HTML should be rendered
+        # First-run setup is rendered and auto-opens.
         assert b'id="welcomeModal"' in response.data
+        assert b'data-sb-auto-open="true"' in response.data
         assert b'onboardingStep1' in response.data
         assert b'onboardingStep2' in response.data
         # The wizard is two steps now - nothing past step 2 should exist.
         assert b'onboardingStep3' not in response.data
 
     def test_onboarding_modal_hidden_when_dismissed(self, client, app):
-        """Onboarding wizard should not appear when first_run_modal_dismissed is True."""
+        """Completed users retain a closed, manually reviewable wizard without auto-opening."""
+        from bs4 import BeautifulSoup
+
         with app.app_context():
             from app.models import db, UserPreference
             pref = UserPreference.query.first()
@@ -32,9 +35,10 @@ class TestOnboardingWizardDisplay:
 
         response = client.get('/')
         assert response.status_code == 200
-        # The wizard modal HTML should NOT be rendered
-        assert b'id="welcomeModal"' not in response.data
-        assert b'onboardingStep1' not in response.data
+        dialog = BeautifulSoup(response.data, 'html.parser').select_one('dialog#welcomeModal')
+        assert dialog is not None
+        assert dialog['data-sb-auto-open'] == 'false'
+        assert not dialog.has_attr('open')
 
         # Clean up
         with app.app_context():
@@ -114,7 +118,7 @@ class TestDismissWelcomeModalEndpoint:
             db.session.commit()
 
     def test_dismiss_modal_then_page_hides_wizard(self, client, app):
-        """After dismissing, the wizard should not render on subsequent pages."""
+        """Dismissing disables auto-opening while retaining read-only review availability."""
         # Dismiss
         response = client.post('/api/preferences/dismiss-welcome-modal',
                                content_type='application/json')
@@ -123,7 +127,8 @@ class TestDismissWelcomeModalEndpoint:
         # Load page
         response = client.get('/')
         assert response.status_code == 200
-        assert b'id="welcomeModal"' not in response.data
+        assert b'id="welcomeModal"' in response.data
+        assert b'data-sb-auto-open="false"' in response.data
 
         # Clean up
         with app.app_context():
@@ -219,13 +224,13 @@ class TestResetOnboarding:
             assert pref.first_run_modal_dismissed is False
 
     def test_reset_then_wizard_shows_again(self, client, app):
-        """After resetting, the wizard should render again."""
+        """The explicit reset command re-enables automatic first-run opening."""
         # Dismiss
         client.post('/api/preferences/dismiss-welcome-modal',
                      content_type='application/json')
         # Verify dismissed
         response = client.get('/')
-        assert b'id="welcomeModal"' not in response.data
+        assert b'data-sb-auto-open="false"' in response.data
 
         # Reset
         client.post('/api/preferences/reset-onboarding',
@@ -233,6 +238,7 @@ class TestResetOnboarding:
         # Verify wizard is back
         response = client.get('/')
         assert b'id="welcomeModal"' in response.data
+        assert b'data-sb-auto-open="true"' in response.data
 
     def test_rerun_button_removed_from_navbar(self, client, app):
         """Navbar re-run button was removed (wizard is mandatory, can't be skipped)."""
@@ -875,9 +881,11 @@ class TestWizardImportStep:
 
     def test_revenue_copy_does_not_mention_exports(self, client, app):
         """New users should never learn about a CSV path that no longer exists."""
+        from bs4 import BeautifulSoup
+
         response = client.get('/')
-        html = response.data.decode('utf-8')
-        import_step = html.split('onboardingStep2')[-1].split('modal-footer')[0]
+        soup = BeautifulSoup(response.data, 'html.parser')
+        import_step = soup.select_one('#onboardingStep2').get_text()
         assert 'spreadsheet' not in import_step.lower()
         assert 'No export' not in import_step
 
@@ -896,9 +904,17 @@ class TestWizardImportStep:
         assert 'let revenueImported = false;' in html
 
     def test_dark_mode_toggle_has_cursor_pointer(self, client, app):
-        """Dark mode toggle in step 1 should have cursor: pointer to look clickable."""
+        """The native switch retains its label, focus treatment and clickable affordance."""
+        from pathlib import Path
+        from bs4 import BeautifulSoup
+
         response = client.get('/')
-        html = response.data.decode('utf-8')
-        assert 'cursor: pointer;' in html
-        # Should also have the toggle-enhancing CSS
-        assert '#onboardDarkModeToggle:not(:checked)' in html
+        soup = BeautifulSoup(response.data, 'html.parser')
+        toggle = soup.select_one('#welcomeModal #onboardDarkModeToggle')
+        assert toggle['role'] == 'switch'
+        assert toggle['aria-label'] == 'Dark mode'
+        assert soup.select_one('label[for="onboardDarkModeToggle"]') is not None
+        css = Path('static/css/ui-onboarding.css').read_text(encoding='utf-8')
+        assert 'cursor: pointer;' in css
+        assert '.sb-setup-theme-choice input:checked' in css
+        assert '.sb-setup :focus-visible' in css

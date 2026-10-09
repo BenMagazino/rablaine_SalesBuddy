@@ -344,3 +344,20 @@ test('Partners help retains exact five headings, original commands and explicit 
         assert.ok(section.includes(text), text);
     assert.ok(!section.includes('phone'));
 });
+
+test('offline offers cannot queue accept or decline for a later reconnection', async () => {
+    const h = harness(); await h.connect();
+    h.socketHandlers.disconnect();
+    h.api.acceptOffer('peer@test', 'offer');
+    h.api.declineOffer('peer@test', 'offer');
+    assert.equal(h.emissions.filter(e => ['share_accept', 'share_decline'].includes(e.type)).length, 0);
+    assert.equal(h.requests.length, 1);
+});
+
+test('unused Bootstrap sharing client is removed, native client remains the single implementation', () => {
+    assert.deepEqual(fs.readdirSync('static/js').filter(name => /^share.*\.js$/.test(name)),
+        ['share.js']);
+    const source = fs.readFileSync('static/js/share.js', 'utf8');
+    assert.ok(!/\bbootstrap\.|data-bs-|spinner-border|class="(?:toast|btn|list-group)/.test(source));
+    assert.ok(source.includes("window.SBDialog.open('shareImportReviewModal')"));
+});

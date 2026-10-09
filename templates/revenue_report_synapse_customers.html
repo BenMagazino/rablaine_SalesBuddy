@@ -31,7 +31,6 @@
                 {% if mode == 'new' and lookback_months %}<span class="sb-synapse-period">({{ lookback_months[0].fiscal_month }} through {{ lookback_months[-1].fiscal_month }})</span>{% endif %}
             </p>
         </div>
-        {% set report_export_native = true %}
         {% set export_table_id = '.sb-synapse-table' %}
         {% set export_filename = 'synapse-customers-' ~ mode %}
         {% set export_title = 'Synapse Customers' %}

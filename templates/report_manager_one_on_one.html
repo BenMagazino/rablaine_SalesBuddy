@@ -54,9 +54,9 @@
             <i class="bi bi-plus-lg"></i> New initiative
         </button>
     </header>
-    <div id="reportError" class="it-error d-none" role="alert" tabindex="-1">
+    <div id="reportError" class="it-error sb-hidden" role="alert" tabindex="-1">
         <span id="reportErrorMessage"></span>
-        <button type="button" id="retryTalkingPoints" class="it-command is-danger d-none"
+        <button type="button" id="retryTalkingPoints" class="it-command is-danger sb-hidden"
                 data-action="retry-points">Retry saving</button>
     </div>
     <nav class="it-index" aria-label="Initiatives">
@@ -66,7 +66,7 @@
         <span class="it-push">Click work for details. Open Points for your meeting notes.</span>
     </nav>
     <div class="it-reading" id="initiativeReading" tabindex="0" aria-label="Initiatives reading region">
-        <div class="it-editor d-none" id="newSection">{{ initiative_form() }}</div>
+        <div class="it-editor sb-hidden" id="newSection">{{ initiative_form() }}</div>
         {% for section in sections %}
         <section id="section-{{ section.id }}" class="it-section" aria-labelledby="section-title-{{ section.id }}">
             <div class="it-section-heading">
@@ -85,8 +85,8 @@
                     </button>
                 </div>
             </div>
-            <div class="it-editor d-none" id="edit-{{ section.id }}">{{ initiative_form(section) }}</div>
-            <div class="d-none work-picker it-editor" id="picker-{{ section.id }}" data-section-id="{{ section.id }}">
+            <div class="it-editor sb-hidden" id="edit-{{ section.id }}">{{ initiative_form(section) }}</div>
+            <div class="sb-hidden work-picker it-editor" id="picker-{{ section.id }}" data-section-id="{{ section.id }}">
                 <div class="it-section-heading">
                     <h3>Add to {{ section.name }}</h3>
                     <button type="button" class="it-command" data-action="close-picker" aria-label="Close work picker">Cancel</button>
@@ -106,7 +106,7 @@
                     </div>
                     <button type="submit" class="it-command">Search</button>
                 </form>
-                <div class="milestone-source d-none it-commands">
+                <div class="milestone-source sb-hidden it-commands">
                     <div class="it-commands" role="group" aria-label="Milestone source">
                         <button type="button" class="it-command active" data-action="picker-source" data-source="search" aria-pressed="true">Search all</button>
                         <button type="button" class="it-command" data-action="picker-source" data-source="u2c" aria-pressed="false">From U2C</button>
@@ -215,7 +215,7 @@
         </header>
         <div class="sb-dialog-body">
             <p id="managerPointsContext" class="it-muted"></p>
-            <div id="pointsModalError" class="it-error d-none" role="alert">
+            <div id="pointsModalError" class="it-error sb-hidden" role="alert">
                 <span></span><button type="button" class="it-command is-danger" data-action="retry-points">Retry saving</button>
             </div>
             <div class="talking-points-field" id="managerPointsField">

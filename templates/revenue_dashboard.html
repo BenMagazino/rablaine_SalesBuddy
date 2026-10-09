@@ -70,7 +70,6 @@ Last import: {{ latest_import.imported_at.strftime('%b %d, %Y') }}
             {% set export_table_id = '#alertsTable' %}
             {% set export_filename = 'revenue-analyzer' %}
             {% set export_title = 'Revenue Analyzer' %}
-            {% set report_export_native = true %}
             {% include 'partials/_report_export.html' %}
             <div class="sb-revenue-command-group" role="group" aria-label="Revenue data commands">
                 <a href="{{ url_for('revenue.revenue_import') }}" class="sb-revenue-command">

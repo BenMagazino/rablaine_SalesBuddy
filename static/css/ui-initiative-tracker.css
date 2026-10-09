@@ -1,6 +1,5 @@
 .sb-initiative-tracker { min-height: 0; display: flex; flex-direction: column; background: var(--sb-ui-surface); color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); }
 .sb-initiative-tracker, .sb-initiative-tracker * { box-sizing: border-box; }
-.sb-initiative-tracker .d-none { display: none !important; }
 .sb-initiative-tracker :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: -2px; }
 .sb-initiative-tracker a { color: var(--sb-ui-accent); text-decoration: none; }
 .sb-initiative-tracker a:hover { text-decoration: underline; }

@@ -114,7 +114,9 @@ def test_product_workbench_preserves_aliases_links_and_stacked_fallback(
         assert soup.select_one("[data-sb-product-status]").text == (
             "2 of 2 customer entries shown"
         )
-        assert "all entries and all imported months" in soup.select_one("footer").text
+        assert "all entries and all imported months" in soup.select_one(
+            "body > footer.sb-page-status",
+        ).text
         assert soup.select_one(".sb-context-bar [aria-current='page'] > span[title]").text == (
             product_context["product"]
         )

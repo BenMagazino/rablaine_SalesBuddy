@@ -4,7 +4,44 @@ Use the [workflow](REDESIGN-WORKFLOW.md) and [page evidence template](REDESIGN-P
 Inventory date: October 2, 2026. Baseline product SHA:
 `ef552587a6514e116840b19f27c9b79ea6db0708`.
 
-## Working checkpoint
+## Approved first-pass baseline
+
+- Creator approves the complete first-pass redesign October9, 2026:
+  **105 / 105 design checkpoints approved; zero awaiting design review.**
+- Future page-specific refinements during normal use are follow-up work, not
+  unfinished first-pass checkpoints.
+- Creator explicitly authorizes committing, merging to `main` with `--no-ff`,
+  tagging the changelog with the merge SHA and pushing October9.
+  Production-shell rebuild and OS-level runtime checks have not been performed.
+
+- Approved checkpoints63-90 and all width/background/gutter refinements are
+  committed as `f7a5fa04` on `feature/ui-redesign`, October8.
+- The creator authorizes completing checkpoints91-105 as one unattended batch,
+  with a fresh Before/After audit gallery and one Discord notification only
+  after all15 are verified and ready. No intermediate readiness messages.
+- Scope includes notes/Home completion, settings/admin/utilities, setup/chat/
+  sharing, Electron/errors and final framework/dependency reconciliation.
+- All15 final checkpoints are implemented with technical VERIFY evidence. The fresh
+  private `review-91-105.html` audit contains preserved Before and current After
+  evidence. Final scoped selections pass1389 Python and1113 JavaScript tests.
+  Creator's October9 first-pass sign-off explicitly approves this final batch,
+  including the subsequent Note, appearance-switch, Admin and setup refinements.
+- October9 review refinement: the Note editor is full width when related notes
+  or engagements occupy its second pane; single-pane editing remains1152px.
+  Live1751px desktop and bounded single-pane checks pass without overflow;
+  105 scoped Python and9 JavaScript checks pass. Checkpoint91 After evidence is
+  refreshed, while original Before captures remain unchanged.
+- Current captures use real dev data and the desktop viewport; original
+  earlier Before files remain unchanged.
+- **Validation incident:** the old edit unload autosave overwrote one unsaved
+  creation draft during validation. Namespace and unchanged-navigation guards
+  are fixed, but the original payload has not been recovered. No server note
+  save occurred. See [the incident and limits](redesign-pages/NOTE-FORM.md#remaining-integration-and-limits).
+  Technical test success is not a recovered draft or release approval.
+  Creator declined recovery of this dev-only draft; it is not an outstanding
+  design-review gate.
+
+### Previous batch notes (historical)
 
 - Branch: `feature/ui-redesign`, HEAD `7a43faab`; no commit, push, merge or deployment.
 - Last committed approved implementation: `e5bde8c3`, checkpoints 53-62.
@@ -384,21 +421,22 @@ Keep counts updated, but the rows and revision-specific approvals are authoritat
 
 ## How to read overall progress
 
-As of checkpoints63-90 sign-off, the rough effort-based estimate is **about 90%**
-of the full redesign (a judgment call, not a measured metric).
+The first-pass redesign is **complete and creator-approved October9, 2026**.
 Shared theme/navigation/dialog/feedback foundations and substantial Home/note/
 milestone slices are approved, alongside the engagement, project and customer
 families, reports, directories/forms/details, Search, Note Templates and Fill My Day.
 The gutter standard and all width/background refinements are also approved.
-Remaining work includes standalone note forms/detail and Home completion,
-Preferences/admin/utilities, global setup/chat, Electron/error surfaces and final
-cross-page reconciliation. This moves the previous75% estimate forward about15 points.
+The final15 implementation checkpoints are complete and approved:
+note forms/detail and Home, Preferences/admin/utilities, global setup/chat,
+Electron/error surfaces and cross-page reconciliation. Native OS restoration
+still requires actual relaunch/rebuild/tray checks before release.
 
-### Remaining checkpoint working plan
+### Final checkpoint review batch
 
-Plan15 further checkpoints,91-105. These are planned work packages, not an
-assertion that all remaining parity gaps are already audited. Split or consolidate
-only if the implementation audit shows a meaningful need; do not silently advance.
+Checkpoints91-105 are implemented, technically verified and creator-approved October9.
+The private gallery retains original Bootstrap Before and current After evidence.
+Explicit verification limits remain documented. Technical VERIFY/DONE inventory
+statuses are distinct from design approval and do not imply pending design review.
 
 | Checkpoint | Planned scope |
 | --- | --- |
@@ -475,18 +513,18 @@ have separate rows even when they use one template.
 
 | ID | Page | URL(s) | Template | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| HOME | Dashboard/calendar | `/` | `index.html` | BUILDING | [Workbench frame](redesign-pages/HOME-WORKBENCH.md), [note-preview slice](redesign-pages/HOME-NOTE-PREVIEW.md) |
+| HOME | Dashboard/calendar | `/` | `index.html` | VERIFY | [Final Home completion](redesign-pages/HOME-COMPLETE.md); checkpoint93, review pending |
 | ACTIONS | Action items | `/action-items` | `action_items_hub.html` | VERIFY | [ACTIONS](redesign-pages/ACTIONS.md); user-approved October 7, including dashboard/row refinements |
 | SEARCH | Search | `/search` | `search.html` | VERIFY | [Evidence](redesign-pages/SEARCH.md); user-approved October 8, checkpoints63-90 |
-| PREFS | Preferences | `/preferences` | `settings.html` | TODO | - |
+| PREFS | Preferences | `/preferences` | `settings.html` | VERIFY | [PREFS](redesign-pages/PREFS.md); checkpoint94, review pending |
 | NT-NEW | Create note template | `/templates/new` | `note_template_form.html` | VERIFY | [Evidence](redesign-pages/NT-FORM.md); user-approved October 8, checkpoints63-90 |
 | NT-EDIT | Edit note template | `/templates/<int:id>/edit` | `note_template_form.html` | VERIFY | [Evidence](redesign-pages/NT-FORM.md); user-approved October 8, checkpoints63-90 |
-| ANALYTICS | Analytics | `/analytics` | `analytics.html` | TODO | - |
-| ADMIN | Admin panel | `/admin` | `admin_panel.html` | TODO | - |
-| ADMIN-AI | AI logs | `/admin/ai-logs` | `admin_ai_logs.html` | TODO | - |
-| ADMIN-ICONS | Favicon gallery | `/admin/favicons` | `admin_favicons.html` | TODO | - |
-| METRICS | Metrics | `/metrics` | `metrics.html` | TODO | - |
-| CONNECT | Connect export workspace | `/connect-export` | `connect_export.html` | TODO | - |
+| ANALYTICS | Analytics | `/analytics` | `analytics.html` | VERIFY | [ANALYTICS](redesign-pages/ANALYTICS.md); checkpoint96, review pending |
+| ADMIN | Admin panel | `/admin` | `admin_panel.html` | VERIFY | [ADMIN](redesign-pages/ADMIN.md); checkpoint95, review pending |
+| ADMIN-AI | AI logs | `/admin/ai-logs` | `admin_ai_logs.html` | VERIFY | [AI logs](redesign-pages/AI-LOGS.md); checkpoint98, review pending |
+| ADMIN-ICONS | Favicon gallery | `/admin/favicons` | `admin_favicons.html` | VERIFY | [FAVICONS](redesign-pages/FAVICONS.md); checkpoint98, review pending |
+| METRICS | Metrics | `/metrics` | `metrics.html` | VERIFY | [METRICS](redesign-pages/METRICS.md); checkpoint96, review pending |
+| CONNECT | Connect export workspace | `/connect-export` | `connect_export.html` | VERIFY | [CONNECT](redesign-pages/CONNECT-EXPORT.md); checkpoint97, review pending |
 | CUST-LIST | Customers | `/customers` | `customers_list.html` | VERIFY | [CUST-LIST](redesign-pages/CUST-LIST.md); user-approved October 7 |
 | CUST-NEW | Create customer | `/customer/new` | `customer_form.html` | VERIFY | [CUST-FORM](redesign-pages/CUST-FORM.md); user-approved October 7 |
 | CUST-VIEW | Customer detail | `/customer/<int:id>` | `customer_view.html`; `partials/customer_view_content.html` | VERIFY | [CUST-VIEW](redesign-pages/CUST-VIEW.md); user-approved October 7 |
@@ -513,9 +551,9 @@ have separate rows even when they use one template.
 | TOPIC-VIEW | Topic detail | `/topic/<int:id>` | `topic_view.html` | VERIFY | [Parity](redesign-pages/TOPIC-VIEW.md); user-approved October 8, checkpoints63-90 |
 | TOPIC-EDIT | Edit topic | `/topic/<int:id>/edit` | `topic_form.html` | VERIFY | [78](redesign-pages/TOPIC-FORM.md); user-approved October 8, checkpoints63-90 |
 | NOTE-LIST | Notes | `/notes` | `notes_list.html` | VERIFY | [86](redesign-pages/NOTE-LIST.md); user-approved October 8, checkpoints63-90 |
-| NOTE-NEW | Create note | `/note/new` | `note_form.html` | TODO | - |
-| NOTE-VIEW | Note detail | `/note/<int:id>` | `note_view.html` | BUILDING | [Shared body slice](redesign-pages/NOTE-BODY.md) |
-| NOTE-EDIT | Edit note | `/note/<int:id>/edit` | `note_form.html` | TODO | - |
+| NOTE-NEW | Create note | `/note/new` | `note_form.html` | VERIFY | [NOTE-FORM](redesign-pages/NOTE-FORM.md); checkpoint91, incident disclosed, review pending |
+| NOTE-VIEW | Note detail | `/note/<int:id>` | `note_view.html` | VERIFY | [NOTE-VIEW](redesign-pages/NOTE-VIEW.md); checkpoint92, review pending |
+| NOTE-EDIT | Edit note | `/note/<int:id>/edit` | `note_form.html` | VERIFY | [NOTE-FORM](redesign-pages/NOTE-FORM.md); checkpoint91, incident disclosed, review pending |
 | FILL-DAY | Fill My Day | `/fill-my-day` | `fill_my_day.html` | VERIFY | [Evidence](redesign-pages/FILL-DAY.md); user-approved October 8, checkpoints63-90 |
 | ENG-LIST | Engagements | `/engagements` | `engagements_hub.html` | VERIFY | [ENG-LIST](redesign-pages/ENG-LIST.md); user-approved October 7 |
 | ENG-NEW | Create engagement | `/customer/<int:customer_id>/engagement/new` | `engagement_form.html` | VERIFY | [ENG-FORM](redesign-pages/ENG-FORM.md); checkpoint 56, user-approved October 7 |
@@ -577,8 +615,8 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | FR-CUST-OPPS | `partials/_customer_opportunities.html` | Customer dossier; `/api/customer/<int:customer_id>/opportunities-html`; note-editor information flyout | VERIFY | [CUST-VIEW](redesign-pages/CUST-VIEW.md) |
 | FR-ENG | `partials/_engagement_view_content.html` | `/api/engagement/<int:id>/detail` | VERIFY | [ENG-VIEW](redesign-pages/ENG-VIEW.md); checkpoint 57, complete shared body and controllers |
 | FR-MS | `partials/milestone_view_content.html` | `/api/milestone/<int:id>/detail` | VERIFY | [Standalone/fragment parity](redesign-pages/MS-VIEW.md), [lifecycle/editors](redesign-pages/MILESTONE-PREVIEW.md), [approved body](redesign-pages/MILESTONE-BODY.md) |
-| FR-NOTE | `partials/note_view_content.html` | `/api/note/<int:id>/detail` | BUILDING | [Lifecycle/editor](redesign-pages/HOME-NOTE-PREVIEW.md), [shared body](redesign-pages/NOTE-BODY.md) |
-| FR-OOO | `partials/one_on_one_workspace_content.html` | `/api/seller/<int:seller_id>/one-on-one/detail` | TODO | - |
+| FR-NOTE | `partials/note_view_content.html` | `/api/note/<int:id>/detail` | VERIFY | [Final canonical note consumer](redesign-pages/NOTE-VIEW.md); shell-free preview and standalone parity |
+| FR-OOO | `partials/one_on_one_workspace_content.html` | `/api/seller/<int:seller_id>/one-on-one/detail` | VERIFY | [Final shared-controller reconciliation](redesign-pages/FINAL-RECONCILIATION.md); native workspace and draft contracts revalidated, no retired parent-modal fallback |
 | FR-OPP | `partials/opportunity_view_content.html` | `/api/opportunity/<int:id>/detail` | VERIFY | [Full body/scripts and actual Workspace preview](redesign-pages/OPP-VIEW.md) |
 | FR-PROJ | `partials/project_view_content.html` | `/api/project/<int:id>/detail` | VERIFY | [PROJ-VIEW](redesign-pages/PROJ-VIEW.md); complete native body and nested tasks |
 | FR-REV | `partials/revenue_alert_detail.html` | `/api/revenue/analysis/<int:analysis_id>/detail`, all four preview hosts | DONE | [Checkpoint 20 evidence](redesign-pages/HOME-WORKBENCH.md) |
@@ -587,16 +625,16 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 | JS-TABLE-SORT | `static/js/ui-table-sort.js`, `static/css/ui-table-sort.css` | Products, Product/Customer/Bucket Revenue, Analyzer, seller alerts and shared inspectors/previews | DONE | [Sorting evidence](redesign-pages/HOME-WORKBENCH-HISTORY.md#shared-sortable-columns-october-5-follow-up) |
 | INC-ACTION | `partials/_action_item_detail_modal.html` | Home, action hub, engagement/project details | DONE | [Approved evidence](redesign-pages/HOME-WORKBENCH.md); [scoped project lifecycle extension 59](redesign-pages/PROJ-VIEW.md) VERIFY, counters unchanged |
 | JS-REV-BUCKET | `static/js/revenue-bucket-filter.js` | Home, revenue dashboard/customer/seller views, seller summary and preview | DONE | [Checkpoint 18 evidence](redesign-pages/HOME-WORKBENCH.md) |
-| INC-DASH | `partials/_dashboard_settings.html` | Home and preferences | TODO | - |
-| INC-FY | `partials/_fy_management_card.html` | Admin | TODO | - |
-| INC-PROJ-FORM | `partials/_project_form_fields.html` | Project/note forms | VERIFY | [PROJ-FORM](redesign-pages/PROJ-FORM.md); standalone native fields, note flyout unchanged |
-| INC-EXPORT | `partials/_report_export.html` | Reports, revenue dashboard, milestone tracker | BUILDING | [Native Analyzer opt-in; other hosts remain legacy](redesign-pages/HOME-WORKBENCH-HISTORY.md#checkpoint-23-revenue-analyzer-and-seller-alert-pages) |
-| INC-ACT-CAIP | `partials/activity_coverage_caip.html` | Activity coverage | TODO | - |
-| INC-ACT-MS | `partials/activity_coverage_milestones.html` | Activity coverage | TODO | - |
-| INC-CUST-ICON | `partials/customer_favicon.html` | Customer favicon macro, multiple hosts | TODO | - |
-| INC-ENG-PANEL | `partials/engagements_panel.html` | Home, engagements hub, seller | BUILDING | [Hub opt-in](redesign-pages/ENG-LIST.md); [seller native consumer](redesign-pages/SELL-VIEW.md), Home unchanged |
+| INC-DASH | `partials/_dashboard_settings.html` | Home and preferences | VERIFY | [Preferences and dashboard](redesign-pages/PREFS.md); original selection/save contracts |
+| INC-FY | `partials/_fy_management_card.html` | Admin | VERIFY | [Admin fiscal-year controls](redesign-pages/ADMIN.md); guarded original operations |
+| INC-PROJ-FORM | `partials/_project_form_fields.html` | Project/note forms | VERIFY | [PROJ-FORM](redesign-pages/PROJ-FORM.md), [native note drawer](redesign-pages/NOTE-FORM.md); shared IDs, attachment choices and handlers |
+| INC-EXPORT | `partials/_report_export.html` | Reports, revenue dashboard, milestone tracker | VERIFY | [Final native defaults](redesign-pages/FINAL-RECONCILIATION.md); all nine hosts retain native CSV/clipboard/email and honest feedback, no optional legacy branch |
+| INC-ACT-CAIP | `partials/activity_coverage_caip.html` | Activity coverage | VERIFY | [Final helper coverage](redesign-pages/FINAL-RECONCILIATION.md); existing native CAIP controls and isolated activity regressions revalidated |
+| INC-ACT-MS | `partials/activity_coverage_milestones.html` | Activity coverage | VERIFY | [Final helper coverage](redesign-pages/FINAL-RECONCILIATION.md); existing native milestone audit and isolated activity regressions revalidated |
+| INC-CUST-ICON | `partials/customer_favicon.html` | Customer favicon macro, multiple hosts | VERIFY | [Final helper coverage](redesign-pages/FINAL-RECONCILIATION.md); unchanged cached PNG, dimensions and native fallback macro contract |
+| INC-ENG-PANEL | `partials/engagements_panel.html` | Home, engagements hub, seller | VERIFY | [Final Home completion](redesign-pages/HOME-COMPLETE.md), [directory](redesign-pages/ENG-LIST.md); deferred Home activation and eager directory loading preserved |
 | INC-MS-TRACK | `partials/milestone_tracker_content.html` | Milestone tracker and seller | VERIFY | [Milestone tracker](redesign-pages/MS-TRACK.md); [complete seller Full View](redesign-pages/SELL-VIEW.md) |
-| INC-PART-ICON | `partials/partner_favicon.html` | Partner/specialty surfaces | TODO | - |
+| INC-PART-ICON | `partials/partner_favicon.html` | Partner/specialty surfaces | VERIFY | [Final helper coverage](redesign-pages/FINAL-RECONCILIATION.md); unchanged cached PNG, dimensions and native fallback macro contract |
 | INC-REV-ALERTS | `partials/revenue_alerts_content.html`, `static/js/ui-revenue-alerts.js` | Revenue Analyzer, seller alerts and Seller Full View | DONE | [Checkpoint 22 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-REV-PREVIEW | `partials/revenue_alert_preview.html`, `static/js/ui-revenue-preview.js` | Home, Revenue Analyzer, seller alerts and native Seller Full View drilldown | DONE | [Checkpoints 21-22 evidence](redesign-pages/HOME-WORKBENCH.md) |
 | INC-REVIEW | `partials/review_action.html`, `static/js/ui-revenue-review.js` | Home and revenue/seller surfaces | DONE | [Checkpoint 19 evidence](redesign-pages/HOME-WORKBENCH.md) |
@@ -607,23 +645,23 @@ An `/api/` URL can return HTML. Page-local dialogs remain in their page's card.
 
 | ID | Surface | Location | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| GLOBAL-SHELL | Navigation, page frame, theme, flash/status messages, global controls | `templates/base.html` | BUILDING | [Card](redesign-pages/GLOBAL-SHELL.md) |
-| GLOBAL-SETUP | Welcome/sign-in/onboarding | `base.html`, welcome modal | TODO | - |
+| GLOBAL-SHELL | Navigation, page frame, theme, flash/status messages, global controls | `templates/base.html` | VERIFY | [Final runtime reconciliation](redesign-pages/FINAL-RECONCILIATION.md) |
+| GLOBAL-SETUP | Welcome/sign-in/onboarding | `base.html`, native setup dialog | VERIFY | [ONBOARDING](redesign-pages/ONBOARDING.md); checkpoint99, review pending |
 | GLOBAL-NOTE | Quick-note customer picker | `base.html`, native quick-note dialog | DONE | [Card](redesign-pages/GLOBAL-PICKERS.md) |
 | GLOBAL-ENG | Quick-engagement customer picker | `base.html`, native quick-engagement dialog | DONE | [Card](redesign-pages/GLOBAL-PICKERS.md) |
 | GLOBAL-HELP | Contextual page help | `base.html`, native help dialog | DONE | [Card](redesign-pages/GLOBAL-HELP.md) |
 | GLOBAL-KEYS | Keyboard shortcuts | `base.html`, native shortcuts dialog | DONE | [Card](redesign-pages/GLOBAL-HELP.md) |
-| GLOBAL-CHAT | Copilot chat | `base.html`, chat flyout | TODO | - |
-| GLOBAL-SHARE | Sharing | `base.html`, share modal | VERIFY | [Checkpoint 80](redesign-pages/PART-LIST.md) |
-| GLOBAL-IMPORT | Shared-data import review | `base.html`, import-review modal | TODO | - |
+| GLOBAL-CHAT | Copilot chat | `base.html`, native chat flyout | VERIFY | [CHAT](redesign-pages/CHAT.md); checkpoint100, nonmodal coexistence verified |
+| GLOBAL-SHARE | Sharing | `base.html`, native sharing dialog | VERIFY | [Final sharing reconciliation](redesign-pages/SHARING-FINAL.md); checkpoint101 |
+| GLOBAL-IMPORT | Shared-data import review | `base.html`, native import-review dialog | VERIFY | [SHARING-FINAL](redesign-pages/SHARING-FINAL.md); offline/native contract limits explicit |
 | GLOBAL-ZOOM | Image zoom | `base.html`, native image dialog | DONE | [Card](redesign-pages/GLOBAL-ZOOM.md) |
-| GLOBAL-TOUR | Guided product tour | `base.html`, tour script | TODO | - |
-| SHELL-START | Starting Sales Buddy | `electron/main.js` | TODO | - |
-| SHELL-SLOW | Startup taking longer than usual | `electron/main.js` | TODO | - |
-| SHELL-UPDATE | Updating Sales Buddy | `electron/main.js` | TODO | - |
-| SHELL-BUILD | Building desktop app | `electron/main.js` | TODO | - |
-| SHELL-RECONNECT | Backend unavailable / reconnecting | `electron/main.js` | TODO | - |
-| ERROR-DEFAULT | Missing records/routes and other HTTP failures | Flask/Werkzeug defaults; no custom error template currently | TODO | - |
+| GLOBAL-TOUR | Guided product tour | `base.html`, tour script | VERIFY | [ONBOARDING](redesign-pages/ONBOARDING.md); checkpoint99 |
+| SHELL-START | Starting Sales Buddy | `electron/main.js` | VERIFY | [ELECTRON-STARTUP](redesign-pages/ELECTRON-STARTUP.md); checkpoint102 |
+| SHELL-SLOW | Startup taking longer than usual | `electron/main.js` | VERIFY | [ELECTRON-STARTUP](redesign-pages/ELECTRON-STARTUP.md); checkpoint102 |
+| SHELL-UPDATE | Updating Sales Buddy | `electron/main.js` | VERIFY | [ELECTRON-UPDATE](redesign-pages/ELECTRON-UPDATE.md); checkpoint103 |
+| SHELL-BUILD | Building desktop app | `electron/main.js` | VERIFY | [ELECTRON-UPDATE](redesign-pages/ELECTRON-UPDATE.md); checkpoint103 |
+| SHELL-RECONNECT | Backend unavailable / reconnecting | `electron/main.js` | VERIFY | [ELECTRON-STARTUP](redesign-pages/ELECTRON-STARTUP.md); checkpoint102 |
+| ERROR-DEFAULT | Missing records/routes and other HTTP failures | `app/routes/errors.py`, `templates/error.html` | VERIFY | [ERRORS](redesign-pages/ERRORS.md); checkpoint104 |
 
 Native geometry/maximized-state restoration is also a release requirement from
 the archive window plan. Test actual relaunch, update/rebuild exits, tray and
@@ -631,7 +669,8 @@ monitor work areas; HTML screen approval does not prove native persistence.
 
 ## Inventory reconciliation
 
-All 103 tracked templates are classified: 78 full-page + 9 routed fragments +
+At the initial inventory baseline, all103 tracked templates were classified:
+78 full-page + 9 routed fragments +
 15 include-only helpers + one base. No orphan templates were found.
 Checkpoint 21 adds one include-only Revenue preview template after that baseline.
 Ninety page handlers use 95 direct page URL rules; six additional legacy URL

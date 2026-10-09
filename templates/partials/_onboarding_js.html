@@ -1,0 +1,971 @@
+<script>
+        // Onboarding Wizard - Show on first run
+        window.addEventListener('load', () => {
+            const htmlElement = document.documentElement;
+            const welcomeModal = document.getElementById('welcomeModal');
+            if (welcomeModal && window.SBDialog) {
+                const modal = {
+                    show: () => window.SBDialog.open(welcomeModal),
+                    hide: () => window.SBDialog.close(welcomeModal, 'finished'),
+                };
+
+                // --- Onboarding Wizard State ---
+                let currentStep = 1;
+                const totalSteps = 2;
+                let authCompleted = false;
+                let vpnVerified = false;
+                // Pre-set import state from server-side data
+                let accountsImported = {{ 'true' if accounts_synced else 'false' }};
+                let milestonesImported = {{ 'true' if has_milestones else 'false' }};
+                let revenueImported = {{ 'true' if has_revenue else 'false' }};
+                let importRunning = false;
+                let importFailed = false;
+                let signInActive = false;
+                const autoOpen = welcomeModal.dataset.sbAutoOpen === 'true';
+                const reviewMode = !autoOpen;
+                const reviewStatus = document.getElementById('setupReviewStatus');
+                welcomeModal.addEventListener('sb:dialog-before-close', event => {
+                    if (importRunning || signInActive ||
+                        (!reviewMode && event.detail.reason !== 'finished')) {
+                        event.preventDefault();
+                        if (reviewMode) reviewStatus.textContent =
+                            'Finish or cancel the active sign-in or import before closing setup.';
+                    }
+                });
+                if (reviewMode) {
+                    welcomeModal.dataset.sbEscapeClose = 'true';
+                    document.getElementById('setupReviewClose').classList.remove('sb-setup-hidden');
+                    document.getElementById('setupWizardEyebrow').textContent = 'Setup review';
+                    reviewStatus.textContent =
+                        'Reviewing setup does not change your data. Sign-in and import run only when selected.';
+                }
+                document.getElementById('setupReviewClose').addEventListener('click',
+                    () => window.SBDialog.close(welcomeModal, 'review'));
+                let selectedRole = '{{ user_role }}';  // Updated after the account import auto-detect
+                const milestonesSyncState = '{{ milestones_sync_state }}';
+                const revenueSyncState = '{{ revenue_sync_state }}';
+
+                const stepBadge = document.getElementById('onboardingStepBadge');
+                const progressBar = document.getElementById('onboardingProgress');
+                const nextBtn = document.getElementById('onboardNextBtn');
+                const backBtn = document.getElementById('onboardBackBtn');
+
+
+                function showStep(step) {
+                    currentStep = step;
+                    // Hide all steps
+                    document.querySelectorAll('.onboarding-step').forEach(s => s.classList.add('sb-setup-hidden'));
+                    // Show current
+                    const el = document.getElementById('onboardingStep' + step);
+                    if (el) el.classList.remove('sb-setup-hidden');
+                    stepBadge.textContent = 'Step ' + step + ' of ' + totalSteps;
+                    setWizardProgress(step === 1 ? 0 : 20);
+
+                    // Back button visibility
+                    if (step > 1) backBtn.classList.remove('sb-setup-hidden');
+                    else backBtn.classList.add('sb-setup-hidden');
+                    // Next button text
+                    if (step === totalSteps) {
+                        nextBtn.innerHTML = reviewMode
+                            ? '<i class="bi bi-x-lg"></i> Close Review'
+                            : '<i class="bi bi-check-lg"></i> Finish';
+                    } else {
+                        nextBtn.innerHTML = 'Next <i class="bi bi-arrow-right"></i>';
+                    }
+                    // Surface anything already finished on an earlier run
+                    if (step === 2) {
+                        hydrateImportState();
+                        setWizardProgress(importProgressPct());
+                    }
+                    // Disable next if step requires completion
+                    updateNextButton();
+                }
+
+                // Step 2 carries three imports, so the bar tracks how many have landed.
+                function importProgressPct() {
+                    if (accountsImported && milestonesImported && revenueImported) return 100;
+                    if (accountsImported && milestonesImported) return 85;
+                    if (accountsImported) return 50;
+                    return 20;
+                }
+
+                // A returning user may have some phases done already. Show those as
+                // complete and offer to run only what's left.
+                function hydrateImportState() {
+                    const flags = {
+                        accounts: accountsImported,
+                        milestones: milestonesImported,
+                        revenue: revenueImported,
+                    };
+                    const names = Object.keys(flags);
+                    const anyDone = names.some(n => flags[n]);
+                    if (!anyDone) return;
+                    document.getElementById('importAllCard').classList.remove('sb-setup-hidden');
+                    names.forEach(n => {
+                        if (flags[n]) setPhaseState(n, 'done', 'Already imported');
+                    });
+                    const allDone = names.every(n => flags[n]);
+                    document.getElementById('importAllInitial').classList.toggle('sb-setup-hidden', allDone);
+                    if (!allDone) {
+                        document.getElementById('onboardStartImport').innerHTML =
+                            '<i class="bi bi-cloud-download"></i> Import What\'s Missing';
+                    }
+                }
+
+                function setWizardProgress(pct) {
+                    progressBar.style.width = pct + '%';
+                    progressBar.setAttribute('aria-valuenow', String(pct));
+                }
+
+                function updateNextButton() {
+                    if (reviewMode) {
+                        nextBtn.disabled = importRunning || signInActive;
+                        return;
+                    }
+                    if (currentStep === 1) {
+                        nextBtn.disabled = !(authCompleted && vpnVerified);
+                        return;
+                    }
+                    const allDone = accountsImported && milestonesImported && revenueImported;
+                    // Everything is automatic now, so hold them here until it all lands.
+                    // The exception is a failure: accounts alone make the app usable, so
+                    // don't trap someone whose milestone or revenue sync keeps dying.
+                    const escapeHatch = accountsImported && importFailed && !importRunning;
+                    nextBtn.disabled = !(allDone || escapeHatch);
+                }
+
+                nextBtn.addEventListener('click', async () => {
+                    if (currentStep < totalSteps) {
+                        showStep(currentStep + 1);
+                    } else if (reviewMode) {
+                        window.SBDialog.close(welcomeModal, 'review');
+                    } else {
+                        // Finish and dismiss the dialog.
+                        await dismissOnboarding();
+                        nextBtn.blur();
+                        modal.hide();
+                        window.location.reload();
+                    }
+                });
+
+                backBtn.addEventListener('click', () => {
+                    if (currentStep > 1) showStep(currentStep - 1);
+                });
+
+                async function dismissOnboarding() {
+                    try {
+                        await fetch('/api/preferences/dismiss-welcome-modal', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        // Guided tour disabled - plumbing kept but not triggered
+                        // var tourCompleted = {{ 'true' if guided_tour_completed else 'false' }};
+                        // if (!tourCompleted) {
+                        //     localStorage.setItem('salesbuddy_start_tour', '1');
+                        // }
+                    } catch (err) {
+                        console.error('Failed to dismiss onboarding:', err);
+                    }
+                }
+
+                // --- Step 1: Dark Mode Toggle ---
+                // Role is auto-detected once accounts are imported (no manual selection)
+
+                const onboardDarkToggle = document.getElementById('onboardDarkModeToggle');
+                if (onboardDarkToggle) {
+                    // Sync toggle to whatever theme is actually applied (e.g.
+                    // when OS auto-detect ran in <head> on first launch, the
+                    // server-side {{ 'checked' if dark_mode }} would have been
+                    // rendered as unchecked because dark_mode was still None).
+                    onboardDarkToggle.checked = htmlElement.getAttribute('data-sb-mode') === 'dark';
+                    onboardDarkToggle.addEventListener('change', async function() {
+                        const isDark = this.checked;
+                        htmlElement.setAttribute('data-sb-mode', isDark ? 'dark' : 'light');
+                        try {
+                            await fetch('/api/preferences/dark-mode', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ dark_mode: isDark })
+                            });
+                        } catch (err) {
+                            console.error('Failed to save dark mode:', err);
+                        }
+                    });
+                }
+
+                // --- Step 2: Authentication ---
+                const SIGN_IN_TIMEOUT_MS = 120000;  // 2 min total timeout
+                let signInPollTimer = null;
+                let wizardElapsedTimer = null;
+
+                async function startSignIn() {
+                    signInCompleting = false;
+                    showSignInState('signInWaiting');
+                    const statusEl = document.getElementById('signInStatus');
+                    const browserHint = document.getElementById('signInBrowserHint');
+                    if (browserHint) browserHint.classList.remove('sb-setup-hidden');
+
+                    // Step 1: Clear any existing session for a clean start
+                    if (statusEl) statusEl.textContent = 'Preparing...';
+                    try {
+                        await fetch('/api/msx/az-logout', { method: 'POST' });
+                    } catch (e) { /* continue */ }
+
+                    // Step 2: Launch az login (Microsoft tenant only, no app-specific scope needed)
+                    try {
+                        const resp = await fetch('/api/msx/az-login/start', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({})
+                        });
+                        const data = await resp.json();
+                        if (data.error) {
+                            if (data.error.toLowerCase().includes('not installed')) {
+                                showSignInState('signInNoCli');
+                            } else {
+                                document.getElementById('signInErrorMsg').textContent = data.error;
+                                showSignInState('signInError');
+                            }
+                            return;
+                        }
+                    } catch (err) {
+                        document.getElementById('signInErrorMsg').textContent = 'Could not start sign-in';
+                        showSignInState('signInError');
+                        return;
+                    }
+
+                    // Step 3: Poll for login completion
+                    const startTime = Date.now();
+                    if (statusEl) statusEl.textContent = 'Waiting for sign-in...';
+
+                    const stillWaitingNudge = document.getElementById('signInStillWaitingNudge');
+                    if (stillWaitingNudge) stillWaitingNudge.classList.add('sb-setup-hidden');
+                    wizardElapsedTimer = setInterval(() => {
+                        const elapsed = Math.round((Date.now() - startTime) / 1000);
+                        if (statusEl) statusEl.textContent = 'Waiting for sign-in... (' + elapsed + 's)';
+                        // After 6s with no auth, surface the "look for the
+                        // account picker window" nudge. The account picker
+                        // can launch behind other windows and non-technical
+                        // users miss it entirely.
+                        if (elapsed >= 6 && stillWaitingNudge) {
+                            stillWaitingNudge.classList.remove('sb-setup-hidden');
+                        }
+                    }, 1000);
+
+                    signInPollTimer = setInterval(async () => {
+                        if (Date.now() - startTime > SIGN_IN_TIMEOUT_MS) {
+                            clearWizardTimers();
+                            document.getElementById('signInErrorMsg').textContent = 'Authentication timed out';
+                            showSignInState('signInError');
+                            return;
+                        }
+                        try {
+                            const resp = await fetch('/api/msx/az-status');
+                            const data = await resp.json();
+                            if (data.logged_in) {
+                                clearWizardTimers();
+                                if (statusEl) statusEl.textContent = 'Verifying MSX connection...';
+                                if (browserHint) browserHint.classList.add('sb-setup-hidden');
+                                // Hide the "still waiting?" nudge, they
+                                // clearly found the account picker since
+                                // we just got a successful login.
+                                var stillWaiting = document.getElementById('signInStillWaitingNudge');
+                                if (stillWaiting) stillWaiting.classList.add('sb-setup-hidden');
+                                await completeSignIn(data.user_email);
+                            }
+                        } catch (err) { /* keep polling */ }
+                    }, 1000);
+                }
+
+                let signInCompleting = false;
+                async function completeSignIn(email) {
+                    if (signInCompleting) return;  // prevent duplicate calls from overlapping poll ticks
+                    signInCompleting = true;
+
+                    // Set subscription, kill az login process, clear gateway cache
+                    try {
+                        await fetch('/api/msx/az-login/complete', { method: 'POST' });
+                    } catch (e) { /* continue */ }
+
+                    // VPN check
+                    try {
+                        const vpnResp = await fetch('/api/msx/vpn-check', { method: 'POST' });
+                        const vpnData = await vpnResp.json();
+                        if (!vpnData.success) {
+                            if (window.showVpnBanner) window.showVpnBanner();
+                            const emailEl = document.getElementById('signInVpnEmail');
+                            if (emailEl && email) emailEl.textContent = email;
+                            showSignInState('signInVpnBlocked');
+                            return;
+                        }
+                        if (window.hideVpnBanner) window.hideVpnBanner();
+                    } catch (e) {
+                        showSignInState('signInVpnBlocked');
+                        return;
+                    }
+
+                    // Auth + VPN verified
+                    authCompleted = true;
+                    vpnVerified = true;
+
+                    const emailEl = document.getElementById('signInEmail');
+                    if (emailEl && email) emailEl.textContent = email;
+
+                    // Save alias for DSS seller matching (best-effort)
+                    if (email) {
+                        try {
+                            await fetch('/api/preferences/save-alias', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ email: email })
+                            });
+                        } catch (e) { /* non-blocking */ }
+                    }
+
+                    // Clear token cache so gateway picks up the new login
+                    try {
+                        await fetch('/api/admin/ai-clear-cache', { method: 'POST' });
+                    } catch (e) { /* non-blocking */ }
+
+                    showSignInState('signInSuccess');
+                    nextBtn.innerHTML = 'Next <i class="bi bi-arrow-right"></i>';
+                    updateNextButton();
+
+                    // Auto-advance for returning users who already have data
+                    if (accountsImported || milestonesImported || revenueImported) {
+                        setTimeout(() => {
+                            if (currentStep === 1) showStep(2);
+                        }, 2000);
+                    }
+                }
+
+                function cancelSignIn() {
+                    signInCompleting = false;
+                    clearWizardTimers();
+                    // Kill any lingering az login process
+                    fetch('/api/msx/az-login/complete', { method: 'POST' }).catch(() => {});
+                    showSignInState('signInInitial');
+                    nextBtn.innerHTML = 'Next <i class="bi bi-arrow-right"></i>';
+                    nextBtn.disabled = true;
+                }
+
+                function clearWizardTimers() {
+                    if (signInPollTimer) { clearInterval(signInPollTimer); signInPollTimer = null; }
+                    if (wizardElapsedTimer) { clearInterval(wizardElapsedTimer); wizardElapsedTimer = null; }
+                }
+
+                function showSignInState(stateId) {
+                    signInActive = stateId === 'signInWaiting';
+                    ['signInInitial', 'signInWaiting', 'signInSuccess', 'signInError', 'signInNoCli', 'signInVpnBlocked'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.classList.toggle('sb-setup-hidden', id !== stateId);
+                    });
+                    if (reviewMode) updateNextButton();
+                }
+
+                function showSignInNoCli(cliError) {
+                    // Show the No CLI state with appropriate message based on error type
+                    showSignInState('signInNoCli');
+                    const msgEl = document.getElementById('signInNoCliMsg');
+                    const helpEl = document.getElementById('signInNoCliHelp');
+
+                    if (cliError === 'not_found') {
+                        msgEl.textContent = 'Azure CLI Not Installed';
+                        helpEl.innerHTML = 'Install from <a href="https://aka.ms/installazurecli" target="_blank">aka.ms/installazurecli</a>, then try again.';
+                    } else if (cliError === 'timeout') {
+                        msgEl.textContent = 'Azure CLI Check Timed Out';
+                        helpEl.textContent = 'The system may still be waking up. Click Check Again to retry.';
+                    } else {
+                        msgEl.textContent = 'Azure CLI Check Failed';
+                        helpEl.textContent = 'Could not verify Azure CLI. Click Check Again to retry.';
+                    }
+                }
+
+                // Step 2 event listeners
+                document.getElementById('startSignInBtn').addEventListener('click', startSignIn);
+                document.getElementById('signInRetryBtn').addEventListener('click', startSignIn);
+                document.getElementById('signInCancelBtn').addEventListener('click', cancelSignIn);
+                document.getElementById('signInNoCliRetryBtn').addEventListener('click', async () => {
+                    // Clear the cached CLI check result and retry
+                    await fetch('/api/msx/clear-cli-cache', { method: 'POST' });
+                    startSignIn();
+                });
+                document.getElementById('vpnRetryBtn').addEventListener('click', async () => {
+                    const btn = document.getElementById('vpnRetryBtn');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="sb-setup-spinner" aria-hidden="true"></span> Checking...';
+                    try {
+                        const resp = await fetch('/api/msx/vpn-check', { method: 'POST' });
+                        const data = await resp.json();
+                        if (data.success) {
+                            if (window.hideVpnBanner) window.hideVpnBanner();
+                            // Re-run the full sign-in check
+                            const azResp = await fetch('/api/msx/az-status');
+                            const azData = await azResp.json();
+                            if (azData.logged_in) {
+                                await completeSignIn(azData.user_email);
+                            }
+                        }
+                    } catch (e) { /* ignore */ }
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> I\'m on VPN - Try Again';
+                });
+
+                // --- Import: one button runs accounts, then milestones + revenue together ---
+                const PHASE_ICONS = {
+                    waiting: '<i class="bi bi-circle sb-setup-muted"></i>',
+                    running: '<span class="sb-setup-spinner" role="status" aria-label="Import running"></span>',
+                    done: '<i class="bi bi-check-circle-fill sb-setup-success"></i>',
+                    error: '<i class="bi bi-exclamation-triangle-fill sb-setup-warning"></i>',
+                };
+
+                function phaseEl(name, suffix) {
+                    return document.getElementById('phase' + name.charAt(0).toUpperCase() + name.slice(1) + suffix);
+                }
+
+                function setPhaseState(name, state, statusText) {
+                    const icon = phaseEl(name, 'Icon');
+                    if (icon) icon.innerHTML = PHASE_ICONS[state] || PHASE_ICONS.waiting;
+                    const status = phaseEl(name, 'Status');
+                    if (status) {
+                        status.textContent = statusText || '';
+                        status.classList.toggle('sb-setup-danger', state === 'error');
+                    }
+                    const barWrap = phaseEl(name, 'BarWrap');
+                    if (barWrap) barWrap.classList.toggle('sb-setup-hidden', state !== 'running');
+                    const retry = phaseEl(name, 'Retry');
+                    if (retry) retry.classList.toggle('sb-setup-hidden', state !== 'error');
+                }
+
+                function setPhaseProgress(name, pct, statusText) {
+                    if (typeof pct === 'number') {
+                        const bar = phaseEl(name, 'Bar');
+                        if (bar) {
+                            bar.style.width = pct + '%';
+                            bar.setAttribute('aria-valuenow', String(pct));
+                        }
+                    }
+                    if (statusText) {
+                        const status = phaseEl(name, 'Status');
+                        if (status) status.textContent = statusText;
+                    }
+                }
+
+                function setPhaseSummary(name, html) {
+                    const el = phaseEl(name, 'Summary');
+                    if (!el) return;
+                    el.innerHTML = html || '';
+                    el.classList.toggle('sb-setup-hidden', !html);
+                }
+
+                function warnOnLeave(e) { e.preventDefault(); e.returnValue = ''; }
+
+                // Checks corpnet before a phase burns minutes on a doomed sync.
+                async function phaseVpnOk(name) {
+                    try {
+                        const vpnResp = await fetch('/api/msx/vpn-check', { method: 'POST' });
+                        const vpnData = await vpnResp.json();
+                        if (!vpnData.success) {
+                            if (window.showVpnBanner) window.showVpnBanner();
+                            setPhaseState(name, 'error', 'Not on VPN - connect to corpnet and retry.');
+                            return false;
+                        }
+                        // VPN is good, clear any lingering banner.
+                        if (window.hideVpnBanner) window.hideVpnBanner();
+                    } catch (e) { /* proceed anyway */ }
+                    return true;
+                }
+
+                async function runAccounts() {
+                    setPhaseState('accounts', 'running', 'Connecting...');
+                    setPhaseProgress('accounts', 0);
+                    setPhaseSummary('accounts', '');
+                    if (!await phaseVpnOk('accounts')) return false;
+                    setPhaseProgress('accounts', 0, 'Starting import...');
+
+                    try {
+                        const resp = await fetch('/api/msx/accounts/sync', {
+                            method: 'POST',
+                            headers: { 'Accept': 'text/event-stream' },
+                        });
+                        if (!resp.ok) {
+                            // Try to extract a useful error message from the response body
+                            let detail = '';
+                            try {
+                                const body = await resp.json();
+                                detail = body.error || body.message || '';
+                            } catch (_) {
+                                try { detail = (await resp.text()).slice(0, 200); } catch (_) {}
+                            }
+                            throw new Error(detail || ('HTTP ' + resp.status + ': ' + resp.statusText));
+                        }
+                        const reader = resp.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+                        let finalSummary = null;
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop();
+                            for (const line of lines) {
+                                if (!line.startsWith('data: ')) continue;
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+
+                                    if (data.error) {
+                                        // Show VPN banner if this is an IP-blocked error
+                                        if (data.vpn_blocked || (window.isVpnBlocked && window.isVpnBlocked(data.error))) {
+                                            window.showVpnBanner();
+                                        }
+                                        throw new Error(data.error);
+                                    }
+
+                                    if (data.message) {
+                                        // Check SSE messages for VPN block indicators
+                                        if (window.isVpnBlocked && window.isVpnBlocked(data.message)) {
+                                            window.showVpnBanner();
+                                        }
+                                        setPhaseProgress('accounts', null, data.message);
+                                    }
+
+                                    if (data.progress !== undefined) {
+                                        setPhaseProgress('accounts', data.progress);
+                                    }
+
+                                    if (data.complete && data.summary) {
+                                        finalSummary = data.summary;
+                                    }
+                                } catch (parseErr) {
+                                    if (parseErr.message && !parseErr.message.includes('JSON')) throw parseErr;
+                                }
+                            }
+                        }
+
+                        accountsImported = true;
+
+                        // Auto-trigger favicon fetch after account sync
+                        fetch('/api/admin/fetch-favicons', { method: 'POST' }).catch(() => {});
+
+                        // Auto-detect role: match alias to imported seller records
+                        try {
+                            const matchResp = await fetch('/api/preferences/match-seller', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                            const matchData = await matchResp.json();
+                            selectedRole = matchData.matched ? 'dss' : 'se';
+                        } catch (e) {
+                            selectedRole = 'se';
+                        }
+
+                        const summaryDiv = document.getElementById('phaseAccountsSummary');
+                        if (finalSummary) {
+                            const s = finalSummary;
+                            summaryDiv.innerHTML =
+                                '<ul>' +
+                                '<li><i class="bi bi-people-fill sb-setup-accent"></i> PODs: ' + (s.pods_created || 0) + ' created</li>' +
+                                '<li><i class="bi bi-geo-alt sb-setup-accent"></i> Territories: ' + (s.territories_created || 0) + ' created</li>' +
+                                (selectedRole !== 'dss' ? '<li><i class="bi bi-person sb-setup-accent"></i> Sellers: ' + (s.sellers_created || 0) + ' created' + (s.sellers_updated ? ', ' + s.sellers_updated + ' updated' : '') + '</li>' : '') +
+                                '<li><i class="bi bi-person-gear sb-setup-muted"></i> Solution Engineers: ' + (s.solution_engineers_created || 0) + ' created</li>' +
+                                '<li><i class="bi bi-building sb-setup-success"></i> Customers: ' + (s.customers_created || 0) + ' created' + (s.customers_updated ? ', ' + s.customers_updated + ' updated' : '') + (s.customers_unchanged ? ', ' + s.customers_unchanged + ' unchanged' : '') + (s.customers_skipped ? ', ' + s.customers_skipped + ' skipped' : '') + '</li>' +
+                                '</ul>';
+                            summaryDiv.classList.remove('sb-setup-hidden');
+                        }
+                        setPhaseState('accounts', 'done', finalSummary && finalSummary.duration ? 'Done in ' + finalSummary.duration + 's' : 'Done');
+                        setWizardProgress(importProgressPct());
+                        updateNextButton();
+                        return true;
+                    } catch (err) {
+                        const msg = err.message || 'Connection error during import';
+                        setPhaseState('accounts', 'error', msg.charAt(0).toUpperCase() + msg.slice(1));
+                        importFailed = true;
+                        return false;
+                    }
+                }
+
+                // --- Import Milestones ---
+                // The milestone sync endpoint uses named SSE events:
+                //   event: start\ndata: {"total": N}
+                //   event: progress\ndata: {"current":1, "total":N, "customer":"...", "status":"ok"}
+                //   event: complete\ndata: {"synced":N, "created":N, ...}
+                // We need to parse both the 'event:' and 'data:' lines.
+                async function runMilestones() {
+                    setPhaseState('milestones', 'running', 'Connecting...');
+                    setPhaseProgress('milestones', 0);
+                    setPhaseSummary('milestones', '');
+                    if (!await phaseVpnOk('milestones')) return false;
+                    setPhaseProgress('milestones', 0, 'Starting sync...');
+
+                    try {
+                        const resp = await fetch('/api/milestone-tracker/sync', {
+                            method: 'POST',
+                            headers: { 'Accept': 'text/event-stream' }
+                        });
+                        if (!resp.ok) throw new Error('HTTP ' + resp.status + ': ' + resp.statusText);
+                        const reader = resp.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+                        let completeSummary = null;
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+
+                            // SSE events are separated by double newlines
+                            const blocks = buffer.split('\n\n');
+                            buffer = blocks.pop(); // keep incomplete block
+
+                            for (const block of blocks) {
+                                if (!block.trim()) continue;
+                                let eventType = '';
+                                let eventData = null;
+                                for (const line of block.split('\n')) {
+                                    if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+                                    else if (line.startsWith('data: ')) {
+                                        try { eventData = JSON.parse(line.slice(6)); } catch(e) {}
+                                    }
+                                }
+                                if (!eventData) continue;
+
+                                if (eventType === 'start') {
+                                    setPhaseProgress('milestones', null, 'Syncing ' + (eventData.total || 0) + ' customers...');
+                                } else if (eventType === 'progress') {
+                                    const pct = eventData.progress != null
+                                        ? eventData.progress
+                                        : (eventData.total > 0 ? Math.round(eventData.current / eventData.total * 100) : 0);
+                                    let label;
+                                    if (eventData.status === 'retrying') {
+                                        label = eventData.customer || 'Timeout, retrying...';
+                                    } else {
+                                        label = eventData.customer || ('Customer ' + eventData.current);
+                                    }
+                                    setPhaseProgress('milestones', pct, label);
+                                    // Show VPN banner if a progress error indicates IP block
+                                    if (eventData.error && window.isVpnBlocked && window.isVpnBlocked(eventData.error)) {
+                                        window.showVpnBanner();
+                                    }
+                                } else if (eventType === 'vpn_blocked') {
+                                    // VPN block, show banner and treat as fatal.
+                                    if (window.showVpnBanner) window.showVpnBanner();
+                                    throw new Error(eventData.message || 'IP address is blocked - connect to VPN and retry.');
+                                } else if (eventType === 'complete') {
+                                    completeSummary = eventData;
+                                } else if (eventType === 'error') {
+                                    throw new Error(eventData.message || eventData.error || 'Sync failed');
+                                }
+                            }
+                        }
+
+                        milestonesImported = true;
+                        const summaryDiv = document.getElementById('phaseMilestonesSummary');
+                        if (completeSummary) {
+                            const cs = completeSummary;
+                            summaryDiv.innerHTML =
+                                '<ul>' +
+                                '<li>' + (cs.synced || 0) + ' customers synced' + (cs.failed ? ', ' + cs.failed + ' failed' : '') + '</li>' +
+                                '<li>' + (cs.created || 0) + ' milestones created, ' + (cs.updated || 0) + ' updated' +
+                                    (cs.deactivated ? ', ' + cs.deactivated + ' deactivated' : '') + '</li>' +
+                                (cs.opportunities_created ? '<li>' + cs.opportunities_created + ' opportunities created</li>' : '') +
+                                ((cs.tasks_created || cs.tasks_updated) ? '<li>' + (cs.tasks_created || 0) + ' tasks created' + (cs.tasks_updated ? ', ' + cs.tasks_updated + ' updated' : '') + '</li>' : '') +
+                                '</ul>';
+                            summaryDiv.classList.remove('sb-setup-hidden');
+                        }
+                        setPhaseState('milestones', 'done', completeSummary && completeSummary.duration ? 'Done in ' + completeSummary.duration + 's' : 'Done');
+                        setWizardProgress(importProgressPct());
+                        updateNextButton();
+                        // Kick off background marketing insights sync (fire-and-forget)
+                        fetch('/api/msx/sync-marketing', { method: 'POST' }).catch(() => {});
+                        return true;
+                    } catch (err) {
+                        const mMsg = err.message || 'Connection error during sync';
+                        setPhaseState('milestones', 'error', mMsg.charAt(0).toUpperCase() + mMsg.slice(1));
+                        importFailed = true;
+                        return false;
+                    }
+                }
+
+                async function runRevenue() {
+                    setPhaseState('revenue', 'running', 'Starting sync...');
+                    setPhaseProgress('revenue', 0);
+                    setPhaseSummary('revenue', '');
+
+                    try {
+                        const resp = await fetch('/api/revenue/sync', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+                            body: JSON.stringify({})
+                        });
+                        if (!resp.ok) throw new Error('HTTP ' + resp.status + ': ' + resp.statusText);
+                        const reader = resp.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+                        let finalResult = null;
+                        let evt = null;
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop();
+                            for (const line of lines) {
+                                if (line.startsWith('event: ')) { evt = line.slice(7).trim(); continue; }
+                                if (!line.startsWith('data: ')) continue;
+                                let data;
+                                try { data = JSON.parse(line.slice(6)); } catch (e) { continue; }
+                                if (evt === 'error' || data.error) throw new Error(data.error || 'Sync failed');
+                                if (evt === 'complete') { finalResult = data; continue; }
+                                if (data.message) setPhaseProgress('revenue', null, data.message);
+                                if (typeof data.progress === 'number') {
+                                    setPhaseProgress('revenue', data.progress);
+                                }
+                            }
+                        }
+
+                        revenueImported = true;
+                        const summaryDiv = document.getElementById('phaseRevenueSummary');
+                        if (finalResult) {
+                            summaryDiv.innerHTML =
+                                '<ul>' +
+                                '<li>' + (finalResult.customers_with_data || 0) + ' of ' +
+                                    (finalResult.customers || 0) + ' accounts with revenue</li>' +
+                                '<li>' + (finalResult.months || 0) + ' months of history</li>' +
+                                '</ul>';
+                            summaryDiv.classList.remove('sb-setup-hidden');
+                        }
+                        setPhaseState('revenue', 'done', finalResult && finalResult.duration_s ? 'Done in ' + finalResult.duration_s + 's' : 'Done');
+                        // Offer the bucket picker. Nothing is pre-selected - an empty
+                        // selection means "show everything", and the user narrows it.
+                        try {
+                            const bucketsResp = await fetch('/api/revenue/buckets');
+                            const buckets = await bucketsResp.json();
+                            if (buckets && buckets.length > 0) {
+                                renderOnboardBucketPicker(buckets);
+                            }
+                        } catch (e) { /* best effort */ }
+                        setWizardProgress(importProgressPct());
+                        updateNextButton();
+                        return true;
+                    } catch (err) {
+                        const msg = err.message || 'Connection error during sync';
+                        setPhaseState('revenue', 'error', msg.charAt(0).toUpperCase() + msg.slice(1));
+                        importFailed = true;
+                        return false;
+                    }
+                }
+
+                // Accounts must land first so the other two have something to attach to.
+                // Milestones and revenue then run one at a time on purpose: both write
+                // heavily to SQLite, and on a slower disk the revenue bulk write can hold
+                // the lock past busy_timeout and fail the other with "database is locked".
+                async function startImport() {
+                    if (importRunning) return;
+                    importRunning = true;
+                    importFailed = false;
+                    document.getElementById('importAllInitial').classList.add('sb-setup-hidden');
+                    document.getElementById('importAllCard').classList.remove('sb-setup-hidden');
+                    if (window.showBrainrotInCard) window.showBrainrotInCard('importAllCard');
+                    window.addEventListener('beforeunload', warnOnLeave);
+                    try {
+                        const ready = accountsImported || await runAccounts();
+                        if (ready) {
+                            // A failed phase returns false rather than throwing, so a bad
+                            // milestone sync still lets revenue have its turn.
+                            if (!milestonesImported) await runMilestones();
+                            if (!revenueImported) await runRevenue();
+                        }
+                    } finally {
+                        window.removeEventListener('beforeunload', warnOnLeave);
+                        if (window.hideBrainrotToggle) window.hideBrainrotToggle();
+                        importRunning = false;
+                        setWizardProgress(importProgressPct());
+                        updateNextButton();
+                    }
+                }
+
+                // Retrying one failed phase shouldn't re-run the ones that succeeded.
+                async function retryPhase(fn) {
+                    if (importRunning) return;
+                    importRunning = true;
+                    importFailed = false;
+                    window.addEventListener('beforeunload', warnOnLeave);
+                    try {
+                        await fn();
+                    } finally {
+                        window.removeEventListener('beforeunload', warnOnLeave);
+                        importRunning = false;
+                        setWizardProgress(importProgressPct());
+                        updateNextButton();
+                    }
+                }
+
+                document.getElementById('onboardStartImport').addEventListener('click', startImport);
+                document.getElementById('phaseAccountsRetry').addEventListener('click', startImport);
+                document.getElementById('phaseMilestonesRetry').addEventListener('click', () => retryPhase(runMilestones));
+                document.getElementById('phaseRevenueRetry').addEventListener('click', () => retryPhase(runRevenue));
+
+                // Bucket picker shown once revenue lands, mirroring the import page.
+                // Built with DOM calls rather than innerHTML since bucket names are data.
+                function renderOnboardBucketPicker(buckets) {
+                    const card = document.getElementById('onboardBucketPickerCard');
+                    const listEl = document.getElementById('onboardBucketList');
+                    if (!card || !listEl) return;
+                    card.classList.remove('sb-setup-hidden');
+                    listEl.innerHTML = '';
+
+                    let selected = new Set();
+                    try {
+                        const saved = JSON.parse(localStorage.getItem('salesbuddy_revenue_bucket_filter'));
+                        if (saved && Array.isArray(saved)) selected = new Set(saved);
+                    } catch (e) {}
+
+                    const search = document.createElement('input');
+                    search.type = 'text';
+                    search.className = 'sb-setup-bucket-search';
+                    search.setAttribute('aria-label', 'Search compensated buckets');
+                    search.placeholder = 'Search';
+                    search.autocomplete = 'off';
+                    listEl.appendChild(search);
+
+                    const selAllLabel = document.createElement('label');
+                    selAllLabel.className = 'sb-setup-bucket-choice sb-setup-bucket-all';
+                    selAllLabel.style.cursor = 'pointer';
+                    const selAllCb = document.createElement('input');
+                    selAllCb.type = 'checkbox';
+                    selAllCb.className = 'sb-setup-bucket-checkbox';
+                    // every() is true for an empty list, which would tick "Select all"
+                    // with nothing to select.
+                    selAllCb.checked = buckets.length > 0 && buckets.every(b => selected.has(b));
+                    const selAllText = document.createElement('span');
+                    selAllText.className = 'sb-setup-bucket-caption';
+                    selAllText.textContent = 'Select all';
+                    selAllLabel.appendChild(selAllCb);
+                    selAllLabel.appendChild(selAllText);
+                    listEl.appendChild(selAllLabel);
+
+                    const itemsDiv = document.createElement('div');
+                    itemsDiv.style.maxHeight = '220px';
+                    itemsDiv.style.overflowY = 'auto';
+                    const rows = [];
+
+                    function save() {
+                        const sel = rows.filter(r => r.cb.checked).map(r => r.cb.value);
+                        localStorage.setItem('salesbuddy_revenue_bucket_filter', JSON.stringify(sel));
+                        fetch('/api/revenue/compensated-buckets', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(sel),
+                        }).catch(() => {});
+                    }
+
+                    buckets.forEach(b => {
+                        const label = document.createElement('label');
+                        label.className = 'sb-setup-bucket-choice';
+                        label.style.cursor = 'pointer';
+                        label.dataset.name = b.toLowerCase();
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.className = 'sb-setup-bucket-checkbox';
+                        cb.value = b;
+                        cb.checked = selected.has(b);
+                        const span = document.createElement('span');
+                        span.className = 'sb-setup-bucket-caption';
+                        span.textContent = b;
+                        label.appendChild(cb);
+                        label.appendChild(span);
+                        itemsDiv.appendChild(label);
+                        rows.push({ label, cb });
+                        cb.addEventListener('change', function () {
+                            save();
+                            selAllCb.checked = rows.every(r => r.cb.checked);
+                        });
+                    });
+                    listEl.appendChild(itemsDiv);
+
+                    selAllCb.addEventListener('change', function () {
+                        rows.forEach(r => { r.cb.checked = this.checked; });
+                        save();
+                    });
+                    search.addEventListener('input', function () {
+                        const term = this.value.toLowerCase().trim();
+                        rows.forEach(r => {
+                            r.label.classList.toggle('sb-setup-hidden', term && !r.label.dataset.name.includes(term));
+                        });
+                    });
+                }
+
+
+
+                // --- Wizard Initialization: detect progress and resume at correct step ---
+                async function initWizard() {
+                    // Note: OS dark-mode detection runs in an inline <head>
+                    // script when dark_mode is unset, so by the time we get
+                    // here the theme is already applied and persisted.
+
+                    let startStep = 1;
+                    authCompleted = false;
+                    vpnVerified = false;
+                    showSignInState('signInInitial');
+                    if (onboardDarkToggle) onboardDarkToggle.checked =
+                        htmlElement.getAttribute('data-sb-mode') === 'dark';
+
+                    // Returning user with data: if they're still signed in, skip the auth step.
+                    if (startStep === 1 && (accountsImported || milestonesImported || revenueImported)) {
+                        try {
+                            const resp = await fetch('/api/msx/status');
+                            const data = await resp.json();
+                            if (data.authenticated) {
+                                // They reached MSX before, so treat VPN as proven too -
+                                // otherwise stepping Back would strand them on a dead Next.
+                                authCompleted = true;
+                                vpnVerified = true;
+                                showSignInState('signInSuccess');
+                                startStep = 2;
+                            }
+                        } catch (err) {
+                            // Auth check failed, start at step 1 and sign in again.
+                        }
+                    }
+
+                    // Show the correct step, then reveal the modal
+                    showStep(startStep);
+
+                    // Warn about anything that died mid-sync last time
+                    const stalled = [];
+                    if (milestonesSyncState === 'incomplete' || milestonesSyncState === 'failed') stalled.push('milestone');
+                    if (revenueSyncState === 'incomplete' || revenueSyncState === 'failed') stalled.push('revenue');
+                    if (stalled.length) {
+                        document.getElementById('importIncompleteText').textContent =
+                            'Your last ' + stalled.join(' and ') + ' sync didn\'t finish. Run the import again for complete data.';
+                        document.getElementById('importIncompleteWarning').classList.remove('sb-setup-hidden');
+                    }
+
+                    // Resuming with revenue already loaded: offer the picker straight away.
+                    if (revenueImported) {
+                        fetch('/api/revenue/buckets')
+                            .then(r => r.json())
+                            .then(buckets => {
+                                if (buckets && buckets.length) renderOnboardBucketPicker(buckets);
+                            })
+                            .catch(() => {});
+                    }
+
+                    modal.show();
+                    return true;
+                }
+
+                window.openSetupWizard = () => {
+                    if (welcomeModal.open || importRunning || signInActive) {
+                        return Promise.resolve(false);
+                    }
+                    return initWizard();
+                };
+                if (autoOpen) initWizard();
+            }
+        });
+
+</script>

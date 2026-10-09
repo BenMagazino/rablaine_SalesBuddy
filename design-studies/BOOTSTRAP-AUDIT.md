@@ -3,6 +3,15 @@
 October 1, 2026. Read-only dependency audit for the upcoming redesign.
 No application code, assets, preferences, or records were changed.
 
+## Final implementation update, October8
+
+Checkpoints91-105 remove the framework CSS, bundle, widget APIs and `--bs-*`
+runtime dependencies. Application-owned browser normalization and native controls
+replace them; the independent Bootstrap Icons library remains intentionally.
+The historical inventory below describes the October1 baseline, not current runtime.
+See [final reconciliation](../docs/redesign-pages/FINAL-RECONCILIATION.md) for passing
+scoped regressions, native-shell limits and the unresolved validation draft incident.
+
 ## Decision summary
 
 **Full removal is feasible in the redesign, but it is an app-wide migration,
@@ -119,7 +128,7 @@ Attribute-name counts can include source selectors, not just rendered attributes
 | Offcanvas panels | Panel open/close, backdrop and keyboard behavior, stacking interactions, and lifecycle events. These are real app workflows, regardless of the new homepage's centered modals. | [Shared shell](../templates/base.html#L4085), [note editor](../templates/note_form.html#L1157) |
 | Tabs/pills | Selected tab/panel state, keyboard and ARIA behavior, and activation hooks used for content side effects. | [Homepage tab controls](../templates/index.html#L636), [activation hook](../templates/index.html#L1313) |
 | Popover | Shared-shell popover integration and revenue bucket selector content, positioning, event hookup when opened, outside-dismiss/focus behavior. | [Shared shell](../templates/base.html), [revenue bucket filter](../static/js/revenue-bucket-filter.js#L211) |
-| Alerts and notifications | Dismiss controls, notification markup/visibility, and existing application-managed toast lifecycles. Not every toast uses Bootstrap's Toast API. | [Sharing notifications](../static/js/share.js#L642), [partner sharing](../static/js/share2.js#L423), [MSX workspace toast](../templates/report_msx_workspace.html#L387) |
+| Alerts and notifications | Dismiss controls, notification markup/visibility, and existing application-managed toast lifecycles. Not every toast uses Bootstrap's Toast API. The unused duplicate sharing client was removed during final reconciliation. | [Sharing notifications](../static/js/share.js), [MSX workspace toast](../templates/report_msx_workspace.html#L387) |
 
 Do not replace these families with independent bespoke implementations on every
 page. Native `<dialog>`, disclosure, and popover capabilities are candidates,
@@ -153,7 +162,7 @@ All six first-party static JavaScript files contain styling/icon coupling:
 - [revenue-bucket-filter.js](../static/js/revenue-bucket-filter.js): popover and
   generated selector markup.
 - [share.js](../static/js/share.js): sharing dialogs, review content, notifications.
-- [share2.js](../static/js/share2.js): partner-sharing dialogs and notifications.
+- [share.js](../static/js/share.js): consolidated native partner-sharing dialogs and notifications.
 - [milestone-multi-picker.js](../static/js/milestone-multi-picker.js): icon
   coupling in the application-owned picker, not necessarily a Bootstrap JS component.
 

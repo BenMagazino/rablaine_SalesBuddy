@@ -109,7 +109,8 @@ def test_shared_body_keeps_metadata_links_counts_and_native_structure(
     ):
         assert root.select_one(f'a[href="/{prefix}/{body_milestone[key]}"]')
     owner = root.select_one("#ownerValue a")
-    assert {"badge", "bg-primary", "sb-record-badge"} <= set(owner["class"])
+    assert "sb-record-badge" in owner["class"]
+    assert not {"badge", "bg-primary"} & set(owner["class"])
     assert root.select_one("#statusValue .sb-record-tag")["data-status"] == "At Risk"
     assert root.select_one("#leaveMilestoneTeamBtn")
     assert root.select_one('a[href="https://example.com/task"]')["target"] == "_blank"
@@ -121,7 +122,9 @@ def test_shared_body_keeps_metadata_links_counts_and_native_structure(
     assert f"customer_id={body_milestone['customer']}" in new_note["href"]
     assert f"milestone_id={milestone_id}" in new_note["href"]
     assert root.select_one(".sb-ms-task a[title='Linked Note']")
-    assert "COMMENT_WORKBENCH = true" in response.text
+    assert root.select_one(".sb-ms-comments #commentsBody")
+    assert root.select_one("#commentsSpinner.sb-ms-loading")
+    assert not root.select(".sb-ms-comments .card, .sb-ms-comments .spinner-border")
     if not preview:
         assert soup.select_one('link[href="/static/css/ui-milestone.css"]')
 
@@ -236,10 +239,10 @@ def test_local_customerless_body_omits_remote_controls(client: FlaskClient, app:
 
 
 @pytest.mark.parametrize("native", [False, True])
-def test_forecast_helper_opts_in_without_migrating_opportunity(
+def test_forecast_helper_is_native_for_every_consumer(
     app: Flask, native: bool,
 ) -> None:
-    """The shared forecast helper retains its legacy default for unconverted consumers."""
+    """Default and previously opted-in consumers share the native forecast presentation."""
     with app.test_request_context():
         html = app.jinja_env.get_template("_forecast_comments.html").render(
             cached_comments=COMMENTS,
@@ -247,9 +250,9 @@ def test_forecast_helper_opts_in_without_migrating_opportunity(
             show_comments=True, **({"forecast_workbench": True} if native else {}),
         )
     soup = BeautifulSoup(html, "html.parser")
-    assert bool(soup.select_one(".sb-ms-comments")) is native
-    assert bool(soup.select_one(".card .card-header h5")) is not native
-    assert bool(soup.select_one(".input-group .form-control")) is not native
+    assert soup.select_one(".sb-ms-comments")
+    assert not soup.select(".card, .input-group, .form-control")
+    assert soup.select_one('textarea[aria-label="Forecast comment"]')
     assert soup.select_one("form")["action"] == "/opportunity/1/comment"
     assert soup.select_one("#cachedCommentsList table")
     assert not soup.select("plain")

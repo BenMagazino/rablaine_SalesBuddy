@@ -147,7 +147,7 @@ def test_create_defaults_and_invalid_date(client):
     )
 
 
-def test_note_flyout_partial_remains_legacy(app):
+def test_note_flyout_partial_retains_native_compact_contract(app):
     """The embedded note consumer retains its IDs, status scope and compact layout."""
     with app.test_request_context('/note/new'):
         html = app.jinja_env.get_template('partials/_project_form_fields.html').render(
@@ -157,7 +157,42 @@ def test_note_flyout_partial_remains_legacy(app):
     assert soup.select_one('#flyout_project_title')
     assert soup.select_one('#flyout_project_status_group')['style'] == 'display: none;'
     assert not soup.select_one('#flyout_project_title').has_attr('required')
-    assert soup.select_one('.form-control') and not soup.select_one('.pf-fields')
+    assert soup.select_one('.pf-flyout') and not soup.select_one('.pf-fields')
+    assert not soup.select('.form-control, .form-select, .row')
+    assert soup.select_one('#flyout_project_title')['name'] == 'title'
+    assert soup.select_one('#flyout_project_description')['rows'] == '2'
+    assert soup.select_one('#flyout_project_description')['name'] == 'description'
+    assert soup.select_one('#flyout_project_due_date')['name'] == 'due_date'
+    assert [option['value'] for option in soup.select('#flyout_project_type option')] == [
+        'general', 'training', 'achievement',
+    ]
+    assert [option['value'] for option in soup.select('#flyout_project_status option')] == [
+        'Active', 'On Hold', 'Completed',
+    ]
+
+
+def test_note_flyout_edit_values_and_note_scope(app, records):
+    """Compact edits preserve prefixed labels, status and eligible note selections."""
+    project, notes = records
+    with app.test_request_context('/note/new'):
+        html = app.jinja_env.get_template('partials/_project_form_fields.html').render(
+            project=project, project_types=Project.BUILT_IN_TYPES, flyout_mode=True,
+            unattached_notes=notes[:2],
+        )
+    soup = BeautifulSoup(html, 'html.parser')
+    assert soup.select_one('#flyout_project_title')['value'] == project.title
+    assert soup.select_one('#flyout_project_description').text == project.description
+    assert soup.select_one('#flyout_project_due_date')['value'] == '2027-01-02'
+    assert soup.select_one('#flyout_project_type option[selected]')['value'] == 'training'
+    assert soup.select_one('#flyout_project_status option[selected]')['value'] == 'On Hold'
+    assert not soup.select_one('#flyout_project_status_group').has_attr('style')
+    assert [int(element['value']) for element in soup.select('[name="note_ids"][checked]')] == [
+        notes[1].id,
+    ]
+    assert soup.select_one(f'#flyout_note_{notes[1].id}')
+    for control in soup.select('input, select, textarea'):
+        assert soup.select_one(f'label[for="{control["id"]}"]')
+    assert not soup.select('#title, #description, #project_type, #due_date, #status')
 
 
 def test_missing_project(client):

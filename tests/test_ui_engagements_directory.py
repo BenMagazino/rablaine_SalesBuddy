@@ -1,9 +1,11 @@
 """Native engagement directory parity without modifying its data provider."""
 
 from datetime import date, datetime, timezone
+from pathlib import Path
 
 from bs4 import BeautifulSoup
 from flask import render_template
+import pytest
 
 
 def test_directory_frame_commands_and_single_shared_assets(client):
@@ -28,19 +30,31 @@ def test_directory_frame_commands_and_single_shared_assets(client):
         assert len(soup.select(f'script[src="/static/js/{asset}"]')) == 1
 
 
-def test_legacy_home_seller_panel_is_not_silently_migrated(app):
-    """The hub opts in without changing existing embed functions or lifecycle."""
+@pytest.mark.parametrize("auto_load", [False, True])
+def test_native_home_seller_panel_preserves_requested_lifecycle(app, auto_load):
+    """Native embeds retain the exported loader and the host's eager/deferred choice."""
     with app.test_request_context("/"):
         app.preprocess_request()
         html = render_template(
             "partials/engagements_panel.html", eng_api_url="/api/seller/5/engagements",
-            eng_auto_load=True, eng_show_seller=False, eng_body_id="sellerEngBody",
+            eng_auto_load=auto_load, eng_show_seller=False, eng_body_id="sellerEngBody",
+            eng_count_id="sellerEngCount", eng_empty_msg="No engagements found.",
         )
-    assert "engLoad_" in html and "engToggleFav_" in html
-    assert "DOMContentLoaded" in html
-    assert 'class="card mb-3"' in html
-    assert "ui-engagements-directory.js" not in html
-    assert "data-eng-directory" not in html
+    soup = BeautifulSoup(html, "html.parser")
+    controls = soup.select_one("[data-eng-directory]")
+    assert controls["data-auto-load"] == ("true" if auto_load else "false")
+    assert controls["data-api-url"] == "/api/seller/5/engagements"
+    assert controls["data-body-id"] == "sellerEngBody"
+    assert controls["data-count-id"] == "sellerEngCount"
+    assert soup.select_one("#sellerEngBody_favoritesBtn")
+    assert not soup.select(".card, .btn, .badge")
+    assert len(soup.select('script[src="/static/js/ui-engagements-directory.js"]')) == 1
+    controller = (Path(__file__).parents[1] / "static/js/ui-engagements-directory.js").read_text(
+        encoding="utf-8"
+    )
+    assert "window['engLoad_' + id] = load;" in controller
+    assert "if (root.dataset.autoLoad !== 'false') load();" in controller
+    assert "DOMContentLoaded" in controller
 
 
 def test_internal_projects_preserve_population_order_and_fields(client, app):

@@ -1,16 +1,22 @@
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 {% set has_msx_tasks = note.msx_tasks.count() > 0 %}
-<div class="sb-note-view{% if show_edit_delete|default(true) %} sb-note-view-page{% endif %}"
+<div class="sb-note-view{% if show_edit_delete|default(true) %} sb-note-view-page sb-directory-frame sb-directory-frame-wide{% endif %}"
+     {% if show_edit_delete|default(true) %}id="noteReadingSurface" data-sb-page-surface{% endif %}
      data-sb-note-detail data-sb-note-id="{{ note.id }}">
 
 {% if show_edit_delete|default(true) %}
 <header class="sb-note-page-header">
     <h1><i class="bi bi-journal-text" aria-hidden="true"></i> Note</h1>
     <div class="sb-note-commands">
+        {% if back_url %}
+        <a href="{{ back_url }}" class="sb-dialog-button">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Back
+        </a>
+        {% endif %}
         <button class="sb-dialog-button btn-share" style="display:none"
                 onclick="Share.openShareModal('note', {{ note.id }})">
             <i class="bi bi-share" aria-hidden="true"></i> Share
-            <span class="badge bg-success sb-record-badge share-online-count" style="display:none">0</span>
+            <span class="sb-note-tag bg-success sb-record-badge share-online-count" style="display:none">0</span>
         </button>
         <a href="{{ url_for('notes.note_edit', id=note.id, next=back_url) if back_url else url_for('notes.note_edit', id=note.id) }}" class="sb-dialog-button">
             <i class="bi bi-pencil" aria-hidden="true"></i> Edit Note
@@ -51,7 +57,7 @@
                 <dt>Seller</dt>
                 <dd>
                     {% if note.seller %}
-                        <a href="{{ url_for('sellers.seller_view', id=note.seller.id) }}" class="badge bg-primary sb-record-badge">
+                        <a href="{{ url_for('sellers.seller_view', id=note.seller.id) }}" class="sb-note-tag bg-primary sb-record-badge">
                             <i class="bi bi-person" aria-hidden="true"></i> {{ note.seller.name }}
                         </a>
                     {% else %}
@@ -64,7 +70,7 @@
                 <dt>Territory</dt>
                 <dd>
                     {% if note.territory %}
-                        <a href="{{ url_for('territories.territory_view', id=note.territory.id) }}" class="badge bg-info text-dark sb-record-badge">
+                        <a href="{{ url_for('territories.territory_view', id=note.territory.id) }}" class="sb-note-tag bg-info sb-note-tag-ink sb-record-badge">
                             <i class="bi bi-geo-alt" aria-hidden="true"></i> {{ note.territory.name }}
                         </a>
                     {% else %}
@@ -77,7 +83,7 @@
                 <dd>
                     {% if note.topics|length > 0 %}
                         {% for topic in note.topics %}
-                            <a href="{{ url_for('topics.topic_view', id=topic.id) }}" class="badge bg-warning text-dark sb-record-badge">
+                            <a href="{{ url_for('topics.topic_view', id=topic.id) }}" class="sb-note-tag bg-warning sb-note-tag-ink sb-record-badge">
                                 <i class="bi bi-tag" aria-hidden="true"></i> {{ topic.name }}
                             </a>
                         {% endfor %}
@@ -96,7 +102,7 @@
                 <dt>Partners</dt>
                 <dd>
                     {% for partner in note.partners %}
-                        <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="badge bg-purple sb-record-badge">
+                        <a href="{{ url_for('partners.partner_view', id=partner.id) }}" class="sb-note-tag bg-purple sb-record-badge">
                             <i class="bi bi-building" aria-hidden="true"></i> {{ partner.name }}
                         </a>
                     {% endfor %}
@@ -109,31 +115,31 @@
                 <dd>
                     {% for att in note.attendees %}
                         {% if att.person_type == 'customer_contact' and att.customer_contact %}
-                            <a href="{{ url_for('customers.customer_view', id=att.customer_contact.customer_id) }}" class="badge bg-success sb-record-badge" title="{{ att.email or '' }}{% if att.customer_contact.title %} - {{ att.customer_contact.title }}{% endif %}">
+                            <a href="{{ url_for('customers.customer_view', id=att.customer_contact.customer_id) }}" class="sb-note-tag bg-success sb-record-badge" title="{{ att.email or '' }}{% if att.customer_contact.title %} - {{ att.customer_contact.title }}{% endif %}">
                                 <i class="bi bi-person-circle" aria-hidden="true"></i> {{ att.display_name }}
                             </a>
                         {% elif att.person_type == 'partner_contact' and att.partner_contact %}
-                            <a href="{{ url_for('partners.partner_view', id=att.partner_contact.partner_id) }}" class="badge bg-purple sb-record-badge" title="{{ att.email or '' }}{% if att.partner_contact.title %} - {{ att.partner_contact.title }}{% endif %}">
+                            <a href="{{ url_for('partners.partner_view', id=att.partner_contact.partner_id) }}" class="sb-note-tag bg-purple sb-record-badge" title="{{ att.email or '' }}{% if att.partner_contact.title %} - {{ att.partner_contact.title }}{% endif %}">
                                 <i class="bi bi-building" aria-hidden="true"></i> {{ att.display_name }}
                             </a>
                         {% elif att.person_type == 'se' and att.solution_engineer %}
-                            <a href="{{ url_for('solution_engineers.solution_engineer_view', id=att.solution_engineer.id) }}" class="badge bg-info sb-record-badge" title="{{ att.email or '' }}{% if att.solution_engineer.specialty %} - {{ att.solution_engineer.specialty }}{% endif %}">
+                            <a href="{{ url_for('solution_engineers.solution_engineer_view', id=att.solution_engineer.id) }}" class="sb-note-tag bg-info sb-record-badge" title="{{ att.email or '' }}{% if att.solution_engineer.specialty %} - {{ att.solution_engineer.specialty }}{% endif %}">
                                 <i class="bi bi-tools" aria-hidden="true"></i> {{ att.display_name }}
                             </a>
                         {% elif att.person_type == 'seller' and att.seller %}
-                            <a href="{{ url_for('sellers.seller_view', id=att.seller.id) }}" class="badge bg-primary sb-record-badge" title="{{ att.email or '' }}">
+                            <a href="{{ url_for('sellers.seller_view', id=att.seller.id) }}" class="sb-note-tag bg-primary sb-record-badge" title="{{ att.email or '' }}">
                                 <i class="bi bi-person" aria-hidden="true"></i> {{ att.display_name }}
                             </a>
                         {% elif att.person_type == 'internal_contact' and att.internal_contact %}
-                            <a href="{{ url_for('internal_contacts.internal_contact_edit', id=att.internal_contact.id) }}" class="badge bg-warning text-dark sb-record-badge" title="{{ att.email or '' }}{% if att.internal_contact.role %} - {{ att.internal_contact.role }}{% endif %}">
+                            <a href="{{ url_for('internal_contacts.internal_contact_edit', id=att.internal_contact.id) }}" class="sb-note-tag bg-warning sb-note-tag-ink sb-record-badge" title="{{ att.email or '' }}{% if att.internal_contact.role %} - {{ att.internal_contact.role }}{% endif %}">
                                 <i class="bi bi-person-badge" aria-hidden="true"></i> {{ att.display_name }}
                             </a>
                         {% elif att.email %}
-                            <a href="mailto:{{ att.email }}" class="badge bg-secondary sb-record-badge" title="{{ att.email }}">
+                            <a href="mailto:{{ att.email }}" class="sb-note-tag bg-secondary sb-record-badge" title="{{ att.email }}">
                                 <i class="bi bi-person-dash" aria-hidden="true"></i> {{ att.display_name }}
                             </a>
                         {% else %}
-                            <span class="badge bg-secondary sb-record-badge">
+                            <span class="sb-note-tag bg-secondary sb-record-badge">
                                 <i class="bi bi-person-dash" aria-hidden="true"></i> {{ att.display_name }}
                             </span>
                         {% endif %}
@@ -152,7 +158,7 @@
                 <dt>Engagements</dt>
                 <dd>
                     {% for eng in note.engagements %}
-                        <a href="{{ url_for('engagements.engagement_view', id=eng.id) }}" class="badge bg-info text-dark sb-record-badge" title="{{ eng.title }}">
+                        <a href="{{ url_for('engagements.engagement_view', id=eng.id) }}" class="sb-note-tag bg-info sb-note-tag-ink sb-record-badge" title="{{ eng.title }}">
                             <i class="bi bi-diagram-3" aria-hidden="true"></i> {{ eng.title[:50] }}{% if eng.title|length > 50 %}...{% endif %}
                         </a>
                     {% endfor %}
@@ -164,7 +170,7 @@
                 <dt>Projects</dt>
                 <dd>
                     {% for p in note.projects %}
-                        <a href="{{ url_for('projects.project_view', id=p.id) }}" class="badge bg-secondary sb-record-badge" title="{{ p.title }}">
+                        <a href="{{ url_for('projects.project_view', id=p.id) }}" class="sb-note-tag bg-secondary sb-record-badge" title="{{ p.title }}">
                             <i class="bi bi-folder" aria-hidden="true"></i> {{ p.title[:50] }}{% if p.title|length > 50 %}...{% endif %}
                         </a>
                     {% endfor %}
@@ -201,7 +207,7 @@
                 <dt>Milestones</dt>
                 <dd>
                     {% for milestone in note.milestones %}
-                        <a href="{{ url_for('milestones.milestone_view', id=milestone.id) }}" class="badge bg-success sb-record-badge" title="{{ milestone.display_text }}">
+                        <a href="{{ url_for('milestones.milestone_view', id=milestone.id) }}" class="sb-note-tag bg-success sb-record-badge" title="{{ milestone.display_text }}">
                             <i class="bi bi-flag" aria-hidden="true"></i> {{ milestone.display_text[:40] }}{% if milestone.display_text|length > 40 %}...{% endif %}
                         </a>
                     {% endfor %}
@@ -226,10 +232,10 @@
                         <span class="sb-note-muted">{{ opp.opportunity_number }}</span>
                         {% endif %}
                         {% if opp.state %}
-                        <span class="badge bg-info text-dark sb-record-badge">{{ opp.state }}</span>
+                        <span class="sb-note-tag bg-info sb-note-tag-ink sb-record-badge">{{ opp.state }}</span>
                         {% endif %}
                         {% if opp.estimated_value %}
-                        <span class="badge bg-success sb-record-badge">${{ "{:,.0f}".format(opp.estimated_value) }}</span>
+                        <span class="sb-note-tag bg-success sb-record-badge">${{ "{:,.0f}".format(opp.estimated_value) }}</span>
                         {% endif %}
                         {% if opp.owner_name %}
                         <div class="sb-note-muted">Owner: {{ opp.owner_name }}</div>
@@ -246,16 +252,16 @@
                     {% for task in note.msx_tasks %}
                     <div class="sb-note-related">
                         {% if task.msx_task_url %}
-                        <a href="{{ task.msx_task_url }}" target="_blank" rel="noopener" class="badge bg-primary sb-record-badge" title="{{ task.subject }}">
+                        <a href="{{ task.msx_task_url }}" target="_blank" rel="noopener" class="sb-note-tag bg-primary sb-record-badge" title="{{ task.subject }}">
                             <i class="bi bi-check2-circle" aria-hidden="true"></i> {{ task.subject[:30] }}{% if task.subject|length > 30 %}...{% endif %} <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                         </a>
                         {% else %}
-                        <span class="badge bg-primary sb-record-badge" title="{{ task.subject }}">
+                        <span class="sb-note-tag bg-primary sb-record-badge" title="{{ task.subject }}">
                             <i class="bi bi-check2-circle" aria-hidden="true"></i> {{ task.subject[:30] }}{% if task.subject|length > 30 %}...{% endif %}
                         </span>
                         {% endif %}
                         {% if task.is_hva %}
-                        <span class="badge bg-warning text-dark sb-record-badge" title="High-Value Activity"><i class="bi bi-star-fill" aria-hidden="true"></i> HVA</span>
+                        <span class="sb-note-tag bg-warning sb-note-tag-ink sb-record-badge" title="High-Value Activity"><i class="bi bi-star-fill" aria-hidden="true"></i> HVA</span>
                         {% endif %}
                         <div class="sb-note-muted">{{ task.task_category_name }}</div>
                     </div>

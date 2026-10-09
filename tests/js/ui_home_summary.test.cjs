@@ -27,8 +27,8 @@ function fixture(options = {}) {
         const body = {childElementCount: 1, state: 'ready',
             counts: new Map([[items, counts], ['.cal-ghost[data-ghost-id]', 2]]),
             querySelector: selector => {
-                if (body.state === 'loading' && selector.includes('.spinner-border')) return {};
-                if (body.state === 'error' && selector.includes('.text-danger')) return {};
+                if (body.state === 'loading' && selector.includes('.sb-hn-spinner-border')) return {};
+                if (body.state === 'error' && selector.includes('.sb-hn-text-danger')) return {};
                 if (body.daySpinner && !selector.includes(':scope')) return {};
                 return null;
             },

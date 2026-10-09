@@ -153,7 +153,7 @@ def test_reviewed_alerts_and_all_exports(
         "Actioned", "Reviewed",
     }
     assert 'const TABLE_SELECTOR = ".oo-table";' in response.get_data(as_text=True)
-    assert "const NATIVE_EXPORT = true;" in response.get_data(as_text=True)
+    assert len(soup.select("#reportExportBtnGroup button.sb-revenue-command")) == 3
     for action in ["exportReportCSV()", "copyReportForEmail()", "downloadReportEmail()"]:
         assert soup.select_one(f"button[onclick='{action}']")
     assert soup.select_one("#reportExportNoticeTemplate .sb-notice")

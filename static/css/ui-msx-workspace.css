@@ -65,4 +65,3 @@
 .msx-opportunity-dialog { width: min(1200px, calc(100vw - 48px)); }
 .msx-opportunity-dialog h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msx-feedback { position: fixed; bottom: 32px; right: 24px; z-index: 1090; max-width: 480px; padding: 12px; border: 1px solid var(--sb-ui-line); background: var(--sb-ui-popup); color: var(--sb-ui-ink); }
-.sb-msx-workspace .d-none { display: none !important; }

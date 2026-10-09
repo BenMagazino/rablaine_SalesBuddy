@@ -82,7 +82,7 @@ test('each selection updates exactly one panel, ARIA state and tab stop', () => 
             assert.equal(panels[position].hidden, position !== index);
             assert.equal(panels[position].classList.contains('active'), position === index);
         }
-        assert.equal(tabs[index].events[0].type, 'shown.bs.tab');
+        assert.equal(tabs[index].events[0].type, 'sb:home-tab-selected');
         assert.equal(tabs[index].events[0].bubbles, true);
         assert.equal(tabs[index].events[0].relatedTarget, tabs[index - 1]);
     }
@@ -180,15 +180,15 @@ test('calendar reserves measured toolbar, weekday and legend space when chrome c
 
 test('semantic ink overrides the neutral default independently of high-specificity geometry', () => {
     const geometry = css.match(
-        /\.sb-home-page\[data-sb-home\] \.sb-home-panel \.badge \{([^}]+)\}/)[1];
+        /\.sb-home-page\[data-sb-home\] \.sb-home-panel \.sb-hn-badge \{([^}]+)\}/)[1];
     assert.doesNotMatch(geometry, /--sb-home-tag-ink:/);
     for (const [kind, token] of [
         ['success', 'milestone-rail'], ['warning', 'warning'], ['danger', 'danger'],
     ]) {
-        assert.ok(css.includes(`.sb-home-panel .badge.bg-${kind} { ` +
+        assert.ok(css.includes(`.sb-home-panel .sb-hn-badge.sb-hn-bg-${kind} { ` +
             `--sb-home-tag-ink: var(--sb-ui-${token}); }`));
     }
-    assert.match(css, /\.sb-home-panel \.badge\.bg-primary, \.sb-home-panel \.badge\.bg-info/);
+    assert.match(css, /\.sb-home-panel \.sb-hn-badge\.sb-hn-bg-primary, \.sb-home-panel \.sb-hn-badge\.sb-hn-bg-info/);
 });
 
 test('approved Home composition uses a flush dock with dividers instead of isolated cards', () => {

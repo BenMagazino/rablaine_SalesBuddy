@@ -7,6 +7,13 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname,
     '../../static/js/ui-dashboard-settings.js'), 'utf8');
 
+test('pages without a dashboard settings host do not initialize or issue requests', () => {
+    assert.doesNotThrow(() => vm.runInNewContext(source, {
+        document: {querySelector: () => null},
+        fetch() { throw new Error('Missing host must not request settings'); },
+    }));
+});
+
 function fixture(response) {
     function element() {
         return {dataset: {}, attributes: {}, handlers: {}, disabled: false,

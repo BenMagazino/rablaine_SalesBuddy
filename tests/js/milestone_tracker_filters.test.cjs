@@ -38,6 +38,7 @@ function tracker(saved = null, locked = false, entry = null) {
         'totalCount', 'totalValue', 'pastDueCount', 'thisWeekCount',
         'customerDropdownBtn', 'customerSearch', 'customerAll', 'customerNoMatches', 'noResults',
     ]) controls[role] = element();
+    controls.customerNoMatches.classList.add('sb-hidden');
     controls.customerFilter.options = [
         {value: '', textContent: 'All Customers'},
         {value: '1', textContent: 'Acme Corp'},
@@ -212,8 +213,8 @@ test('customer dropdown narrows case-insensitively without changing the selected
     assert.equal(t.controls.customerSearch.focused, true);
     t.controls.customerSearch.value = '  gLoB  ';
     t.controls.customerSearch.listeners.input();
-    assert.equal(t.customerButtons[0].classList.contains('d-none'), true);
-    assert.equal(t.customerButtons[1].classList.contains('d-none'), false);
+    assert.equal(t.customerButtons[0].classList.contains('sb-hidden'), true);
+    assert.equal(t.customerButtons[1].classList.contains('sb-hidden'), false);
     assert.equal(t.controls.customerFilter.value, '1');
     assert.equal(t.visible().length, 1);
     t.customerButtons[1].listeners.click();
@@ -229,7 +230,7 @@ test('customer dropdown reports no matches and Enter selects the first matching 
     const t = tracker();
     t.controls.customerSearch.value = 'not a customer';
     t.controls.customerSearch.listeners.input();
-    assert.equal(t.controls.customerNoMatches.classList.contains('d-none'), false);
+    assert.equal(t.controls.customerNoMatches.classList.contains('sb-hidden'), false);
     t.controls.customerSearch.listeners.keydown({key: 'Enter', preventDefault() {}});
     assert.equal(t.controls.customerFilter.value, '');
     t.controls.customerSearch.value = 'acme';
@@ -237,7 +238,7 @@ test('customer dropdown reports no matches and Enter selects the first matching 
     assert.equal(t.customerButtons[0].focused, true);
     t.controls.customerSearch.listeners.keydown({key: 'Enter', preventDefault() {}});
     assert.equal(t.controls.customerFilter.value, '1');
-    assert.equal(t.controls.customerNoMatches.classList.contains('d-none'), true);
+    assert.equal(t.controls.customerNoMatches.classList.contains('sb-hidden'), true);
 });
 
 test('typing previews the first Enter target without committing a customer selection', () => {
@@ -279,7 +280,7 @@ test('All Customers and Reset clear selection and reopening restores the full op
     t.customerPicker.open = true;
     t.customerPicker.listeners.toggle.call(t.customerPicker);
     assert.equal(t.controls.customerSearch.value, '');
-    assert.equal(t.customerButtons.every(button => !button.classList.contains('d-none')), true);
+    assert.equal(t.customerButtons.every(button => !button.classList.contains('sb-hidden')), true);
     t.customerButtons[0].listeners.click();
     t.controls.resetFiltersBtn.listeners.click();
     assert.equal(t.controls.customerFilter.value, '');

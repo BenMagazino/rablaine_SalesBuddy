@@ -2,7 +2,6 @@
 {# Context: milestone, tasks, cached_comments, owner_link #}
 {# Guard: show_edit_delete (default True) - set False in modal to hide Edit/Delete/header #}
 {% if show_edit_delete is not defined %}{% set show_edit_delete = True %}{% endif %}
-{% set forecast_workbench = true %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 <div class="sb-milestone-view{% if show_edit_delete %} sb-ms-page sb-directory-frame sb-directory-frame-wide{% endif %}"
      {% if show_edit_delete %}data-sb-page-surface data-sb-milestone-page{% endif %}
@@ -85,7 +84,7 @@
                         {% if milestone.owner_name %}
                         <li class="sb-ms-meta-row" id="ownerRow">
                             <span class="sb-ms-label">Owner</span>
-                            <span id="ownerValue">{% if owner_link %}<a href="{{ owner_link.url }}"{% if owner_link.type == 'seller' %} class="badge bg-primary sb-record-badge"{% endif %}><i class="bi bi-person"></i> {{ milestone.owner_name }}</a>{% else %}{{ milestone.owner_name }}{% endif %}</span>
+                            <span id="ownerValue">{% if owner_link %}<a href="{{ owner_link.url }}"{% if owner_link.type == 'seller' %} class="sb-record-badge"{% endif %}><i class="bi bi-person"></i> {{ milestone.owner_name }}</a>{% else %}{{ milestone.owner_name }}{% endif %}</span>
                         </li>
                         {% else %}
                         <li class="sb-ms-meta-row" id="ownerRow" style="display:none;">
@@ -139,7 +138,7 @@
                             <span class="sb-ms-label">Milestone Team</span>
                             {% if milestone.on_my_team %}
                             <span class="sb-ms-team-actions">
-                                <span class="badge bg-success sb-record-badge"><i class="bi bi-people-fill"></i> On Team</span>
+                                <span class="sb-record-badge is-success"><i class="bi bi-people-fill"></i> On Team</span>
                                 <button class="sb-dialog-button sb-ms-danger" id="leaveMilestoneTeamBtn" data-sb-ms-action="leave">
                                     <i class="bi bi-person-dash"></i> Leave
                                 </button>
@@ -203,10 +202,10 @@
                         </div>
                         <div class="sb-ms-topics">
                             {% for topic in note.topics[:3] %}
-                            <span class="badge bg-warning text-dark sb-record-badge"><i class="bi bi-tag"></i> {{ topic.name }}</span>
+                            <span class="sb-record-badge"><i class="bi bi-tag"></i> {{ topic.name }}</span>
                             {% endfor %}
                             {% if note.topics|length > 3 %}
-                            <span class="badge bg-secondary sb-record-badge">+{{ note.topics|length - 3 }}</span>
+                            <span class="sb-record-badge is-muted">+{{ note.topics|length - 3 }}</span>
                             {% endif %}
                         </div>
                     </div>
@@ -239,7 +238,7 @@
                     <div class="sb-ms-related-title" title="{{ task.subject }}">
                         {{ task.subject }}
                         {% if task.is_hva %}
-                        <span class="badge bg-warning text-dark sb-record-badge" title="High-Value Activity">HVA</span>
+                        <span class="sb-record-badge is-warning" title="High-Value Activity">HVA</span>
                         {% endif %}
                     </div>
                     <div class="sb-ms-muted">
@@ -316,9 +315,9 @@
                 <div class="sb-dialog-header">
                     <div class="sb-dialog-heading">
                         <h5 class="sb-record-editor-title" id="milestoneEngagementModalLabel">
-                            <i class="bi bi-diagram-3 me-2"></i>Create engagement
+                            <i class="bi bi-diagram-3"></i>Create engagement
                         </h5>
-                        <div class="small text-muted">Linked to {{ milestone.display_text }}</div>
+                        <div class="sb-ms-muted">Linked to {{ milestone.display_text }}</div>
                     </div>
                     <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">&times;</button>
                 </div>
@@ -339,7 +338,7 @@
                             </select>
                         </div>
                         <div class="sb-record-form-wide">
-                            <div class="small text-uppercase text-muted fw-semibold">Engagement story</div>
+                            <div class="sb-ms-story-heading">Engagement story</div>
                         </div>
                         <div class="sb-record-form-wide">
                             <label for="milestoneEngagementProblem" class="sb-record-field-label">Technical/Business Problem</label>
@@ -374,7 +373,7 @@
                 <div class="sb-dialog-footer"><small data-sb-child-status role="status"></small>
                     <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
                     <button type="submit" class="sb-dialog-button" id="milestoneEngagementSubmit">
-                        <i class="bi bi-check2 me-1"></i>Create engagement
+                        <i class="bi bi-check2"></i>Create engagement
                     </button>
                 </div>
             </form>
@@ -388,7 +387,7 @@
         <div class="sb-dialog-shell"><form id="milestoneTaskForm" class="sb-record-editor-form">
             <div class="sb-dialog-header">
                 <h5 class="sb-record-editor-title" id="newTaskModalLabel">
-                    <i class="bi bi-plus-circle me-1"></i> Create Task on Milestone
+                    <i class="bi bi-plus-circle"></i> Create Task on Milestone
                 </h5>
                 <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close">&times;</button>
             </div>
@@ -399,20 +398,20 @@
                 </button>
                 <div id="task_form_fields" class="sb-record-form-grid">
                     <div class="sb-record-form-wide">
-                        <label for="modal_task_subject" class="sb-record-field-label">Task Title <span class="text-danger">*</span></label>
+                        <label for="modal_task_subject" class="sb-record-field-label">Task Title <span class="sb-ms-danger">*</span></label>
                         <input type="text" class="sb-record-field" id="modal_task_subject" required autofocus
                                placeholder="Brief task description...">
                     </div>
                     <div class="sb-record-form-grid sb-record-form-wide">
                         <div class="sb-record-field-group">
-                            <label for="modal_task_category" class="sb-record-field-label">Category <span class="text-danger">*</span></label>
+                            <label for="modal_task_category" class="sb-record-field-label">Category <span class="sb-ms-danger">*</span></label>
                             <select class="sb-record-field" id="modal_task_category" required>
                                 <option value="">-- Select task category --</option>
                             </select>
                         </div>
                         <div class="sb-record-field-group">
                             <label for="modal_task_due_date" class="sb-record-field-label">
-                                <i class="bi bi-calendar-event me-1"></i>Due Date
+                                <i class="bi bi-calendar-event"></i>Due Date
                             </label>
                             <input type="date" class="sb-record-field" id="modal_task_due_date">
                         </div>
@@ -427,7 +426,7 @@
             <div class="sb-dialog-footer"><small data-sb-child-status role="status"></small>
                 <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
                 <button type="submit" class="sb-dialog-button" id="create_task_btn">
-                    <i class="bi bi-cloud-upload me-1"></i> Create Task in MSX
+                    <i class="bi bi-cloud-upload"></i> Create Task in MSX
                 </button>
             </div>
         </form></div>
@@ -444,7 +443,6 @@ const HAS_MSX_ID = {{ 'true' if milestone.msx_milestone_id else 'false' }};
 const COMMENT_ENTITY_ID = MS_ID;
 const COMMENT_API_PREFIX = '/api/milestone';
 const COMMENT_ENTITY_LABEL = 'milestone';
-const COMMENT_WORKBENCH = true;
 
 function escapeHtml(str) {
     if (!str) return '';
@@ -508,7 +506,7 @@ document.getElementById('milestoneEngagementForm').addEventListener('submit', fu
     })
     .finally(function() {
         button.disabled = false;
-        button.innerHTML = '<i class="bi bi-check2 me-1"></i>Create engagement';
+        button.innerHTML = '<i class="bi bi-check2"></i>Create engagement';
     });
 });
 {% endif %}
@@ -633,7 +631,7 @@ async function joinMilestoneTeam(milestoneId) {
             const wrapper = document.createElement('span');
             wrapper.className = 'sb-ms-team-actions';
             const badge = document.createElement('span');
-            badge.className = 'badge bg-success sb-record-badge';
+            badge.className = 'sb-record-badge is-success';
             badge.innerHTML = '<i class="bi bi-people-fill"></i> On Team';
             const leaveBtn = document.createElement('button');
             leaveBtn.className = 'sb-dialog-button sb-ms-danger';

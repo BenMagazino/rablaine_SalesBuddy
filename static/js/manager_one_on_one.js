@@ -40,12 +40,12 @@
         console.error('Initiative Tracker:', error);
         errorMessage.textContent = error.message;
         errorBox.dataset.pointsFailure = String(pointsFailure);
-        retryPoints.classList.toggle('d-none', !pointsFailure);
-        errorBox.classList.remove('d-none');
+        retryPoints.classList.toggle('sb-hidden', !pointsFailure);
+        errorBox.classList.remove('sb-hidden');
         const modalError = document.getElementById('pointsModalError');
         modalError.querySelector('span').textContent = error.message;
-        modalError.classList.remove('d-none');
-        modalError.querySelector('button').classList.toggle('d-none', !pointsFailure);
+        modalError.classList.remove('sb-hidden');
+        modalError.querySelector('button').classList.toggle('sb-hidden', !pointsFailure);
         if (focus) errorBox.focus();
     }
 
@@ -61,8 +61,8 @@
         document.getElementById('discussPoints').disabled = pointsBusy
             || !document.getElementById('managerPointsText').value.trim();
         if (!failed && !pending && errorBox.dataset.pointsFailure === 'true') {
-            errorBox.classList.add('d-none');
-            document.getElementById('pointsModalError').classList.add('d-none');
+            errorBox.classList.add('sb-hidden');
+            document.getElementById('pointsModalError').classList.add('sb-hidden');
         }
     }
 
@@ -201,8 +201,8 @@
         try {
             await flushTalkingPoints();
             const payload = await request(`${api}/items/${button.dataset.itemId}`);
-            errorBox.classList.add('d-none');
-            document.getElementById('pointsModalError').classList.add('d-none');
+            errorBox.classList.add('sb-hidden');
+            document.getElementById('pointsModalError').classList.add('sb-hidden');
             renderPoints(payload.item);
             SBDialog.open(document.getElementById('managerPointsModal'));
         } catch (error) {
@@ -221,13 +221,13 @@
         pointsBusy = true;
         input.disabled = true;
         button.disabled = true;
-        document.getElementById('pointsModalError').classList.add('d-none');
+        document.getElementById('pointsModalError').classList.add('sb-hidden');
         try {
             await flushTalkingPoints();
             const payload = await request(`${api}/items/${field.dataset.itemId}/discuss`, 'POST', {
                 talking_points: input.value,
             });
-            errorBox.classList.add('d-none');
+            errorBox.classList.add('sb-hidden');
             renderPoints(payload.item);
         } catch (error) {
             showError(error, Boolean(root.querySelector('.talking-points.is-invalid')), false);
@@ -240,23 +240,6 @@
     }
 
     async function activateDetailScripts(body, signal) {
-        // Unmigrated entity editors still need Bootstrap's body-level modal layer.
-        const parent = document.getElementById('managerWorkModal');
-        for (const modal of body.querySelectorAll('.modal')) {
-            modal.dataset.workspaceParentModal = parent.id;
-            document.body.appendChild(modal);
-            let restoreParent = false;
-            modal.addEventListener('show.bs.modal', event => {
-                if (event.target !== modal) return;
-                restoreParent = parent.open;
-                if (restoreParent) SBDialog.close(parent, 'nested-editor');
-            });
-            modal.addEventListener('hidden.bs.modal', event => {
-                if (event.target !== modal || !restoreParent || !parent.isConnected) return;
-                restoreParent = false;
-                SBDialog.open(parent);
-            });
-        }
         // Match the home detail modal's scoped script activation, retaining inline handlers.
         const handlers = [
             'toggleEngagementFavorite', 'recommendPartners', 'generateStory', 'applySelectedFields',
@@ -318,11 +301,6 @@
             workspace.dispose();
         }
         detailRequest?.abort();
-        for (const modal of document.querySelectorAll('[data-workspace-parent-modal]')) {
-            if (modal instanceof HTMLDialogElement) SBDialog.close(modal, 'replace');
-            else bootstrap.Modal.getInstance(modal)?.dispose();
-            modal.remove();
-        }
         const controller = new AbortController();
         detailRequest = controller;
         contextBeforeWork = window.copilotContext;
@@ -362,7 +340,7 @@
         ), control => ({control, disabled: control.disabled}));
         for (const {control} of controls) control.disabled = true;
         button.disabled = true;
-        errorBox.classList.add('d-none');
+        errorBox.classList.add('sb-hidden');
         try {
             const submittedForm = button.closest('.section-form');
             if ([...formDrafts].some(form => form !== submittedForm)) {
@@ -401,7 +379,7 @@
     }
 
     function updatePickerSource(picker, type, source) {
-        picker.querySelector('.milestone-source').classList.toggle('d-none', type !== 'milestone');
+        picker.querySelector('.milestone-source').classList.toggle('sb-hidden', type !== 'milestone');
         picker.querySelector('.candidate-search').elements.q.placeholder = type === 'project'
             ? 'Search title, description, or project type'
             : 'Search title, customer, or milestone workload';
@@ -624,8 +602,8 @@
         switch (button.dataset.action) {
         case 'toggle-editor': {
             const target = document.getElementById(button.dataset.target);
-            const opening = target.classList.contains('d-none');
-            target.classList.toggle('d-none', !opening);
+            const opening = target.classList.contains('sb-hidden');
+            target.classList.toggle('sb-hidden', !opening);
             for (const control of root.querySelectorAll(`[data-target="${target.id}"]`)) {
                 control.setAttribute('aria-expanded', String(opening));
             }
@@ -654,8 +632,8 @@
             break;
         case 'open-picker': {
             const target = document.getElementById(`picker-${sectionId}`);
-            const opening = target.classList.contains('d-none');
-            target.classList.toggle('d-none');
+            const opening = target.classList.contains('sb-hidden');
+            target.classList.toggle('sb-hidden');
             button.setAttribute('aria-expanded', String(opening));
             if (opening) {
                 target.querySelector('input[name="q"]').focus();
@@ -667,7 +645,7 @@
         }
         case 'close-picker':
             searches.get(picker)?.abort();
-            picker.classList.add('d-none');
+            picker.classList.add('sb-hidden');
             root.querySelector(`[data-action="open-picker"][data-section-id="${picker.dataset.sectionId}"]`)
                 .setAttribute('aria-expanded', 'false');
             saveReading();
@@ -713,7 +691,7 @@
 
     window.addEventListener('storage', event => {
         if (event.key !== 'u2c_workload_filter' && event.key !== null) return;
-        for (const picker of root.querySelectorAll('.work-picker:not(.d-none)')) {
+        for (const picker of root.querySelectorAll('.work-picker:not(.sb-hidden)')) {
             if (picker.dataset.source === 'u2c') search(picker);
         }
     });
@@ -742,7 +720,7 @@
         try {
             history.replaceState({...history.state, sbInitiatives: {
                 top: reading.scrollTop,
-                editors: [...root.querySelectorAll('.it-editor:not(.d-none)')].map(el => el.id),
+                editors: [...root.querySelectorAll('.it-editor:not(.sb-hidden)')].map(el => el.id),
                 pickers: [...root.querySelectorAll('.work-picker')].map(picker => ({
                     id: picker.id, source: picker.dataset.source || 'search',
                     type: picker.querySelector('select[name="type"]').value,
@@ -768,7 +746,7 @@
             for (const id of saved.editors) {
                 const target = document.getElementById(id);
                 if (!target?.matches('.it-editor')) continue;
-                target.classList.remove('d-none');
+                target.classList.remove('sb-hidden');
                 for (const control of root.querySelectorAll(`[aria-controls="${id}"]`)) {
                     control.setAttribute('aria-expanded', 'true');
                 }
@@ -787,7 +765,7 @@
                 picker.dataset.source = state.source;
                 picker.querySelector('select[name="type"]').value = state.type;
                 picker.querySelector('input[name="q"]').value = state.q;
-                if (!picker.classList.contains('d-none')) {
+                if (!picker.classList.contains('sb-hidden')) {
                     picker.restoredReading = {...state, readingTop: saved.top};
                     picker.querySelector('input[name="q"]').value = state.appliedQ ?? state.q;
                     searchesToRestore.push(search(picker));

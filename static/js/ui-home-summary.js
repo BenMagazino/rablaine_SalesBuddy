@@ -30,13 +30,13 @@
         const body = content.querySelector(selector);
         if (!body) throw new Error('Missing Home summary body: ' + selector);
         let text;
-        const loading = ':scope > tr > td[colspan="7"] > .spinner-border, ' +
-            ':scope > div > .spinner-border, :scope > div > .bi-hourglass-split';
+        const loading = ':scope > tr > td[colspan="7"] > .sb-hn-spinner-border, ' +
+            ':scope > div > .sb-hn-spinner-border, :scope > div > .bi-hourglass-split';
         if (body.dataset?.sbCalendarState === 'loading' ||
             !body.childElementCount || body.querySelector(loading)) {
             text = label + ': loading...';
         } else if (body.dataset?.sbCalendarState === 'error' ||
-            body.querySelector(':scope > .text-danger, :scope > tr > td.text-danger')) {
+            body.querySelector(':scope > .sb-hn-text-danger, :scope > tr > td.sb-hn-text-danger')) {
             text = label + ': unavailable';
         } else if (selected.id === 'calendar-tab') {
             const notes = body.querySelectorAll('.calendar-entries > [data-general-note], ' +

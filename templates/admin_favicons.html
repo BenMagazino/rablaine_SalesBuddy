@@ -2,129 +2,159 @@
 
 {% block title %}Favicon Gallery - Sales Buddy{% endblock %}
 
+
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-dialog.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-table-sort.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-administration.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Page status">
+    <span>Sales Buddy · Local administration and insights</span>
+    <span>Read-only until you choose an action</span>
+</footer>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2><i class="bi bi-image"></i> Favicon Gallery</h2>
-        <div class="d-flex gap-2 align-items-center">
-            <span class="badge bg-success">{{ fetched_count }} fetched</span>
-            <span class="badge bg-secondary">{{ total - fetched_count }} missing</span>
-            <span class="badge bg-info text-dark">{{ total }} total</span>
-            <button id="fetchMissingBtn" class="btn btn-sm btn-primary">
+<script src="{{ url_for('static', filename='js/ui-admin-panel.js') }}"></script>
+
+<section class="sb-administration sb-admin-admin-favicons sb-directory-frame" data-sb-page-surface>
+<header class="sb-admin-page-heading" data-sb-page-band>
+    <h1>Favicon Gallery</h1>
+    <span>Website icons for your customer portfolio</span>
+</header>
+<div class="sb-admin-reading" data-sb-page-body tabindex="0" role="region" aria-label="admin favicons content">
+
+<div class="sb-admin-container sb-admin-mt-4">
+    <div class="sb-admin-d-flex sb-admin-justify-content-between sb-admin-align-items-center sb-admin-mb-3">
+
+        <div class="sb-admin-d-flex sb-admin-gap-2 sb-admin-align-items-center">
+            <span class="sb-admin-tag sb-admin-bg-success">{{ fetched_count }} fetched</span>
+            <span class="sb-admin-tag sb-admin-bg-secondary">{{ total - fetched_count }} missing</span>
+            <span class="sb-admin-tag sb-admin-bg-info sb-admin-text-dark">{{ total }} total</span>
+            <button id="fetchMissingBtn" class="sb-admin-command sb-admin-btn-sm sb-admin-btn-primary">
                 <i class="bi bi-download"></i> Fetch Missing
             </button>
-            <button id="refreshAllBtn" class="btn btn-sm btn-outline-secondary">
+            <button id="refreshAllBtn" class="sb-admin-command sb-admin-btn-sm sb-admin-btn-outline-secondary">
                 <i class="bi bi-arrow-clockwise"></i> Refresh All
             </button>
-            <button id="reloadPageBtn" class="btn btn-sm btn-outline-info" onclick="location.reload()">
+            <button id="reloadPageBtn" class="sb-admin-command sb-admin-btn-sm sb-admin-btn-outline-info" onclick="location.reload()">
                 <i class="bi bi-arrow-repeat"></i> Reload Page
             </button>
-            <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-sm btn-outline-secondary">
+            <a href="{{ url_for('admin.admin_panel') }}" class="sb-admin-command sb-admin-btn-sm sb-admin-btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Admin
             </a>
         </div>
     </div>
 
-    <div id="statusAlert" class="alert d-none mb-3" role="alert"></div>
+    <div id="statusAlert" class="sb-admin-notice sb-admin-d-none sb-admin-mb-3" role="alert"></div>
 
     {% if customers_with %}
-    <div class="card mb-4">
-        <div class="card-header">
-            <i class="bi bi-check-circle text-success"></i> Fetched Favicons ({{ customers_with|length }})
+    <section class="sb-admin-section sb-admin-mb-4">
+        <div class="sb-admin-section-heading">
+            <i class="bi bi-check-circle sb-admin-text-success"></i> Fetched Favicons ({{ customers_with|length }})
         </div>
-        <div class="card-body">
-            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 row-cols-xl-8 g-3">
+        <div class="sb-admin-section-content">
+            <div class="sb-admin-grid sb-admin-row-cols-2 sb-admin-row-cols-sm-3 sb-admin-row-cols-md-4 sb-admin-row-cols-lg-6 sb-admin-row-cols-xl-8 sb-admin-g-3">
                 {% for c in customers_with %}
-                <div class="col">
-                    <div class="card h-100 text-center p-2">
-                        <div class="mb-2">
+                <div class="sb-admin-col">
+                    <section class="sb-admin-section sb-admin-h-100 sb-admin-text-center sb-admin-p-2">
+                        <div class="sb-admin-mb-2">
                             <img src="data:image/png;base64,{{ c.favicon_b64 }}"
                                  width="32" height="32" alt="favicon"
-                                 class="border rounded" style="image-rendering: pixelated;">
+                                 class="sb-admin-border sb-admin-rounded" style="image-rendering: pixelated;">
                         </div>
                         <a href="{{ url_for('customers.customer_view', id=c.id) }}"
-                           class="small text-truncate d-block" title="{{ c.name }}">
+                           class="sb-admin-small sb-admin-text-truncate sb-admin-d-block" title="{{ c.name }}">
                             {{ c.name }}
                         </a>
-                        <small class="text-muted text-truncate d-block" title="{{ c.website }}">
+                        <small class="sb-admin-text-muted sb-admin-text-truncate sb-admin-d-block" title="{{ c.website }}">
                             {{ c.website }}
                         </small>
-                    </div>
+                    </section>
                 </div>
                 {% endfor %}
             </div>
         </div>
-    </div>
+    </section>
     {% endif %}
 
     {% if customers_without %}
-    <div class="card mb-4">
-        <div class="card-header">
-            <i class="bi bi-hourglass text-warning"></i> Missing Favicons ({{ customers_without|length }})
+    <section class="sb-admin-section sb-admin-mb-4">
+        <div class="sb-admin-section-heading">
+            <i class="bi bi-hourglass sb-admin-text-warning"></i> Missing Favicons ({{ customers_without|length }})
         </div>
-        <div class="card-body">
-            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 row-cols-xl-8 g-3">
+        <div class="sb-admin-section-content">
+            <div class="sb-admin-grid sb-admin-row-cols-2 sb-admin-row-cols-sm-3 sb-admin-row-cols-md-4 sb-admin-row-cols-lg-6 sb-admin-row-cols-xl-8 sb-admin-g-3">
                 {% for c in customers_without %}
-                <div class="col">
-                    <div class="card h-100 text-center p-2">
-                        <div class="mb-2">
-                            <i class="bi bi-building fs-3 text-muted"></i>
+                <div class="sb-admin-col">
+                    <section class="sb-admin-section sb-admin-h-100 sb-admin-text-center sb-admin-p-2">
+                        <div class="sb-admin-mb-2">
+                            <i class="bi bi-building sb-admin-fs-3 sb-admin-text-muted"></i>
                         </div>
                         <a href="{{ url_for('customers.customer_view', id=c.id) }}"
-                           class="small text-truncate d-block" title="{{ c.name }}">
+                           class="sb-admin-small sb-admin-text-truncate sb-admin-d-block" title="{{ c.name }}">
                             {{ c.name }}
                         </a>
-                        <small class="text-muted text-truncate d-block" title="{{ c.website }}">
+                        <small class="sb-admin-text-muted sb-admin-text-truncate sb-admin-d-block" title="{{ c.website }}">
                             {{ c.website }}
                         </small>
-                    </div>
+                    </section>
                 </div>
                 {% endfor %}
             </div>
         </div>
-    </div>
+    </section>
     {% endif %}
 
     {% if not customers_with and not customers_without %}
-    <div class="alert alert-info">
+    <div class="sb-admin-notice sb-admin-alert-info">
         No customers with websites found. Run an account sync to populate website data.
     </div>
     {% endif %}
 </div>
+</div></section>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const statusAlert = document.getElementById('statusAlert');
 
     function showStatus(msg, type) {
-        statusAlert.className = `alert alert-${type} mb-3`;
+        statusAlert.className = `sb-admin-notice sb-admin-alert-${type} sb-admin-mb-3`;
         statusAlert.textContent = msg;
-        statusAlert.classList.remove('d-none');
+        statusAlert.classList.remove('sb-admin-d-none');
     }
 
     async function faviconAction(url, btn) {
+        if (btn.disabled) return;
         const origText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Working...';
+        const actions = document.querySelectorAll('#fetchMissingBtn, #refreshAllBtn');
+        actions.forEach(action => action.disabled = true);
+        btn.setAttribute('aria-busy', 'true');
+        btn.innerHTML = '<span class="sb-admin-busy sb-admin-busy-small"></span> Working...';
         showStatus('Fetching favicons (4 parallel workers)...', 'info');
 
         try {
             const resp = await fetch(url, { method: 'POST' });
             const data = await resp.json();
-            if (data.success) {
+            if (resp.ok && data.success) {
                 showStatus(data.message, 'success');
                 // Auto-reload after brief delay so user sees the message
                 setTimeout(() => location.reload(), 1500);
             } else {
                 showStatus('Error: ' + (data.error || 'Unknown'), 'danger');
-                btn.disabled = false;
+                actions.forEach(action => action.disabled = false);
+                btn.setAttribute('aria-busy', 'false');
                 btn.innerHTML = origText;
             }
         } catch (e) {
             showStatus('Network error: ' + e.message, 'danger');
-            btn.disabled = false;
+            actions.forEach(action => action.disabled = false);
+            btn.setAttribute('aria-busy', 'false');
             btn.innerHTML = origText;
         }
     }

@@ -1,4 +1,12 @@
 /* Shared note body; rich-text markup and legacy entity hooks are retained. */
+.sb-note-reading-page {
+    margin:0;color:var(--sb-ui-ink);background:var(--sb-ui-canvas);
+    font-family:var(--sb-ui-font);font-size:14px;line-height:1.5;
+}
+.sb-note-reading-page,.sb-note-reading-page *, .sb-note-reading-page *::before,
+.sb-note-reading-page *::after,.sb-note-view,.sb-note-view *,
+.sb-note-view *::before,.sb-note-view *::after {box-sizing:border-box;}
+:where(.sb-note-reading-page) a {color:var(--sb-ui-accent);}
 .sb-note-view {
     color: var(--sb-ui-ink);
     background: var(--sb-ui-surface);
@@ -7,13 +15,35 @@
     line-height: 1.6;
 }
 .sb-note-reading-page #main-content {
-    max-width: 1368px;
+    width:100%;
+    max-width:none;
+    margin:0!important;
+    padding:0;
+    background:var(--sb-ui-canvas);
 }
 .sb-note-context, .sb-note-main { background: var(--sb-ui-surface); }
 .sb-note-view-page {
-    padding: 24px;
-    border: 1px solid var(--sb-ui-line);
+    padding:0;
     background: var(--sb-ui-surface);
+}
+.sb-note-reading-page #main-content > #noteReadingSurface {
+    height:calc(100% - 24px);
+}
+.sb-note-reading-page > .sb-flash-stack:not(:has(.sb-notice)) {display:none;}
+.sb-note-view-page > .sb-note-page-header {
+    margin:0;padding:16px 22px;background:var(--sb-ui-context);
+}
+.sb-note-view-page > .sb-note-layout {
+    height:calc(100dvh - var(--sb-ui-header-height) - 32px - 24px - 68px);
+    gap:0;
+}
+.sb-note-view-page > .sb-note-layout > :is(.sb-note-context,.sb-note-main) {
+    overflow:auto;padding:22px;
+}
+.sb-note-status {
+    display:flex;align-items:center;justify-content:space-between;height:24px;
+    padding:0 18px;border-top:1px solid var(--sb-ui-line);
+    background:var(--sb-ui-context);color:var(--sb-ui-muted);font-size:11px;
 }
 .sb-note-page-header {
     display: flex;
@@ -66,7 +96,7 @@
 
 /* These classes also identify entity types outside the redesigned note surface. */
 :is(.sb-note-view, .sb-milestone-view) .sb-record-badge { --sb-record-tag-ink: var(--sb-ui-accent); }
-:is(.sb-note-view[data-sb-note-detail], .sb-milestone-view[data-sb-milestone-detail]) .badge.sb-record-badge {
+:is(.sb-note-view[data-sb-note-detail], .sb-milestone-view[data-sb-milestone-detail]) :is(.badge,.sb-note-tag).sb-record-badge {
     display: inline-flex;
     align-items: baseline;
     gap: 4px;
@@ -93,7 +123,7 @@
 :is(.sb-note-view, .sb-milestone-view) .sb-record-badge.bg-warning { --sb-record-tag-ink: var(--sb-ui-warning); }
 :is(.sb-note-view, .sb-milestone-view) .sb-record-badge.bg-purple { --sb-record-tag-ink: var(--sb-ui-task-rail); }
 :is(.sb-note-view, .sb-milestone-view) .sb-record-badge.bg-secondary { --sb-record-tag-ink: var(--sb-ui-muted); }
-:is(.sb-note-view[data-sb-note-detail], .sb-milestone-view[data-sb-milestone-detail]) a.badge.sb-record-badge:hover {
+:is(.sb-note-view[data-sb-note-detail], .sb-milestone-view[data-sb-milestone-detail]) a:is(.badge,.sb-note-tag).sb-record-badge:hover {
     border-color: var(--sb-record-tag-ink);
     text-decoration: underline;
 }

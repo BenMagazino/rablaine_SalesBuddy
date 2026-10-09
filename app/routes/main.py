@@ -1209,7 +1209,8 @@ def preferences():
                          pref=pref,
                          templates=templates,
                          workiq_prompt=workiq_prompt,
-                         default_workiq_prompt=DEFAULT_SUMMARY_PROMPT)
+                         default_workiq_prompt=DEFAULT_SUMMARY_PROMPT,
+                         default_template_values=session.pop('template_default_failure', None))
 
 
 # =============================================================================
@@ -1365,18 +1366,30 @@ def api_template_delete(id):
 @main_bp.route('/api/preferences/default-templates', methods=['POST'])
 def api_save_default_templates():
     """Save default template preferences for customer and non-customer notes."""
-    pref = UserPreference.query.first()
-    if not pref:
-        pref = UserPreference()
-        db.session.add(pref)
+    values = {
+        key: request.form.get(key, '') for key in (
+            'default_template_customer_id', 'default_template_noncustomer_id')
+    }
+    try:
+        selected = {key: int(value) if value else None for key, value in values.items()}
+        if any(value is not None and db.session.get(NoteTemplate, value) is None
+               for value in selected.values()):
+            raise ValueError('The selected template is no longer available.')
+        pref = UserPreference.query.first()
+        if not pref:
+            pref = UserPreference()
+            db.session.add(pref)
+        for key, value in selected.items():
+            setattr(pref, key, value)
+        db.session.commit()
+    except (ValueError, SQLAlchemyError):
+        db.session.rollback()
+        current_app.logger.exception('Could not save default note templates')
+        session['template_default_failure'] = values
+        flash('Could not save default templates. Your selections are retained. Try again.', 'danger')
+        return redirect(url_for('main.preferences'))
 
-    customer_id = request.form.get('default_template_customer_id')
-    noncustomer_id = request.form.get('default_template_noncustomer_id')
-
-    pref.default_template_customer_id = int(customer_id) if customer_id else None
-    pref.default_template_noncustomer_id = int(noncustomer_id) if noncustomer_id else None
-    db.session.commit()
-
+    session.pop('template_default_failure', None)
     flash('Default templates saved.', 'success')
     return redirect(url_for('main.preferences'))
 

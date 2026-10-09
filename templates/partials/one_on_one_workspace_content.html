@@ -306,9 +306,8 @@
 (function() {
     {% if parent_modal_id is defined %}
     const parentModal = document.getElementById({{ parent_modal_id|tojson }});
-    const nativeParent = parentModal instanceof HTMLDialogElement;
-    const parentClosingEvent = nativeParent ? 'sb:dialog-before-close' : 'hide.bs.modal';
-    const parentClosedEvent = nativeParent ? 'sb:dialog-closed' : 'hidden.bs.modal';
+    const parentClosingEvent = 'sb:dialog-before-close';
+    const parentClosedEvent = 'sb:dialog-closed';
     for (const id of ['addAgendaModal', 'editEngagementModal']) {
         const modal = document.getElementById(id);
         modal.dataset.workspaceParentModal = parentModal.id;
@@ -534,8 +533,7 @@
         event.preventDefault();
         flushEdits().then(function() {
             closingWorkspace = true;
-            if (nativeParent) SBDialog.close(parentModal, 'saved');
-            else bootstrap.Modal.getOrCreateInstance(parentModal).hide();
+            SBDialog.close(parentModal, 'saved');
         }).catch(function() {
             alert('Save or retry your pending changes before closing.');
         });

@@ -49,7 +49,8 @@ function dialogs() {
             this.button = new Element();
             this.button.parent = this;
         }
-        showModal() { this.open = true; this.button.focus(); }
+        showModal() { this.modal = true; this.open = true; this.button.focus(); }
+        show() { this.modal = false; this.open = true; this.button.focus(); }
         close(reason) { this.open = false; this.returnValue = reason; pending.push(this); }
         contains(element) { return element === this || element?.parent === this; }
         querySelector() { return this.button; }
@@ -111,6 +112,47 @@ test('Escape closes only the top dialog without reaching background Cancel', () 
     assert.equal(h.document.activeElement, h.records.get('first').button);
     h.emit('keydown', h.document.activeElement, 'Escape');
     assert.equal(h.document.activeElement, h.opener);
+});
+
+test('nonmodal drawers preserve background interaction and own only their Escape', () => {
+    const h = dialogs();
+    const drawer = h.records.get('first');
+    drawer.dataset.sbNonmodal = 'true';
+    h.api.open(drawer);
+    assert.equal(drawer.modal, false);
+    assert.equal(drawer.open, true);
+    h.opener.focus();
+    assert.equal(h.emit('keydown', h.opener, 'Escape').stopped, false);
+    assert.equal(drawer.open, true);
+    drawer.button.focus();
+    assert.equal(h.emit('keydown', drawer.button, 'Escape').stopped, true);
+    assert.equal(drawer.open, false);
+    assert.equal(h.document.activeElement, h.opener);
+});
+
+test('closing nonmodal background context never steals an unrelated focus', () => {
+    const h = dialogs();
+    const drawer = h.records.get('first');
+    drawer.dataset.sbNonmodal = 'true';
+    h.api.open(drawer);
+    const chat = new h.Element();
+    chat.focus();
+    h.api.close(drawer);
+    h.flush();
+    assert.equal(h.document.activeElement, chat);
+});
+
+test('nested modal reviews remain modal over a nonmodal context pane', () => {
+    const h = dialogs();
+    const drawer = h.records.get('first');
+    drawer.dataset.sbNonmodal = 'true';
+    h.api.open(drawer);
+    h.api.open('second');
+    assert.equal(h.records.get('second').modal, true);
+    h.emit('keydown', h.document.activeElement, 'Escape');
+    assert.equal(h.records.get('second').open, false);
+    assert.equal(drawer.open, true);
+    assert.equal(h.document.activeElement, drawer.button);
 });
 
 test('Escape policy blocks both keyboard and native cancellation', () => {

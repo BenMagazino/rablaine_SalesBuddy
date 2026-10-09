@@ -131,16 +131,18 @@ def test_embedded_revenue_pages_do_not_take_over_the_host_frame(
 
 
 @pytest.mark.parametrize("path", ["/", "/preferences", "/analytics"])
-def test_native_revenue_frame_does_not_restyle_legacy_or_home_pages(
+def test_native_revenue_frame_does_not_own_other_page_surfaces(
     client: FlaskClient, path: str,
 ) -> None:
-    """The shared base hook does not opt unrelated pages into a new layout."""
+    """Shared native framing does not apply revenue-specific composition to other pages."""
     response = client.get(path)
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
-    assert "sb-page-frame" not in soup.body.get("class", [])
-    assert not soup.select(".sb-page-status, [data-sb-page-surface]")
-    assert not soup.select('script[src="/static/js/ui-table-status.js"]')
+    assert "sb-page-frame" in soup.body.get("class", [])
+    surface = soup.select_one("#main-content > [data-sb-page-surface]")
+    assert surface is not None
+    assert not surface.has_attr("data-sb-revenue-page")
+    assert "sb-revenue-page" not in soup.body.get("class", [])
 
 
 @pytest.mark.parametrize("path", ["/reports/revenue", "/revenue/seller/Empty%20Seller"])

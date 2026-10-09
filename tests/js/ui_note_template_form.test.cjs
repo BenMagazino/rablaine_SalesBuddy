@@ -141,33 +141,75 @@ test('actual Note consumer script keeps arrow selection inert and inserts API HT
     const source = fs.readFileSync(require.resolve('../../templates/note_form.html'), 'utf8');
     const script = source.split('// --- Template selector logic ---')[1]
         .split('// --- Engagement multi-select dropdown ---')[0];
+    const documentEvents = {};
+    class Dialog {
+        constructor() {
+            this.value = '';
+            this.open = false;
+            this.events = {};
+            this.classes = new Set();
+            this.classList = {add: name => this.classes.add(name),
+                remove: name => this.classes.delete(name)};
+        }
+        addEventListener(type, handler) { (this.events[type] ??= []).push(handler); }
+        dispatchEvent(event) {
+            event.target = this;
+            (this.events[event.type] ?? []).forEach(handler => handler.call(this, event));
+            if (event.bubbles) {
+                (documentEvents[event.type] ?? []).forEach(handler => handler(event));
+            }
+        }
+    }
     const elements = Object.fromEntries(['templateSelect', 'templateApplyName', 'templateReplaceBtn',
-        'templatePrependBtn', 'templateApplyModal'].map(id => [id, {value: '', events: {},
-            addEventListener(t, fn) { this.events[t] = fn; }}]));
+        'templatePrependBtn', 'templateApplyModal'].map(id => [id, new Dialog()]));
     const quill = {root: {innerHTML: ''}, getText() {
         return this.root.innerHTML.replace(/<[^>]*>/g, ''); }};
-    const fetched = [], sanitized = [], modal = {show() {}, hide() {}};
-    vm.runInNewContext(script, {document: {getElementById: id => elements[id]}, quill,
+    const fetched = [], sanitized = [], window = {};
+    const context = vm.createContext({window, queueMicrotask, HTMLDialogElement: Dialog,
+        document: {getElementById: id => elements[id], querySelector: () => null,
+            querySelectorAll: () => [], addEventListener(type, handler) {
+                (documentEvents[type] ??= []).push(handler);
+            }}, quill,
         SBTemplateHTML: {sanitize(html) { sanitized.push(html); return html; }},
-        bootstrap: {Modal: Object.assign(function() { return modal; }, {getInstance: () => modal})},
+        SBDialog: {
+            open(dialog) {
+                dialog.dispatchEvent({type: 'sb:dialog-opening', bubbles: true});
+                dialog.open = true;
+                dialog.dispatchEvent({type: 'sb:dialog-opened', bubbles: true});
+            },
+            close(dialog) {
+                dialog.open = false;
+                dialog.dispatchEvent({type: 'sb:dialog-closed', bubbles: true});
+            },
+        },
         fetch: async path => { fetched.push(path); return {json: async () => ({
             content: '<h2>Template</h2>', name: 'Example'})}; }});
+    const nativeSource = fs.readFileSync(
+        require.resolve('../../static/js/ui-note-form-native.js'), 'utf8');
+    vm.runInContext(nativeSource, context);
+    context.SBNoteForm = window.SBNoteForm;
+    vm.runInContext(script, context);
     const select = elements.templateSelect; select.value = '7';
-    select.events.change.call(select); assert.equal(fetched.length, 0);
-    select.events.keydown({key: 'Enter'}); select.events.change.call(select);
+    select.dispatchEvent({type: 'change'}); assert.equal(fetched.length, 0);
+    select.dispatchEvent({type: 'keydown', key: 'Enter'});
+    select.dispatchEvent({type: 'change'});
     await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(fetched, ['/api/templates/7']);
     assert.equal(quill.root.innerHTML, '<h2>Template</h2>');
     quill.root.innerHTML = '<p>Existing</p>'; select.value = '7';
-    select.events.mousedown(); select.events.change.call(select);
+    select.dispatchEvent({type: 'mousedown'}); select.dispatchEvent({type: 'change'});
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(quill.root.innerHTML, '<p>Existing</p>');
-    elements.templatePrependBtn.events.click();
+    assert.equal(elements.templateApplyModal.open, true);
+    assert.equal(elements.templateApplyModal.classes.has('show'), true);
+    elements.templatePrependBtn.dispatchEvent({type: 'click'});
     assert.equal(quill.root.innerHTML, '<h2>Template</h2><hr><p>Existing</p>');
-    elements.templateReplaceBtn.events.click();
+    assert.equal(elements.templateApplyModal.open, false);
+    elements.templateReplaceBtn.dispatchEvent({type: 'click'});
     assert.equal(quill.root.innerHTML, '<h2>Template</h2>');
     assert.equal(sanitized.length, 3);
-    elements.templateApplyModal.events['hidden.bs.modal']();
+    select.value = '7';
+    context.SBDialog.close(elements.templateApplyModal);
     assert.equal(select.value, '');
 });
 test('sanitizer removes executable nodes and attributes while preserving trusted formats', () => {

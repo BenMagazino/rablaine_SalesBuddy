@@ -20,7 +20,7 @@ async function runSync(events, status = 200, contentType = 'text/event-stream', 
         'syncBtn', 'syncBtnEmpty', 'syncAlert', 'syncMessage', 'syncProgressWrap',
         'syncProgressBar', 'syncDetail', 'syncBrainrotToggle',
     ]) {
-        const classes = new Set(['progress-bar-animated']);
+        const classes = new Set(id === 'syncProgressBar' ? ['mt-progress-bar'] : []);
         elements[id] = {
             disabled: false, innerHTML: '', textContent: '', style: {},
             classList: {
@@ -63,9 +63,11 @@ test('explicit backend error stops the spinner and restores controls', async () 
     const {elements, removed, reloads} = await runSync(start + progress +
         'event: error\ndata: {"message":"Milestone sync failed. Review the server log."}\n\n', 200, 'text/event-stream', true);
     assert.match(elements.syncMessage.textContent, /Milestone sync failed/);
-    assert.equal(elements.syncAlert.className, 'alert alert-danger mb-4');
+    assert.equal(elements.syncAlert.className, 'mt-notice is-danger');
     assert.equal(elements.syncBtn.disabled, false);
-    assert.equal(elements.syncProgressBar.classList.contains('progress-bar-animated'), false);
+    assert.equal(elements.syncBtnEmpty.disabled, false);
+    assert.doesNotMatch(elements.syncBtn.innerHTML, /Syncing/);
+    assert.equal(elements.syncBrainrotToggle.classList.contains('sb-hidden'), true);
     assert.ok(removed.includes('beforeunload'));
     assert.equal(reloads, 0);
 });
@@ -73,8 +75,11 @@ test('explicit backend error stops the spinner and restores controls', async () 
 test('early EOF never leaves the UI appearing to sync forever', async () => {
     const {elements, reloads} = await runSync(start + progress);
     assert.match(elements.syncMessage.textContent, /ended before completion/);
+    assert.equal(elements.syncAlert.className, 'mt-notice is-danger');
     assert.equal(elements.syncBtn.disabled, false);
-    assert.equal(elements.syncProgressBar.classList.contains('progress-bar-animated'), false);
+    assert.equal(elements.syncBtnEmpty.disabled, false);
+    assert.doesNotMatch(elements.syncBtn.innerHTML, /Syncing/);
+    assert.equal(elements.syncBrainrotToggle.classList.contains('sb-hidden'), true);
     assert.equal(reloads, 0);
 });
 

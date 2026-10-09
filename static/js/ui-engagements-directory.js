@@ -261,7 +261,7 @@
             }
         });
         window['engLoad_' + id] = load;
-        load();
+        if (root.dataset.autoLoad !== 'false') load();
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', mount, {once: true});

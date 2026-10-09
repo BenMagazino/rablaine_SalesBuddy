@@ -20,12 +20,17 @@ function shellHarness({ boot = false, minimized = false } = {}) {
       on() {}, setAppUserModelId() {},
       whenReady: () => ({ then: (callback) => { bootCallback = callback; } }),
     },
-    BrowserWindow: function () {
+    BrowserWindow: function (options) {
       const win = electron.nextWindow || fakeWindow();
+      win.options = options;
       openedWindows.push(win);
       return win;
     },
-    Menu: { buildFromTemplate: () => ({}), setApplicationMenu() {} },
+    menuTemplates: [],
+    Menu: { buildFromTemplate: (template) => {
+      electron.menuTemplates.push(template);
+      return {};
+    }, setApplicationMenu() {} },
     Tray: class extends EventEmitter { setToolTip() {} setContextMenu() {} },
   };
   electron.BrowserWindow.getFocusedWindow = () => null;
@@ -33,6 +38,7 @@ function shellHarness({ boot = false, minimized = false } = {}) {
     require(name) {
       if (name === 'electron') return electron;
       if (name === './package.json') return { version: 'test' };
+      if (name === './status-screen') return require('../../electron/status-screen');
       if (name === 'fs') return {
         readFileSync: () => '', mkdirSync() {}, existsSync: () => true,
         openSync: () => 1, unlinkSync() {},
@@ -54,7 +60,8 @@ function shellHarness({ boot = false, minimized = false } = {}) {
     },
     __dirname: path.join(__dirname, '..', '..', 'electron'),
     process: {
-      env: {}, platform: 'win32', argv: minimized ? ['--minimized'] : [],
+      env: {}, platform: 'win32',
+      argv: minimized ? ['electron', 'main.js', '--minimized', '--other'] : ['electron', 'main.js'],
       stdout: { write() {} },
     },
     URL,
@@ -70,6 +77,7 @@ function shellHarness({ boot = false, minimized = false } = {}) {
   vm.runInContext(source + `
     globalThis.api = {
       waitForServer, configureWindow, loadWindowUrl, openNewWindow, showWindow,
+      ensureWindow, relaunchVisible, buildAppMenu, createTray, refreshTrayMenu,
       setUpdating: (value) => { isUpdating = value; },
       setQuitting: (value) => { isQuitting = value; },
       setBooting: (value) => { isBooting = value; },
@@ -278,4 +286,95 @@ test('persistent page failure is rate-limited even if backend health succeeds', 
   assert.equal(harness.requests.length, 1);
   harness.tick(1);
   assert.equal(harness.requests.length, 2);
+});
+
+test('tray restore keeps the existing minimized window and native dimensions', () => {
+  const harness = shellHarness();
+  const win = fakeWindow();
+  let restored = 0;
+  let focused = 0;
+  win.isMinimized = () => true;
+  win.restore = () => { restored++; };
+  win.focus = () => { focused++; };
+  harness.electron.nextWindow = win;
+  harness.api.openNewWindow();
+  assert.equal(harness.api.ensureWindow(), win);
+  assert.equal(restored, 1);
+  assert.equal(focused, 1);
+  assert.equal(harness.openedWindows.length, 1);
+  assert.equal(win.options.width, 1440);
+  assert.equal(win.options.height, 920);
+  assert.equal(win.options.minWidth, 900);
+  assert.equal(win.options.minHeight, 600);
+  assert.equal(win.options.webPreferences.contextIsolation, true);
+  assert.equal(win.options.webPreferences.nodeIntegration, false);
+  assert.equal(win.options.frame, undefined);
+});
+
+test('last window closes to tray while multiple windows close independently', () => {
+  const harness = shellHarness();
+  const first = fakeWindow();
+  first.hide = () => { first.hidden = true; };
+  harness.electron.nextWindow = first;
+  harness.api.openNewWindow();
+  let prevented = 0;
+  first.emit('close', { preventDefault() { prevented++; } });
+  assert.equal(prevented, 1);
+  assert.equal(first.hidden, true);
+  harness.electron.nextWindow = fakeWindow();
+  harness.api.openNewWindow();
+  first.emit('close', { preventDefault() { prevented++; } });
+  assert.equal(prevented, 1);
+});
+
+test('update relaunch removes hidden startup flags but preserves other arguments', () => {
+  const harness = shellHarness({ minimized: true });
+  let args;
+  harness.electron.app.relaunch = (config) => { args = config.args; };
+  harness.api.relaunchVisible();
+  assert.equal(args.includes('--startup'), false);
+  assert.equal(args.includes('--minimized'), false);
+  assert.equal(args.includes('main.js'), true);
+  assert.equal(args.includes('--other'), true);
+});
+
+test('reconnect inherits the last real app document theme without exposing a bridge', async () => {
+  const harness = shellHarness();
+  const win = fakeWindow();
+  win.webContents.getURL = () => 'http://localhost:5151/customer/12';
+  win.webContents.executeJavaScript = () => Promise.resolve({ mode: 'light', family: 'harbor' });
+  harness.api.configureWindow(win);
+  win.webContents.emit('did-finish-load');
+  await Promise.resolve();
+  win.webContents.emit(
+    'did-fail-load', {}, -102, 'refused', 'http://localhost:5151/customer/12', true
+  );
+  assert.match(decodeURIComponent(win.loaded[0]), /data-sb-mode="light"/);
+  assert.match(decodeURIComponent(win.loaded[0]), /data-sb-family="harbor"/);
+});
+
+test('native update and backend restart controls disable while an update is pending', () => {
+  const h = shellHarness();
+  h.api.setUpdating(true);
+  h.api.buildAppMenu();
+  const file = h.electron.menuTemplates.at(-1).find((item) => item.label === 'File');
+  for (const label of ['Check for Updates...', 'Restart Backend']) {
+    assert.equal(file.submenu.find((item) => item.label === label).enabled, false);
+  }
+  h.api.createTray();
+  let trayMenu = h.electron.menuTemplates.at(-1);
+  assert.equal(trayMenu.find((item) => item.label === 'Restart Backend').enabled, false);
+  h.api.setUpdating(false);
+  h.api.refreshTrayMenu();
+  trayMenu = h.electron.menuTemplates.at(-1);
+  assert.equal(trayMenu.find((item) => item.label === 'Restart Backend').enabled, true);
+});
+
+test('new windows opened during an update show pending source instead of a stopped backend', () => {
+  const h = shellHarness();
+  h.api.setBooting(false);
+  h.api.setUpdating(true);
+  const win = h.api.openNewWindow();
+  assert.match(decodeURIComponent(win.loaded[0]), /Updating Sales Buddy/);
+  assert.equal(win.loaded.some((url) => url.startsWith('http:')), false);
 });

@@ -73,7 +73,7 @@
                                     title="{{ customer.name }}">{{ customer.name }}</button>
                             {% endfor %}
                         </div>
-                        <div data-role="customerNoMatches" class="mt-muted d-none"
+                        <div data-role="customerNoMatches" class="mt-muted sb-hidden"
                              role="status">No matching customers</div>
                     </div>
                 </details>
@@ -205,8 +205,8 @@
                 <th data-sb-sort-type="date" data-export-label="Due Date">Due Date</th>
                 <th data-sb-sort-type="number" data-export-label="$ACR/mo">$ACR/mo</th>
                 <th data-sb-sort-type="text" data-export-label="Workload">Workload</th>
-                <th style="width: 3%;" class="text-center" title="Favorites" data-export-skip="always"><i class="bi bi-star text-muted small"></i></th>
-                <th style="width: 5%;" class="text-center" data-export-skip="if-links">MSX</th>
+                <th style="width: 3%;" class="mt-centered" title="Favorites" data-export-skip="always"><i class="bi bi-star mt-muted mt-small"></i></th>
+                <th style="width: 5%;" class="mt-centered" data-export-skip="if-links">MSX</th>
             </tr>
         </thead>
         <tbody>
@@ -231,21 +231,21 @@
                 
                 <!-- Milestone Info -->
                 <td data-sb-sort-value="{{ ms.title }}" data-export-url="{{ ms.url }}">
-                    <div class="fw-semibold">
+                    <div class="mt-title">
                         {{ ms.title }}
                     </div>
                     {% if ms.opportunity_name %}
-                        <div class="text-muted small">
+                        <div class="mt-muted mt-small">
                             <i class="bi bi-cash-stack"></i>
                             {% if ms.opportunity and ms.opportunity.msx_url %}
-                            <a href="{{ ms.opportunity.msx_url }}" class="text-muted text-decoration-none" data-export-url="{{ ms.opportunity.msx_url }}" onclick="event.stopPropagation();" target="_blank">{{ ms.opportunity_name }}</a>
+                            <a href="{{ ms.opportunity.msx_url }}" class="mt-muted mt-link" data-export-url="{{ ms.opportunity.msx_url }}" onclick="event.stopPropagation();" target="_blank">{{ ms.opportunity_name }}</a>
                             {% else %}
                             {{ ms.opportunity_name }}
                             {% endif %}
                         </div>
                     {% endif %}
                     {% if ms.milestone_number %}
-                        <div class="text-muted small">
+                        <div class="mt-muted mt-small">
                             <i class="bi bi-hash"></i> {{ ms.milestone_number }}
                         </div>
                     {% endif %}
@@ -262,18 +262,18 @@
                         <i class="bi bi-person-plus icon-default"></i><i class="bi bi-person-dash icon-leave"></i>
                     </button>
                     {% else %}
-                    <span class="text-muted">-</span>
+                    <span class="mt-muted">-</span>
                     {% endif %}
                 </td>
                 
                 <!-- Customer -->
                 <td data-sb-sort-value="{{ ms.customer.name if ms.customer else '' }}"{% if ms.customer and ms.customer.tpid_url %} data-export-url="{{ ms.customer.tpid_url }}"{% endif %}>
                     {% if ms.customer %}
-                        <a href="{{ url_for('customers.customer_view', id=ms.customer.id) }}" class="text-decoration-none" onclick="event.stopPropagation();">
+                        <a href="{{ url_for('customers.customer_view', id=ms.customer.id) }}" class="mt-link" onclick="event.stopPropagation();">
                             {{ customer_favicon(ms.customer) }} {{ ms.customer.name }}
                         </a>
                     {% else %}
-                        <span class="text-muted">-</span>
+                        <span class="mt-muted">-</span>
                     {% endif %}
                 </td>
                 
@@ -282,12 +282,12 @@
                 <td data-sb-sort-value="{{ ms.seller.name if ms.seller else '' }}">
                     {% if ms.seller %}
                         <a href="{{ url_for('sellers.seller_view', id=ms.seller.id) }}" 
-                           class="badge {{ get_seller_color(ms.seller.id) }} text-decoration-none"
+                           class="mt-tag mt-seller {{ get_seller_color(ms.seller.id) }}"
                            onclick="event.stopPropagation();">
                             <i class="bi bi-person"></i> {{ ms.seller.name }}
                         </a>
                     {% else %}
-                        <span class="text-muted small">Unassigned</span>
+                        <span class="mt-muted mt-small">Unassigned</span>
                     {% endif %}
                 </td>
                 {% endif %}
@@ -295,31 +295,31 @@
                 <!-- Status -->
                 <td data-sb-sort-value="{{ ms.status_sort }}">
                     {% if ms.status == 'On Track' %}
-                        <span class="badge bg-success">{{ ms.status }}</span>
+                        <span class="mt-tag is-success">{{ ms.status }}</span>
                     {% elif ms.status == 'At Risk' %}
-                        <span class="badge bg-warning text-dark">{{ ms.status }}</span>
+                        <span class="mt-tag is-warning">{{ ms.status }}</span>
                     {% elif ms.status == 'Blocked' %}
-                        <span class="badge bg-danger">{{ ms.status }}</span>
+                        <span class="mt-tag is-danger">{{ ms.status }}</span>
                     {% elif ms.status == 'Completed' %}
-                        <span class="badge bg-info">{{ ms.status }}</span>
+                        <span class="mt-tag is-info">{{ ms.status }}</span>
                     {% elif ms.status == 'Cancelled' %}
-                        <span class="badge bg-secondary">{{ ms.status }}</span>
+                        <span class="mt-tag is-muted">{{ ms.status }}</span>
                     {% else %}
-                        <span class="badge bg-secondary">{{ ms.status }}</span>
+                        <span class="mt-tag is-muted">{{ ms.status }}</span>
                     {% endif %}
                     {% if ms.customer_commitment == 'Committed' %}
-                        <i class="bi bi-check-circle-fill text-success small" title="Committed"></i>
+                        <i class="bi bi-check-circle-fill mt-success mt-small" title="Committed"></i>
                     {% endif %}
                 </td>
                 
                 <!-- Due Date -->
                 <td class="mt-date" data-sb-sort-value="{{ ms.due_date.strftime('%Y-%m-%d') if ms.due_date else '' }}">
                     {% if ms.due_date %}
-                        <span class="{% if ms.urgency == 'past_due' %}text-danger fw-bold{% elif ms.urgency == 'this_week' %}text-warning fw-semibold{% endif %}">
+                        <span class="{% if ms.urgency == 'past_due' %}mt-danger mt-urgent{% elif ms.urgency == 'this_week' %}mt-warning mt-title{% endif %}">
                             {{ ms.due_date.strftime('%b %d, %Y') }}
                         </span>
                         {% if ms.days_until_due is not none and ms.customer_commitment != 'Committed' %}
-                            <div class="small {% if ms.urgency == 'past_due' %}text-danger{% elif ms.days_until_due <= 7 %}text-warning{% else %}text-muted{% endif %}">
+                            <div class="mt-small {% if ms.urgency == 'past_due' %}mt-danger{% elif ms.days_until_due <= 7 %}mt-warning{% else %}mt-muted{% endif %}">
                                 {% if ms.urgency == 'past_due' %}
                                     {{ (-ms.days_until_due) }}d overdue
                                 {% elif ms.days_until_due == 0 %}
@@ -332,40 +332,40 @@
                             </div>
                         {% endif %}
                     {% else %}
-                        <span class="text-muted">-</span>
+                        <span class="mt-muted">-</span>
                     {% endif %}
                 </td>
                 
                 <!-- Est. Monthly Usage -->
                 <td class="mt-number" data-sb-sort-value="{{ ms.monthly_usage if ms.monthly_usage is not none else '' }}">
                     {% if ms.monthly_usage %}
-                        <span class="fw-semibold">${{ "{:,.0f}".format(ms.monthly_usage) }}</span>
+                        <span class="mt-title">${{ "{:,.0f}".format(ms.monthly_usage) }}</span>
                     {% else %}
-                        <span class="text-muted">-</span>
+                        <span class="mt-muted">-</span>
                     {% endif %}
                 </td>
                 
                 <!-- Workload -->
                 <td data-sb-sort-value="{{ ms.workload or '' }}">
                     {% if ms.workload %}
-                        <span class="small">{{ ms.workload }}</span>
+                        <span class="mt-small">{{ ms.workload }}</span>
                     {% else %}
-                        <span class="text-muted">-</span>
+                        <span class="mt-muted">-</span>
                     {% endif %}
                 </td>
                 
                 <!-- Favorite -->
-                <td class="text-center" data-export-skip="always" onclick="event.stopPropagation();">
+                <td class="mt-centered" data-export-skip="always" onclick="event.stopPropagation();">
                     <button class="mt-command mt-favorite"
                             onclick="toggleMilestoneFavorite(this, {{ ms.id }})"
                             aria-label="Toggle milestone favorite"
                             title="{% if ms.id in favorited_ms_ids %}Remove from favorites{% else %}Add to favorites{% endif %}">
-                        <i class="bi {% if ms.id in favorited_ms_ids %}bi-star-fill text-warning{% else %}bi-star text-muted{% endif %}"></i>
+                        <i class="bi {% if ms.id in favorited_ms_ids %}bi-star-fill mt-warning{% else %}bi-star mt-muted{% endif %}"></i>
                     </button>
                 </td>
                 
                 <!-- MSX Link -->
-                <td class="text-center" data-export-skip="if-links">
+                <td class="mt-centered" data-export-skip="if-links">
                     {% if ms.url %}
                         <a href="{{ ms.url }}" target="_blank" class="mt-command" title="Open in MSX" aria-label="Open milestone in MSX" onclick="event.stopPropagation();">
                             <i class="bi bi-box-arrow-up-right"></i>
@@ -381,7 +381,7 @@
 {% else %}
 <div class="mt-empty">
     <h3>No Active Milestones</h3>
-    <p class="text-muted">
+    <p class="mt-muted">
         {% if locked_seller %}
         No active milestones for this seller's customers.
         {% else %}
@@ -476,11 +476,11 @@
         var matches = [];
         qa('[data-customer-option]').forEach(function(button) {
             var match = button.textContent.toLowerCase().includes(search);
-            button.classList.toggle('d-none', !match);
+            button.classList.toggle('sb-hidden', !match);
             if (match) matches.push(button);
         });
         highlightCustomerOption(search ? matches[0] : null);
-        customerNoMatches.classList.toggle('d-none', matches.length > 0);
+        customerNoMatches.classList.toggle('sb-hidden', matches.length > 0);
         return matches;
     }
 
@@ -562,8 +562,7 @@
             if (state.favoritesOnly) {
                 favoritesOnly = true;
                 if (favoritesOnlyBtn) {
-                    favoritesOnlyBtn.classList.remove('btn-outline-warning');
-                    favoritesOnlyBtn.classList.add('btn-warning');
+                    favoritesOnlyBtn.classList.add('is-favorites');
                 }
             }
         } catch (e) {
@@ -603,8 +602,7 @@
         if (commitmentFilter) commitmentFilter.value = '';
         favoritesOnly = false;
         if (favoritesOnlyBtn) {
-            favoritesOnlyBtn.classList.remove('btn-warning');
-            favoritesOnlyBtn.classList.add('btn-outline-warning');
+            favoritesOnlyBtn.classList.remove('is-favorites');
         }
         saveFilters();
         applyFilters();
@@ -795,8 +793,7 @@
     if (favoritesOnlyBtn) {
         favoritesOnlyBtn.addEventListener('click', function() {
             favoritesOnly = !favoritesOnly;
-            this.classList.toggle('btn-warning', favoritesOnly);
-            this.classList.toggle('btn-outline-warning', !favoritesOnly);
+            this.classList.toggle('is-favorites', favoritesOnly);
             applyFilters();
         });
     }
@@ -822,11 +819,11 @@ function toggleMilestoneFavorite(btn, milestoneId) {
             var icon = btn.querySelector('i');
             var row = btn.closest('tr');
             if (data.is_favorited) {
-                icon.className = 'bi bi-star-fill text-warning';
+                icon.className = 'bi bi-star-fill mt-warning';
                 btn.title = 'Remove from favorites';
                 if (row) row.dataset.favorited = 'true';
             } else {
-                icon.className = 'bi bi-star text-muted';
+                icon.className = 'bi bi-star mt-muted';
                 btn.title = 'Add to favorites';
                 if (row) row.dataset.favorited = 'false';
             }

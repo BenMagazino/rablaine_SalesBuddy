@@ -1,4 +1,4 @@
-/* Approved theme pairs. Only redesigned components consume these tokens. */
+/* Approved application-owned theme pairs for the desktop workbench. */
 :root {
     --sb-ui-font: "Segoe UI Variable Text", "Segoe UI", sans-serif;
     --sb-ui-radius: 0;

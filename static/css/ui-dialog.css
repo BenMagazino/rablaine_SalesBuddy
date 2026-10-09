@@ -353,6 +353,7 @@ html:has(.sb-dialog[open]) { overflow: hidden; }
 }
 .sb-dialog-footer small { flex: 1; color: var(--sb-ui-muted); font-size: 11px; }
 .sb-dialog-button {
+    gap: var(--sb-ui-space-2);
     border: 1px solid var(--sb-ui-control-line);
     color: var(--sb-ui-ink);
     padding: 6px 12px;
