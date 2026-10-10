@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/9/2026
+## 10/9/2026 - 7162f63e
 
 - Restore ACR imports after Microsoft replaces the MSX Insights revenue report and semantic model.
 
