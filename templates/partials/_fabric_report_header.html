@@ -1,0 +1,21 @@
+<header class="sb-fabric-header" data-sb-page-band>
+    <div><h1 id="fabricTitle">Fabric Consumption</h1>
+        <p>Customer workload mix and SKU utilization, from MSXi.</p></div>
+    <button type="button" class="sb-dialog-button primary" data-fabric-import>
+        <i class="bi bi-cloud-download" aria-hidden="true"></i> Import from MSXi
+    </button>
+</header>
+<div class="sb-fabric-tab-band" data-sb-page-band>
+<nav class="sb-fabric-tabs" aria-label="Fabric report views">
+    <a href="{{ url_for('reports.report_fabric_consumption') }}"
+       {% if request.args.get('view') != 'overview' %}aria-current="page"{% endif %}>Customer detail</a>
+    <a href="{{ url_for('reports.report_fabric_consumption', view='overview') }}"
+       {% if request.args.get('view') == 'overview' %}aria-current="page"{% endif %}>Capacity overview</a>
+</nav>
+    <p class="sb-fabric-inline-status" data-fabric-progress role="status"
+       aria-live="polite">Checking import status...</p>
+</div>
+<p class="sb-fabric-error sb-fabric-error-band" data-sb-page-band
+   data-fabric-import-error role="alert" hidden></p>
+<p class="sb-fabric-error sb-fabric-error-band" data-sb-page-band
+   data-fabric-error role="alert" hidden></p>

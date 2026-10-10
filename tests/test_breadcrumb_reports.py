@@ -19,6 +19,7 @@ REPORT_PAGES = [
     ("reports.report_whitespace", "Whitespace Analysis"),
     ("reports.report_msx_workspace", "MSX Workspace"),
     ("reports.report_marketing_insights", "Marketing Insights"),
+    ("reports.report_fabric_consumption", "Fabric Consumption"),
     ("reports.report_connect_goals", "Connect Goals"),
     ("reports.report_u2c", "U2C Attainment"),
     ("reports.report_connect_impact", "Connect Impact"),

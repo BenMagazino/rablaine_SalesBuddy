@@ -13,7 +13,7 @@ GROUPS = [
     ("Planning & Reviews", ["connect-goals", "initiative-tracker", "one-on-one", "connect-impact"]),
     ("Execution & Coverage", ["u2c-attainment", "milestone-tracker", "activity-coverage", "whitespace"]),
     ("Pipeline Health", ["hygiene-report", "msx-workspace", "whats-new"]),
-    ("Account Insights", ["revenue-analyzer", "workload-report", "marketing-insights",
+    ("Account Insights", ["revenue-analyzer", "workload-report", "fabric-consumption", "marketing-insights",
                           "synapse-customers"]),
 ]
 
@@ -23,7 +23,7 @@ GROUPS = [
 def test_directory_preserves_order_accessibility_and_context(
     app: Flask, client: FlaskClient, embedded: bool, role: str,
 ) -> None:
-    """Full/embed and both roles keep all fifteen actual destinations and descriptions."""
+    """Full/embed and both roles keep all sixteen actual destinations and descriptions."""
     from app.models import UserPreference, db
 
     with app.app_context():
@@ -53,8 +53,8 @@ def test_directory_preserves_order_accessibility_and_context(
             assert row.select_one("p").text.strip()
             assert all(icon["aria-hidden"] == "true" for icon in row.select("i"))
             assert link["href"].startswith("/reports/")
-    assert len(root.select("a.sb-reports-entry")) == 15
-    assert "15 reports across 4 groups" in soup.select_one("[data-sb-reports-count]").text
+    assert len(root.select("a.sb-reports-entry")) == 16
+    assert "16 reports across 4 groups" in soup.select_one("[data-sb-reports-count]").text
     search = root.select_one("#findReport")
     assert search["type"] == "search" and search["aria-controls"] == "reportsDirectory"
     assert root.select_one('label[for="findReport"]')

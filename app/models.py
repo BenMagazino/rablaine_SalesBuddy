@@ -2887,3 +2887,45 @@ class AlignmentSelection(db.Model):
 
     def __repr__(self) -> str:
         return f'<AlignmentSelection {self.fy_label} {self.territory_name}>'
+
+
+class FabricConsumptionImport(db.Model):
+    """One complete, manually requested Fabric consumption snapshot."""
+
+    __tablename__ = 'fabric_consumption_imports'
+
+    id = db.Column(db.Integer, primary_key=True)
+    imported_at = db.Column(db.DateTime, default=utc_now, nullable=False, index=True)
+    customer_count = db.Column(db.Integer, nullable=False)
+    workload_row_count = db.Column(db.Integer, nullable=False)
+    capacity_row_count = db.Column(db.Integer, nullable=False)
+    trend_row_count = db.Column(db.Integer, nullable=False)
+    source_as_of = db.Column(db.DateTime, nullable=True)
+    metadata_json = db.Column(db.JSON, nullable=False, default=dict)
+    records = db.relationship(
+        'FabricConsumptionRecord', back_populates='snapshot',
+        cascade='all, delete-orphan', lazy='select',
+    )
+
+
+class FabricConsumptionRecord(db.Model):
+    """Numeric Fabric metrics at customer, workload, capacity, or time-series grain."""
+
+    __tablename__ = 'fabric_consumption_records'
+    __table_args__ = (
+        db.Index('ix_fabric_record_import_customer_kind', 'import_id', 'customer_id', 'kind'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    import_id = db.Column(
+        db.Integer, db.ForeignKey('fabric_consumption_imports.id'), nullable=False, index=True,
+    )
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True, index=True)
+    tpid = db.Column(db.BigInteger, nullable=False, index=True)
+    kind = db.Column(db.String(24), nullable=False)
+    capacity_id = db.Column(db.String(100), nullable=True)
+    sku = db.Column(db.String(50), nullable=True)
+    observed_at = db.Column(db.DateTime, nullable=True)
+    metrics_json = db.Column(db.JSON, nullable=False, default=dict)
+    snapshot = db.relationship('FabricConsumptionImport', back_populates='records')
+    customer = db.relationship('Customer')

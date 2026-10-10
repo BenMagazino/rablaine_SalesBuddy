@@ -18,6 +18,7 @@ REPORT_ENDPOINTS = {
     "reports.report_whitespace",
     "reports.report_msx_workspace",
     "reports.report_marketing_insights",
+    "reports.report_fabric_consumption",
     "reports.report_connect_goals",
     "reports.report_u2c",
     "reports.report_connect_impact",

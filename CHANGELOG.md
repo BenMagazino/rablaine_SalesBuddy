@@ -8,6 +8,31 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/10/2026
+
+- Add a manually imported Fabric Consumption report with customer workload mix, SKU utilization, and capacity detail.
+- Compare customer capacities in a sortable overview with consumption, CU hours, and workload shares.
+- Show latest-hour utilization on Used % hover instead of a separate Fabric overview column.
+- Open the clicked overview row's capacity automatically in the customer's Inspect capacity view.
+- Make Fabric views easier to scan, with compact capacity numbers, hover details, and expandable measurement tables.
+- Remove Fabric overview workload filters and remember each view's scope across reloads.
+- Remove the redundant saved-data refresh button from both Fabric views; use browser reload or import fresh data from MSXi.
+- Show average utilization immediately after each customer capacity label, with all capacity rows visible.
+- Preview each capacity's utilization history by hovering its average utilization.
+- Mark the 80% scale-up threshold with a dotted line in Fabric capacity utilization graphs and hover previews.
+- Show dates and utilization percentages in a hover box over hourly points in the Fabric capacity graph.
+- Remember your last viewed customer when reopening Fabric Consumption.
+- Show the customer's assigned seller in Fabric capacity hover cards.
+- Switch Fabric views with shared tabs and import from either view, with both reports centered in a connected 1536px workspace.
+- Keep Fabric import status in the tab row and open customer profiles directly from the customer name or TPID.
+- Simplify Capacity Overview by keeping row counts beside filters and removing the separate reading-guide row.
+- Choose All customers, Only customers with capacities, Trial audit, or P-SKU audit with a remembered segmented view selector.
+- Audit trial or P-SKU customers while keeping all their capacities visible and numbering the audited SKUs first.
+- Highlight trial SKUs and color their utilization from green to full red at 50% in the trial view.
+- Keep trial and P-SKU badges visible in the normal overview without coloring usage percentages.
+- Show live import progress while running and only the last successful import date afterward.
+- Position Fabric hover previews beside the hover targets so you can scan successive capacities without dismissing the popup.
+
 ## 10/9/2026 - 7162f63e
 
 - Restore ACR imports after Microsoft replaces the MSX Insights revenue report and semantic model.

@@ -60,6 +60,10 @@ standalone UI iterations using entirely fictional data. See the
 - **Customer forms** - native New/Edit account identity and ownership fields retain required name/TPID, optional metadata, seller mode and primary CSAM choices. Manual Save/Cancel commands stay visible, entry-local drafts guard navigation, and failed saves retain input without autosaving or changing enrichment providers.
 - **Call Notes** - rich text editor with topic/seller/customer tagging, templates, and meeting import
 - **Revenue Analyzer** - automatic MSXI sync, trend charts, growth alerts, seller/customer/product drill-downs
+- **Fabric Consumption** - manually import customer-scoped Fabric workload CU-hour
+  shares and capacity/SKU utilization from MSXi. Reports > Fabric Consumption
+  includes capacities, throttling, and utilization history. Import uses customer
+  TPIDs and your corporate Azure sign-in; it is never scheduled automatically.
 - **Milestone Tracker** - native desktop queue and calendar with MSX sync, task management, and AI matching from call notes. Search all saved milestone fields (including cached forecast comments) and use the searchable customer dropdown alongside the existing filters. Data headings sort both ways with raw values; CSV, Clipboard and Email preserve the filtered list. Back restores filters, view, calendar month, sorting and reading position.
 - **Milestones directory** - browse customer-linked records in the native desktop frame, preserving newest-added order, source URLs and linked-call counts. Sort each data heading both ways; Back restores sorting and reading position. Open the existing details, New Milestone or Milestone Tracker without changing the cached data.
 - **Internal project forms** - create or edit internal work with the original title, plain-text description, type, due date, edit-only status and eligible general notes. Native Save/Cancel commands stay visible; guarded entry-local drafts and failed-save input retention protect unsubmitted work without autosaving.
