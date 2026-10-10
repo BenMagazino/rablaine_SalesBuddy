@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/10/2026
+## 10/10/2026 - 94c1432c
 
 - Add a manually imported Fabric Consumption report with customer workload mix, SKU utilization, and capacity detail.
 - Compare customer capacities in a sortable overview with consumption, CU hours, and workload shares.
