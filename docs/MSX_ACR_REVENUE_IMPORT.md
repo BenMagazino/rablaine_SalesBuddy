@@ -3,17 +3,19 @@
 This guide explains how Sales Buddy retrieves Azure Consumed Revenue (ACR)
 from the MSX Insights Power BI semantic model and imports it by customer TPID.
 
-**Last verified:** August 24, 2026
+**Report contract captured:** October 8, 2026
 **Authentication tenant:** `72f988bf-86f1-41af-91ab-2d7cd011db47`
 **Power BI resource:** `https://analysis.windows.net/powerbi/api`
-**Report ID:** `4774bb5f-91a6-4e41-8c8a-0cee2142b765`
-**Dataset ID:** `f7ecc250-c244-43a6-aea5-7a957f9e9d38`
-**Fallback model ID:** `6642435`
+**Report ID:** `7902d6ac-6b15-46d0-8df5-5f1708d8c0a0`
+**Dataset ID:** `4caeb488-dc92-492b-a886-e9c3d2878df2`
+**Fallback model ID:** `6692289`
+**Workspace:** `BICOE_Prod_BICore_Azure04`
+**Report URL:** https://msxinsights.microsoft.com/User/report/4ab7af21-7148-47de-9e65-0acfae0a3ff4
 
 ## Source of Truth
 
 ACR comes from the semantic model behind the MSX Insights
-`ACR Details by Quarter / Month SL4` report. We query the model directly rather
+`Azure Service Level Subscription Details SL4 - WW` report. We query the model directly rather
 than downloading its CSV export.
 
 The flow is:
@@ -60,7 +62,7 @@ No client secret or separate app registration is used.
 
 ```http
 GET https://df-msit-scus-redirect.analysis.windows.net/
-    explore/reports/4774bb5f-91a6-4e41-8c8a-0cee2142b765/
+    explore/reports/7902d6ac-6b15-46d0-8df5-5f1708d8c0a0/
     modelsAndExploration?preferReadOnlySession=true
 
 Authorization: Bearer {power_bi_token}
@@ -74,7 +76,7 @@ Authorization: Bearer {power_bi_token}
 
 ```http
 Authorization: MWCToken {mwc_token}
-x-ms-workload-resource-moniker: f7ecc250-c244-43a6-aea5-7a957f9e9d38
+x-ms-workload-resource-moniker: 4caeb488-dc92-492b-a886-e9c3d2878df2
 Origin: https://msit.powerbi.com
 Referer: https://msit.powerbi.com/
 ```
@@ -98,7 +100,7 @@ DimDate
 DimCustomer
 Fact ACR Subscription
 Measures | ACR
-Parameter | ACR Attributes
+Parameter | ACR Dimensions
 Parameter | ACR Measures
 ```
 
@@ -108,13 +110,16 @@ Required filters:
 |---|---|
 | `DimDate.FiscalYear` | Requested fiscal years |
 | `Fact ACR Subscription.AdjustmentFlag` | `N/A` |
-| `Parameter | ACR Attributes` | `ServiceCompGrouping` or `ServiceLevel4` |
-| `Parameter | ACR Measures Fields` | `'Measures | ACR'[$ ACR]` |
+| `Parameter | ACR Dimensions` | `ServiceCompGrouping` or `ServiceLevel4` |
+| `Parameter | ACR Measures` | `$ ACR` |
 | `DimCustomer.HQDS` | Exclude `DS` |
 | `DimCustomer.TPID` | Positive and in requested TPID list |
 
 The parameter selections are required for the `$ ACR` measure to resolve.
 There is deliberately no `FYRel` filter because it reduces available history.
+The report's audience-specific `FieldSummarySegment` and
+`IsAzureClosedAndCurrentOpen` filters are also omitted. Explicit TPID and
+fiscal-year filters define the import scope.
 
 Default history is current fiscal year plus two prior fiscal years. Microsoft
 fiscal years begin in July. The live model currently returns about 25 months.

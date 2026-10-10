@@ -242,13 +242,59 @@ class TestPurge:
 # Pull safety
 # ---------------------------------------------------------------------------
 class TestPullSafety:
-    def test_uses_azure_blue_subscription_report(self):
+    def test_uses_replacement_subscription_report(self):
         """Revenue pulls must use the report with complete account coverage."""
         from app.services import revenue_pull
 
-        assert revenue_pull._REPORT_ID == "4774bb5f-91a6-4e41-8c8a-0cee2142b765"
-        assert revenue_pull._DATASET_ID == "f7ecc250-c244-43a6-aea5-7a957f9e9d38"
-        assert revenue_pull._MODEL_ID_FALLBACK == 6642435
+        assert revenue_pull._REPORT_ID == "7902d6ac-6b15-46d0-8df5-5f1708d8c0a0"
+        assert revenue_pull._DATASET_ID == "4caeb488-dc92-492b-a886-e9c3d2878df2"
+        assert revenue_pull._MODEL_ID_FALLBACK == 6692289
+        assert revenue_pull._VISUAL_ID == "e3f7b28054eb83b11005"
+
+    @pytest.mark.parametrize(
+        ("builder_name", "dimension", "output_names"),
+        [
+            ("_acr_query", "ServiceCompGrouping", ["tpid", "name", "fm", "bucket", "acr"]),
+            (
+                "_product_query", "ServiceLevel4",
+                ["tpid", "name", "fm", "bucket", "product", "acr"],
+            ),
+        ],
+    )
+    def test_replacement_query_preserves_grain_and_scope(
+        self, builder_name, dimension, output_names,
+    ):
+        """Both grains use the new parameters without audience or history clamps."""
+        from app.services import revenue_pull
+
+        query = getattr(revenue_pull, builder_name)([101, 202], ["FY25", "FY26", "FY27"])
+        assert query["From"] == [
+            {"Name": "d", "Entity": "DimDate", "Type": 0},
+            {"Name": "d1", "Entity": "DimCustomer", "Type": 0},
+            {"Name": "f", "Entity": "Fact ACR Subscription", "Type": 0},
+            {"Name": "m", "Entity": "Measures | ACR", "Type": 0},
+            {"Name": "p", "Entity": "Parameter | ACR Dimensions", "Type": 0},
+            {"Name": "p1", "Entity": "Parameter | ACR Measures", "Type": 0},
+        ]
+        assert query["Where"] == [
+            revenue_pull._in("d", "FiscalYear", ["'FY25'", "'FY26'", "'FY27'"]),
+            revenue_pull._in("f", "AdjustmentFlag", ["'N/A'"]),
+            revenue_pull._in("p", "Parameter | ACR Dimensions", [f"'{dimension}'"]),
+            revenue_pull._in("p1", "Parameter | ACR Measures", ["'$ ACR'"]),
+            revenue_pull._not_in("d1", "HQDS", ["'DS'"]),
+            revenue_pull._gt("d1", "TPID", "0L"),
+            revenue_pull._in("d1", "TPID", ["101L", "202L"]),
+        ]
+        assert [field["Name"] for field in query["Select"]] == output_names
+        assert query["Select"][:4] == [
+            revenue_pull._col("d1", "TPID", "tpid"),
+            revenue_pull._col("d1", "TPAccountName", "name"),
+            revenue_pull._col("d", "FiscalMonth", "fm"),
+            revenue_pull._col("f", "ServiceCompGrouping", "bucket"),
+        ]
+        assert query["Select"][-1] == revenue_pull._mea("m", "$ ACR", "acr")
+        if dimension == "ServiceLevel4":
+            assert query["Select"][4] == revenue_pull._col("f", "ServiceLevel4", "product")
 
     def test_mwc_mint_retries_transient_ssl_errors(self, monkeypatch):
         """Power BI bootstrap must ride out transient TLS disconnects."""
