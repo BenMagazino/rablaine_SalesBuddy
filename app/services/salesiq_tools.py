@@ -116,6 +116,28 @@ def execute_tool(name: str, params: dict) -> Any:
 # -- 1:1 workspaces ----------------------------------------------------------
 
 @tool(
+    'report_fabric_consumption',
+    'Read the saved Fabric workload mix and capacity utilization snapshot. '
+    'Includes all customer coverage and optional customer capacity detail. '
+    'Set overview=true for one row per capacity with customer-wide workload shares. '
+    'Does not import or refresh data.',
+    {'type': 'object', 'properties': {
+        'customer_id': {'type': 'integer', 'minimum': 1,
+                        'description': 'Sales Buddy customer ID for detailed Fabric measurements.'},
+        'overview': {'type': 'boolean',
+                     'description': 'Return all customer/capacity comparison rows instead of detail.'},
+    }},
+)
+def report_fabric_consumption(customer_id: int | None = None, overview: bool = False) -> dict:
+    """Read the same manually imported snapshot as the Fabric report."""
+    from app.services.fabric_consumption import get_fabric_capacity_overview, get_fabric_report
+
+    if overview:
+        return get_fabric_capacity_overview()
+    return get_fabric_report(customer_id=customer_id)
+
+
+@tool(
     'report_manager_one_on_one',
     'Read Initiative Tracker, including named initiatives, '
     'seller-grouped engagements and milestones, internal projects, live status, commitment, dates, '

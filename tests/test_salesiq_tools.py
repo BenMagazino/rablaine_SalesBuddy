@@ -143,6 +143,10 @@ class TestToolCoverage:
         """Connect Goals should expose its shared calculations."""
         assert 'report_connect_goals' in self._tool_names()
 
+    def test_fabric_consumption_report_tool_exists(self):
+        """Saved Fabric measurements must be available without starting an import."""
+        assert 'report_fabric_consumption' in self._tool_names()
+
     def test_caip_coverage_report_tool_exists(self):
         """CAIP analytical view should be available to SalesIQ."""
         names = {item['name'] for item in get_mcp_tools()}

@@ -20,6 +20,93 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('reports', __name__)
 
 
+@bp.route('/reports/fabric-consumption')
+def report_fabric_consumption():
+    """Show manually imported Fabric workload mix and capacity utilization."""
+    if request.args.get('view') == 'overview':
+        return render_template('report_fabric_capacity_overview.html')
+    return render_template('report_fabric_consumption.html')
+
+
+@bp.route('/api/reports/fabric-consumption/overview')
+def fabric_capacity_overview_data():
+    """Read all saved capacity comparisons without querying MSXi."""
+    from app.services.fabric_consumption import get_fabric_capacity_overview
+
+    return jsonify(success=True, **get_fabric_capacity_overview())
+
+
+@bp.route('/api/reports/fabric-consumption')
+def fabric_consumption_data():
+    """Read a saved Fabric snapshot without contacting the remote report."""
+    raw_customer_id = request.args.get('customer_id')
+    customer_id = None
+    if raw_customer_id is not None:
+        try:
+            customer_id = int(raw_customer_id)
+        except ValueError:
+            return jsonify(success=False, error='Choose a valid customer.'), 400
+        if customer_id <= 0:
+            return jsonify(success=False, error='Choose a valid customer.'), 400
+        if db.session.get(Customer, customer_id) is None:
+            return jsonify(success=False, error='Customer not found.'), 404
+    from app.services.fabric_consumption import get_fabric_report
+
+    return jsonify(success=True, **get_fabric_report(customer_id=customer_id))
+
+
+@bp.route('/api/reports/fabric-consumption/status')
+def fabric_consumption_status():
+    """Read progress of the manually requested Fabric import."""
+    from app.services.fabric_consumption import SYNC_TYPE
+
+    return jsonify(success=True, status=SyncStatus.get_status(SYNC_TYPE))
+
+
+@bp.route('/api/reports/fabric-consumption/import', methods=['POST'])
+def fabric_consumption_import():
+    """Start a single customer-scoped Fabric import independently of page lifetime."""
+    import threading
+
+    from app.services.fabric_consumption import SYNC_TYPE, sync_fabric_consumption
+    from app.services.revenue_pull import get_customer_tpids
+
+    if not get_customer_tpids():
+        return jsonify(
+            success=False, error='Add customers with valid TPIDs before importing Fabric data.',
+        ), 400
+    try:
+        if not SyncStatus.try_mark_started(SYNC_TYPE):
+            return jsonify(success=False, error='A Fabric import is already running.'), 409
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Could not claim Fabric import')
+        return jsonify(success=False, error='Could not start the Fabric import. Try again.'), 500
+
+    def run_import(app):
+        """Run the import with its own database session and explicit failure status."""
+        with app.app_context():
+            try:
+                sync_fabric_consumption(claimed=True)
+            except Exception:
+                db.session.rollback()
+                logger.exception('Background Fabric import failed')
+                SyncStatus.mark_completed(
+                    SYNC_TYPE, success=False,
+                    details='Fabric import failed. The previous snapshot is retained.',
+                )
+
+    try:
+        threading.Thread(
+            target=run_import, args=(current_app._get_current_object(),), daemon=True,
+        ).start()
+    except RuntimeError:
+        logger.exception('Could not start Fabric import thread')
+        SyncStatus.mark_completed(SYNC_TYPE, success=False, details='Import could not start.')
+        return jsonify(success=False, error='Could not start the Fabric import. Try again.'), 500
+    return jsonify(success=True, message='Fabric import started.', async_import=True), 202
+
+
 def _save_manager_report_changes() -> tuple:
     """Commit report edits with explicit rollback and user-visible failure messages."""
     try:
@@ -415,6 +502,16 @@ def reports_hub():
                     ),
                     'icon': 'bi-tag',
                     'url': url_for('reports.report_workload'),
+                },
+                {
+                    'id': 'fabric-consumption',
+                    'name': 'Fabric Consumption',
+                    'description': (
+                        'Manually import Fabric workload usage and capacity utilization '
+                        'for your customers. Inspect SKU consumption and throttling.'
+                    ),
+                    'icon': 'bi-pie-chart',
+                    'url': url_for('reports.report_fabric_consumption'),
                 },
                 {
                     'id': 'marketing-insights',

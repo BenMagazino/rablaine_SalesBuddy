@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Fabric Consumption - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-fabric-consumption.css') }}">
+{% endblock %}
+{% block content %}
+<section class="sb-fabric sb-fabric-overview" data-sb-page-surface data-fabric-overview
+         aria-labelledby="fabricTitle"
+         data-report-url="{{ url_for('reports.fabric_capacity_overview_data') }}"
+         data-import-url="{{ url_for('reports.fabric_consumption_import') }}"
+         data-status-url="{{ url_for('reports.fabric_consumption_status') }}">
+    {% include 'partials/_fabric_report_header.html' %}
+    <div class="sb-fabric-import-band" data-sb-page-band>
+        <label>Find customer or capacity <input type="search" data-overview-search placeholder="Name, TPID, capacity or SKU"></label>
+        <div class="sb-fabric-mode" role="group" aria-label="Show customers" data-overview-mode>
+            <button type="button" data-mode="all" aria-pressed="false">All customers</button>
+            <button type="button" data-mode="capacities" aria-pressed="true">Only customers with capacities</button>
+            <button type="button" data-mode="trials" aria-pressed="false"
+                    title="Customers with FTL4 or FTL64, including all their other capacities">Trial audit</button>
+            <button type="button" data-mode="p" aria-pressed="false"
+                    title="Customers with P SKUs, including all their other capacities">P-SKU audit</button>
+        </div>
+        <p class="sb-fabric-overview-count" data-overview-status role="status">Loading saved data...</p>
+    </div>
+    <p class="sb-fabric-error sb-fabric-error-band" data-sb-page-band
+       data-overview-error role="alert" hidden></p>
+    <div class="sb-fabric-overview-table" data-sb-page-body tabindex="0" role="region" aria-label="Customer capacity and workload comparison">
+        <table class="sb-fabric-table" data-overview-table data-sb-sort-key="fabric-capacity-overview">
+            <thead><tr><th data-sb-sort-type="text">Customer</th></tr></thead><tbody></tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Fabric import status"><span data-overview-freshness>No snapshot loaded</span><span>Manual import only; no scheduled refresh</span></footer>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-fabric-preferences.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-fabric-capacity-label.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-fabric-import.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-fabric-capacity-overview.js') }}"></script>
+{% endblock %}
