@@ -2,7 +2,7 @@
 Programmatic MSXI revenue (ACR) pull - headless, via the caller's ``az login``.
 
 This queries the same Power BI dataset that backs the MSX Insights
-"ACR Details by Quarter / Month SL4" report the export CSV comes from, so for the
+"Azure Service Level Subscription Details SL4 - WW" report, so for the
 same measure + grain + fiscal filter the numbers match to the dollar.
 
 Auth flow (no browser, no manual token):
@@ -44,11 +44,11 @@ _CORP_TENANT = "72f988bf-86f1-41af-91ab-2d7cd011db47"
 _PBI_RESOURCE = "https://analysis.windows.net/powerbi/api"
 _CLUSTER = "https://df-msit-scus-redirect.analysis.windows.net"
 
-# The MSX Insights "AzureBlueSubscriptionSL4" report + dataset.
-_REPORT_ID = "4774bb5f-91a6-4e41-8c8a-0cee2142b765"
-_DATASET_ID = "f7ecc250-c244-43a6-aea5-7a957f9e9d38"
+# The MSX Insights "Azure Service Level Subscription Details SL4 - WW" model.
+_REPORT_ID = "7902d6ac-6b15-46d0-8df5-5f1708d8c0a0"
+_DATASET_ID = "4caeb488-dc92-492b-a886-e9c3d2878df2"
 _VISUAL_ID = "e3f7b28054eb83b11005"
-_MODEL_ID_FALLBACK = 6642435
+_MODEL_ID_FALLBACK = 6692289
 
 # ---------------------------------------------------------------------------
 # Token acquisition
@@ -383,7 +383,7 @@ def _acr_from() -> list[dict]:
         {"Name": "d1", "Entity": "DimCustomer", "Type": 0},
         {"Name": "f", "Entity": "Fact ACR Subscription", "Type": 0},
         {"Name": "m", "Entity": "Measures | ACR", "Type": 0},
-        {"Name": "p", "Entity": "Parameter | ACR Attributes", "Type": 0},
+        {"Name": "p", "Entity": "Parameter | ACR Dimensions", "Type": 0},
         {"Name": "p1", "Entity": "Parameter | ACR Measures", "Type": 0},
     ]
 
@@ -392,8 +392,8 @@ def _acr_where(tpids: list[int], fiscal_years: list[str], attribute: str) -> lis
     return [
         _in("d", "FiscalYear", [f"'{fy}'" for fy in fiscal_years]),
         _in("f", "AdjustmentFlag", ["'N/A'"]),
-        _in("p", "Parameter | ACR Attributes", [f"'{attribute}'"]),
-        _in("p1", "Parameter | ACR Measures Fields", ["'''Measures | ACR''[$ ACR]'"]),
+        _in("p", "Parameter | ACR Dimensions", [f"'{attribute}'"]),
+        _in("p1", "Parameter | ACR Measures", ["'$ ACR'"]),
         _not_in("d1", "HQDS", ["'DS'"]),
         _gt("d1", "TPID", "0L"),
         _in("d1", "TPID", [f"{t}L" for t in tpids]),
