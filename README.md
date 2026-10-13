@@ -21,6 +21,26 @@ The MSI installer handles everything: prerequisites (Git, Python, Azure CLI, Nod
 
 ## Features
 
+The Windows desktop title bar follows the saved theme and Light/Dark appearance,
+including changes made in Settings without a reload. The theme-matched menu strip
+opens the existing Windows-native File/Edit/View/Window/Help dropdowns and keeps
+Back/Forward actions and keyboard shortcuts. Once a dropdown is open, moving
+across the menu headings switches dropdowns without another click or a hover dwell.
+Only the open menu stays highlighted while switching.
+Clicking a menu heading while a dropdown is open collapses it.
+The title and menu are mounted before the page's first paint so navigation
+does not briefly expose content underneath the window controls.
+Local styles, scripts and other template-linked assets use content-versioned
+URLs, so pages reuse unchanged files while edits and updates refresh them automatically.
+This requires the theme-aware Electron shell build;
+browser usage is unchanged.
+
+For desktop shell development, start the live backend with `scripts\dev.ps1 start`,
+then run `electron\node_modules\electron\dist\electron.exe electron --dev-client`.
+Client-only mode connects to port 5000 with a separate shell profile. It leaves
+the existing backend and production app alone, disables update/restart commands,
+and exits when its last window closes.
+
 Browse the [offline design-study archive](design-studies/index.html) for twelve
 standalone UI iterations using entirely fictional data. See the
 [archive guide](design-studies/README.md) for validation and capture instructions.

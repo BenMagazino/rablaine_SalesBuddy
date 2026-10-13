@@ -26,6 +26,8 @@
     "files": [
       "main.js",
       "preload.js",
+      "shell-theme.js",
+      "shell-menu.js",
       "status-screen.js",
       "status.html",
       "status.css",

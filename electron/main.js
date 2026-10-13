@@ -11,8 +11,10 @@
 // app), so a single `git pull` updates the app logic in both worlds. Electron
 // itself only needs updating when this shell code changes.
 
-const { app, BrowserWindow, Tray, Menu, shell, dialog, nativeTheme } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, dialog, nativeTheme, screen } = require('electron');
 const { statusScreenUrl: renderStatusScreen } = require('./status-screen');
+const { TITLE_BAR_HEIGHT, attachShellTheme, readShellTheme } = require('./shell-theme');
+const { menuSnapshot, attachShellMenu } = require('./shell-menu');
 const { spawn, execFile, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -20,6 +22,10 @@ const path = require('path');
 const http = require('http');
 
 const APP_VERSION = require('./package.json').version;
+const DEV_CLIENT = process.argv.includes('--dev-client');
+if (DEV_CLIENT) {
+  app.setPath('userData', path.join(app.getPath('appData'), 'SalesBuddy-dev-shell'));
+}
 
 // Where the git-pulled Flask app lives (venv, supervisor, static, .env). In dev
 // we run `electron .` from inside the repo, so the repo is one level up from
@@ -63,7 +69,7 @@ const SHELL_PREFS_FILE = path.join(REPO_ROOT, 'data', 'shell-prefs.json');
 // migrate-to-electron.ps1 stages it into electron-dist and relaunches.
 const BUILD_SCRIPT = path.join(REPO_ROOT, 'electron', 'build.ps1');
 const MIGRATE_SCRIPT = path.join(REPO_ROOT, 'scripts', 'migrate-to-electron.ps1');
-const PORT = readEnvPort();
+const PORT = DEV_CLIENT ? 5000 : readEnvPort();
 const HEALTH_URL = `http://localhost:${PORT}/health`;
 const BASE_URL = `http://localhost:${PORT}/`;
 
@@ -91,13 +97,27 @@ let pendingShowRequest = false;
 // Helpers
 // ---------------------------------------------------------------------------
 
+let consoleOutputAvailable = true;
+function handleConsoleError(error) {
+  if (error.code !== 'EPIPE') throw error;
+  consoleOutputAvailable = false;
+  log('Electron console pipe closed (EPIPE); file logging remains available.');
+}
+process.stdout.on('error', handleConsoleError);
+
 function log(msg) {
   const line = `${new Date().toISOString()} ${msg}\n`;
   try {
     fs.mkdirSync(LOG_DIR, { recursive: true });
     fs.appendFileSync(MAIN_LOG, line);
   } catch (_) { /* ignore */ }
-  process.stdout.write(line);
+  if (consoleOutputAvailable) {
+    try {
+      process.stdout.write(line);
+    } catch (error) {
+      handleConsoleError(error);
+    }
+  }
 }
 
 function readEnvPort() {
@@ -372,14 +392,23 @@ function runStep(file, args, cwd) {
 
 // Replace the window contents with a lightweight splash so the user isn't
 // staring at a dead backend while we pull/reinstall or rebuild the shell.
+let lastShellTheme;
+function storedShellTheme() {
+  if (lastShellTheme === undefined) {
+    lastShellTheme = readShellTheme(path.join(app.getPath('userData'), 'shell-theme.json'), fs, log);
+  }
+  return lastShellTheme;
+}
+
 function statusScreenUrl(title, subtitle, theme) {
-  return renderStatusScreen(title, subtitle, theme || {
+  return renderStatusScreen(title, subtitle, theme || storedShellTheme() || {
     mode: nativeTheme && !nativeTheme.shouldUseDarkColors ? 'light' : 'dark',
   });
 }
 
 function loadWindowUrl(win, url) {
   if (win.isDestroyed()) return;
+  win._sbStatusUrl = url.startsWith('data:text/html') ? url : null;
   const label = url.startsWith('data:') ? 'status screen' : url;
   win.loadURL(url).catch((error) => log(`Window navigation failed (${label}): ${error.message}`));
 }
@@ -720,6 +749,10 @@ const WINDOW_OPTS = {
   title: 'Sales Buddy',
   icon: ICON,
   backgroundColor: '#0d1117',
+  ...(IS_WIN ? {
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {color: '#292d32', symbolColor: '#e7eaf0', height: TITLE_BAR_HEIGHT},
+  } : {}),
   autoHideMenuBar: false,
   webPreferences: {
     contextIsolation: true,
@@ -733,7 +766,14 @@ const WINDOW_OPTS = {
 // free. Used by File > New Window, the tray, and internal-link "open in new
 // window" (middle-click / Ctrl+click / right-click).
 function openNewWindow(url) {
-  const win = new BrowserWindow(WINDOW_OPTS);
+  const theme = IS_WIN ? storedShellTheme() : null;
+  const win = new BrowserWindow(theme ? {
+    ...WINDOW_OPTS,
+    backgroundColor: theme.backgroundColor,
+    titleBarOverlay: {
+      color: theme.color, symbolColor: theme.symbolColor, height: TITLE_BAR_HEIGHT,
+    },
+  } : WINDOW_OPTS);
   windows.add(win);
   configureWindow(win);
   loadWindowUrl(win, isUpdating ? statusScreenUrl(
@@ -765,11 +805,24 @@ function ensureWindow() {
 // the close-to-tray-on-last-window rule.
 function configureWindow(win) {
   const wc = win.webContents;
+  if (IS_WIN) attachShellMenu(win, PORT, () => Menu.getApplicationMenu(), log,
+    () => screen.getCursorScreenPoint());
+  if (IS_WIN) attachShellTheme(win, PORT, log, (theme) => {
+    if (JSON.stringify(lastShellTheme) === JSON.stringify(theme)) return;
+    lastShellTheme = theme;
+    try {
+      fs.writeFileSync(path.join(app.getPath('userData'), 'shell-theme.json'),
+        JSON.stringify(theme), 'utf8');
+    } catch (error) {
+      log(`Could not remember shell theme for next startup: ${error.message}`);
+    }
+  });
   wc.on('did-finish-load', () => {
     if (!/^https?:/.test(safeUrl(wc)) || !wc.executeJavaScript) return;
     wc.executeJavaScript(
       '({mode:document.documentElement.dataset.sbMode,family:document.documentElement.dataset.sbFamily})'
-    ).then((theme) => { win._sbTheme = theme; }).catch(() => {});
+    ).then((theme) => { win._sbTheme = theme; })
+      .catch((error) => log(`Could not read page theme: ${error.message}`));
   });
   let cancelRecovery = null;
   let recoveryTimer = null;
@@ -874,7 +927,7 @@ function configureWindow(win) {
   // Closing a window destroys just that window; the LAST window hides to tray
   // instead (keeps the background worker alive). A real quit closes everything.
   win.on('close', (e) => {
-    if (isQuitting) return;
+    if (isQuitting || DEV_CLIENT) return;
     const alive = [...windows].filter((w) => !w.isDestroyed());
     if (alive.length > 1) return; // others remain -> let this one close
     e.preventDefault();
@@ -916,11 +969,11 @@ function buildAppMenu() {
         },
         { label: 'Open in Browser', click: () => shell.openExternal(BASE_URL) },
         { type: 'separator' },
-        { label: 'Check for Updates...', enabled: !isUpdating,
+        { label: 'Check for Updates...', enabled: !isUpdating && !DEV_CLIENT,
           click: () => checkForUpdates(true) },
         {
           label: 'Restart Backend',
-          enabled: !isUpdating,
+          enabled: !isUpdating && !DEV_CLIENT,
           click: () => {
             stopStack();
             startStack();
@@ -995,7 +1048,13 @@ function buildAppMenu() {
       click: goForward,
     },
   ];
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+  if (IS_WIN) {
+    for (const win of windows) {
+      if (!win.isDestroyed()) win.webContents.send('shell:menu-state', menuSnapshot(menu));
+    }
+  }
 }
 
 function showAbout() {
@@ -1071,9 +1130,11 @@ if (!app.requestSingleInstanceLock()) {
     // Group under one taskbar icon and identify our notifications on Windows.
     if (IS_WIN) app.setAppUserModelId('com.salesbuddy.desktop');
     buildAppMenu();
-    startStack();
-    createTray();
-    startUpdateRequestWatcher();
+    if (!DEV_CLIENT) {
+      startStack();
+      createTray();
+      startUpdateRequestWatcher();
+    }
     if (!shouldBootHidden() || pendingShowRequest) ensureWindow();
     waitForServer(() => {
       isBooting = false;
@@ -1088,7 +1149,7 @@ if (!app.requestSingleInstanceLock()) {
         log('Starting minimized to the system tray.');
       }
       // Quiet check shortly after boot: only prompts if an update is available.
-      setTimeout(() => checkForUpdates(false), 5000);
+      if (!DEV_CLIENT) setTimeout(() => checkForUpdates(false), 5000);
     }, () => {
       if (!shouldBootHidden() || pendingShowRequest) {
         showUpdatingScreen(
@@ -1101,11 +1162,12 @@ if (!app.requestSingleInstanceLock()) {
 
   // Stay alive in the tray when the window is closed.
   app.on('window-all-closed', (e) => {
+    if (DEV_CLIENT) app.quit();
     // Intentionally do nothing (don't quit) - the tray keeps us running.
   });
 
   app.on('before-quit', () => {
     isQuitting = true;
-    stopStack();
+    if (!DEV_CLIENT) stopStack();
   });
 }

@@ -97,10 +97,20 @@ You can also tag manually if you prefer: `git log --merges -1 --format=%h`, then
 
 **When in doubt, include it.** A short bullet that turns out to be unimportant is far better than silently shipping a change users care about.
 
-**Bullet style:** plain English, present tense, ~1 line. The reader is a busy seller, not a developer. Skip implementation detail unless it's the point of the change.
+**Bullet style:** short, plain-English summaries of the final user-facing result.
+The reader is a busy seller, not a developer.
 
-Good: `Add changelog viewer to admin Updates card so you can see what's new before and after applying an update`
-Bad: `Refactor checkForUpdates to call renderChangelogSection helper`
+- Use one bullet per distinct feature or outcome, usually 1-3 bullets per release.
+- An iterated feature gets one final summary, not a bullet for every implementation step.
+- Do not list testing, debugging, interim fixes, individual controls, or cosmetic refinements
+  that are simply part of delivering the feature.
+- Before merging, consolidate accumulated bullets and remove implementation detail.
+- Keep important user actions, breaking changes, and limitations when they affect usage.
+- Preserve release headings, merge hashes, and any required Electron Shell Update marker
+  when shortening existing entries.
+
+Good: `Update menus and window to follow your theme.`
+Bad: `Add menu hover switching; fix highlight flashing; reduce hover delay; add a divider.`
 
 ### Electron Shell Update marker
 

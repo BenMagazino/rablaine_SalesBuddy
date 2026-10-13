@@ -8,47 +8,26 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/13/2026
+
+- *Electron Shell Update* - Update menus and window to follow your theme.
+
 ## 10/13/2026 - a3bf6de8
 
-- Choose Graphite, Midnight, Harbor, or Carbon in Settings, with separate light/dark appearance and a saved theme across pages and restarts.
-- Set your SE Mode specialty in Settings: Data SE, Core / Infra SE, Apps and AI SE, or Other. Save it now for future specialty-specific features.
+- Add theme and SE specialty pickers to Settings.
 
 ## 10/13/2026 - 026ae9d6
 
-- Restore Ctrl+Enter saving from the rich-text note editor without bypassing save validation.
+- Restore Ctrl+Enter to save notes.
 
 ## 10/13/2026 - 7b08b5a9
 
-- Import customer-wide Fabric reserved-instance and PAYG revenue with Fabric 360, including fiscal YTD totals and monthly splits.
-- Show the monthly revenue split expanded by default, with a stacked RI/PAYG percentage chart.
-- Present monthly revenue amounts with months across columns and RI, PAYG, and total revenue down rows.
-- Keep revenue-only refreshes separate from full Fabric import status so they do not produce false interrupted-import warnings.
-- Handle Unicode WorkIQ responses without Windows text-decoding failures.
+- Add Fabric reserved-instance and PAYG revenue imports, charts, and monthly totals.
+- Fix WorkIQ text-decoding errors on Windows.
 
 ## 10/10/2026 - 94c1432c
 
-- Add a manually imported Fabric Consumption report with customer workload mix, SKU utilization, and capacity detail.
-- Compare customer capacities in a sortable overview with consumption, CU hours, and workload shares.
-- Show latest-hour utilization on Used % hover instead of a separate Fabric overview column.
-- Open the clicked overview row's capacity automatically in the customer's Inspect capacity view.
-- Make Fabric views easier to scan, with compact capacity numbers, hover details, and expandable measurement tables.
-- Remove Fabric overview workload filters and remember each view's scope across reloads.
-- Remove the redundant saved-data refresh button from both Fabric views; use browser reload or import fresh data from MSXi.
-- Show average utilization immediately after each customer capacity label, with all capacity rows visible.
-- Preview each capacity's utilization history by hovering its average utilization.
-- Mark the 80% scale-up threshold with a dotted line in Fabric capacity utilization graphs and hover previews.
-- Show dates and utilization percentages in a hover box over hourly points in the Fabric capacity graph.
-- Remember your last viewed customer when reopening Fabric Consumption.
-- Show the customer's assigned seller in Fabric capacity hover cards.
-- Switch Fabric views with shared tabs and import from either view, with both reports centered in a connected 1536px workspace.
-- Keep Fabric import status in the tab row and open customer profiles directly from the customer name or TPID.
-- Simplify Capacity Overview by keeping row counts beside filters and removing the separate reading-guide row.
-- Choose All customers, Only customers with capacities, Trial audit, or P-SKU audit with a remembered segmented view selector.
-- Audit trial or P-SKU customers while keeping all their capacities visible and numbering the audited SKUs first.
-- Highlight trial SKUs and color their utilization from green to full red at 50% in the trial view.
-- Keep trial and P-SKU badges visible in the normal overview without coloring usage percentages.
-- Show live import progress while running and only the last successful import date afterward.
-- Position Fabric hover previews beside the hover targets so you can scan successive capacities without dismissing the popup.
+- Add Fabric consumption reports for workload mix, capacity utilization, and Trial/P-SKU audits.
 
 ## 10/9/2026 - 7162f63e
 
@@ -60,35 +39,28 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/2/2026 - a25a8a4
 
-- Coordinate web and worker database upgrades so simultaneous startup does not race task-schema repair.
-- *Electron Shell Update* - Keep waiting through slow startup and automatically reconnect failed local pages instead of leaving a blank desktop window.
+- *Electron Shell Update* - Improve desktop startup and reconnect automatically after backend interruptions.
 
 ## 10/2/2026 - d2e9c16
 
-- Search all saved milestone fields and filter with a searchable customer dropdown in Milestone Tracker, with a roomier two-row filter bar.
+- Search all milestone fields and filter by customer in Milestone Tracker.
 
 ## 10/2/2026 - 2adbc77
 
-- Repair upgraded task databases so milestone sync and task creation can save new tasks after the HVA update, with a verified backup before schema repair.
-- Stop the sync spinner and show a clear error when milestone sync fails or its connection ends before completion.
-- Show clear milestone task creation errors instead of JSON parsing failures, and warn when a task exists in MSX but cannot be saved locally.
+- Fix milestone sync and task creation after the HVA update, with clearer error messages.
 
 ## 9/30/2026 - c041318
 
-- Show current U2C progress as a labeled live endpoint in both U2C Attainment and Connect Goals graphs, while preserving weekly snapshot history.
-- Distinguish total pipeline from the 40% goal on the U2C graph, and turn U2C progress green when the goal is reached.
+- Show live U2C progress and clearly mark when the goal is reached.
 
 ## 9/30/2026 - 7188f65
 
-- Add internal projects to Initiative Tracker's work picker when user-facing projects exist, excluding system-only Copilot Saved Tasks, with project notes and action items in the same detail modal.
-- Group the Reports menu and All Reports page into matching sections for planning and reviews, Connect Goals action reports, pipeline health, and account insights.
+- Include internal projects in Initiative Tracker.
+- Organize the Reports menu and hub into matching groups.
 
 ## 9/30/2026 - a2ea9be
 
-- Add Initiative Tracker with editable initiatives, hand-picked engagements and milestones grouped by seller, and automatically saved talking points.
-- Open engagement notes and milestone comments from Initiative Tracker without leaving the report, and keep dated discussion history through the Points editor.
-- Open each seller's existing 1:1 notes and agenda beside their name in Initiative Tracker.
-- Add a From U2C milestone picker to Initiative Tracker so you can select this quarter's remaining snapshot work using your U2C workload filter, including Hygiene/Duplicate milestones.
+- Add Initiative Tracker for seller discussions, linked work, and 1:1 agendas.
 
 ## 9/24/2026 - 0c4a3b0
 
@@ -100,8 +72,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 9/24/2026 - df23519
 
-- Add an FY27 Data Connect Goals action center with best-effort calculations for U2C pace, milestone and HVA coverage, technical validation, and sustained whitespace. Official results may differ.
-- Add in-page FY27 compensation bucket selection and updated HVA categories including Assessment and RFP/RFI while excluding Briefing.
+- Add FY27 Data Connect Goals reporting and compensation bucket selection. Estimates may differ from official results.
 
 ## 9/23/2026 - fa8df50
 
