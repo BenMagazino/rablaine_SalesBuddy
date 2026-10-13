@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/13/2026
+## 10/13/2026 - a3bf6de8
 
 - Choose Graphite, Midnight, Harbor, or Carbon in Settings, with separate light/dark appearance and a saved theme across pages and restarts.
 - Set your SE Mode specialty in Settings: Data SE, Core / Infra SE, Apps and AI SE, or Other. Save it now for future specialty-specific features.
