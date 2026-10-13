@@ -109,6 +109,7 @@ def run_migrations(db):
     # Migration: Add workiq_summary_prompt to user_preferences
     _migrate_workiq_summary_prompt(db, inspector)
     _migrate_se_specialty(db, inspector)
+    _migrate_theme_family(db, inspector)
     
     # Migration: Add guided_tour_completed to user_preferences
     _migrate_guided_tour_completed(db, inspector)
@@ -636,6 +637,16 @@ def _migrate_se_specialty(db, inspector) -> None:
             "UPDATE user_preferences SET se_specialty = 'data' "
             "WHERE se_specialty IS NULL OR TRIM(se_specialty) = ''"
         ))
+
+
+def _migrate_theme_family(db, inspector) -> None:
+    """Add the Graphite palette default without resetting existing appearance preferences."""
+    inspector.clear_cache()
+    if _table_exists(inspector, 'user_preferences'):
+        _add_column_if_not_exists(
+            db, inspector, 'user_preferences', 'theme_family',
+            "VARCHAR(20) DEFAULT 'graphite' NOT NULL",
+        )
 
 
 def _add_column_if_not_exists(db, inspector, table: str, column: str, column_def: str):

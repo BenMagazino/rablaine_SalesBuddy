@@ -66,6 +66,7 @@
 }
 .sb-admin-settings .sb-admin-section-heading { align-items: start; padding: 8px 0; }
 .sb-admin-settings .sb-admin-section-content { padding: 8px 0; }
+.sb-settings-theme select, .sb-settings-specialty select { max-width: 280px; }
 .sb-admin-settings .sb-dashboard-setting {
     display: flex; align-items: start; justify-content: space-between; gap: 16px;
     padding: 12px 0; border-bottom: 1px solid var(--sb-ui-grid-line);

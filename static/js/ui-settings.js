@@ -28,6 +28,37 @@
         }
         return data;
     }
+    for (const [id, resultId, key, url, label] of [
+        ['settingsThemeFamily', 'settingsThemeResult', 'theme_family',
+            '/api/preferences/theme-family', 'theme'],
+        ['settingsSeSpecialty', 'settingsSeSpecialtyResult', 'se_specialty',
+            '/api/preferences/se-specialty', 'specialty'],
+    ]) {
+        const input = root.querySelector('#' + id);
+        if (!input) continue;
+        const result = root.querySelector('#' + resultId);
+        let confirmed = input.value;
+        input.addEventListener('change', async () => {
+            if (input.disabled) return;
+            const value = input.value;
+            input.disabled = true;
+            show(result, 'Saving...');
+            try {
+                const data = await request(url, {[key]: value});
+                if (data[key] !== value) {
+                    throw new Error(`The selected ${label} was not confirmed.`);
+                }
+                confirmed = value;
+                if (key === 'theme_family') document.documentElement.dataset.sbFamily = value;
+                show(result, 'Saved.');
+            } catch (error) {
+                input.value = confirmed;
+                show(result, `Could not save ${label}. Try again. ${error.message}`, true);
+            } finally {
+                input.disabled = false;
+            }
+        });
+    }
     for (const [id, key, url] of [
         ['settingsDarkModeSwitch', 'dark_mode', '/api/preferences/dark-mode'],
         ['connectImpactSwitch', 'workiq_connect_impact', '/api/preferences/workiq-connect-impact'],

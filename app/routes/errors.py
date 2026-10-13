@@ -33,6 +33,7 @@ def register_error_handlers(app: Flask) -> None:
         response.set_data(render_template(
             'error.html', code=code, error_name=error.name, description=description,
             reference=reference, dark_mode=dark_mode,
+            theme_family=getattr(prefs, 'theme_family', 'graphite'),
             can_retry=request.method in ('GET', 'HEAD') and code >= 500,
         ))
         response.content_type = 'text/html; charset=utf-8'

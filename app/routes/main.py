@@ -2,7 +2,7 @@
 Main routes for Sales Buddy.
 Handles index, search, preferences, and API endpoints.
 """
-from flask import (Blueprint, render_template, request, redirect, url_for,
+from flask import (Blueprint, Response, render_template, request, redirect, url_for,
                    flash, jsonify, session, g, current_app)
 from datetime import datetime, timezone, date, timedelta
 from sqlalchemy import func, extract
@@ -19,9 +19,16 @@ from app.models import (db, Note, Customer, Seller, Territory, Topic,
                         UsageEvent)
 from app.services.backup import backup_template, delete_template_backup
 from app.services.seller_mode import get_seller_mode_seller_id
+from app.services.se_specialty import DEFAULT_SE_SPECIALTY, SE_SPECIALTIES
 
 # Create blueprint
 main_bp = Blueprint('main', __name__)
+THEME_FAMILIES = {
+    'graphite': 'Graphite',
+    'midnight': 'Midnight',
+    'harbor': 'Harbor',
+    'carbon': 'Carbon',
+}
 
 
 # =============================================================================
@@ -1207,6 +1214,8 @@ def preferences():
 
     return render_template('settings.html',
                          pref=pref,
+                         theme_families=THEME_FAMILIES,
+                         se_specialties=SE_SPECIALTIES,
                          templates=templates,
                          workiq_prompt=workiq_prompt,
                          default_workiq_prompt=DEFAULT_SUMMARY_PROMPT,
@@ -1499,6 +1508,58 @@ def analytics():
 # =============================================================================
 # Preferences API Routes
 # =============================================================================
+
+@main_bp.route('/api/preferences/theme-family', methods=['GET', 'POST'])
+def theme_family_preference() -> tuple[Response, int]:
+    """Get or save an approved palette independently of the light/dark preference."""
+    family = None
+    if request.method == 'POST':
+        data = request.get_json(silent=True)
+        family = data.get('theme_family') if isinstance(data, dict) else None
+        if not isinstance(family, str) or family not in THEME_FAMILIES:
+            return jsonify({'error': 'Choose Graphite, Midnight, Harbor, or Carbon.'}), 400
+    try:
+        pref = UserPreference.query.first()
+        if request.method == 'POST':
+            if pref is None:
+                pref = UserPreference()
+                db.session.add(pref)
+            pref.theme_family = family
+            db.session.commit()
+        return jsonify({'theme_family': pref.theme_family if pref else 'graphite'}), 200
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Could not %s theme preference', request.method)
+        return jsonify({'error': 'Could not load or save your theme. Please try again.'}), 500
+
+
+@main_bp.route('/api/preferences/se-specialty', methods=['GET', 'POST'])
+def se_specialty_preference() -> tuple[Response, int]:
+    """Get or save the user's specialty in SE Mode without changing their role."""
+    specialty = None
+    if request.method == 'POST':
+        data = request.get_json(silent=True)
+        specialty = data.get('se_specialty') if isinstance(data, dict) else None
+        if not isinstance(specialty, str) or specialty not in SE_SPECIALTIES:
+            return jsonify({'error': 'Choose one of the four listed SE specialties.'}), 400
+    try:
+        pref = UserPreference.query.first()
+        if pref and pref.user_role == 'dss':
+            return jsonify({'error': 'SE specialty is available only in SE Mode.'}), 403
+        if request.method == 'POST':
+            if pref is None:
+                pref = UserPreference()
+                db.session.add(pref)
+            pref.se_specialty = specialty
+            db.session.commit()
+        return jsonify({
+            'se_specialty': pref.se_specialty if pref else DEFAULT_SE_SPECIALTY,
+        }), 200
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Could not %s SE specialty preference', request.method)
+        return jsonify({'error': 'Could not load or save your specialty. Please try again.'}), 500
+
 
 @main_bp.route('/api/preferences/dark-mode', methods=['GET', 'POST'])
 def dark_mode_preference():
@@ -2089,6 +2150,7 @@ def inject_preferences():
 
     return dict(
         dark_mode=dark_mode,
+        theme_family=pref.theme_family if pref else 'graphite',
         dark_mode_unset=dark_mode_unset,
         customer_view_grouped=customer_view_grouped, 
         topic_sort_by_calls=topic_sort_by_calls,
