@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../../static/js/ui-settings.js'), 'utf8');
 
-function fixture() {
+function fixture({seMode = true} = {}) {
     function element(id, value = '') {
         return {id, value, checked: false, disabled: false, textContent: '', style: {},
             attributes: {}, handlers: {}, children: [],
@@ -24,8 +24,16 @@ function fixture() {
         'workiqPrompt', 'savePromptBtn', 'resetPromptBtn', 'promptStatus', 'templateSelect',
         'viewEditBtn', 'deleteBtn', 'defaultCustomer', 'defaultNoncustomer', 'defaultTemplatesForm',
         'deleteTemplateName', 'deleteTemplateForm',
+        'settingsThemeFamily', 'settingsThemeResult',
+        'settingsSeSpecialty', 'settingsSeSpecialtyResult',
     ].map(id => [id, element(id)]));
     fields.workiqPrompt.value = 'Saved prompt';
+    fields.settingsThemeFamily.value = 'graphite';
+    fields.settingsSeSpecialty.value = 'data';
+    if (!seMode) {
+        delete fields.settingsSeSpecialty;
+        delete fields.settingsSeSpecialtyResult;
+    }
     fields.settingsDarkModeSwitch.checked = true;
     fields.connectImpactSwitch.checked = true;
     fields.templateSelect.options = [{text: 'First template'}];
@@ -37,7 +45,7 @@ function fixture() {
     let reply = {ok: true, json: async () => ({success: true})};
     let confirmation = true;
     const history = {state: {}, replaceState(value) { this.state = value; }};
-    const documentElement = {dataset: {bsTheme: 'dark', sbMode: 'dark'}};
+    const documentElement = {dataset: {bsTheme: 'dark', sbMode: 'dark', sbFamily: 'graphite'}};
     vm.runInNewContext(source, {
         document: {
             querySelector: () => ({querySelector: selector => fields[selector.slice(1)]}),
@@ -73,6 +81,91 @@ for (const [id, key] of [
         assert.equal(input.disabled, false);
         assert.equal(input.checked, false);
         assert.equal(input.children[0].textContent, 'Saved.');
+    });
+}
+
+test('theme saves once, applies only after confirmation and preserves dark appearance', async () => {
+    const h = fixture();
+    let finish;
+    h.fields.settingsThemeFamily.value = 'harbor';
+    h.setReply(() => new Promise(resolve => { finish = resolve; }));
+    const pending = h.fields.settingsThemeFamily.fire('change');
+    await h.fields.settingsThemeFamily.fire('change');
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.documentElement.dataset.sbFamily, 'graphite');
+    assert.equal(h.fields.settingsThemeFamily.disabled, true);
+    assert.equal(h.requests[0].url, '/api/preferences/theme-family');
+    assert.deepEqual(JSON.parse(h.requests[0].options.body), {theme_family: 'harbor'});
+    finish({ok: true, json: async () => ({theme_family: 'harbor'})});
+    await pending;
+    assert.equal(h.documentElement.dataset.sbFamily, 'harbor');
+    assert.equal(h.documentElement.dataset.sbMode, 'dark');
+    assert.equal(h.documentElement.dataset.bsTheme, 'dark');
+    assert.equal(h.fields.settingsThemeResult.textContent, 'Saved.');
+    assert.equal(h.fields.settingsThemeFamily.disabled, false);
+});
+
+test('specialty saves only the preference with duplicate writes guarded', async () => {
+    const h = fixture();
+    let finish;
+    h.fields.settingsSeSpecialty.value = 'apps_ai';
+    h.setReply(() => new Promise(resolve => { finish = resolve; }));
+    const pending = h.fields.settingsSeSpecialty.fire('change');
+    await h.fields.settingsSeSpecialty.fire('change');
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.fields.settingsSeSpecialty.disabled, true);
+    assert.equal(h.requests[0].url, '/api/preferences/se-specialty');
+    assert.deepEqual(JSON.parse(h.requests[0].options.body), {se_specialty: 'apps_ai'});
+    finish({ok: true, json: async () => ({se_specialty: 'apps_ai'})});
+    await pending;
+    assert.equal(h.fields.settingsSeSpecialty.value, 'apps_ai');
+    assert.equal(h.fields.settingsSeSpecialty.disabled, false);
+    assert.equal(h.fields.settingsSeSpecialtyResult.textContent, 'Saved.');
+    assert.deepEqual(h.documentElement.dataset,
+        {bsTheme: 'dark', sbMode: 'dark', sbFamily: 'graphite'});
+});
+
+for (const [name, reply] of [
+    ['network', new Error('Offline')],
+    ['HTTP', {ok: false, status: 403, json: async () => ({error: 'SE Mode only'})}],
+    ['unconfirmed', {ok: true, json: async () => ({se_specialty: 'other'})}],
+]) {
+    test(`${name} specialty failure rolls back and permits retry`, async () => {
+        const h = fixture();
+        h.fields.settingsSeSpecialty.value = 'infra';
+        h.setReply(reply);
+        await h.fields.settingsSeSpecialty.fire('change');
+        assert.equal(h.fields.settingsSeSpecialty.value, 'data');
+        assert.equal(h.fields.settingsSeSpecialty.disabled, false);
+        assert.match(h.fields.settingsSeSpecialtyResult.textContent, /Could not save specialty/);
+        assert.equal(h.fields.settingsSeSpecialtyResult.attributes.role, 'alert');
+    });
+}
+
+test('DSS settings initialize safely without a specialty picker', async () => {
+    const h = fixture({seMode: false});
+    h.fields.settingsThemeFamily.value = 'carbon';
+    h.setReply({ok: true, json: async () => ({theme_family: 'carbon'})});
+    await h.fields.settingsThemeFamily.fire('change');
+    assert.equal(h.documentElement.dataset.sbFamily, 'carbon');
+    assert.equal(h.requests.length, 1);
+});
+
+for (const [name, reply] of [
+    ['network', new Error('Offline')],
+    ['HTTP', {ok: false, status: 500, json: async () => ({error: 'Unavailable'})}],
+    ['unconfirmed', {ok: true, json: async () => ({theme_family: 'carbon'})}],
+]) {
+    test(`${name} theme failure restores the confirmed picker and stays retryable`, async () => {
+        const h = fixture();
+        h.fields.settingsThemeFamily.value = 'midnight';
+        h.setReply(reply);
+        await h.fields.settingsThemeFamily.fire('change');
+        assert.equal(h.fields.settingsThemeFamily.value, 'graphite');
+        assert.equal(h.documentElement.dataset.sbFamily, 'graphite');
+        assert.equal(h.fields.settingsThemeFamily.disabled, false);
+        assert.match(h.fields.settingsThemeResult.textContent, /Could not save theme/);
+        assert.equal(h.fields.settingsThemeResult.attributes.role, 'alert');
     });
 }
 

@@ -86,7 +86,7 @@ test('base loads the bridge synchronously before the tokens and defaults to Grap
     const bridge = template.match(/<script[^>]+js\/ui-theme\.js[^>]*>/)[0];
     assert.doesNotMatch(bridge, /\b(?:async|defer)\b/);
     assert.ok(template.indexOf('js/ui-theme.js') < template.indexOf('css/ui-tokens.css'));
-    assert.match(template, /<html[^>]+data-sb-family="graphite"/);
+    assert.match(template, /data-sb-family="{{ theme_family\|default\('graphite'\) }}"/);
     assert.ok(template.indexOf('js/ui-theme.js') > template.indexOf('osPrefersDark'));
 });
 

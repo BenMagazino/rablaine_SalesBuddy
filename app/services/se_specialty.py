@@ -1,8 +1,14 @@
-"""SE specialty defaults and read-only visibility checks without settings UI."""
+"""SE specialty choices, defaults and read-only visibility checks."""
 
 from app.models import UserPreference
 
 DEFAULT_SE_SPECIALTY = 'data'
+SE_SPECIALTIES = {
+    'data': 'Data SE',
+    'infra': 'Core / Infra SE',
+    'apps_ai': 'Apps and AI SE',
+    'other': 'Other',
+}
 
 
 def is_data_se() -> bool:

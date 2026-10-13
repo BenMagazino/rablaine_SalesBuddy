@@ -13,7 +13,7 @@
 {% block footer %}
 <footer class="sb-page-status" aria-label="Page status">
     <span>Preferences apply to this Sales Buddy installation</span>
-    <span>Toggles save immediately · Prompt and defaults save separately</span>
+    <span>Appearance and toggles save immediately · Prompt and defaults save separately</span>
 </footer>
 {% endblock %}
 
@@ -35,6 +35,17 @@
                 <h5 class="sb-admin-mb-0"><i class="bi bi-palette"></i> Appearance</h5>
             </div>
             <div class="sb-admin-section-content">
+                <div class="sb-admin-mb-3 sb-settings-theme">
+                    <label class="sb-admin-label" for="settingsThemeFamily">Theme</label>
+                    <select class="sb-admin-field" id="settingsThemeFamily"
+                            aria-describedby="settingsThemeHelp settingsThemeResult">
+                        {% for value, label in theme_families.items() %}
+                        <option value="{{ value }}"{{ ' selected' if theme_family == value else '' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="sb-admin-help" id="settingsThemeHelp">Each theme supports light and dark appearance. Your choice saves immediately.</p>
+                    <p class="sb-admin-help" id="settingsThemeResult" role="status" aria-live="polite"></p>
+                </div>
                 <div class="sb-admin-check">
                     <label class="sb-theme-switch" for="settingsDarkModeSwitch">
                         <span><i class="bi bi-sun-fill" aria-hidden="true"></i> Light</span>
@@ -46,6 +57,31 @@
                 </div>
             </div>
         </section>
+
+        {% if user_role == 'se' %}
+        <section class="sb-admin-section sb-admin-mb-4">
+            <div class="sb-admin-section-heading">
+                <h5 class="sb-admin-mb-0"><i class="bi bi-person"></i> SE Mode</h5>
+            </div>
+            <div class="sb-admin-section-content">
+                <div class="sb-settings-specialty">
+                    <label class="sb-admin-label" for="settingsSeSpecialty">Specialty</label>
+                    {% set selected_specialty = pref.se_specialty if pref else 'data' %}
+                    <select class="sb-admin-field" id="settingsSeSpecialty"
+                            aria-describedby="settingsSeSpecialtyHelp settingsSeSpecialtyResult">
+                        {% if selected_specialty not in se_specialties %}
+                        <option value="" disabled selected>Choose your specialty</option>
+                        {% endif %}
+                        {% for value, label in se_specialties.items() %}
+                        <option value="{{ value }}"{{ ' selected' if selected_specialty == value else '' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="sb-admin-help" id="settingsSeSpecialtyHelp">Saves immediately. Stored for future specialty-specific features; does not change your current experience.</p>
+                    <p class="sb-admin-help" id="settingsSeSpecialtyResult" role="status" aria-live="polite"></p>
+                </div>
+            </div>
+        </section>
+        {% endif %}
 
         <!-- Dashboard -->
         <section class="sb-admin-section sb-admin-mb-4">

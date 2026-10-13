@@ -984,6 +984,7 @@ def _global_data_to_dict() -> Dict[str, Any]:
         noncust_tmpl = pref.default_template_noncustomer
         prefs_data = {
             "dark_mode": pref.dark_mode,
+            "theme_family": pref.theme_family,
             "se_specialty": pref.se_specialty,
             "customer_view_grouped": pref.customer_view_grouped,
             "customer_sort_by": pref.customer_sort_by,
@@ -1559,6 +1560,7 @@ def restore_global_data(data: Dict[str, Any]) -> Dict[str, Any]:
         # Older backups must not reset an existing SE specialty. New preferences default to Data.
         pref_fields = [
             "dark_mode",
+            "theme_family",
             "se_specialty",
             "customer_view_grouped",
             "customer_sort_by",

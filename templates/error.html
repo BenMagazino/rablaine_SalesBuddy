@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-sb-family="graphite"{% if dark_mode is not none %} data-sb-mode="{{ 'dark' if dark_mode else 'light' }}"{% endif %}>
+<html lang="en" data-sb-family="{{ theme_family|default('graphite') }}"{% if dark_mode is not none %} data-sb-mode="{{ 'dark' if dark_mode else 'light' }}"{% endif %}>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
