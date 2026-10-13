@@ -250,3 +250,248 @@ function createFindBar() {
 }
 
 window.addEventListener('DOMContentLoaded', createFindBar);
+
+function mountShellTitleBar() {
+  if (process.platform !== 'win32' || window !== window.top) return;
+  if (document.getElementById('sb-shell-titlebar')) return;
+  const root = document.documentElement;
+  const style = document.createElement('style');
+  style.textContent = `
+    #sb-shell-titlebar {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      flex: 0 0 32px;
+      height: 32px;
+      padding: 0 150px 0 12px;
+      background: var(--sb-ui-header, #292d32);
+      color: var(--sb-ui-ink, #e7eaf0);
+      font: 12px/1 "Segoe UI", sans-serif;
+      -webkit-app-region: drag;
+      user-select: none;
+      overflow: hidden;
+    }
+    #sb-shell-titlebar span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  `;
+  document.head.appendChild(style);
+  const bar = document.createElement('header');
+  bar.id = 'sb-shell-titlebar';
+  bar.setAttribute('aria-label', 'Window title');
+  const title = document.createElement('span');
+  title.textContent = document.title || 'Sales Buddy';
+  bar.appendChild(title);
+  document.body.prepend(bar);
+  mountShellMenu(bar);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  const context = canvas.getContext('2d', {willReadFrequently: true});
+  function color(token) {
+    const value = getComputedStyle(root).getPropertyValue(token).trim();
+    if (!value || !CSS.supports('color', value)) throw new Error(`Missing theme token ${token}`);
+    context.clearRect(0, 0, 1, 1);
+    context.fillStyle = value;
+    context.fillRect(0, 0, 1, 1);
+    const pixel = context.getImageData(0, 0, 1, 1).data;
+    return '#' + [...pixel].slice(0, 3).map(n => n.toString(16).padStart(2, '0')).join('');
+  }
+  function syncTheme() {
+    try {
+      ipcRenderer.send('shell:theme', {
+        mode: root.dataset.sbMode,
+        family: root.dataset.sbFamily,
+        color: color('--sb-ui-header'),
+        symbolColor: color('--sb-ui-ink'),
+        backgroundColor: color('--sb-ui-canvas'),
+      });
+    } catch (error) {
+      console.error('Could not synchronize Sales Buddy shell theme:', error);
+    }
+  }
+  let themeReady = document.readyState !== 'loading';
+  new MutationObserver(() => {
+    if (themeReady) syncTheme();
+  }).observe(root, {
+    attributes: true, attributeFilter: ['data-sb-mode', 'data-sb-family'],
+  });
+  new MutationObserver(() => {
+    const nextTitle = document.title || 'Sales Buddy';
+    if (title.textContent !== nextTitle) title.textContent = nextTitle;
+  }).observe(document.head, {childList: true, subtree: true, characterData: true});
+  if (themeReady) syncTheme();
+  else window.addEventListener('DOMContentLoaded', () => {
+    themeReady = true;
+    syncTheme();
+  }, {once: true});
+}
+
+function startShellChrome() {
+  if (process.platform !== 'win32' || window !== window.top) return;
+  if (document.head && document.body) {
+    mountShellTitleBar();
+    return;
+  }
+  const observer = new MutationObserver(() => {
+    if (!document.head || !document.body) return;
+    observer.disconnect();
+    mountShellTitleBar();
+  });
+  observer.observe(document, {childList: true, subtree: true});
+}
+
+startShellChrome();
+
+function mountShellMenu(titleBar) {
+  const style = document.createElement('style');
+  style.textContent = `
+    #sb-shell-menubar {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      flex: 0 0 28px;
+      height: 28px;
+      padding: 0 4px;
+      background: var(--sb-ui-header, #292d32);
+      border-bottom: 1px solid var(--sb-ui-line, #414954);
+      color: var(--sb-ui-ink, #e7eaf0);
+      font: 12px/1 "Segoe UI", sans-serif;
+      -webkit-app-region: no-drag;
+    }
+    #sb-shell-menubar button {
+      height: 26px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+    }
+    #sb-shell-menubar:not(:has([aria-expanded="true"])) button:hover:not(:disabled) {
+      background: var(--sb-ui-raised, #38404a);
+    }
+    #sb-shell-menubar button:focus-visible {
+      outline: 1px solid var(--sb-ui-accent, #9bbfe8);
+      outline-offset: -2px;
+    }
+    #sb-shell-menubar button[aria-expanded="true"] {
+      background: var(--sb-ui-raised, #38404a);
+    }
+    #sb-shell-menubar button:disabled { color: var(--sb-ui-muted, #aab4c0); opacity: .5; }
+    #sb-shell-menu-error { padding: 0 12px; color: var(--sb-ui-danger, #f1a3a3); }
+  `;
+  document.head.appendChild(style);
+  const menuBar = document.createElement('nav');
+  menuBar.id = 'sb-shell-menubar';
+  menuBar.setAttribute('role', 'menubar');
+  menuBar.setAttribute('aria-label', 'Desktop application menu');
+  titleBar.after(menuBar);
+  const error = document.createElement('span');
+  error.id = 'sb-shell-menu-error';
+  error.setAttribute('role', 'alert');
+  let buttons = [];
+  let activeMenu = null;
+  let contentFocus = document.activeElement;
+  document.addEventListener('focusin', event => {
+    if (!menuBar.contains(event.target)) contentFocus = event.target;
+  });
+  function report(message) {
+    error.textContent = message;
+    console.error('Sales Buddy shell menu:', message);
+  }
+  async function open(button, toggle = false) {
+    if (!button || button.disabled) return;
+    error.textContent = '';
+    const rect = button.getBoundingClientRect();
+    try {
+      contentFocus?.focus({preventScroll: true});
+      const result = await ipcRenderer.invoke('shell:menu-open', {
+        index: Number(button.dataset.index), x: rect.left, y: rect.bottom,
+        toggle,
+        rects: buttons.filter(button => button.hasAttribute('aria-haspopup')).map(button => {
+          const bounds = button.getBoundingClientRect();
+          return {index: Number(button.dataset.index), left: bounds.left, right: bounds.right,
+            top: bounds.top, bottom: bounds.bottom};
+        }),
+      });
+      if (result.error) report(result.error);
+    } catch (failure) {
+      report(`Could not open the application menu. ${failure.message}`);
+    }
+  }
+  function render(items) {
+    const activeIndex = menuBar.contains(document.activeElement)
+      ? document.activeElement.dataset.index : undefined;
+    menuBar.replaceChildren();
+    buttons = items.filter(item => item.visible).map(item => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = item.label.replace(/&/g, '');
+      button.dataset.index = String(item.index);
+      button.disabled = !item.enabled;
+      button.setAttribute('role', 'menuitem');
+      if (item.submenu) {
+        button.setAttribute('aria-haspopup', 'menu');
+        button.setAttribute('aria-expanded', String(item.index === activeMenu));
+      }
+      button.tabIndex = item.index === 0 ? 0 : -1;
+      button.addEventListener('mousedown', event => event.preventDefault());
+      button.addEventListener('click', () => open(button, true));
+      menuBar.appendChild(button);
+      return button;
+    });
+    menuBar.appendChild(error);
+    if (activeIndex !== undefined) {
+      buttons.find(button => button.dataset.index === activeIndex)?.focus();
+    }
+  }
+  menuBar.addEventListener('keydown', event => {
+    const enabled = buttons.filter(button => !button.disabled);
+    if (!enabled.length) return;
+    const index = enabled.indexOf(document.activeElement);
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? enabled.length - 1 :
+        (index + (event.key === 'ArrowRight' ? 1 : -1) + enabled.length) % enabled.length;
+      for (const button of buttons) button.tabIndex = -1;
+      enabled[next].tabIndex = 0;
+      enabled[next].focus();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      open(document.activeElement);
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'F10' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      buttons.find(button => !button.disabled)?.focus();
+    } else if (event.altKey && !event.ctrlKey && !event.metaKey && event.key.length === 1) {
+      const button = buttons.find(button =>
+        button.getAttribute('aria-haspopup') && button.textContent[0].toLowerCase() ===
+          event.key.toLowerCase());
+      if (button) {
+        event.preventDefault();
+        open(button);
+      }
+    }
+  }, true);
+  ipcRenderer.on('shell:menu-state', (_event, items) => render(items));
+  ipcRenderer.on('shell:menu-active', (_event, index) => {
+    activeMenu = index;
+    for (const button of buttons) {
+      if (button.hasAttribute('aria-haspopup')) {
+        button.setAttribute('aria-expanded', String(Number(button.dataset.index) === index));
+      }
+    }
+  });
+  ipcRenderer.on('shell:menu-error', (_event, message) => report(message));
+  try {
+    const result = ipcRenderer.sendSync('shell:menu-initial');
+    if (result.error) report(result.error);
+    else render(result.items);
+  } catch (failure) {
+    report(`Could not load the application menu. ${failure.message}`);
+  }
+}

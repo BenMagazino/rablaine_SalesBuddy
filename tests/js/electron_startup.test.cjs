@@ -5,19 +5,23 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-function shellHarness({ boot = false, minimized = false } = {}) {
+function shellHarness({ boot = false, minimized = false, cachedTheme = null,
+  devClient = false } = {}) {
   let now = 0;
   let nextTimer = 0;
   const timers = new Map();
   const requests = [];
   const logs = [];
   const openedWindows = [];
+  const stdout = new EventEmitter();
+  stdout.write = () => {};
   let bootCallback;
   const source = fs.readFileSync(path.join(__dirname, '..', '..', 'electron', 'main.js'), 'utf8');
   const electron = {
     app: {
       isPackaged: false, requestSingleInstanceLock: () => boot, quit() {},
-      on() {}, setAppUserModelId() {},
+      getPath: () => 'C:\\test-shell-profile',
+      on() {}, setAppUserModelId() {}, setPath() {},
       whenReady: () => ({ then: (callback) => { bootCallback = callback; } }),
     },
     BrowserWindow: function (options) {
@@ -39,8 +43,12 @@ function shellHarness({ boot = false, minimized = false } = {}) {
       if (name === 'electron') return electron;
       if (name === './package.json') return { version: 'test' };
       if (name === './status-screen') return require('../../electron/status-screen');
+      if (name === './shell-theme') return require('../../electron/shell-theme');
+      if (name === './shell-menu') return require('../../electron/shell-menu');
       if (name === 'fs') return {
-        readFileSync: () => '', mkdirSync() {}, existsSync: () => true,
+        readFileSync: file => file.endsWith('shell-theme.json') && cachedTheme
+          ? JSON.stringify(cachedTheme) : '',
+        writeFileSync() {}, mkdirSync() {}, existsSync: () => true,
         openSync: () => 1, unlinkSync() {},
         appendFileSync: (_file, line) => logs.push(line),
       };
@@ -61,8 +69,9 @@ function shellHarness({ boot = false, minimized = false } = {}) {
     __dirname: path.join(__dirname, '..', '..', 'electron'),
     process: {
       env: {}, platform: 'win32',
-      argv: minimized ? ['electron', 'main.js', '--minimized', '--other'] : ['electron', 'main.js'],
-      stdout: { write() {} },
+      argv: ['electron', 'main.js', ...(minimized ? ['--minimized', '--other'] : []),
+        ...(devClient ? ['--dev-client'] : [])],
+      stdout,
     },
     URL,
     Date: class extends Date { static now() { return now; } },
@@ -92,7 +101,7 @@ function shellHarness({ boot = false, minimized = false } = {}) {
     }
   }
   return {
-    api: context.api, requests, logs, timers, tick, electron, openedWindows,
+    api: context.api, requests, logs, timers, tick, electron, openedWindows, stdout,
     boot: () => bootCallback(),
   };
 }
@@ -100,6 +109,10 @@ function shellHarness({ boot = false, minimized = false } = {}) {
 function fakeWindow() {
   const win = new EventEmitter();
   win.webContents = new EventEmitter();
+  win.webContents.ipc = new EventEmitter();
+  win.webContents.ipc.handle = () => {};
+  win.webContents.send = () => {};
+  win.webContents.isDestroyed = () => false;
   win.webContents.setWindowOpenHandler = () => {};
   win.loaded = [];
   win.destroyed = false;
@@ -127,6 +140,61 @@ test('startup exceeds 60 seconds without loading an unavailable backend', () => 
   assert.equal(ready, 1);
   assert.equal(harness.timers.size, 0);
   assert.ok(harness.logs.some((line) => line.includes('continuing readiness checks')));
+});
+
+test('new startup windows use the saved caption colors and bundled palette before Flask is ready', () => {
+  const cachedTheme = {mode: 'light', family: 'carbon', color: '#e9e2d6',
+    symbolColor: '#25211b', backgroundColor: '#f0ece5'};
+  const h = shellHarness({cachedTheme});
+  h.api.setBooting(true);
+  const win = h.api.openNewWindow();
+  assert.equal(win.options.titleBarStyle, 'hidden');
+  assert.equal(win.options.titleBarOverlay.color, cachedTheme.color);
+  assert.equal(win.options.titleBarOverlay.symbolColor, cachedTheme.symbolColor);
+  assert.equal(win.options.backgroundColor, cachedTheme.backgroundColor);
+  const html = decodeURIComponent(win.loaded[0]);
+  assert.ok(html.includes('data-sb-family="carbon"'));
+  assert.ok(html.includes('data-sb-mode="light"'));
+});
+
+test('dev client uses live port 5000 and disables backend restart and update actions', () => {
+  const h = shellHarness({boot:true,devClient:true});
+  h.boot();
+  assert.equal(h.requests[0].url,'http://localhost:5000/health');
+  h.requests[0].respond(200);
+  assert.ok(h.openedWindows[0].loaded.includes('http://localhost:5000/'));
+  const file = h.electron.menuTemplates.at(-1).find(item=>item.label==='File');
+  assert.equal(file.submenu.find(item=>item.label==='Restart Backend').enabled,false);
+  assert.equal(file.submenu.find(item=>item.label==='Check for Updates...').enabled,false);
+  assert.ok(!h.logs.some(line=>line.includes('Starting supervisor:')));
+});
+
+test('a disconnected launch console does not interrupt startup or file logging', () => {
+  for (const asynchronous of [false, true]) {
+    const h = shellHarness({boot:true,devClient:true});
+    const error = Object.assign(new Error('broken pipe'), {code:'EPIPE'});
+    if (asynchronous) h.stdout.emit('error', error);
+    else h.stdout.write = () => { throw error; };
+    assert.doesNotThrow(() => h.boot());
+    h.requests[0].respond(200);
+    assert.ok(h.openedWindows[0].loaded.includes('http://localhost:5000/'));
+    assert.ok(h.logs.some(line => line.includes('console pipe closed (EPIPE)')));
+    assert.ok(h.logs.some(line => line.includes('Electron ready')));
+  }
+});
+
+test('unexpected console errors are not hidden by broken-pipe handling', () => {
+  const h = shellHarness();
+  const error = Object.assign(new Error('unexpected output failure'), {code:'EIO'});
+  assert.throws(() => h.stdout.emit('error', error), /unexpected output failure/);
+});
+
+test('closing the last dev-client window does not hide it to an absent tray', () => {
+  const h = shellHarness({devClient:true});
+  const win = h.api.openNewWindow();
+  let prevented = false;
+  win.emit('close', {preventDefault: () => { prevented = true; }});
+  assert.equal(prevented, false);
 });
 
 test('request timeout and subsequent error schedule just one retry', () => {

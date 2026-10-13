@@ -30,6 +30,8 @@ def create_app():
     app = Flask(__name__, 
                 template_folder='../templates',
                 static_folder='../static')
+    from app.static_assets import register_static_asset_cache
+    register_static_asset_cache(app)
     
     # Configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
