@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.join(__dirname, '../../static/js/ui-note-for
 const template = fs.readFileSync(path.join(__dirname, '../../templates/note_form.html'), 'utf8')
     .replace(/\r\n/g, '\n');
 
-function fixture() {
+function fixture({submit = null, modal = false} = {}) {
     const handlers = {};
     class Dialog {
         constructor() {
@@ -26,12 +26,37 @@ function fixture() {
     vm.runInNewContext(source, {window, queueMicrotask,
         HTMLDialogElement: Dialog,
         document: {addEventListener: (type, handler) => { handlers[type] = handler; },
-            getElementById: () => notice, querySelector: () => null, querySelectorAll: () => []},
+            getElementById: () => notice,
+            querySelector: selector => selector === '#noteForm button[type="submit"]' ?
+                submit : modal,
+            querySelectorAll: () => []},
         SBDialog: {open: dialog => { dialog.open = true; dialog.listeners['sb:dialog-opening'](); calls.push('open'); },
             close: dialog => { dialog.open = false; dialog.listeners['sb:dialog-closed'](); calls.push('close'); }},
     });
     return {api: window.SBNoteForm, Dialog, notice, handlers, calls};
 }
+
+test('rich note save binding clicks the existing button and suppresses Quill newline handling', () => {
+    let clicks = 0;
+    const submit = {disabled: false, click() { clicks++; }};
+    const {api} = fixture({submit});
+    const binding = template.match(/saveNote:\s*(\{[\s\S]*?\n\s{16}\}),/)[1];
+    const config = vm.runInNewContext(`(${binding})`, {SBNoteForm: api});
+    assert.equal(config.key, 13);
+    assert.equal(config.shortKey, true);
+    assert.equal(config.handler(), false);
+    assert.equal(clicks, 1);
+    submit.disabled = true;
+    assert.equal(config.handler(), false);
+    assert.equal(clicks, 1);
+});
+
+test('rich note shortcut cannot save underneath an open modal or without a save control', () => {
+    let clicks = 0;
+    fixture({submit: {click() { clicks++; }}, modal: true}).api.save();
+    fixture().api.save();
+    assert.equal(clicks, 0);
+});
 
 test('dialog handles reuse SBDialog and preserve queued focus-listener registration', async () => {
     const {api, Dialog, calls} = fixture();

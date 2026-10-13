@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/13/2026
+
+- Restore Ctrl+Enter saving from the rich-text note editor without bypassing save validation.
+
 ## 10/13/2026 - 7b08b5a9
 
 - Import customer-wide Fabric reserved-instance and PAYG revenue with Fabric 360, including fiscal YTD totals and monthly splits.

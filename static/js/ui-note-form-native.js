@@ -37,6 +37,11 @@
             button.parentElement.querySelector('.sb-nf-dropdown-menu')?.classList.remove('show');
         });
     }
+    function save() {
+        if (document.querySelector('.sb-dialog[open]:not([data-sb-nonmodal="true"])')) return;
+        const submit = document.querySelector('#noteForm button[type="submit"]');
+        if (submit && !submit.disabled) submit.click();
+    }
     document.addEventListener('click', event => {
         const button = event.target.closest('[data-sb-note-menu]');
         if (button) {
@@ -74,5 +79,5 @@
                 ?.focus();
         }
     });
-    window.SBNoteForm = Object.freeze({dialog, expand, report});
+    window.SBNoteForm = Object.freeze({dialog, expand, report, save});
 })();
