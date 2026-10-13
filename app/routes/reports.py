@@ -508,7 +508,8 @@ def reports_hub():
                     'name': 'Fabric Consumption',
                     'description': (
                         'Manually import Fabric workload usage and capacity utilization '
-                        'for your customers. Inspect SKU consumption and throttling.'
+                        'for your customers. Inspect SKU consumption, throttling, '
+                        'and monthly RI/PAYG revenue.'
                     ),
                     'icon': 'bi-pie-chart',
                     'url': url_for('reports.report_fabric_consumption'),

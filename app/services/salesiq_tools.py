@@ -119,6 +119,8 @@ def execute_tool(name: str, params: dict) -> Any:
     'report_fabric_consumption',
     'Read the saved Fabric workload mix and capacity utilization snapshot. '
     'Includes all customer coverage and optional customer capacity detail. '
+    'Customer detail includes saved fiscal YTD and monthly reserved-instance versus PAYG revenue, '
+    'not reservation inventory or per-capacity coverage. '
     'Set overview=true for one row per capacity with customer-wide workload shares. '
     'Does not import or refresh data.',
     {'type': 'object', 'properties': {

@@ -13,21 +13,41 @@ from flask import current_app
 from sqlalchemy.orm import joinedload
 
 from app.models import Customer, FabricConsumptionImport, FabricConsumptionRecord, SyncStatus, db
-from app.services.fabric_consumption_pull import FabricPullError, pull_fabric_consumption
+from app.services.fabric_consumption_pull import (
+    FabricPullError, pull_fabric_consumption, pull_fabric_revenue, validate_revenue_payload,
+)
 
 logger = logging.getLogger(__name__)
 SYNC_TYPE = "fabric_consumption"
 HEARTBEAT_INTERVAL_SECONDS = min(20, SyncStatus.HEARTBEAT_ALIVE_SECONDS / 3)
 _IMPORT_LOCK = threading.Lock()
+REVENUE_SYNC_TYPE = "fabric_revenue"
+_REVENUE_KINDS = {"revenue_summary": "revenue_summary", "revenue_months": "revenue_month"}
 _KINDS = {
     "customer_totals": "customer", "workload_totals": "workload_total",
     "customer_workloads": "workload_summary",
     "workloads": "workload", "capacities": "capacity", "trends": "trend",
+    **_REVENUE_KINDS,
 }
 _DIMENSIONS = {
     "tpid", "tenant_id", "capacity_id", "sku", "observed_at",
     "workload", "artifact_kind", "operation",
+    "fiscal_month", "fiscal_month_id", "reporting_fiscal_month_id",
 }
+
+
+def _current_tpids(customers: list) -> list[int]:
+    """Use exact positive TPIDs; never truncate a malformed fractional account identifier."""
+    values = []
+    for customer in customers:
+        value = customer.tpid
+        if value is None or isinstance(value, int) and not isinstance(value, bool) and value <= 0:
+            continue
+        if isinstance(value, bool) or not str(value).isdigit():
+            raise FabricPullError("A local customer has an invalid TPID. Correct it before importing.")
+        if int(value) > 0:
+            values.append(int(value))
+    return sorted(set(values))
 
 
 def _number(value: Any) -> float | None:
@@ -79,6 +99,14 @@ def _metrics(row: dict, kind: str) -> dict:
             metrics[name.replace("_ratio", "_pct")] = (
                 metrics[name] * 100 if metrics[name] is not None else None
             )
+    if kind in _REVENUE_KINDS.values():
+        metrics["reservation_share_pct"] = (
+            metrics["reservation_share_ratio"] * 100
+            if metrics.get("reservation_share_ratio") is not None else None
+        )
+        for field in ("fiscal_month_id", "reporting_fiscal_month_id"):
+            if field in metrics and metrics[field] is not None:
+                metrics[field] = int(metrics[field])
     if kind in ("capacity", "trend"):
         interactive = _number(row.get("interactive_cu_seconds"))
         background = _number(row.get("background_cu_seconds"))
@@ -113,12 +141,16 @@ def _validate_pull(payload: dict, tpids: set[int]) -> None:
                 raise FabricPullError("Fabric returned a row without a valid TPID.") from exc
             if tpid not in tpids:
                 raise FabricPullError("Fabric returned an account outside the requested scope.")
-            if (name not in ("customer_totals", "customer_workloads")
+            if (name not in ("customer_totals", "customer_workloads", *_REVENUE_KINDS)
                     and not row.get("capacity_id")):
                 raise FabricPullError("Fabric returned a row without its capacity grain.")
             if name == "trends" and row.get("observed_at") is None:
                 raise FabricPullError("Fabric returned a trend without its timestamp.")
-    if not any(payload[name] for name in _KINDS):
+    validate_revenue_payload({
+        "metadata": metadata.get("revenue"),
+        **{name: payload[name] for name in _REVENUE_KINDS},
+    }, tpids)
+    if not any(payload[name] for name in _KINDS if name not in _REVENUE_KINDS):
         raise FabricPullError(
             "Fabric returned no consumption data. The previous import is retained."
         )
@@ -184,7 +216,8 @@ def sync_fabric_consumption(
     """
     if not _IMPORT_LOCK.acquire(blocking=False):
         return {"success": False, "error": "A Fabric import is already running."}
-    owns_claim = claimed
+    owns_claim = False
+    claim_started_at = None
     heartbeat_stop = threading.Event()
     heartbeat_thread = None
     try:
@@ -192,6 +225,13 @@ def sync_fabric_consumption(
             if not SyncStatus.try_mark_started(SYNC_TYPE):
                 return {"success": False, "error": "A Fabric import is already running."}
             owns_claim = True
+        status = SyncStatus.query.filter_by(sync_type=SYNC_TYPE).first()
+        if (status is None or status.started_at is None or status.completed_at is not None
+                or status.success is not None
+                or SyncStatus.get_status(SYNC_TYPE)["state"] != "in_progress"):
+            raise FabricPullError("A full Fabric import requires an active telemetry import claim.")
+        claim_started_at = status.started_at
+        owns_claim = True
         flask_app = current_app._get_current_object()
 
         def heartbeat() -> None:
@@ -199,23 +239,35 @@ def sync_fabric_consumption(
             while not heartbeat_stop.wait(HEARTBEAT_INTERVAL_SECONDS):
                 try:
                     with flask_app.app_context():
-                        SyncStatus.update_heartbeat(SYNC_TYPE)
+                        status = SyncStatus.query.filter_by(
+                            sync_type=SYNC_TYPE, started_at=claim_started_at,
+                            completed_at=None, success=None,
+                        ).first()
+                        if status is not None:
+                            SyncStatus.update_heartbeat(SYNC_TYPE)
                 except Exception:
                     logger.exception("Could not update Fabric import heartbeat")
 
         def report_progress(event: dict) -> None:
             """Persist progress for polling clients without committing snapshot writes."""
-            status = SyncStatus.query.filter_by(sync_type=SYNC_TYPE).first()
-            if status:
-                status.details = json.dumps(event)
-                status.heartbeat_at = datetime.now(timezone.utc)
-                db.session.commit()
+            if event.get("sync_type", SYNC_TYPE) != SYNC_TYPE:
+                raise FabricPullError("Revenue-only progress cannot update telemetry import status.")
+            status = SyncStatus.query.filter_by(
+                sync_type=SYNC_TYPE, started_at=claim_started_at,
+                completed_at=None, success=None,
+            ).first()
+            if status is None:
+                raise FabricPullError("The full Fabric import no longer owns its telemetry claim.")
+            status.details = json.dumps(event)
+            status.heartbeat_at = datetime.now(timezone.utc)
+            db.session.commit()
             if progress:
                 progress(event)
 
         heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
         heartbeat_thread.start()
         customers = Customer.query.order_by(Customer.id).all()
+        _current_tpids(customers)
         mapping = {int(customer.tpid): customer.id for customer in customers
                    if customer.tpid and customer.tpid > 0}
         if not mapping:
@@ -235,6 +287,8 @@ def sync_fabric_consumption(
         db.session.flush()
         observed: list[datetime] = []
         for name, kind in _KINDS.items():
+            if name in _REVENUE_KINDS:
+                continue
             for row in payload[name]:
                 stamp = _source_datetime(row.get("observed_at"))
                 if stamp:
@@ -244,6 +298,10 @@ def sync_fabric_consumption(
                     tpid=int(row["tpid"]), kind=kind, capacity_id=row.get("capacity_id"),
                     sku=row.get("sku"), observed_at=stamp, metrics_json=_metrics(row, kind),
                 ))
+        _stage_revenue(snapshot, {
+            "metadata": payload["metadata"]["revenue"],
+            **{name: payload[name] for name in _REVENUE_KINDS},
+        }, customers, snapshot.imported_at)
         snapshot.source_as_of = max(observed) if observed else None
         # Replacement and insertion share one transaction: a failed write keeps
         # the previous complete snapshot and avoids unbounded time-series storage.
@@ -259,12 +317,15 @@ def sync_fabric_consumption(
             "capacity_row_count": snapshot.capacity_row_count,
             "trend_row_count": snapshot.trend_row_count,
         }
-        status = SyncStatus.query.filter_by(sync_type=SYNC_TYPE).first()
-        if status:
-            status.completed_at = datetime.now(timezone.utc)
-            status.success = True
-            status.items_synced = snapshot.customer_count
-            status.details = json.dumps({"phase": "complete", "progress": 100, **result})
+        status = SyncStatus.query.filter_by(
+            sync_type=SYNC_TYPE, started_at=claim_started_at, completed_at=None, success=None,
+        ).first()
+        if status is None:
+            raise FabricPullError("The full Fabric import no longer owns its telemetry claim.")
+        status.completed_at = datetime.now(timezone.utc)
+        status.success = True
+        status.items_synced = snapshot.customer_count
+        status.details = json.dumps({"phase": "complete", "progress": 100, **result})
         db.session.commit()
         if progress:
             try:
@@ -278,11 +339,16 @@ def sync_fabric_consumption(
         message = str(exc) if isinstance(exc, FabricPullError) else (
             "Fabric import failed. Your previous successful import is unchanged."
         )
-        if owns_claim:
+        if owns_claim and claim_started_at is not None:
             try:
-                SyncStatus.mark_completed(SYNC_TYPE, success=False, details=json.dumps({
-                    "phase": "failed", "success": False, "error": message,
-                }))
+                SyncStatus.query.filter_by(
+                    sync_type=SYNC_TYPE, started_at=claim_started_at,
+                    completed_at=None, success=None,
+                ).update({
+                    "completed_at": datetime.now(timezone.utc), "success": False,
+                    "details": json.dumps({"phase": "failed", "success": False, "error": message}),
+                }, synchronize_session=False)
+                db.session.commit()
             except Exception:
                 db.session.rollback()
                 logger.exception("Could not persist failed Fabric import status")
@@ -292,6 +358,182 @@ def sync_fabric_consumption(
         if heartbeat_thread and heartbeat_thread.is_alive():
             heartbeat_thread.join()
         _IMPORT_LOCK.release()
+
+
+def _stage_revenue(snapshot, payload: dict, customers: list, stamp: datetime) -> None:
+    """Stage exact-TPID revenue alongside telemetry without rewriting its original timestamps."""
+    mapping = defaultdict(list)
+    for customer in customers:
+        if customer.tpid and customer.tpid > 0:
+            mapping[int(customer.tpid)].append(customer.id)
+    for name, kind in _REVENUE_KINDS.items():
+        for row in payload[name]:
+            for customer_id in mapping[int(row["tpid"])]:
+                db.session.add(FabricConsumptionRecord(
+                    import_id=snapshot.id, customer_id=customer_id, tpid=int(row["tpid"]),
+                    kind=kind, metrics_json=_metrics(row, kind),
+                ))
+    snapshot.metadata_json = {
+        **snapshot.metadata_json,
+        "revenue": {
+            **payload["metadata"], "imported_at": _iso(stamp), "refreshed_at": _iso(stamp),
+            "summary_row_count": len(payload["revenue_summary"]),
+            "month_row_count": len(payload["revenue_months"]),
+        },
+    }
+
+
+def refresh_fabric_revenue(progress: Callable | None = None) -> dict:
+    """Enrich the existing snapshot for all current TPIDs, never pulling capacity histories."""
+    if not _IMPORT_LOCK.acquire(blocking=False):
+        return {"success": False, "error": "A Fabric import is already running."}
+    claimed = False
+    heartbeat_stop = threading.Event()
+    heartbeat_thread = None
+    try:
+        if SyncStatus.get_status(SYNC_TYPE)["state"] == "in_progress":
+            raise FabricPullError("A Fabric import is already running.")
+        if not SyncStatus.try_mark_started(REVENUE_SYNC_TYPE):
+            raise FabricPullError("A Fabric revenue refresh is already running.")
+        claimed = True
+        flask_app = current_app._get_current_object()
+
+        def heartbeat() -> None:
+            """Keep the independent revenue claim alive through slow source requests."""
+            while not heartbeat_stop.wait(HEARTBEAT_INTERVAL_SECONDS):
+                try:
+                    with flask_app.app_context():
+                        SyncStatus.update_heartbeat(REVENUE_SYNC_TYPE)
+                except Exception:
+                    logger.warning("Could not update Fabric revenue heartbeat")
+
+        heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
+        heartbeat_thread.start()
+        snapshot = FabricConsumptionImport.query.order_by(
+            FabricConsumptionImport.imported_at.desc(), FabricConsumptionImport.id.desc(),
+        ).first()
+        if snapshot is None:
+            raise FabricPullError("Import Fabric telemetry before refreshing its revenue.")
+        snapshot_id = snapshot.id
+        customers = Customer.query.order_by(Customer.id).all()
+        tpids = _current_tpids(customers)
+        if not tpids:
+            raise FabricPullError("No customers with a TPID found.")
+
+        def report_progress(event: dict) -> None:
+            """Keep the maintenance claim alive before any source records are staged."""
+            SyncStatus.update_heartbeat(REVENUE_SYNC_TYPE)
+            if progress:
+                progress(event)
+
+        payload = pull_fabric_revenue(tpids, progress=report_progress)
+        validate_revenue_payload(payload, set(tpids))
+        db.session.expire_all()
+        latest = FabricConsumptionImport.query.order_by(
+            FabricConsumptionImport.imported_at.desc(), FabricConsumptionImport.id.desc(),
+        ).first()
+        if latest is None or latest.id != snapshot_id:
+            raise FabricPullError("Fabric telemetry changed during the revenue refresh. Retry.")
+        FabricConsumptionRecord.query.filter(
+            FabricConsumptionRecord.import_id == snapshot_id,
+            FabricConsumptionRecord.kind.in_(_REVENUE_KINDS.values()),
+        ).delete(synchronize_session=False)
+        _stage_revenue(latest, payload, customers, datetime.now(timezone.utc))
+        result = {
+            "success": True, "import_id": snapshot_id, "customer_count": len(tpids),
+            "summary_row_count": len(payload["revenue_summary"]),
+            "month_row_count": len(payload["revenue_months"]),
+            "revenue_imported_at": latest.metadata_json["revenue"]["imported_at"],
+        }
+        # mark_completed commits the staged revenue and its status in the same transaction.
+        SyncStatus.mark_completed(
+            REVENUE_SYNC_TYPE, success=True, items_synced=len(tpids), details=json.dumps(result),
+        )
+        if progress:
+            try:
+                progress({
+                    "sync_type": REVENUE_SYNC_TYPE, "scope": "revenue_only",
+                    "phase": "complete", "progress": 100, **result,
+                })
+            except Exception:
+                logger.warning("Fabric revenue refreshed but progress notification failed")
+        return result
+    except Exception as exc:
+        db.session.rollback()
+        logger.warning("Fabric revenue refresh failed (%s)", type(exc).__name__)
+        message = str(exc) if isinstance(exc, FabricPullError) else (
+            "Fabric revenue refresh failed. Previous revenue and telemetry are unchanged."
+        )
+        if claimed:
+            try:
+                SyncStatus.mark_completed(
+                    REVENUE_SYNC_TYPE, success=False, details=json.dumps({"error": message}),
+                )
+            except Exception:
+                db.session.rollback()
+                logger.warning("Could not persist Fabric revenue failure status")
+        return {"success": False, "error": message}
+    finally:
+        heartbeat_stop.set()
+        if heartbeat_thread and heartbeat_thread.is_alive():
+            heartbeat_thread.join()
+        _IMPORT_LOCK.release()
+
+
+def _customer_revenue(snapshot, records: list, tpid: int | None, *, months: bool = True) -> dict:
+    """Read independent account-level revenue provenance, preserving missing and credit values."""
+    metadata = dict((snapshot.metadata_json if snapshot else {}).get("revenue") or {})
+    scope = set(metadata.pop("requested_tpids", []))
+    records = [record for record in records if record.tpid == tpid]
+    summary = dict.fromkeys((
+        "total_revenue_ytd", "reservation_revenue_ytd",
+        "paygo_revenue_ytd", "reservation_share_pct",
+    ))
+    values = []
+    reporting_id = None
+    for record in records:
+        metrics = record.metrics_json
+        if record.kind == "revenue_summary":
+            summary.update({field: metrics.get(field) for field in summary})
+            reporting_id = metrics.get("reporting_fiscal_month_id")
+        else:
+            values.append({field: metrics.get(field) for field in (
+                "fiscal_month", "fiscal_month_id", "reservation_revenue", "paygo_revenue",
+                "total_revenue", "reservation_share_pct",
+            )})
+    values.sort(key=lambda row: row["fiscal_month_id"])
+    measured = any(value is not None for value in summary.values()) or any(
+        row.get(field) is not None for row in values
+        for field in ("reservation_revenue", "paygo_revenue", "total_revenue")
+    )
+    state = (
+        "not_imported" if not metadata or tpid not in scope else
+        "available" if measured else "no_data"
+    )
+    latest_label = next(
+        (row["fiscal_month"] for row in values if row["fiscal_month_id"] == reporting_id), None,
+    )
+    fiscal_year_label = None
+    if latest_label and metadata.get("fiscal_year_end") == "June 30":
+        try:
+            reported_month = datetime.strptime(latest_label, "%B, %Y")
+            ending_year = reported_month.year + (reported_month.month > 6)
+            fiscal_year_label = f"FY{ending_year}"
+        except ValueError:
+            pass
+    metadata.update(
+        latest_reporting_fiscal_month_id=reporting_id,
+        latest_reporting_month=latest_label, latest_month_label=latest_label,
+        fiscal_year_label=fiscal_year_label,
+        fiscal_year_label_basis=(
+            "Source reporting month label and captured DATESYTD June 30 fiscal-year end."
+            if fiscal_year_label else None
+        ),
+        unit_label="Source revenue (CD)" if metadata.get("reported_units") == "CD" else None,
+        months_loaded=months,
+    )
+    return {"state": state, "summary": summary, "months": values if months else [],
+            "metadata": metadata}
 
 
 def has_fabric_data() -> bool:
@@ -323,6 +565,7 @@ def _get_raw_fabric_report(customer_id: int | None = None) -> dict:
         customers_query = customers_query.filter(Customer.id == customer_id)
     customers = customers_query.all()
     query = FabricConsumptionRecord.query.filter_by(import_id=snapshot.id)
+    query = query.filter(~FabricConsumptionRecord.kind.in_(_REVENUE_KINDS.values()))
     if customer_id is not None:
         query = query.filter_by(customer_id=customer_id)
     groups: dict[int, list] = defaultdict(list)
@@ -416,7 +659,13 @@ def get_fabric_report(customer_id: int | None = None) -> dict:
     totals_by_customer: dict[int, dict] = {}
     counts_by_customer: dict[int, int] = {}
     available_customers: set[int] = set()
+    revenue_by_customer: dict[int, list] = defaultdict(list)
     if snapshot:
+        for record in FabricConsumptionRecord.query.filter(
+            FabricConsumptionRecord.import_id == snapshot.id,
+            FabricConsumptionRecord.kind.in_(_REVENUE_KINDS.values()),
+        ).all():
+            revenue_by_customer[record.customer_id].append(record)
         for record in FabricConsumptionRecord.query.filter_by(
                 import_id=snapshot.id, kind="customer").all():
             totals_by_customer[record.customer_id] = record.metrics_json
@@ -429,6 +678,7 @@ def get_fabric_report(customer_id: int | None = None) -> dict:
         available_customers = {
             row[0] for row in db.session.query(FabricConsumptionRecord.customer_id)
             .filter_by(import_id=snapshot.id)
+            .filter(~FabricConsumptionRecord.kind.in_(_REVENUE_KINDS.values()))
             .group_by(FabricConsumptionRecord.customer_id).all()
         }
     directory = []
@@ -445,6 +695,9 @@ def get_fabric_report(customer_id: int | None = None) -> dict:
             ),
             "capacity_count": counts_by_customer.get(account.id, 0),
             "total_cu_hours": totals_by_customer.get(account.id, {}).get("cu_hours"),
+            "revenue": _customer_revenue(
+                snapshot, revenue_by_customer[account.id], account.tpid, months=False,
+            ),
         })
     metadata = dict(snapshot.metadata_json) if snapshot else {}
     header = {
@@ -463,6 +716,9 @@ def get_fabric_report(customer_id: int | None = None) -> dict:
     if selected_summary:
         raw = _get_raw_fabric_report(customer_id)["customers"] if snapshot else []
         selected = _build_customer_detail(selected_summary, raw[0] if raw else {})
+        selected["revenue"] = _customer_revenue(
+            snapshot, revenue_by_customer[customer_id], selected_summary["tpid"],
+        )
     return {
         "snapshot": header, "customers": directory, "customer": selected,
         "metadata": metadata,

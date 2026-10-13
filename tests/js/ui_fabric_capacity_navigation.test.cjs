@@ -54,3 +54,28 @@ test('URL selection survives reloads, clears on customer switch, and reports sta
     assert.match(detail, /url\.searchParams\.set\('capacity', selectedCapacity\)/);
     assert.match(detail, /The linked capacity is no longer available/);
 });
+
+test('rendering refreshed Fabric data reloads revenue for the current customer', () => {
+    const code = detail.slice(detail.indexOf('    function renderCustomer()'),
+        detail.indexOf("        find('workload-context').textContent"));
+    const nodes = Object.fromEntries(
+        ['revenue', 'detail-body', 'customer-title', 'detail-state'].map(key => [key, {
+            hidden: false, textContent: '', removeAttribute() {},
+        }]));
+    const revenueCalls = [];
+    const report = {snapshot: {id: 9}, customer: {id: 7, name: 'Synthetic', status: 'available'}};
+    const context = {
+        report,
+        find: key => nodes[key], window: {
+            SBFabricCapacityLabel: {close() {}},
+            SBFabricRevenue: {render: (root, customer) => revenueCalls.push({root, customer})},
+        },
+    };
+    vm.runInNewContext(`${code}\n}\nrenderCustomer();`, context);
+    report.customer = {id: 8, name: 'Next customer', status: 'no_data'};
+    vm.runInNewContext(`${code}\n}\nrenderCustomer();`, context);
+    report.customer = null;
+    vm.runInNewContext(`${code}\n}\nrenderCustomer();`, context);
+    assert.deepEqual(revenueCalls.map(call => call.customer?.id), [7, 8, undefined]);
+    assert.ok(revenueCalls.every(call => call.root === nodes.revenue));
+});

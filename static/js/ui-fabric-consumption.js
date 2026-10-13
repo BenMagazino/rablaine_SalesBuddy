@@ -358,6 +358,7 @@
     function renderCustomer() {
         window.SBFabricCapacityLabel.close();
         const customer = report.customer;
+        window.SBFabricRevenue.render(find('revenue'), customer);
         find('detail-body').hidden = !customer || customer.status !== 'available';
         find('customer-title').textContent = customer ?
             `${customer.name} (${customer.tpid ?? 'TPID unavailable'})` : 'Choose a customer';

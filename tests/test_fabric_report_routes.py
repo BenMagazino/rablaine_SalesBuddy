@@ -37,7 +37,41 @@ def test_page_is_read_only_and_accessible(client, monkeypatch):
     assert 'Reload saved data' not in html
     assert 'aria-label="Capacity utilization history"' in html
     assert 'data-fabric-capacity-context' not in html
+    assert 'data-fabric-revenue' in html
+    assert 'ui-fabric-revenue.js' in html
+    assert 'not capacity reservation coverage' in html
+    assert "the report's non-RI" in html
     sync.assert_not_called()
+
+
+def test_monthly_revenue_split_starts_open_with_accessible_percentage_chart(client):
+    """Monthly revenue amounts and their 100% mix are visible without expanding a panel."""
+    from bs4 import BeautifulSoup
+
+    page = BeautifulSoup(client.get('/reports/fabric-consumption').data, 'html.parser')
+    monthly = page.select_one('[data-revenue-monthly]')
+    assert monthly.has_attr('open')
+    assert monthly.select_one('[data-revenue-chart]')['aria-label'] == (
+        'Monthly RI and PAYG revenue percentages')
+    assert monthly.select_one('[data-revenue-months]')
+    assert monthly.select_one('[data-revenue-month-headings]')
+    assert monthly.select_one('.sb-fabric-revenue-table-region')
+    assert 'Reserved instance (RI)' in monthly.select_one('.sb-fabric-revenue-legend').text
+
+
+def test_fabric_endpoint_contract_is_limited_to_saved_telemetry_and_import(app):
+    """The release registers only the telemetry page, saved reads, status and import."""
+    registered = {
+        rule.endpoint for rule in app.url_map.iter_rules()
+        if rule.endpoint.startswith(('reports.fabric_', 'reports.report_fabric_'))
+    }
+    assert registered == {
+        'reports.report_fabric_consumption',
+        'reports.fabric_capacity_overview_data',
+        'reports.fabric_consumption_data',
+        'reports.fabric_consumption_status',
+        'reports.fabric_consumption_import',
+    }
 
 
 def test_timestamp_sorting_uses_numeric_utc_keys(client):
@@ -61,7 +95,9 @@ def test_fabric_views_share_header_navigation_and_manual_import(client, view):
     markup = BeautifulSoup(client.get(url).data, 'html.parser')
     assert markup.h1.text == 'Fabric Consumption'
     tabs = markup.select_one('nav[aria-label="Fabric report views"]')
-    assert [a.text for a in tabs.select('a')] == ['Customer detail', 'Capacity overview']
+    assert [a.text for a in tabs.select('a')] == [
+        'Customer detail', 'Capacity overview',
+    ]
     assert tabs.select_one('[aria-current="page"]').text == (
         'Capacity overview' if view == 'overview' else 'Customer detail')
     assert tabs.select('a')[0]['href'] == '/reports/fabric-consumption'

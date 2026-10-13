@@ -439,7 +439,11 @@ def query_workiq(question: str, timeout: int = 120,
             escaped_q = question.replace("'", "''")
             
             # Build PowerShell command
-            ps_cmd = f"& '{npx_path}' -y @microsoft/workiq ask -q '{escaped_q}'"
+            ps_cmd = (
+                "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); "
+                "$OutputEncoding = [Console]::OutputEncoding; "
+                f"& '{npx_path}' -y @microsoft/workiq ask -q '{escaped_q}'"
+            )
             
             cmd = ["powershell", "-NoProfile", "-Command", ps_cmd]
             logger.info(f"Running PowerShell command for WorkIQ...")
@@ -448,6 +452,7 @@ def query_workiq(question: str, timeout: int = 120,
                 cmd,
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 timeout=timeout,
                 shell=False
             )
@@ -458,6 +463,7 @@ def query_workiq(question: str, timeout: int = 120,
                 cmd,
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 timeout=timeout,
                 shell=False
             )
@@ -475,7 +481,7 @@ def query_workiq(question: str, timeout: int = 120,
             logger.info("WorkIQ EULA not yet accepted — auto-accepting...")
             eula_cmd = [npx_path, "-y", "@microsoft/workiq", "accept-eula"]
             eula_result = subprocess.run(
-                eula_cmd, capture_output=True, text=True, timeout=30, shell=False
+                eula_cmd, capture_output=True, text=True, encoding='utf-8', timeout=30, shell=False
             )
             eula_stdout = eula_result.stdout or ''
             eula_stderr = eula_result.stderr or ''
@@ -487,7 +493,7 @@ def query_workiq(question: str, timeout: int = 120,
             # Retry the original query
             logger.info("Retrying WorkIQ query after EULA acceptance...")
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout, shell=False
+                cmd, capture_output=True, text=True, encoding='utf-8', timeout=timeout, shell=False
             )
             stdout = result.stdout or ''
             stderr = result.stderr or ''

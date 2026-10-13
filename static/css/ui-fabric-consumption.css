@@ -145,6 +145,50 @@
 .sb-fabric-summary { display: flex; flex-wrap: wrap; gap: 16px 32px; margin-block: 16px 24px; }
 .sb-fabric-summary dt { color: var(--sb-ui-muted); font-size: 12px; }
 .sb-fabric-summary dd { margin: 2px 0 0; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sb-fabric [data-fabric-revenue] {
+    --sb-fabric-ri-color: oklch(74% 0.14 258);
+    --sb-fabric-ri-ink: oklch(23% 0.045 258);
+    --sb-fabric-paygo-color: oklch(49% 0.21 298);
+    --sb-fabric-paygo-ink: oklch(98% 0.008 298);
+}
+.sb-fabric p.sb-fabric-revenue-chart-title { margin-top: 12px;
+    color: var(--sb-ui-ink); font-size: 13px; font-weight: 600; }
+.sb-fabric-revenue-legend { display: flex; gap: 20px; margin-block: 10px 4px;
+    color: var(--sb-ui-muted); font-size: 12px; }
+.sb-fabric-revenue-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.sb-fabric-revenue-key { width: 9px; height: 9px; border-radius: 50%; }
+.sb-fabric-revenue-key--ri { background: var(--sb-fabric-ri-color); }
+.sb-fabric-revenue-key--paygo { background: var(--sb-fabric-paygo-color); }
+.sb-fabric-revenue-chart { overflow-x: auto; margin-bottom: 14px; }
+.sb-fabric-revenue-bars { display: grid;
+    grid-template-columns: repeat(var(--sb-revenue-month-count), minmax(52px, 1fr));
+    gap: 10px; padding: 12px 14px 90px 64px; }
+.sb-fabric-revenue-month { position: relative; }
+.sb-fabric-revenue-stack { display: flex; flex-direction: column-reverse;
+    width: min(100%, 54px); height: 180px; margin-inline: auto;
+    font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.sb-fabric-revenue-segment { display: grid; place-items: center; flex-shrink: 0;
+    overflow: hidden; line-height: 1.2; }
+.sb-fabric-revenue-segment--ri {
+    background: var(--sb-fabric-ri-color); color: var(--sb-fabric-ri-ink); }
+.sb-fabric-revenue-segment--paygo {
+    background: var(--sb-fabric-paygo-color); color: var(--sb-fabric-paygo-ink); }
+.sb-fabric-revenue-stack--unavailable { display: grid; place-items: center;
+    box-sizing: border-box; border: 1px dashed var(--sb-ui-line);
+    color: var(--sb-ui-muted); font-size: 11px; font-weight: 400; }
+.sb-fabric-revenue-month-label { position: absolute; top: calc(100% + 12px); left: 50%;
+    white-space: nowrap; font-size: 11px; color: var(--sb-ui-muted);
+    transform: translateX(-100%) rotate(-35deg); transform-origin: 100% 0; }
+.sb-fabric-revenue-table-region { max-height: none; }
+.sb-fabric-revenue-table th, .sb-fabric-revenue-table td { padding: 9px 8px; }
+.sb-fabric-revenue-table thead th:not(:first-child),
+.sb-fabric-revenue-table td { text-align: right; }
+.sb-fabric-revenue-table tr > th:first-child { position: sticky; left: 0;
+    background: var(--sb-ui-surface); border-right: 1px solid var(--sb-ui-line); z-index: 1; }
+.sb-fabric-revenue-table thead th:first-child { background: var(--sb-ui-context); z-index: 2; }
+.sb-fabric-revenue-table tbody th { font-weight: 500; }
+.sb-fabric-revenue-table tbody tr:last-child th,
+.sb-fabric-revenue-table tbody tr:last-child td { font-weight: 650; }
 .sb-fabric-capacity-label { border: 0; border-bottom: 1px dotted var(--sb-ui-muted);
     background: none; padding: 2px 4px; color: var(--sb-ui-ink); font: inherit; cursor: help; }
 .sb-fabric-capacity-label:focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }

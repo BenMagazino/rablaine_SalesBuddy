@@ -99,6 +99,17 @@ test('running status omits the saved date and selects stable left-aligned presen
     assert.doesNotMatch(h.nodes.progress.title, /Last successful/);
 });
 
+test('a saved snapshot remains imported when no telemetry job-status record exists', async () => {
+    const h = await fixture([{state: 'never_run', details: null}]);
+    assert.equal(h.nodes.progress.textContent, 'Not imported yet');
+    h.controller.setImportedAt('2026-10-10T22:04:00Z');
+    assert.equal(h.nodes.progress.textContent,
+        `Last successful import: ${new Date('2026-10-10T22:04:00Z').toLocaleDateString()}`);
+    assert.equal(h.nodes['import-error'].hidden, true);
+    assert.equal(h.reloads(), 0);
+    assert.deepEqual(h.requests, [{url: '/status', method: 'GET'}]);
+});
+
 test('the shared import command posts once and refreshes the active view after completion', async () => {
     const h = await fixture([
         {state: 'never_run', details: null},

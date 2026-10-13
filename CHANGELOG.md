@@ -8,6 +8,14 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/13/2026
+
+- Import customer-wide Fabric reserved-instance and PAYG revenue with Fabric 360, including fiscal YTD totals and monthly splits.
+- Show the monthly revenue split expanded by default, with a stacked RI/PAYG percentage chart.
+- Present monthly revenue amounts with months across columns and RI, PAYG, and total revenue down rows.
+- Keep revenue-only refreshes separate from full Fabric import status so they do not produce false interrupted-import warnings.
+- Handle Unicode WorkIQ responses without Windows text-decoding failures.
+
 ## 10/10/2026 - 94c1432c
 
 - Add a manually imported Fabric Consumption report with customer workload mix, SKU utilization, and capacity detail.
