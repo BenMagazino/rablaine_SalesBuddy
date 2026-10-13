@@ -14,6 +14,17 @@ from app.models import (
     Opportunity, RevenueAnalysis, UserPreference, db,
 )
 
+def test_customer_tab_panels_do_not_draw_an_extra_outer_bottom_divider():
+    """Tab panels omit their enclosing divider without removing separators between records."""
+    project = Path(__file__).resolve().parents[1]
+    css = (project / 'static' / 'css' / 'ui-customer-detail.css').read_text(encoding='utf-8')
+    assert '.cd-section.cd-panel { border-bottom: 0; }' in css
+    assert '.cd-panel :is(.cd-engagement, .cd-note, .cd-opportunity):last-child,' in css
+    assert '.cd-panel .cd-table tbody tr:last-child :is(th, td) { border-bottom: 0; }' in css
+    for selector in ('.cd-section', '.cd-engagement', '.cd-note', '.cd-opportunity'):
+        assert f'{selector} {{' in css
+    assert '.cd-section { padding: 18px 0; border-bottom: 1px' in css
+
 
 @pytest.mark.parametrize('partial,bounded', [
     ('customer_view_content.html', True),

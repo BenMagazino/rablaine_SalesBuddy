@@ -342,7 +342,7 @@
                         </div>
                         <div id="editor" style="height: 400px;">{{ note.content|safe if note else '' }}</div>
                         <textarea name="content" id="content" style="display:none;"></textarea>
-                        <div class="sb-nf-form-text">Use rich formatting to capture call details, action items, and follow-ups. Press <span class="sb-nf-border sb-nf-rounded sb-nf-px-1" style="font-size:0.75em; opacity:0.7;">Esc</span> to exit editor and Tab to next field.</div>
+                        <div class="sb-nf-form-text">Use rich formatting to capture call details, action items, and follow-ups. Press <span class="sb-nf-border sb-nf-rounded sb-nf-px-1" style="font-size:0.75em; opacity:0.7;">Ctrl+Enter</span> to save, or <span class="sb-nf-border sb-nf-rounded sb-nf-px-1" style="font-size:0.75em; opacity:0.7;">Esc</span> to exit editor and Tab to next field.</div>
                     </div>
                     
                     {% if not is_general_note %}
@@ -1236,6 +1236,14 @@ var quill = new Quill('#editor', {
         imageResize: {},
         keyboard: {
             bindings: {
+                saveNote: {
+                    key: 13,
+                    shortKey: true,
+                    handler: function() {
+                        SBNoteForm.save();
+                        return false;
+                    }
+                },
                 escape: {
                     key: 'Escape',
                     handler: function() {
