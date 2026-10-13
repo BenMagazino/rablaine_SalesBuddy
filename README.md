@@ -62,7 +62,9 @@ standalone UI iterations using entirely fictional data. See the
 - **Revenue Analyzer** - automatic MSXI sync, trend charts, growth alerts, seller/customer/product drill-downs
 - **Fabric Consumption** - manually import customer-scoped Fabric workload CU-hour
   shares and capacity/SKU utilization from MSXi. Reports > Fabric Consumption
-  includes capacities, throttling, and utilization history. Import uses customer
+  includes capacities, throttling, utilization history, and customer-wide reserved-instance
+  versus PAYG revenue with fiscal YTD totals and monthly splits. Revenue share is not
+  per-capacity reservation coverage. Import uses customer
   TPIDs and your corporate Azure sign-in; it is never scheduled automatically.
 - **Milestone Tracker** - native desktop queue and calendar with MSX sync, task management, and AI matching from call notes. Search all saved milestone fields (including cached forecast comments) and use the searchable customer dropdown alongside the existing filters. Data headings sort both ways with raw values; CSV, Clipboard and Email preserve the filtered list. Back restores filters, view, calendar month, sorting and reading position.
 - **Milestones directory** - browse customer-linked records in the native desktop frame, preserving newest-added order, source URLs and linked-call counts. Sort each data heading both ways; Back restores sorting and reading position. Open the existing details, New Milestone or Milestone Tracker without changing the cached data.
@@ -186,6 +188,9 @@ A setup wizard walks you through:
 5. **Import Revenue** - pull your ACR straight from MSXI for the Revenue Analyzer
 
 All steps are optional and can be re-run from the Admin Panel.
+
+The stored `se_specialty` preference defaults to `data` and is included in backups.
+A specialty selector is not available in the settings UI yet.
 
 ## AI Features
 

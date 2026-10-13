@@ -12,6 +12,19 @@ valid TPID, and distinguishes missing measurements from numeric zero.
 Choose a customer for workload shares, per-tenant/capacity operation details,
 SKU metrics, throttling, and hourly utilization history. Large operation and
 history tables display 200 rows per page; sorting applies within each page.
+Customer detail also shows customer-wide reserved-instance and PAYG revenue,
+with fiscal YTD totals, RI revenue share, and a monthly split that starts expanded.
+A 100% stacked bar chart shows blue RI and purple PAYG shares for each reported
+month, with percentage labels and source-precision amounts on hover or screen-reader focus.
+The amount table places months across columns and RI, PAYG, and total revenue
+down rows, with a pinned row label and compact month/year headings for comparison.
+Missing amounts, zero totals, negative adjustments, and unreconciled amounts
+remain in the table but are explicitly left unplotted rather than normalized
+into a misleading percentage mix.
+This section remains available when revenue is returned without capacity telemetry.
+Older snapshots show that the revenue breakdown has not been imported, rather
+than suggesting zero reservations. A new Fabric import includes the revenue queries
+for all configured numeric customer TPIDs.
 The capacity graph uses the full saved history and does not clamp utilization
 at 100%. Its dotted reference line marks the 80% scale-up threshold and its
 dashed reference line represents 100% of capacity. Both also appear in hover previews.
@@ -32,7 +45,7 @@ workload is shown as zero only when known workload measures reconcile to the
 positive customer total; otherwise it remains unknown. Sort any workload
 column to compare customer usage.
 Both views share the Fabric Consumption header and tab-style navigation:
-**Customer detail** and **Capacity overview**. Both complete report surfaces are
+**Customer detail** and **Capacity overview**. Both telemetry surfaces are
 centered at a maximum width of 1536px, shrinking when the window is narrower.
 The report header, tabs, filters, and content share the same edges, with
 surface-colored content and subtle borders against canvas-colored gutters.
@@ -117,6 +130,12 @@ sorting still controls displayed row order.
   `claimed=True` is reserved for a route that already acquired the atomic
   `SyncStatus` claim. The service renews its heartbeat every 20 seconds and
   persists progress and completion for page-independent polling.
+- `refresh_fabric_revenue(progress=None)` enriches the existing Fabric snapshot
+  with revenue for all configured customer TPIDs, without re-querying capacity
+  histories. It replaces only revenue records atomically, retains the original
+  telemetry timestamp and stamps revenue-specific
+  freshness separately. Failed refreshes return `success: false` with an error
+  and retain the prior revenue records.
 - `get_fabric_report(customer_id=None)` returns `snapshot`, the full `customers`
   directory, selected `customer` detail, `totals`, and source `metadata`.
   Selected detail includes workload shares, operation details, capacity/SKU
@@ -147,6 +166,38 @@ queried in chunks with complete cursor pagination and strict scope checks.
 High-volume workload-operation and time-series queries are additionally
 subchunked by discovered capacity IDs, rather than issuing one unbounded query
 for a large account batch.
+
+### Reservation and PAYG revenue
+
+Revenue uses the Fabric semantic model's `Revenue` fact, filtered directly by
+numeric `Account.TPID`. It does not use MSXi's aggregated Azure billing
+summary-key tables. The captured measures combine `BilledRevenueCD` and
+`AzureConsumedRevenueCD` for products `Fabric` / `F SKU` and product groups
+`Fabric` / `Fabric Platform`. These are source revenue amounts, not a separate
+generic ACR import or a customer invoice.
+
+Reserved-instance revenue uses the source's seven `AZ Pricing Level 2` values:
+`EA RI`, `MCA Partner-Led RI`, `MCA Field-Led RI`, `MCA Customer-Led RI`,
+`Direct RI`, `MCA Inside Sales - DR RI`, and `CSP - RI`.
+The source calls the remainder PAYG and defines it as total Fabric revenue
+minus RI revenue. The importer preserves that definition, including negative
+adjustments and missing values; it does not replace blanks with zero.
+
+Monthly amounts use the captured MTD measures and the model's
+`Local.Revenue.MaxMonthId()` reporting context. Fiscal YTD uses
+`DATESYTD(..., "6-30")`, not calendar YTD or all imported months.
+RI share is the reported fiscal YTD RI revenue divided by fiscal YTD total
+revenue, expressed as a percentage. It is **not** the proportion of capacity
+units covered by reservations. The latest reported month is not a guarantee
+that every revenue posting for that month is complete.
+
+These customer-level amounts cannot establish reservation order IDs,
+quantities, start/expiry dates, eligibility, or coverage for individual
+capacities. They are not copied into each capacity's metrics or used to infer
+funding eligibility. Source currency/unit information is retained when known;
+the UI does not invent an exchange rate or silently convert currencies.
+
+### Workload and capacity telemetry
 
 Workload queries preserve PROD/MSIT, Fabric/Fabric Trial/Power BI Premium,
 notification, and 365-day calendar context ending yesterday on the Power BI

@@ -111,6 +111,11 @@ import_call_logs.py
 import_alignment_sheet.py
 marketing_diagnostics.txt
 
+# Internal field-program source bundles
+field_program_sources*.zip
+sales-buddy-pilot*.zip
+sales-buddy-catalog*.zip
+
 # Revenue data files (contain customer financial data)
 *.csv
 !tests/*.csv
@@ -143,4 +148,3 @@ installer/obj/
 installer/SalesBuddy.CustomActions/bin/
 installer/SalesBuddy.CustomActions/obj/
 paste_to_word.docx
-

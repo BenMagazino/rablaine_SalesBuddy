@@ -125,6 +125,41 @@
                     </details>
                 </section>
             </div>
+            <section class="sb-fabric-section" data-fabric-revenue hidden
+                     aria-labelledby="fabricRevenueTitle">
+                <header><h3 id="fabricRevenueTitle">Reserved instance and PAYG revenue</h3>
+                    <span>Customer-wide, not capacity reservation coverage</span></header>
+                <p data-revenue-state role="status"></p>
+                <div data-revenue-body hidden>
+                    <p data-revenue-context></p>
+                    <dl data-revenue-summary class="sb-fabric-summary"></dl>
+                    <details data-revenue-monthly open>
+                        <summary>Monthly revenue split</summary>
+                        <p class="sb-fabric-revenue-chart-title">Monthly revenue mix (100%)</p>
+                        <div class="sb-fabric-revenue-legend" aria-label="Revenue mix legend">
+                            <span><i class="sb-fabric-revenue-key sb-fabric-revenue-key--ri"
+                                     aria-hidden="true"></i>Reserved instance (RI)</span>
+                            <span><i class="sb-fabric-revenue-key sb-fabric-revenue-key--paygo"
+                                     aria-hidden="true"></i>PAYG</span>
+                        </div>
+                        <div data-revenue-chart class="sb-fabric-revenue-chart"
+                             role="region" aria-label="Monthly RI and PAYG revenue percentages"></div>
+                        <p data-revenue-chart-note hidden></p>
+                        <div class="sb-fabric-table-region sb-fabric-revenue-table-region"
+                             tabindex="0" role="region"
+                             aria-label="Monthly reserved instance and PAYG revenue">
+                            <table class="sb-fabric-table sb-fabric-revenue-table">
+                                <thead><tr data-revenue-month-headings></tr></thead>
+                                <tbody data-revenue-months></tbody>
+                            </table>
+                        </div>
+                    </details>
+                    <p>MSXi combines billed and consumed Fabric revenue. Reserved instance (RI)
+                        revenue is classified by pricing level; PAYG is the report's non-RI
+                        remainder. These amounts do not identify reservation orders, expiry,
+                        or coverage for individual capacities.</p>
+                </div>
+            </section>
         </section>
     </div>
 </section>
@@ -133,5 +168,6 @@
 <script src="{{ url_for('static', filename='js/ui-fabric-preferences.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-fabric-capacity-label.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-fabric-import.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-fabric-revenue.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-fabric-consumption.js') }}" defer></script>
 {% endblock %}

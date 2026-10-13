@@ -16,7 +16,9 @@
                 `Last successful import: ${importedAt.toLocaleDateString()}` :
                 'No successful import yet';
             find('progress').dataset.running = String(state === 'in_progress');
-            find('progress').textContent = state === 'complete' ? lastSuccess :
+            const savedSnapshot = state === 'complete' ||
+                (state === 'never_run' && importedAt !== null);
+            find('progress').textContent = savedSnapshot ? lastSuccess :
                 state === 'in_progress' || !importedAt ? label : `${label} / ${lastSuccess}`;
             find('progress').title = find('progress').textContent;
         }
@@ -63,7 +65,9 @@
                     await reload();
                 }
                 if (status.state === 'failed' || status.state === 'incomplete') {
-                    showError(details || 'Import interrupted. You can retry; the saved snapshot is retained.');
+                    showError(status.state === 'incomplete' ?
+                        'Import interrupted. You can retry; the saved snapshot is retained.' :
+                        details || 'Import failed. You can retry; the saved snapshot is retained.');
                 }
             } catch (error) {
                 state = 'failed';

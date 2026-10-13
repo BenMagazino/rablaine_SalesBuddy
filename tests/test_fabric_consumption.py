@@ -4,7 +4,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from app.models import Customer, FabricConsumptionImport, FabricConsumptionRecord, SyncStatus, db
+from app.models import (
+    Customer, FabricConsumptionImport, FabricConsumptionRecord, SyncStatus, db,
+)
 from app.services import fabric_consumption as service
 from app.services import fabric_consumption_pull as pull
 
@@ -31,7 +33,12 @@ def _payload(tpids):
     tpid = tpids[0]
     grain = {"tpid": str(tpid), "tenant_id": "tenant-test", "capacity_id": "capacity-test"}
     return {
-        "metadata": {"complete": True, "requested_tpids": tpids, "source_timezone": "UTC"},
+        "metadata": {
+            "complete": True, "requested_tpids": tpids, "source_timezone": "UTC",
+            "revenue": pull._revenue_metadata(tpids, date(2026, 10, 8)),
+        },
+        "revenue_summary": [],
+        "revenue_months": [],
         "customer_totals": [{"tpid": str(tpid), "cu_hours": 100,
                              "direct_lake_cu_hours": 25, "fabric_core_mau": None}],
         "customer_workloads": [
@@ -98,9 +105,39 @@ def test_manual_import_and_read_preserve_nulls_and_true_denominator(fabric_accou
     assert events[-1]["progress"] == 100
     assert service.has_fabric_data()
     assert SyncStatus.get_status(service.SYNC_TYPE)["state"] == "complete"
+    assert FabricConsumptionImport.query.one().id == result["import_id"]
+    assert FabricConsumptionRecord.query.filter_by(import_id=result["import_id"]).count() > 0
     assert len(service.get_fabric_report(first.id)["customers"]) == 2
     assert report["snapshot"]["capacity_as_of"] == "2026-10-05T20:00:00+00:00"
     assert report["snapshot"]["workload_as_of"] is None
+
+
+def test_snapshot_commit_failure_rolls_back_fabric_and_source_data(fabric_accounts, monkeypatch):
+    """A failed commit after replacing staged source rows restores the full prior snapshot."""
+    monkeypatch.setattr(service, 'pull_fabric_consumption', lambda tpids, progress: _payload(tpids))
+    assert service.sync_fabric_consumption()['success']
+    before_report = service.get_fabric_report()
+    prior_id = before_report["snapshot"]["id"]
+    before_record_ids = {record.id for record in FabricConsumptionRecord.query.all()}
+    real_commit = db.session.commit
+
+    def failed_snapshot_commit():
+        """Fail the new source commit, but allow progress and failure-status commits."""
+        latest = FabricConsumptionImport.query.order_by(FabricConsumptionImport.id.desc()).first()
+        if latest is not None and latest.id != prior_id:
+            raise RuntimeError("Synthetic snapshot commit failure")
+        real_commit()
+
+    monkeypatch.setattr(db.session, "commit", failed_snapshot_commit)
+    events = []
+    result = service.sync_fabric_consumption(progress=events.append)
+    assert result['success'] is False
+    assert 'previous successful import is unchanged' in result['error']
+    assert service.get_fabric_report() == before_report
+    assert FabricConsumptionImport.query.count() == 1
+    assert {record.id for record in FabricConsumptionRecord.query.all()} == before_record_ids
+    assert SyncStatus.get_status(service.SYNC_TYPE)['state'] == 'failed'
+    assert not any(event.get('phase') == 'complete' for event in events)
     assert service.get_fabric_report()["customer"] is None
 
 
@@ -400,7 +437,7 @@ def test_chunking_every_tpid_and_all_query_families():
         [1, 2, 3], chunk=2, client=reader, progress=events.append,
         as_of=date(2026, 10, 8),
     )
-    assert reader.query.call_count == 14
+    assert reader.query.call_count == 18
     assert payload["metadata"]["requested_tpids"] == [1, 2, 3]
     assert payload["metadata"]["complete"] is True
     assert events[-1]["progress"] == 90

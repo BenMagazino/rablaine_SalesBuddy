@@ -24,6 +24,20 @@ SOURCE_TIMEZONE = "UTC"
 MAX_PAGES = 200
 CHUNK_SIZE = 20
 CAPACITY_CHUNK_SIZE = 25
+RI_PRICING_LEVELS = (
+    "EA RI", "MCA Partner-Led RI", "MCA Field-Led RI", "MCA Customer-Led RI",
+    "Direct RI", "MCA Inside Sales - DR RI", "CSP - RI",
+)
+REVENUE_FIELDS = {
+    "revenue_summary": (
+        "total_revenue_ytd", "reservation_revenue_ytd", "paygo_revenue_ytd",
+        "reservation_share_ratio", "reporting_fiscal_month_id",
+    ),
+    "revenue_months": (
+        "total_revenue", "reservation_revenue", "paygo_revenue", "reservation_share_ratio",
+        "fiscal_month", "fiscal_month_id",
+    ),
+}
 
 
 class FabricPullError(Exception):
@@ -68,6 +82,16 @@ def _notification_filters(source: str, reports: list[str]) -> list[dict]:
     ]
 
 
+def _calendar_filter(as_of: date) -> dict:
+    """Use the captured 365-day inclusive calendar ending yesterday in UTC."""
+    start = as_of - timedelta(days=364)
+    return {"Condition": {"Between": {
+        "Expression": {"Column": _column("c", "Calendar Date", "date")["Column"]},
+        "LowerBound": {"Literal": {"Value": f"datetime'{start.isoformat()}T00:00:00'"}},
+        "UpperBound": {"Literal": {"Value": f"datetime'{as_of.isoformat()}T00:00:00'"}},
+    }}}
+
+
 def workload_context(tpids: list[int], as_of: date) -> tuple[list[dict], list[dict]]:
     """Match the workload report's 365-day calendar and capacity context.
 
@@ -79,19 +103,210 @@ def workload_context(tpids: list[int], as_of: date) -> tuple[list[dict], list[di
         _source("e", "Environment"), _source("c", "Calendar"),
         _source("cap", "Capacity"), _source("n", "-> Report Notifications"),
     ]
-    start = as_of - timedelta(days=364)
     where = [
         _tpids(tpids),
         _members("e", "Environment", ["PROD", "MSIT"]),
         _members("cap", "Capacity Grouping", ["Fabric", "Fabric Trial", "Power BI Premium"]),
-        {"Condition": {"Between": {
-            "Expression": {"Column": _column("c", "Calendar Date", "date")["Column"]},
-            "LowerBound": {"Literal": {"Value": f"datetime'{start.isoformat()}T00:00:00'"}},
-            "UpperBound": {"Literal": {"Value": f"datetime'{as_of.isoformat()}T00:00:00'"}},
-        }}},
+        _calendar_filter(as_of),
         *_notification_filters("n", ["All", "Fabric Capacity 360"]),
     ]
     return sources, where
+
+
+def revenue_extension() -> dict:
+    """Captured account-level CD revenue DAX, not capacity ownership or reservation coverage."""
+    measures = []
+    pricing = ",".join(json.dumps(level) for level in RI_PRICING_LEVELS)
+    for period, dates in (
+        ("MTD", "DATESMTD('Calendar'[Calendar Date])"),
+        ("YTD", 'DATESYTD(\'Calendar\'[Calendar Date], "6-30")'),
+    ):
+        total = f"Fabric Revenue {period}"
+        reserved = f"{total} Reserved Instance RI"
+        measures.extend([
+            {"Name": total, "DataType": 3, "Expression": (
+                "VAR _MaxDateId = Local.Revenue.MaxMonthId() "
+                f"VAR _Dates = CALCULATETABLE({dates},"
+                "'Calendar'[FiscalMonthId] = _MaxDateId) "
+                "RETURN CALCULATE(SUMX(Revenue,"
+                "Revenue[BilledRevenueCD] + Revenue[AzureConsumedRevenueCD]),_Dates,"
+                "'Product Master'[Product] IN {\"Fabric\", \"F SKU\"},"
+                "'Product Master'[Product Group] IN {\"Fabric\", \"Fabric Platform\"})"
+            )},
+            {"Name": reserved, "DataType": 3, "Expression": (
+                f"CALCULATE([{total}],'Revenue'[AZ Pricing Level 2] IN {{{pricing}}})"
+            )},
+            {"Name": f"{total} Pay-as-you-go", "DataType": 3,
+             "Expression": f"[{total}] - [{reserved}]"},
+            {"Name": f"Fabric RI share {period}", "DataType": 3,
+             "Expression": f"DIVIDE([{reserved}], [{total}])"},
+        ])
+    measures.append({
+        "Name": "Fabric Revenue Reporting Month Id", "DataType": 4,
+        "Expression": "Local.Revenue.MaxMonthId()",
+    })
+    return {"Version": 0, "Name": "extension", "Entities": [{
+        "Extends": "-> Report Measures", "Name": "-> Report Measures", "Measures": measures,
+    }]}
+
+
+def build_revenue_query(tpids: list[int], as_of: date, monthly: bool = False) -> dict:
+    """Use the captured revenue/calendar context with a direct numeric Account.TPID scope."""
+    sources = [
+        _source("a", "Account"), _source("c", "Calendar"), _source("cap", "Capacity"),
+        _source("n", "-> Report Notifications"), _source("rev", "-> Report Measures", True),
+    ]
+    select = [_column("a", "TPID", "tpid")]
+    if monthly:
+        select.extend([
+            _column("c", "Fiscal Month", "fiscal_month"),
+            _column("c", "FiscalMonthId", "fiscal_month_id"),
+        ])
+    period = "MTD" if monthly else "YTD"
+    suffix = "" if monthly else "_ytd"
+    select.extend([
+        _measure("rev", f"Fabric Revenue {period}", f"total_revenue{suffix}"),
+        _measure("rev", f"Fabric Revenue {period} Reserved Instance RI",
+                 f"reservation_revenue{suffix}"),
+        _measure("rev", f"Fabric Revenue {period} Pay-as-you-go", f"paygo_revenue{suffix}"),
+        _measure("rev", f"Fabric RI share {period}", "reservation_share_ratio"),
+    ])
+    if not monthly:
+        select.append(_measure(
+            "rev", "Fabric Revenue Reporting Month Id", "reporting_fiscal_month_id",
+        ))
+    return {"Version": 2, "From": sources, "Select": select, "Where": [
+        _tpids(tpids), _calendar_filter(as_of),
+        _members("cap", "Capacity Grouping", ["Fabric", "Fabric Trial", "Power BI Premium"]),
+        *_notification_filters("n", ["All", "Fabric Capacity 360"]),
+    ]}
+
+
+def _revenue_queries(tpids: list[int], as_of: date) -> list[tuple]:
+    """Reuse identical complete-query families in full and revenue-only imports."""
+    return [
+        (kind, build_revenue_query(tpids, as_of, monthly=kind == "revenue_months"),
+         WORKLOAD_REPORT_ID, revenue_extension())
+        for kind in REVENUE_FIELDS
+    ]
+
+
+def _revenue_metadata(tpids: list[int], as_of: date) -> dict:
+    """Disclose source units and account-level limitations without guessing currency or FX."""
+    return {
+        "complete": True, "requested_tpids": tpids, "dataset_id": DATASET_ID,
+        "model_id": MODEL_ID, "report_id": WORKLOAD_REPORT_ID,
+        "as_of_date": as_of.isoformat(), "calendar_timezone": "UTC",
+        "calendar_start": (as_of - timedelta(days=364)).isoformat(),
+        "calendar_end": as_of.isoformat(), "fiscal_year_end": "June 30",
+        "reported_units": "CD", "currency": None,
+        "currency_basis": "Source BilledRevenueCD + AzureConsumedRevenueCD; FX not established.",
+        "paygo_definition": "Report-native total Fabric revenue minus RI-classified revenue.",
+        "scope": "Account-level revenue classification, not per-capacity reservation ownership.",
+        "ri_pricing_levels": list(RI_PRICING_LEVELS),
+    }
+
+
+def validate_revenue_payload(payload: dict, tpids: set[int]) -> None:
+    """Reject incomplete, foreign, malformed, duplicate or contradictory revenue results."""
+    import math
+
+    if not isinstance(payload, dict) or not isinstance(payload.get("metadata"), dict):
+        raise FabricPullError("Fabric revenue returned malformed metadata.")
+    metadata = payload["metadata"]
+    requested = metadata.get("requested_tpids")
+    if (metadata.get("complete") is not True or not isinstance(requested, list)
+            or any(isinstance(value, bool) or not str(value).isdigit()
+                   for value in requested) or set(int(value) for value in requested) != tpids):
+        raise FabricPullError("Fabric revenue did not confirm its complete account scope.")
+    for kind, fields in REVENUE_FIELDS.items():
+        rows = payload.get(kind)
+        if not isinstance(rows, list):
+            raise FabricPullError(f"Fabric revenue omitted its {kind} result set.")
+        identities = set()
+        for row in rows:
+            if not isinstance(row, dict):
+                raise FabricPullError("Fabric revenue returned a malformed result row.")
+            value = row.get("tpid")
+            if (isinstance(value, bool) or not str(value).isdigit() or int(value) not in tpids
+                    or any(field not in row for field in fields)):
+                raise FabricPullError("Fabric revenue returned invalid scope or missing fields.")
+            for field in fields:
+                value = row[field]
+                if field == "fiscal_month":
+                    if not isinstance(value, str) or not value.strip():
+                        raise FabricPullError("Fabric revenue returned an invalid month label.")
+                elif field.endswith("month_id"):
+                    if value is not None and (
+                        isinstance(value, bool) or not str(value).isdigit() or int(value) <= 0
+                    ):
+                        raise FabricPullError("Fabric revenue returned an invalid reporting month.")
+                    if kind == "revenue_months" and value is None:
+                        raise FabricPullError("Fabric revenue omitted the month identifier.")
+                elif value is not None:
+                    try:
+                        valid = not isinstance(value, bool) and math.isfinite(float(value))
+                    except (TypeError, ValueError):
+                        valid = False
+                    if not valid:
+                        raise FabricPullError("Fabric revenue returned an invalid numeric value.")
+            identity = (
+                int(row["tpid"]),
+                int(row["fiscal_month_id"]) if row.get("fiscal_month_id") is not None else None,
+            )
+            if identity in identities:
+                raise FabricPullError("Fabric revenue returned duplicate account/month rows.")
+            identities.add(identity)
+            suffix = "" if kind == "revenue_months" else "_ytd"
+            total, reserved, paygo = [
+                row[field + suffix]
+                for field in ("total_revenue", "reservation_revenue", "paygo_revenue")
+            ]
+            if all(value is not None for value in (total, reserved, paygo)):
+                if not math.isclose(float(total), float(reserved) + float(paygo),
+                                    rel_tol=1e-7, abs_tol=0.001):
+                    raise FabricPullError("Fabric RI and PAYG revenue do not reconcile.")
+            ratio = row["reservation_share_ratio"]
+            if ratio is not None and reserved is not None and total is not None:
+                if float(total) == 0 or not math.isclose(
+                    float(ratio), float(reserved) / float(total), rel_tol=1e-7, abs_tol=1e-8,
+                ):
+                    raise FabricPullError("Fabric RI share contradicts its source amounts.")
+
+
+def pull_fabric_revenue(
+    tpids: list[int], progress: Callable | None = None, *, chunk: int = CHUNK_SIZE,
+    client: FabricQueryClient | None = None, as_of: date | None = None,
+) -> dict:
+    """Read only account revenue in complete bounded batches, never capacity histories."""
+    if any(isinstance(value, bool) or not str(value).isdigit() or int(value) <= 0 for value in tpids):
+        raise FabricPullError("Fabric revenue requires positive integer TPIDs.")
+    tpids = sorted(set(int(value) for value in tpids))
+    if not tpids or chunk < 1:
+        raise FabricPullError("Fabric revenue requires accounts and a positive chunk size.")
+    as_of = as_of or datetime.now(timezone.utc).date() - timedelta(days=1)
+    reader = client or FabricQueryClient()
+    output = {kind: [] for kind in REVENUE_FIELDS}
+    batches = [tpids[index:index + chunk] for index in range(0, len(tpids), chunk)]
+    try:
+        for index, batch in enumerate(batches):
+            for kind, query, report, extension in _revenue_queries(batch, as_of):
+                rows = _query_scoped(reader, query, report, extension, "a", "TPID", batch, True)
+                validate_revenue_payload({
+                    "metadata": {"complete": True, "requested_tpids": batch},
+                    **{name: rows if name == kind else [] for name in REVENUE_FIELDS},
+                }, set(batch))
+                output[kind].extend(rows)
+                if progress:
+                    progress({"sync_type": "fabric_revenue", "scope": "revenue_only",
+                              "phase": kind, "progress": int((index + 1) / len(batches) * 90),
+                              "message": f"Loaded revenue batch {index + 1}/{len(batches)}."})
+    finally:
+        if client is None:
+            reader.close()
+    output["metadata"] = _revenue_metadata(tpids, as_of)
+    validate_revenue_payload(output, set(tpids))
+    return output
 
 
 def build_workload_query(tpids: list[int], as_of: date, detail: bool = False) -> dict:
@@ -456,6 +671,7 @@ def pull_fabric_consumption(tpids: list[int], progress: Callable | None = None,
     output = {
         "customer_totals": [], "customer_workloads": [], "workload_totals": [], "workloads": [],
         "capacities": [], "trends": [],
+        "revenue_summary": [], "revenue_months": [],
     }
     batches = [tpids[i:i + chunk] for i in range(0, len(tpids), chunk)]
     try:
@@ -470,6 +686,7 @@ def pull_fabric_consumption(tpids: list[int], progress: Callable | None = None,
                 ("capacities", build_capacity_query(batch), CAPACITY_REPORT_ID,
                  _capacity_extension()),
                 ("customer_mau", mau_query, WORKLOAD_REPORT_ID, mau_extension),
+                *_revenue_queries(batch, as_of),
             ]
             discovered: dict[str, list[dict]] = {}
             for kind, query, report, extension in queries:
@@ -550,7 +767,12 @@ def pull_fabric_consumption(tpids: list[int], progress: Callable | None = None,
         "workload_calendar_end": as_of.isoformat(), "workload_window_days": 28,
         "capacity_window": "source-retained NRT history",
         "requested_tpids": tpids, "complete": True,
+        "revenue": _revenue_metadata(tpids, as_of),
     }
+    validate_revenue_payload({
+        "metadata": output["metadata"]["revenue"],
+        **{kind: output[kind] for kind in REVENUE_FIELDS},
+    }, set(tpids))
     return output
 
 
