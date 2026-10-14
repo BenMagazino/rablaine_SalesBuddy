@@ -81,6 +81,10 @@ standalone UI iterations using entirely fictional data. See the
 - **Customer forms** - native New/Edit account identity and ownership fields retain required name/TPID, optional metadata, seller mode and primary CSAM choices. Manual Save/Cancel commands stay visible, entry-local drafts guard navigation, and failed saves retain input without autosaving or changing enrichment providers.
 - **Call Notes** - rich text editor with topic/seller/customer tagging, templates, and meeting import
 - **Revenue Analyzer** - automatic MSXI sync, trend charts, growth alerts, seller/customer/product drill-downs
+  - Sync combines source groups that share a normalized customer/bucket/product/month
+    key, preserving their total revenue. Groups spanning different TPIDs remain
+    unlinked rather than being assigned to the wrong customer.
+  - Failed revenue writes retain the previous imported snapshot.
 - **Fabric Consumption** - manually import customer-scoped Fabric workload CU-hour
   shares and capacity/SKU utilization from MSXi. Reports > Fabric Consumption
   includes capacities, throttling, utilization history, and customer-wide reserved-instance

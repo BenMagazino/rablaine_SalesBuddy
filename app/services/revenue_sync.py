@@ -13,8 +13,8 @@ Two things make this more than a data load:
 
 - The MSXI bucket taxonomy changes at the fiscal-year boundary, which strands
   previously imported rows and forces a purge (see ``revenue_taxonomy``).
-- Because we query *by* TPID, every row links to a customer exactly, with no
-  name matching involved.
+- Rows link by TPID, not name matching. Shared names are aggregated at the
+  stored grain and left unlinked when their customer identity is ambiguous.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ import logging
 import queue
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Callable, Generator, Optional
 
 from app.models import (
@@ -172,8 +172,9 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
                                f"{classified['kept_count']}, retiring {classified['dropped_count']}.")}
 
         yield {"phase": "purge", "progress": 62, "message": "Clearing previous revenue data..."}
-        purged = revenue_taxonomy.purge_revenue_data(classified["keep_analysis_ids"])
         heartbeat()
+        purged = revenue_taxonomy.purge_revenue_data(
+            classified["keep_analysis_ids"], commit=False)
 
         # --- 6. write the new data ------------------------------------------
         yield {"phase": "write", "progress": 65, "message": "Writing revenue data..."}
@@ -245,10 +246,11 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
 
 def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
                 customers: list[tuple[int, str]]) -> dict[str, Any]:
-    """Insert pulled rows, linking every one to its customer by TPID.
+    """Aggregate pulled rows at the stored grain and link unambiguous TPIDs.
 
-    The tables are empty at this point (the purge ran first), so this is a plain
-    insert rather than an upsert.
+    MSXI groups by TPID and untrimmed labels, while the tables require unique
+    trimmed customer-name keys. Sum source groups that collapse to those keys.
+    The purge and insert commit together so a failed write can restore old data.
     """
     tpid_to_customer: dict[int, int] = {}
     for cid, tpid in Customer.query.with_entities(Customer.id, Customer.tpid).all():
@@ -265,7 +267,6 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
     db.session.flush()
 
     months: set = set()
-    linked = 0
     seen_customers: set[int] = set()
 
     def prepare(row: dict) -> Optional[tuple]:
@@ -281,7 +282,7 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
             return None
         return bucket, month_date, tpid
 
-    bucket_objs = []
+    bucket_by_key: dict[tuple[str, str, date], CustomerRevenueData] = {}
     for row in bucket_rows:
         prepared = prepare(row)
         if not prepared:
@@ -290,20 +291,28 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
         months.add(month_date)
         seen_customers.add(tpid)
         cid = tpid_to_customer.get(tpid)
-        if cid:
-            linked += 1
-        bucket_objs.append(CustomerRevenueData(
-            customer_name=(row.get("name") or "").strip(),
+        name = (row.get("name") or "").strip()
+        key = (name, bucket, month_date)
+        revenue = float(row.get("acr") or 0.0)
+        existing = bucket_by_key.get(key)
+        if existing is not None:
+            existing.revenue += revenue
+            if existing.tpid != str(tpid):
+                existing.tpid = None
+                existing.customer_id = None
+            continue
+        bucket_by_key[key] = CustomerRevenueData(
+            customer_name=name,
             tpid=str(tpid),
             bucket=bucket,
             customer_id=cid,
             fiscal_month=str(row.get("fm")),
             month_date=month_date,
-            revenue=float(row.get("acr") or 0.0),
+            revenue=revenue,
             last_import_id=import_record.id,
-        ))
+        )
 
-    product_objs = []
+    product_by_key: dict[tuple[str, str, str, date], ProductRevenueData] = {}
     for row in product_rows:
         prepared = prepare(row)
         if not prepared:
@@ -312,17 +321,35 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
         product = (row.get("product") or "").strip()
         if not product:
             continue
-        product_objs.append(ProductRevenueData(
-            customer_name=(row.get("name") or "").strip(),
+        name = (row.get("name") or "").strip()
+        cid = tpid_to_customer.get(tpid)
+        key = (name, bucket, product, month_date)
+        revenue = float(row.get("acr") or 0.0)
+        existing = product_by_key.get(key)
+        if existing is not None:
+            existing.revenue += revenue
+            if existing.customer_id != cid:
+                existing.customer_id = None
+            continue
+        product_by_key[key] = ProductRevenueData(
+            customer_name=name,
             bucket=bucket,
             product=product,
-            customer_id=tpid_to_customer.get(tpid),
+            customer_id=cid,
             fiscal_month=str(row.get("fm")),
             month_date=month_date,
-            revenue=float(row.get("acr") or 0.0),
+            revenue=revenue,
             last_import_id=import_record.id,
-        ))
+        )
 
+    bucket_objs = list(bucket_by_key.values())
+    product_objs = list(product_by_key.values())
+    if len(bucket_objs) != len(bucket_rows) or len(product_objs) != len(product_rows):
+        logger.info(
+            "Revenue rows normalized to stored grain: %s bucket / %s product input rows, "
+            "%s bucket / %s product stored rows",
+            len(bucket_rows), len(product_rows), len(bucket_objs), len(product_objs),
+        )
     db.session.bulk_save_objects(bucket_objs)
     db.session.bulk_save_objects(product_objs)
 
@@ -333,6 +360,7 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
         import_record.latest_month = max(months)
     db.session.commit()
 
+    linked = sum(obj.customer_id is not None for obj in bucket_objs)
     return {
         "bucket_rows": len(bucket_objs),
         "product_rows": len(product_objs),
