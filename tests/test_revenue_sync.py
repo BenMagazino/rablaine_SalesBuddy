@@ -384,6 +384,158 @@ class TestPullSafety:
 
 
 # ---------------------------------------------------------------------------
+# Import grain and replacement safety
+# ---------------------------------------------------------------------------
+class TestRevenueReplacement:
+    """Pulled rows must fit the stored grain without losing revenue or prior data."""
+
+    def test_product_only_collision_keeps_bucket_and_product_totals(self, app):
+        """Reproduce the tester's product constraint failure with valid bucket data."""
+        from app.services.revenue_sync import _write_rows
+
+        customer = Customer(name="ACME", tpid=101)
+        db.session.add(customer)
+        db.session.commit()
+        bucket = {"tpid": 101, "name": "ACME", "fm": "FY27-Jul",
+                  "bucket": "App Services", "acr": 15.0}
+        products = [
+            {**bucket, "product": "Logic Apps", "acr": 10.0},
+            {**bucket, "product": "Logic Apps ", "acr": 5.0},
+        ]
+
+        stats = _write_rows([bucket], products, [(101, "ACME")])
+
+        assert stats["bucket_rows"] == stats["product_rows"] == 1
+        assert CustomerRevenueData.query.one().revenue == 15.0
+        product = ProductRevenueData.query.one()
+        assert product.product == "Logic Apps"
+        assert product.revenue == 15.0
+        assert product.customer_id == customer.id
+
+    @pytest.mark.parametrize("different_tpids", [False, True])
+    def test_normalized_keys_are_aggregated(self, app, different_tpids):
+        """Whitespace and shared account names must not cause duplicate inserts."""
+        from app.services.revenue_sync import _write_rows
+
+        first = Customer(name="ACME", tpid=101)
+        second = Customer(name="ACME", tpid=202)
+        db.session.add_all([first, second])
+        db.session.commit()
+        base = {"tpid": 101, "name": "ACME", "fm": "FY27-Jul",
+                "bucket": "App Services", "acr": 10.0}
+        variant = {**base, "tpid": 202 if different_tpids else 101,
+                   "name": " ACME ", "bucket": " App Services ", "acr": -2.5}
+        bucket_rows = [base, variant, {**base, "fm": "FY27-Aug", "acr": 0.0}]
+        product_rows = [
+            {**base, "product": "Logic Apps"},
+            {**variant, "product": " Logic Apps "},
+            {**base, "product": "Functions", "acr": 3.0},
+            {**base, "product": "Logic Apps", "fm": "FY27-Aug", "acr": 0.0},
+        ]
+
+        stats = _write_rows(bucket_rows, product_rows, [(101, "ACME"), (202, "ACME")])
+
+        assert stats == {
+            "bucket_rows": 2, "product_rows": 3, "months": 2,
+            "customers_with_data": 2 if different_tpids else 1,
+            "linked_pct": 50.0 if different_tpids else 100.0,
+        }
+        july = datetime(2026, 7, 1).date()
+        bucket = CustomerRevenueData.query.filter_by(month_date=july).one()
+        product = ProductRevenueData.query.filter_by(
+            product="Logic Apps", month_date=july).one()
+        assert bucket.revenue == product.revenue == 7.5
+        assert bucket.customer_name == product.customer_name == "ACME"
+        assert bucket.bucket == product.bucket == "App Services"
+        assert bucket.customer_id == product.customer_id == (
+            None if different_tpids else first.id)
+        assert bucket.tpid == (None if different_tpids else "101")
+        assert ProductRevenueData.query.filter_by(product="Functions").one().revenue == 3.0
+        assert CustomerRevenueData.query.filter_by(
+            month_date=datetime(2026, 8, 1).date()).one().revenue == 0.0
+        history = RevenueImport.query.one()
+        assert history.record_count == 3
+        assert history.records_created == 5
+        assert history.new_months_added == 2
+
+    @pytest.mark.parametrize("fail_write", [False, True])
+    def test_sync_replacement_commits_or_rolls_back_as_one_unit(
+        self, app, monkeypatch, fail_write,
+    ):
+        """A failed product insert must restore the previous snapshot and history."""
+        from sqlalchemy.exc import IntegrityError
+
+        from app.models import SyncStatus
+        from app.services import revenue_pull
+        from app.services.revenue_sync import sync_revenue
+
+        customer = Customer(name="ACME", tpid=101)
+        previous = RevenueImport(filename="previous", record_count=1)
+        db.session.add_all([customer, previous])
+        db.session.flush()
+        old_bucket = CustomerRevenueData(
+            customer_name="ACME", tpid="101", bucket="App Services",
+            customer_id=customer.id, fiscal_month="FY27-Jun",
+            month_date=datetime(2026, 6, 1).date(), revenue=42.0,
+            last_import_id=previous.id)
+        old_product = ProductRevenueData(
+            customer_name="ACME", bucket="App Services", product="Logic Apps",
+            customer_id=customer.id, fiscal_month="FY27-Jun",
+            month_date=datetime(2026, 6, 1).date(), revenue=42.0,
+            last_import_id=previous.id)
+        old_analysis = RevenueAnalysis(
+            customer_name="ACME", bucket="App Services", customer_id=customer.id,
+            analyzed_at=datetime.now(timezone.utc), months_analyzed=1,
+            avg_revenue=42.0, latest_revenue=42.0, category="HEALTHY",
+            recommended_action="NO ACTION", confidence="LOW", priority_score=1,
+            review_status="new")
+        db.session.add_all([old_bucket, old_product, old_analysis])
+        db.session.commit()
+        previous_id = previous.id
+        base = {"tpid": 101, "name": "ACME", "fm": "FY27-Jul",
+                "bucket": "App Services", "acr": 10.0}
+
+        def pull_buckets(*args, **kwargs):
+            """Return distinct source rows that normalize to the same stored key."""
+            return [base, {**base, "bucket": " App Services ", "acr": 5.0}]
+
+        def pull_products(*args, **kwargs):
+            """Return product rows that normalize to the same stored key."""
+            return [{**base, "product": "Logic Apps"},
+                    {**base, "product": " Logic Apps ", "acr": 5.0}]
+
+        monkeypatch.setattr(revenue_pull, "pull_acr_for_customers", pull_buckets)
+        monkeypatch.setattr(revenue_pull, "pull_products_for_customers", pull_products)
+        if fail_write:
+            save_objects = db.session.bulk_save_objects
+
+            def fail_products(objects):
+                """Inject a database failure after the bucket insert succeeds."""
+                if objects and isinstance(objects[0], ProductRevenueData):
+                    raise IntegrityError("product insert", {}, ValueError("write failed"))
+                return save_objects(objects)
+
+            monkeypatch.setattr(db.session, "bulk_save_objects", fail_products)
+
+        result = sync_revenue(["FY27"], run_analysis=False)
+
+        assert result["success"] is not fail_write
+        bucket = CustomerRevenueData.query.one()
+        product = ProductRevenueData.query.one()
+        assert bucket.revenue == product.revenue == (42.0 if fail_write else 15.0)
+        assert bucket.fiscal_month == product.fiscal_month == (
+            "FY27-Jun" if fail_write else "FY27-Jul")
+        assert RevenueImport.query.count() == (1 if fail_write else 2)
+        assert RevenueAnalysis.query.count() == (1 if fail_write else 0)
+        assert RevenueImport.query.filter_by(id=previous_id).one().filename == "previous"
+        status = SyncStatus.query.filter_by(sync_type="revenue_sync").one()
+        assert status.success is not fail_write
+        if not fail_write:
+            assert result["bucket_rows"] == result["product_rows"] == 1
+            assert status.items_synced == 2
+
+
+# ---------------------------------------------------------------------------
 # Progress reporting
 # ---------------------------------------------------------------------------
 class TestPullProgress:

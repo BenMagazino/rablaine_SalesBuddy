@@ -252,7 +252,9 @@ def _parse_dt(value: Optional[str]) -> Optional[datetime]:
 # ---------------------------------------------------------------------------
 # Purge
 # ---------------------------------------------------------------------------
-def purge_revenue_data(keep_analysis_ids: Optional[set[int]] = None) -> dict[str, int]:
+def purge_revenue_data(
+    keep_analysis_ids: Optional[set[int]] = None, *, commit: bool = True,
+) -> dict[str, int]:
     """Delete imported revenue data and its analyses.
 
     Analyses listed in ``keep_analysis_ids`` (and their note history) survive, so
@@ -263,6 +265,7 @@ def purge_revenue_data(keep_analysis_ids: Optional[set[int]] = None) -> dict[str
     Deliberately narrower than the admin "clear revenue" action: ``RevenueConfig``
     holds the user's own thresholds and is left alone, as are Customer rows and
     the ``RevenueImport`` log, which is the user's visible import history.
+    Pass ``commit=False`` to commit the purge with its replacement data.
     """
     keep = keep_analysis_ids or set()
 
@@ -279,6 +282,7 @@ def purge_revenue_data(keep_analysis_ids: Optional[set[int]] = None) -> dict[str
         "customer_rows": CustomerRevenueData.query.delete(synchronize_session=False),
         "analyses_kept": len(keep),
     }
-    db.session.commit()
+    if commit:
+        db.session.commit()
     logger.info("revenue: purged %s", counts)
     return counts
