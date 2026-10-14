@@ -11,7 +11,7 @@
 .sb-reports-clear { border: 0; padding: 6px 8px; background: transparent; color: var(--sb-ui-ink); font: inherit; cursor: pointer; }
 .sb-reports-clear:hover { background: var(--sb-ui-raised); }
 .sb-reports-clear:disabled { color: var(--sb-ui-muted); opacity: .6; cursor: default; }
-.sb-reports-reading { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
+.sb-reports-hub .sb-reports-reading { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
 .sb-reports-directory { width: min(100%, 1420px); margin: 0 auto; padding: 0 24px 24px; }
 .sb-reports-group { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--sb-ui-line); }
 .sb-reports-group-heading { align-self: start; position: sticky; top: 0; padding-top: 12px; }

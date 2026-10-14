@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import re
+from urllib.parse import urlsplit
 
 import pytest
 from bs4 import BeautifulSoup
@@ -61,8 +62,8 @@ def test_directory_preserves_order_accessibility_and_context(
     assert root.select_one("[data-sb-reports-clear]").has_attr("disabled")
     assert root.select_one("[data-sb-reports-empty]").has_attr("hidden")
     scripts = [script.get("src", "") for script in soup.select("script[src]")]
-    own = next(value for value in scripts if value.endswith("/ui-reports-hub.js"))
-    reading = next(value for value in scripts if value.endswith("/ui-revenue-reports.js"))
+    own = next(value for value in scripts if urlsplit(value).path.endswith("/ui-reports-hub.js"))
+    reading = next(value for value in scripts if urlsplit(value).path.endswith("/ui-revenue-reports.js"))
     assert scripts.index(own) < scripts.index(reading)
 
 
@@ -110,6 +111,23 @@ def test_report_dividers_only_follow_visible_rows(client: FlaskClient) -> None:
     source = client.get("/static/css/ui-reports-hub.css").get_data(as_text=True)
     assert ".sb-reports-list li:not([hidden]) ~ li:not([hidden])" in source
     assert ".sb-reports-list li + li" not in source
+
+
+def test_report_reading_pane_overrides_shell_overflow(client: FlaskClient) -> None:
+    """The directory's scroll rule must win over the shared page-body clipping rule."""
+    soup = BeautifulSoup(client.get("/reports").data, "html.parser")
+    styles = [link["href"] for link in soup.select('link[rel="stylesheet"]')]
+    shell = next(value for value in styles if urlsplit(value).path.endswith("/ui-page-frame.css"))
+    reports = next(value for value in styles if urlsplit(value).path.endswith("/ui-reports-hub.css"))
+    assert styles.index(shell) < styles.index(reports)
+    reading = soup.select_one("#reportsDirectory")
+    assert reading.has_attr("data-sb-page-body")
+    assert reading["tabindex"] == "0"
+    source = client.get(reports).get_data(as_text=True)
+    rule = re.search(r"\.sb-reports-hub \.sb-reports-reading\s*\{([^}]+)\}", source)
+    assert rule is not None
+    assert "overflow: auto;" in rule.group(1)
+    assert "min-height: 0;" in rule.group(1)
 
 
 @pytest.mark.parametrize("template,bounded", [

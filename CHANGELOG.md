@@ -10,6 +10,10 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/14/2026
 
+- Restore scrolling on the All Reports page.
+
+## 10/14/2026
+
 - Fix revenue sync failures from duplicate account or product labels, and retain previous revenue data if an import fails.
 
 ## 10/13/2026 - 893b78b2
