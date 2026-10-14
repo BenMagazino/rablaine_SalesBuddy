@@ -2109,8 +2109,6 @@ document.getElementById('importFromMsxBtn').addEventListener('click', async func
     btn.disabled = true;
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Importing...';
     
-    function warnOnLeave(e) { e.preventDefault(); e.returnValue = ''; }
-    window.addEventListener('beforeunload', warnOnLeave);
     progressDiv.classList.remove('sb-admin-d-none');
     resultsDiv.classList.add('sb-admin-d-none');
     errorDiv.classList.add('sb-admin-d-none');
@@ -2223,7 +2221,6 @@ document.getElementById('importFromMsxBtn').addEventListener('click', async func
         errorDiv.classList.remove('sb-admin-d-none');
         document.getElementById('msxImportErrorText').textContent = error.message;
     } finally {
-        window.removeEventListener('beforeunload', warnOnLeave);
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Now';
     }

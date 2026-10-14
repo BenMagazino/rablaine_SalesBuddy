@@ -140,46 +140,9 @@ def revenue_import():
 
 @revenue_bp.route('/api/revenue/sync', methods=['POST'])
 def revenue_sync():
-    """Sync revenue straight from MSXI.
-
-    Streams SSE progress when the caller asks for it, otherwise starts the sync
-    in a background thread and returns 202 so the scheduler never times out.
-    """
-    from app.services.revenue_sync import sync_revenue, sync_revenue_stream
-
-    if Customer.query.first() is None:
-        return jsonify({'success': False, 'error': 'Import accounts first'}), 400
-
-    payload = request.get_json(silent=True) or {}
-    fiscal_years = payload.get('fiscal_years') or None
-    if fiscal_years and not isinstance(fiscal_years, list):
-        fiscal_years = None
-    run_analysis = payload.get('run_analysis', True)
-
-    if 'text/event-stream' in request.headers.get('Accept', ''):
-        def generate():
-            yield from sync_revenue_stream(fiscal_years, run_analysis)
-
-        return Response(
-            stream_with_context(generate()),
-            mimetype='text/event-stream',
-            headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
-        )
-
-    import threading
-    from flask import current_app
-
-    def _run(app):
-        with app.app_context():
-            try:
-                sync_revenue(fiscal_years, run_analysis)
-            except Exception:
-                app.logger.exception("Background revenue sync failed")
-
-    threading.Thread(target=_run, args=(current_app._get_current_object(),),
-                     daemon=True).start()
-    return jsonify({'success': True, 'message': 'Revenue sync started in background.',
-                    'async': True}), 202
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('revenue', request.get_json(silent=True))
 
 
 @revenue_bp.route('/api/revenue/sync/status', methods=['GET'])
@@ -217,24 +180,14 @@ def revenue_dismiss_bucket_notice():
 
 @revenue_bp.route('/revenue/analyze', methods=['POST'])
 def revenue_analyze():
-    """Re-run analysis on all revenue data."""
-    from app.models import Customer
-    if Customer.query.first() is None:
-        flash('Import accounts first before running analysis.', 'warning')
-        return redirect(url_for('revenue.revenue_dashboard'))
-
+    """Queue analysis without binding its lifetime to this form submission."""
+    from app.services.sync_jobs import SyncAdmissionError, admit_sync
     try:
-        stats = run_analysis_for_all()
-        flash(
-            f'Analysis complete: {stats["analyzed"]} customers analyzed, '
-            f'{stats["actionable"]} need attention, '
-            f'{stats["skipped"]} skipped (insufficient data).',
-            'success'
-        )
-    except Exception as e:
-        flash(f'Analysis error: {str(e)}', 'error')
-    
-    return redirect(url_for('revenue.revenue_dashboard'))
+        admit_sync('revenue-analysis')
+        flash('Revenue analysis queued. Follow its progress in the Sync Test Console.', 'success')
+    except SyncAdmissionError as exc:
+        flash(str(exc), 'warning')
+    return redirect(url_for('jobs.sync_console'))
 
 
 @revenue_bp.route('/revenue/seller/<seller_name>')

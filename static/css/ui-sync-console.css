@@ -1,0 +1,23 @@
+.sb-sync-console { color: var(--sb-ui-ink); font: 13px/1.6 var(--sb-ui-font); }
+.sb-sync-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-sync-header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.sb-sync-header p, .sb-sync-identity p { margin: 4px 0 0; color: var(--sb-ui-muted); }
+.sb-sync-worker { margin: 0; padding: 8px 24px; background: var(--sb-ui-context); border-bottom: 1px solid var(--sb-ui-line); }
+.sb-sync-console .sb-sync-reading { overflow: auto; scrollbar-gutter: stable; }
+.sb-sync-row { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.3fr) 120px; gap: 24px; padding: 16px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-sync-identity h2 { margin: 0; font-size: 13px; font-weight: 600; }
+.sb-sync-identity p, .sb-sync-state small, .sb-sync-row label { font-size: 12px; }
+.sb-sync-identity details { margin-top: 8px; }
+.sb-sync-row textarea { box-sizing: border-box; display: block; width: 100%; margin-top: 4px; padding: 6px 8px; background: var(--sb-ui-context); border: 1px solid var(--sb-ui-control-line); color: var(--sb-ui-ink); font: inherit; }
+.sb-sync-state, .sb-sync-actions { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
+.sb-sync-state span, .sb-sync-error { overflow-wrap: anywhere; }
+.sb-sync-state small { color: var(--sb-ui-muted); }
+.sb-sync-console progress { width: 100%; height: 10px; accent-color: var(--sb-ui-accent); }
+.sb-sync-console button { padding: 6px 10px; border: 1px solid var(--sb-ui-control-line); background: var(--sb-ui-context); color: var(--sb-ui-ink); font: inherit; cursor: pointer; }
+.sb-sync-console button:hover { background: var(--sb-ui-raised); }
+.sb-sync-console button:disabled { opacity: .6; cursor: default; }
+.sb-sync-console a { color: var(--sb-ui-accent); }
+.sb-sync-console :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
+.sb-sync-error { color: var(--sb-ui-danger); margin: 0; }
+.sb-sync-console > .sb-sync-error { padding: 8px 24px; }
+.sb-sync-console [hidden] { display: none !important; }

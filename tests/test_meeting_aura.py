@@ -118,6 +118,26 @@ def force_workiq_fallback(monkeypatch):
 # ensure_meeting_aura
 # ---------------------------------------------------------------------------
 
+def test_progress_retains_completed_dates_between_queries(monkeypatch, reset_sync_state):
+    """Starting the next source query must preserve measured calendar progress."""
+    from app.services.meeting_sync import _set_sync_state
+
+    published = []
+    monkeypatch.setattr(
+        'app.services.sync_jobs.publish_progress', published.append,
+    )
+    dates = ['2026-04-20', '2026-04-21', '2026-04-22']
+    _set_sync_state(running=True, aura_dates=dates, current_date=dates[0])
+    _set_sync_state(current_date=dates[1])
+    _set_sync_state(current_date=dates[2])
+
+    assert [event['current'] for event in published] == [0, 1, 2]
+    assert [event['total'] for event in published] == [3, 3, 3]
+    assert [event['progress'] for event in published] == pytest.approx(
+        [0, 100 / 3, 200 / 3],
+    )
+    assert published[-1]['message'] == 'Refreshing 2026-04-22 (3/3).'
+
 class TestEnsureMeetingAura:
     def test_skips_weekends(
         self, app, clean_meeting_tables, reset_sync_state, monkeypatch,

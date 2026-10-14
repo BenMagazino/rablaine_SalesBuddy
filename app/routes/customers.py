@@ -778,14 +778,9 @@ def api_tpid_import():
     POST JSON: result from tpid-lookup's account object.
     Creates territory, seller, and customer as needed.
     Fetches favicon for the customer's website.
-    Then syncs opportunities, milestones, tasks, and comments from MSX.
+    Then queues opportunities, milestones, tasks, and comments from MSX.
     """
     from app.routes.admin import fetch_favicon_for_domain
-    from app.services.milestone_sync import (
-        sync_customer_milestones, sync_customer_comments,
-        sync_customer_opportunities,
-    )
-
     data = request.get_json(silent=True) or {}
     account = data.get('account')
     if not account:
@@ -861,37 +856,21 @@ def api_tpid_import():
         db.session.commit()
         logger.info("Imported customer '%s' (TPID %s) via TPID lookup", name, tpid)
 
-        # --- Sync opportunities, milestones, tasks, and comments from MSX ---
-        sync_result = {}
+        # Customer creation is immediate; the refresh uses the shared detached runner.
+        safe_sync = {}
         if customer.tpid_url:
+            from app.services.sync_jobs import SyncAdmissionError, admit_sync
             try:
-                # Sync opportunities first (catches opps with no milestones)
-                opp_result = sync_customer_opportunities(customer)
-                sync_result["opportunities_synced"] = opp_result.get("created", 0)
-
-                # Then sync milestones (creates more opps as parents + milestones)
-                ms_result = sync_customer_milestones(customer)
-                sync_result.update(ms_result)
-
-                # Then comments on milestones
-                if ms_result.get("success"):
-                    comment_result = sync_customer_comments(customer)
-                    sync_result["comments_synced"] = comment_result.get(
-                        "comments_synced", 0
-                    )
-                logger.info(
-                    "Post-import sync for '%s': %s", name, sync_result,
+                job = admit_sync('customer-data', {'customer_id': customer.id}, initiator='followup')
+            except SyncAdmissionError as exc:
+                logger.warning('Imported customer %s, but follow-up admission failed: %s',
+                               customer.id, exc)
+                return (
+                    jsonify(success=False, customer_id=customer.id,
+                            error=f'Customer imported, but its data sync was not queued: {exc}'),
+                    exc.status,
                 )
-            except Exception:
-                logger.exception(
-                    "Post-import sync failed for '%s'", name,
-                )
-
-        # Sanitize sync_result: convert any sets to lists for JSON
-        safe_sync = {
-            k: list(v) if isinstance(v, set) else v
-            for k, v in sync_result.items()
-        }
+            safe_sync = {'job_id': job.id, 'accepted': True}
 
         return jsonify({
             "success": True,

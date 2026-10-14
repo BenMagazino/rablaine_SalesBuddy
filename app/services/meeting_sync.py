@@ -44,13 +44,38 @@ _sync_state_lock = threading.Lock()
 
 def get_sync_state_snapshot() -> dict[str, Any]:
     """Return a copy of the current sync state. Cheap, never blocks aura."""
+    from app.models import Job
+    from app.services.sync_jobs import ACTIVE_STATES, job_snapshot
+
+    job = Job.query.filter_by(job_type='sync:meeting-aura').order_by(Job.id.desc()).first()
+    if job:
+        snapshot = job_snapshot(job)
+        return {
+            'running': job.status in ACTIVE_STATES, 'job_id': job.id,
+            'started_at': snapshot['started_at'], 'current_date': snapshot['progress'].get(
+                'current_date'), 'aura_dates': snapshot['progress'].get('aura_dates', []),
+            'error': snapshot['error'],
+        }
     with _sync_state_lock:
         return dict(_sync_state)
 
 
 def _set_sync_state(**kwargs) -> None:
+    from app.services.sync_jobs import publish_progress
+
     with _sync_state_lock:
         _sync_state.update(kwargs)
+        state = dict(_sync_state)
+    dates = state['aura_dates']
+    current = state['current_date']
+    completed = dates.index(current) if current in dates else 0
+    publish_progress({
+        'phase': 'calendar', 'current': completed, 'total': len(dates),
+        'progress': 100 * completed / len(dates) if dates else None,
+        'message': f'Refreshing {current} ({completed + 1}/{len(dates)}).'
+        if current else 'Refreshing meeting calendar.',
+        **state,
+    })
 
 
 def _clear_sync_state() -> None:
@@ -267,7 +292,7 @@ def ensure_meeting_aura(
             len(aura_strs), aura_strs,
         )
 
-        for day_str in aura_strs:
+        for index, day_str in enumerate(aura_strs):
             _set_sync_state(current_date=day_str)
             try:
                 meetings, err = sync_meetings_for_date(day_str)
@@ -279,6 +304,12 @@ def ensure_meeting_aura(
             counts[day_str] = len(meetings)
             if err:
                 errors[day_str] = err
+            from app.services.sync_jobs import publish_progress
+            publish_progress({'phase': 'calendar', 'current': index + 1,
+                              'total': len(aura_strs),
+                              'progress': 100 * (index + 1) / len(aura_strs),
+                              'current_date': day_str, 'aura_dates': aura_strs,
+                              'message': f'Calendar: {index + 1}/{len(aura_strs)} days stored.'})
 
         logger.info(
             "ensure_meeting_aura complete: %d meetings across %d days, %d errors",
@@ -334,7 +365,8 @@ def _run_sync(app) -> None:
     """
     try:
         with app.app_context():
-            ensure_meeting_aura()
+            from app.services.sync_jobs import admit_sync
+            admit_sync('meeting-aura', initiator='scheduled')
     except Exception:
         logger.exception("Error in daily meeting aura sync")
 
@@ -348,9 +380,9 @@ def _run_prefetch_only(app) -> None:
     """
     try:
         with app.app_context():
-            from app.services.meeting_prefetch import prefetch_for_date
+            from app.services.sync_jobs import admit_sync
             today_str = date.today().strftime('%Y-%m-%d')
-            prefetch_for_date(today_str)
+            admit_sync('meetings', {'date': today_str}, initiator='scheduled')
     except Exception:
         logger.exception("Standalone meeting prefetch failed")
 

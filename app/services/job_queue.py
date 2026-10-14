@@ -23,6 +23,7 @@ import logging
 import os
 import threading
 import time
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
 
@@ -41,6 +42,16 @@ _MAX_BACKOFF_SECONDS = 300
 
 # Handler registry: job_type -> callable.
 _HANDLERS: dict[str, Callable[[dict], Optional[dict]]] = {}
+CURRENT_JOB_ID: ContextVar[int | None] = ContextVar('current_job_id', default=None)
+
+
+class NonRetryableJobError(RuntimeError):
+    """A permanent/domain failure that must remain visible until explicitly retried."""
+
+    def __init__(self, message: str, *, result: dict | None = None) -> None:
+        """Capture a permanent failure and its inspectable domain result."""
+        super().__init__(message)
+        self.result = result
 
 
 def _now() -> datetime:
@@ -97,6 +108,8 @@ def enqueue(
         max_attempts: Total attempts (including retries) before giving up.
         available_at: Earliest run time (naive UTC). Defaults to now.
     """
+    if job_type.startswith('sync:'):
+        raise ValueError('Admit registered syncs with sync_jobs.admit_sync().')
     if dedupe_key:
         existing = (
             Job.query
@@ -142,9 +155,14 @@ def claim_next(worker_id: str) -> Optional[Job]:
         .all()
     )
     for candidate in candidates:
+        claim = Job.query.filter(Job.id == candidate.id, Job.status == Job.STATUS_PENDING)
+        if candidate.job_type.startswith('sync:'):
+            running = db.session.query(Job.id).filter(
+                Job.job_type.startswith('sync:'), Job.status == Job.STATUS_RUNNING,
+            ).exists()
+            claim = claim.filter(~running)
         updated = (
-            Job.query
-            .filter(Job.id == candidate.id, Job.status == Job.STATUS_PENDING)
+            claim
             .update(
                 {
                     Job.status: Job.STATUS_RUNNING,
@@ -175,6 +193,7 @@ def _complete_job(job: Job, result: Optional[Any] = None) -> None:
     job.result = json.dumps(result) if result is not None else None
     job.finished_at = _now()
     job.last_error = None
+    job.active_key = None
     db.session.commit()
 
 
@@ -193,6 +212,7 @@ def _fail_job(job: Job, error: str, retry: bool = True) -> None:
     else:
         job.status = Job.STATUS_FAILED
         job.finished_at = _now()
+        job.active_key = None
     db.session.commit()
 
 
@@ -239,10 +259,10 @@ class _HeartbeatPulse(threading.Thread):
         self._app = app
         self._job_id = job_id
         self._interval = interval or _HEARTBEAT_INTERVAL_SECONDS
-        self._stop = threading.Event()
+        self._stop_event = threading.Event()
 
     def run(self) -> None:
-        while not self._stop.wait(self._interval):
+        while not self._stop_event.wait(self._interval):
             try:
                 with self._app.app_context():
                     heartbeat(self._job_id)
@@ -250,7 +270,7 @@ class _HeartbeatPulse(threading.Thread):
                 logger.debug("heartbeat pulse failed", exc_info=True)
 
     def stop(self) -> None:
-        self._stop.set()
+        self._stop_event.set()
 
 
 def _execute(job: Job, app=None, with_heartbeat: bool = False) -> None:
@@ -261,20 +281,35 @@ def _execute(job: Job, app=None, with_heartbeat: bool = False) -> None:
                   retry=False)
         return
 
-    payload = json.loads(job.payload) if job.payload else {}
-
     pulse = None
     if with_heartbeat and app is not None:
         pulse = _HeartbeatPulse(app, job.id)
         pulse.start()
 
+    token = CURRENT_JOB_ID.set(job.id)
+    job_id, job_type = job.id, job.job_type
     try:
+        try:
+            payload = json.loads(job.payload) if job.payload else {}
+        except (TypeError, ValueError) as exc:
+            raise NonRetryableJobError('Job payload is not valid JSON.') from exc
+        if not isinstance(payload, dict):
+            raise NonRetryableJobError('Job payload must be an object.')
         result = handler(payload)
+        if isinstance(result, dict) and result.get('success') is False:
+            raise NonRetryableJobError(result.get('error') or 'Operation reported failure.',
+                                       result=result)
         _complete_job(job, result if isinstance(result, (dict, list)) else None)
     except Exception as exc:  # noqa: BLE001 - any handler error is a job failure
-        logger.exception("Job %s (%s) failed", job.id, job.job_type)
-        _fail_job(job, f"{type(exc).__name__}: {exc}", retry=True)
+        db.session.rollback()
+        db.session().info.pop('sync_deferred_progress', None)
+        logger.exception("Job %s (%s) failed", job_id, job_type)
+        if isinstance(exc, NonRetryableJobError) and exc.result is not None:
+            job.result = json.dumps(exc.result)
+        _fail_job(job, f"{type(exc).__name__}: {exc}",
+                  retry=not isinstance(exc, NonRetryableJobError))
     finally:
+        CURRENT_JOB_ID.reset(token)
         if pulse is not None:
             pulse.stop()
             pulse.join(timeout=5)

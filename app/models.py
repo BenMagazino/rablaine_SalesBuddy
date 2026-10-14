@@ -1988,11 +1988,10 @@ class RevenueReviewNote(db.Model):
 # =============================================================================
 
 class SyncStatus(db.Model):
-    """Tracks sync start/completion times to detect interrupted syncs.
-    
-    A sync is considered successfully completed only when completed_at >= started_at
-    and success is True. If the user reloads mid-sync, started_at will be set but
-    completed_at will be null, correctly indicating the sync didn't finish.
+    """Legacy domain completion and process-heartbeat records.
+
+    Registered data syncs project their current state from durable jobs.
+    Older completion records remain a fallback until the first queued run.
     """
     __tablename__ = 'sync_status'
     
@@ -2033,6 +2032,10 @@ class SyncStatus(db.Model):
                 items_synced: int or None
                 details: str or None
         """
+        from app.services.sync_jobs import project_sync_status
+        projected = project_sync_status(sync_type)
+        if projected is not None:
+            return projected
         status = cls.query.filter_by(sync_type=sync_type).first()
         if not status or status.started_at is None:
             return {'state': 'never_run', 'started_at': None,
@@ -2206,9 +2209,33 @@ class Job(db.Model):
     created_at = db.Column(db.DateTime, default=utc_now, index=True)
     started_at = db.Column(db.DateTime, nullable=True)
     finished_at = db.Column(db.DateTime, nullable=True)
+    active_key = db.Column(db.String(200), nullable=True)
+    request_key = db.Column(db.String(200), nullable=True)
+    initiator = db.Column(db.String(32), nullable=True)
+    progress_json = db.Column(db.Text, nullable=True)
+    progress_at = db.Column(db.DateTime, nullable=True)
+    last_success_at = db.Column(db.DateTime, nullable=True)
+    __table_args__ = (
+        db.Index('uq_jobs_active_key', 'active_key', unique=True),
+        db.Index('uq_jobs_request_key', 'request_key', unique=True),
+    )
 
     def __repr__(self) -> str:
         return f'<Job {self.id} {self.job_type} {self.status}>'
+
+
+class JobEvent(db.Model):
+    """Bounded, durable progress events belonging to one job attempt."""
+
+    __tablename__ = 'job_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('jobs.id', ondelete='CASCADE'),
+                       nullable=False, index=True)
+    attempt = db.Column(db.Integer, nullable=False)
+    event_type = db.Column(db.String(32), nullable=False)
+    data_json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
 
 
 class ConnectExport(db.Model):

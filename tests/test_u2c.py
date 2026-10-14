@@ -832,11 +832,21 @@ class TestImportOfficialSnapshot:
 class TestImportOfficialRoute:
     """Test the official import API endpoint."""
 
+    def _run_import(self, client, app) -> dict:
+        """Observe admission separately from execution and its persisted result."""
+        from app.services.job_queue import process_one
+
+        response = client.post('/api/reports/u2c/import-official', json={})
+        assert response.status_code == 202
+        with app.app_context():
+            process_one('test-worker')
+        return client.get(response.json['status_url']).json['job']
+
     def test_import_endpoint_returns_snapshot(self, client, app, u2c_data,
                                               official_rows):
-        response = client.post('/api/reports/u2c/import-official', json={})
-        assert response.status_code == 200
-        data = response.get_json()
+        job = self._run_import(client, app)
+        assert job['status'] == 'done'
+        data = job['result']
         assert data['success'] is True
         assert data['source'] == 'msxi'
 
@@ -845,9 +855,9 @@ class TestImportOfficialRoute:
     ):
         with app.app_context():
             make_snapshot()
-        response = client.post('/api/reports/u2c/import-official', json={})
-        assert response.status_code == 200
-        assert response.get_json()['replaced'] is True
+        job = self._run_import(client, app)
+        assert job['status'] == 'done'
+        assert job['result']['replaced'] is True
 
     def test_import_endpoint_records_sync_status(self, client, app, u2c_data,
                                                  official_rows):
@@ -855,8 +865,7 @@ class TestImportOfficialRoute:
 
         with app.app_context():
             make_snapshot()
-        response = client.post('/api/reports/u2c/import-official', json={})
-        assert response.status_code == 200
+        assert self._run_import(client, app)['status'] == 'done'
         with app.app_context():
             status = SyncStatus.get_status('u2c_import')
             assert status['state'] == 'complete'
@@ -868,9 +877,9 @@ class TestImportOfficialRoute:
             raise pull_module.U2CPullError('gateway down')
 
         monkeypatch.setattr(pull_module, 'pull_u2c_milestones', boom)
-        response = client.post('/api/reports/u2c/import-official', json={})
-        assert response.status_code == 502
-        assert 'gateway down' in response.get_json()['error']
+        job = self._run_import(client, app)
+        assert job['status'] == 'failed'
+        assert 'gateway down' in job['error']
 
 
 class TestTerritoryCodes:
@@ -997,6 +1006,8 @@ class TestScheduledU2CImport:
 
         with app.app_context():
             _run_u2c_import()
+            from app.services.job_queue import process_one
+            process_one('test-worker')
             status = SyncStatus.get_status('u2c_import')
             assert status['state'] == 'complete'
             assert json.loads(status['details'])['outcome'] == 'imported'
@@ -1010,6 +1021,8 @@ class TestScheduledU2CImport:
 
         with app.app_context():
             _run_u2c_import()
+            from app.services.job_queue import process_one
+            process_one('test-worker')
             status = SyncStatus.get_status('u2c_import')
             assert status['state'] == 'failed'
             assert json.loads(status['details'])['outcome'] == 'broken'
@@ -1725,7 +1738,9 @@ def test_native_u2c_frame_and_empty_state(client, app, u2c_data, populated):
     assert surface.select_one('.u2c-header[data-sb-page-band]')
     assert surface.select_one('.u2c-controls[data-sb-page-band]')
     assert soup.select_one('body > footer.sb-page-status #u2cRowStatus')
-    assert soup.select_one('script[src$="js/ui-u2c.js"]')
+    from urllib.parse import urlsplit
+    assert any(urlsplit(script['src']).path.endswith('js/ui-u2c.js')
+               for script in soup.select('script[src]'))
     assert not surface.select('.card, .btn, .badge, .form-select, .form-control')
     if populated:
         assert len(reading.select('#summaryCards > .u2c-metric')) == 5

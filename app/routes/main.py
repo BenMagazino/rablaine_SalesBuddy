@@ -1906,11 +1906,9 @@ def update_start_minimized():
 
 @main_bp.route('/api/copilot-actions/sync', methods=['POST'])
 def trigger_copilot_sync():
-    """Manually trigger a Copilot action items sync."""
-    from app.services.copilot_actions import sync_copilot_action_items
-    from flask import current_app
-    result = sync_copilot_action_items(app=current_app._get_current_object())
-    return jsonify(result)
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('copilot-actions', None)
 
 
 # =============================================================================

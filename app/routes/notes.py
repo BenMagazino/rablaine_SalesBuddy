@@ -1020,49 +1020,11 @@ def api_get_meetings():
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
 
-    is_today = (parsed_date == date.today())
-    from_cache = False
-    synced_at = None
-
-    if is_today:
-        # Today: use daily cache if available, otherwise live fetch + cache
-        cached_meetings, synced_at = get_cached_meetings(date_str)
-        if cached_meetings is not None:
-            formatted_meetings = cached_meetings
-            from_cache = True
-        else:
-            try:
-                formatted_meetings, err = sync_meetings_for_date(date_str)
-                if err and not formatted_meetings:
-                    return jsonify({'error': f'Failed to fetch meetings: {err}'}), 500
-            except Exception as e:
-                logger.error(f"WorkIQ error: {e}")
-                return jsonify({'error': f'Failed to fetch meetings: {str(e)}'}), 500
-            _, synced_at = get_cached_meetings(date_str)
-    else:
-        # Non-today: check cache first (user may have manually pulled this day),
-        # then fall back to a live WorkIQ fetch.
-        cached_meetings, synced_at = get_cached_meetings(date_str)
-        if cached_meetings is not None:
-            formatted_meetings = cached_meetings
-            from_cache = True
-        else:
-            try:
-                meetings, raw_response = get_meetings_for_date(date_str)
-            except Exception as e:
-                logger.error(f"WorkIQ error: {e}")
-                return jsonify({'error': f'Failed to fetch meetings: {str(e)}'}), 500
-
-            formatted_meetings = []
-            for m in meetings:
-                formatted_meetings.append({
-                    'id': m.get('id', ''),
-                    'title': m.get('title', ''),
-                    'start_time': m['start_time'].isoformat() if m.get('start_time') else None,
-                    'start_time_display': m['start_time'].strftime('%I:%M %p') if m.get('start_time') else m.get('start_time_str', ''),
-                    'customer': m.get('customer', ''),
-                    'attendees': m.get('attendees', []),
-                })
+    formatted_meetings, synced_at = get_cached_meetings(date_str)
+    if formatted_meetings is None:
+        from app.routes.jobs import start_response
+        return start_response('meetings', {'date': date_str})
+    from_cache = True
 
     # Find best match if customer name provided
     auto_selected = None
@@ -1098,100 +1060,22 @@ def api_get_meetings():
 
 @notes_bp.route('/api/meetings/refresh', methods=['POST'])
 def api_refresh_meetings():
-    """
-    Force-refresh meetings for a date from WorkIQ, replacing the cache.
-
-    Used when user wants to pick up meetings added after the daily 7 AM sync.
-
-    Request JSON:
-        - date: Date in YYYY-MM-DD format (required)
-
-    Returns JSON with the same shape as GET /api/meetings.
-    """
-    from flask import jsonify
-    from app.services.meeting_sync import sync_meetings_for_date, get_cached_meetings
-
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
     data = request.get_json(silent=True) or {}
-    date_str = data.get('date') or request.args.get('date')
-
-    if not date_str:
-        return jsonify({'error': 'date parameter is required'}), 400
-
-    try:
-        datetime.strptime(date_str, '%Y-%m-%d')
-    except ValueError:
-        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-
-    try:
-        meetings, err = sync_meetings_for_date(date_str)
-        if err and not meetings:
-            return jsonify({'error': f'Failed to refresh meetings: {err}'}), 500
-    except Exception as e:
-        logger.error(f"Meeting refresh error: {e}")
-        return jsonify({'error': f'Failed to refresh meetings: {str(e)}'}), 500
-
-    _, synced_at = get_cached_meetings(date_str)
-
-    return jsonify({
-        'meetings': meetings,
-        'date': date_str,
-        'from_cache': False,
-        'synced_at': _synced_at_iso_utc(synced_at),
-    })
+    if not isinstance(data, dict):
+        return jsonify(success=False, error='Send meeting options as a JSON object.'), 400
+    target = data.get('date') or request.args.get('date')
+    if not target:
+        return jsonify(success=False, error='Choose a meeting date.'), 400
+    return start_response('meetings', {'date': target})
 
 
 @notes_bp.route('/api/meetings/sync-aura', methods=['POST'])
 def api_sync_aura():
-    """Trigger an aura sync (today + next 7 weekdays) in the background.
-
-    Optional JSON/query params:
-        ``anchor``      YYYY-MM-DD start date (defaults to today)
-        ``days_ahead``  int (defaults to module DEFAULT_AURA_DAYS_AHEAD)
-
-    Returns ``{started: bool, state: <snapshot>}``. If a sync is already
-    in flight, ``started`` is False and the caller should display the
-    in-progress modal driven by ``/api/meetings/sync-status``.
-    """
-    import threading
-    from flask import current_app, jsonify
-    from app.services.meeting_sync import (
-        DEFAULT_AURA_DAYS_AHEAD,
-        ensure_meeting_aura,
-        get_sync_state_snapshot,
-    )
-
-    data = request.get_json(silent=True) or {}
-    anchor_str = data.get('anchor') or request.args.get('anchor')
-    days_ahead_raw = data.get('days_ahead', request.args.get('days_ahead'))
-
-    anchor: date | None = None
-    if anchor_str:
-        try:
-            anchor = datetime.strptime(anchor_str, '%Y-%m-%d').date()
-        except ValueError:
-            return jsonify({'error': 'Invalid anchor format. Use YYYY-MM-DD'}), 400
-
-    try:
-        days_ahead = int(days_ahead_raw) if days_ahead_raw is not None else DEFAULT_AURA_DAYS_AHEAD
-    except (TypeError, ValueError):
-        return jsonify({'error': 'days_ahead must be an integer'}), 400
-
-    # Pre-check the lock: if it's held, don't start a thread, just report.
-    state = get_sync_state_snapshot()
-    if state.get('running'):
-        return jsonify({'started': False, 'reason': 'already running', 'state': state})
-
-    app_obj = current_app._get_current_object()
-
-    def _bg():
-        with app_obj.app_context():
-            ensure_meeting_aura(start=anchor, days_ahead=days_ahead)
-
-    threading.Thread(target=_bg, daemon=True).start()
-
-    # Brief snapshot - the thread may or may not have flipped state yet,
-    # but the modal will pick up "running" within its first poll.
-    return jsonify({'started': True, 'state': get_sync_state_snapshot()})
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('meeting-aura', request.get_json(silent=True))
 
 
 @notes_bp.route('/api/meetings/sync-status', methods=['GET'])

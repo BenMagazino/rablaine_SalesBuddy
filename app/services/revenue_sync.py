@@ -25,6 +25,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timezone
 from typing import Any, Callable, Generator, Optional
+import requests
 
 from app.models import (
     db, Customer, CustomerRevenueData, ProductRevenueData, RevenueImport, SyncStatus,
@@ -241,7 +242,8 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
         logger.error("revenue sync failed: %s", exc, exc_info=True)
         db.session.rollback()
         SyncStatus.mark_completed(SYNC_TYPE, success=False, details=str(exc)[:500])
-        yield {"error": str(exc)}
+        yield {"error": str(exc),
+               "retryable": isinstance(exc, (requests.Timeout, requests.ConnectionError))}
 
 
 def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
@@ -382,7 +384,8 @@ def sync_revenue(fiscal_years: Optional[list[str]] = None,
         if update.get("complete"):
             result = {"success": True, **update["result"]}
         elif update.get("error"):
-            result = {"success": False, "error": update["error"]}
+            result = {"success": False, "error": update["error"],
+                      "retryable": update.get("retryable", False)}
         elif progress:
             progress(update)
     return result

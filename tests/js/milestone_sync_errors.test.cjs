@@ -68,7 +68,7 @@ test('explicit backend error stops the spinner and restores controls', async () 
     assert.equal(elements.syncBtnEmpty.disabled, false);
     assert.doesNotMatch(elements.syncBtn.innerHTML, /Syncing/);
     assert.equal(elements.syncBrainrotToggle.classList.contains('sb-hidden'), true);
-    assert.ok(removed.includes('beforeunload'));
+    assert.ok(!removed.includes('beforeunload'));
     assert.equal(reloads, 0);
 });
 

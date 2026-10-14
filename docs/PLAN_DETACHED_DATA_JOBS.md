@@ -1,6 +1,9 @@
 # Plan: Detached import, sync and refresh jobs
 
-**Status:** Deferred, not implemented.
+**Status:** Regular-data-sync slice implemented on `feature/detached-sync-jobs`.
+Concurrent conflict groups, file-backed live status and coordinated background
+writes are the approved next slice below. The Home freshness launcher, uploads,
+destructive workflows and cancellation remain deferred.
 **Captured:** October 3, 2026.
 **Requested by:** User, after approving the Home data-freshness bar.
 
@@ -18,6 +21,87 @@ This also enables clicking a freshness timestamp, inspecting its status, and
 starting that sync without navigating away from a note, report or calendar.
 The exact launcher UX remains a design proposal, not a signed-off mockup.
 
+## Implemented slice
+
+[sync_jobs.py](../app/services/sync_jobs.py) is the single admission and execution
+registry. Frontend adapters, schedulers and headless callers all use
+`admit_sync(operation, options, initiator=...)`; only the separate durable worker
+executes domain services. Generic queue admission rejects `sync:` handler names,
+and pre-upgrade calendar/preparation jobs translate to canonical admission.
+
+Open **Settings > Sync Test Console** at `/admin/sync-console`. The page lists
+every registered operation, supported JSON options, active progress, latest
+outcome, last successful refresh and worker availability. Start a new run or
+explicitly retry the previous failed run with its original captured options.
+Run details expose the saved result, error and bounded event/attempt history.
+Running jobs show current progress first. Retained errors from earlier attempts
+are labeled separately, with automatic recovery distinguished from a current failure.
+Leaving or closing the browser stops observation, not execution.
+
+### Operation inventory
+
+| Registry key | Source and scope | Existing launchers |
+|---|---|---|
+| `accounts` | MSX account discovery, alignment, sellers and territories | Admin, onboarding, scheduler/headless |
+| `accounts-selected` | Captured account and territory selection | Account import |
+| `milestones` | Full opportunities, milestones, tasks and comments | Tracker, onboarding, scheduler, preparation dependency |
+| `customer-milestones` | One customer's milestones | Customer tracker |
+| `customer-data` | One customer's opportunities, milestones and comments | TPID import follow-up |
+| `revenue` | MSXI ACR, reconciliation and optional saved analysis | Revenue import, onboarding, milestone follow-up |
+| `revenue-analysis` | Saved revenue trends | Revenue Analyze |
+| `u2c` | Official MSXI baseline and local matching | U2C report, scheduled/follow-up |
+| `marketing` | Summaries, interactions and contacts | Admin, milestone follow-up |
+| `fabric` | Fabric workloads, capacities, utilization and revenue | Report, customer tab, weekly scheduler |
+| `fabric-revenue` | Saved Fabric revenue only | Fabric revenue refresh |
+| `meetings` | Calendar/attendee cache for a captured date | Meeting picker refresh and cache miss |
+| `meeting-aura` | Captured business-day calendar window | Picker, daily/startup scheduler, account follow-up |
+| `copilot-actions` | Daily WorkIQ action suggestions | Home, daily/startup scheduler |
+| `favicons` | All icons or missing icons only | Admin |
+| `milestone-dates` | On-team milestone audit histories | Reports |
+| `activity-reconciliation` | Refresh MSX tasks/activities and match saved meetings | Activity Coverage |
+| `calendar-population` | Resumable fiscal-year calendar | Activity Coverage |
+| `meeting-preparation` | WorkIQ summaries and milestone matching | Activity Coverage |
+
+Excluded from this one-shot sync registry: destructive FY/restore workflows,
+file uploads, backups/exports, interactive CRUD or draft enrichment/lookups,
+authentication token refresh, health checks, telemetry and continuous partner
+sharing subscriptions. Those are not regular bounded data-refresh runs.
+Individual onboarding/FY sync phases use admission, but this slice does not
+detach an entire browser-orchestrated multi-step workflow.
+
+### Persisted contract and recovery
+
+- `POST /api/jobs/start/<operation>` returns `202`, a stable `job_id`, initial
+  snapshot and `status_url`, only after admission commits.
+- `GET /api/jobs` reads the complete catalog, retained successes and worker health.
+- `GET /api/jobs/<job_id>` reads that run and its latest 200 saved events.
+- `POST /api/jobs/<job_id>/retry` creates a new run with the original options.
+  The failed run remains inspectable.
+- Unique active-resource and request keys protect cross-process admission.
+  Identical requests share a run; incompatible resource/options return `409`.
+  Full/customer milestone writes share ownership; Fabric variants and ACR/analysis
+  also share their respective resource families. Worker claims serialize syncs.
+- Known phase/batch totals produce measured progress, capped at 99 until terminal
+  completion commits. Unknown-duration queries remain indeterminate. SQLite
+  progress is deferred during an atomic domain write, then its latest measured
+  unit is saved after commit. Progress must never commit domain data prematurely.
+- Structured domain failures, partial counts, warnings and retry attempts remain
+  available. Starting or failing a new attempt does not erase the last success.
+- Safe registered operations have at most three attempts with bounded backoff.
+  Only typed transient network failures or explicitly classified source failures
+  qualify. Other failures, including authentication and SQL errors, are terminal.
+  Interrupted unsafe work requires explicit retry; safe work can be reclaimed.
+- Worker and progress heartbeats are separate: a busy worker is healthy, and
+  its job exposes the last measured activity time. No browser heartbeat owns work.
+- `scripts\dev.ps1` starts web and worker with the same development database and
+  credentials, restarts crashed workers, and stops both. Production retains the
+  existing crash/health-aware supervisor. Jobs wait durably if the worker is absent.
+
+Existing JSON callers use [ui-jobs.js](../static/js/ui-jobs.js) to observe accepted
+receipts until a real terminal result. Cache-miss GETs reread the completed cache.
+Existing SSE starts observe saved events; the stream never executes the sync.
+The canonical console APIs bypass this compatibility wait and acknowledge promptly.
+
 ## Required behavior
 
 - Start once, receive a stable job ID, and return promptly.
@@ -33,6 +117,86 @@ The exact launcher UX remains a design proposal, not a signed-off mockup.
   do not promise uninterrupted execution while the application is actually quit.
 - Closing a panel is not cancellation. Cancellation, if offered, is an explicit
   server-side action supported only at safe boundaries.
+
+## Approved concurrency and write-wait design (October 14, 2026)
+
+### Real-world scope
+
+Scheduled syncs usually run while the app is idle. A manually triggered sync
+usually means the user is waiting for a fresh report. Pressing every console
+button must remain safe, but does not need optimal throughput. Avoid building a
+general-purpose database traffic scheduler for this personal desktop app.
+
+### Execution and conflict groups
+
+- Remove global single-sync execution. Independent groups can fetch and prepare
+  concurrently; adding worker slots alone is insufficient while the global claim
+  guard exists.
+- Reserve a logical conflict group for the whole run, including fetching.
+  Groups cover conflicting business logic and dependencies, not just shared tables.
+  Identical active requests reuse their existing run. Different requests in a
+  conflicting group wait durably rather than failing admission.
+- Show the blocking sync name and job ID for a queued group member.
+- Do not introduce an arbitrary two-job cap or speculative external-service
+  limits. Preserve source error handling and safe retries for actual failures.
+- Prepare fetched data before opening each write transaction. Preserve required
+  atomic replacements; do not manufacture partial commits for concurrency.
+  Multi-stage syncs can have multiple fetch/prepare/save phases.
+
+### Live status independent of SQLite writes
+
+- Each run has a local JSON status file, keyed by job ID, containing progress,
+  phase, heartbeat, attempt and worker identity. SQLite remains the durable
+  admission/options/outcome/history ledger.
+- Publish with atomic replacement and one coordinated publisher per run.
+  An earlier attempt cannot overwrite a replacement attempt's status.
+- Readers reconcile file identity and heartbeat freshness with durable state.
+  Database congestion must not make a healthy worker look dead.
+- Persist successful terminal state only after domain data commits. If final
+  bookkeeping is waiting, show that honestly instead of claiming completion.
+- Surface file read/write failures explicitly. Retain status until the terminal
+  outcome is durable; bound event history and clean obsolete status files safely.
+
+### Background database writes
+
+- Use a crash-safe, cross-process write gate outside SQLite for background sync
+  transactions. Fetching remains concurrent; sync writers take turns.
+- Expose the actual gate owner so observers can say "Waiting to save" and name
+  the sync saving ahead of them. Waiting must not hold SQLite's writer lock.
+- WAL permits concurrent readers, not concurrent writers or guaranteed FIFO
+  fairness. Preserve atomic writes and release ownership on commit/rollback/crash.
+- Do not add an application-wide write coordinator, user-write priority,
+  starvation policy or guaranteed queue-position estimates in this slice.
+  Ordinary app writes keep SQLite's lock-wait behavior. Its timeout is currently
+  10 seconds; timeouts must remain explicit failures, never false saved states.
+
+### Interactive save notice
+
+- For a noticeable interactive save wait, observe the background-write gate
+  through an independent status request while the original save is pending.
+  Do not rely on a blocked request to send an interim response.
+- Display the real owner only while it owns the gate. Preserve input, prevent
+  duplicate submission, and keep the notice through pending save completion.
+  Completion means the actual response, not merely release of the write gate.
+  On timeout/failure, stop claiming an automatic save is pending and allow retry.
+- Use the following approved copy verbatim, replacing only "Fabric sync" with
+  the actual sync name:
+
+  **Waiting to save**
+
+  Fabric sync is saving data. Your save will continue when it finishes. Keep this page open until saving completes.
+
+  If you run into this, let Alex know how you ran into this (did you manually start syncs, is this start of the day and syncs are running in the background, stuff like that). He clearly knew this could happen but didn't think it actually would so now you gotta wait.
+
+### Acceptance
+
+Verify independent fetches overlap, conflicts wait with a named blocker,
+background transactions do not overlap, rollback preserves prior data, and
+file-backed progress/heartbeats remain readable during a real SQLite write lock.
+Verify crash/attempt recovery, browser reconnect, current-versus-previous error
+presentation and the exact interactive notice through save success and failure.
+Use isolated databases for automated tests and the existing development server
+for desktop browser validation. Do not merge or push without user approval.
 
 ## Evidence and reference architecture
 
@@ -54,7 +218,7 @@ The reference uses polling, not SSE/WebSockets. Copy the ownership and persisted
 progress model, not its TypeScript implementation, MP3 stages, upload protocol or
 concurrency numbers. Sales Buddy's SQLite writes need different concurrency policy.
 
-### Sales Buddy already has part of the foundation
+### Foundation at plan capture, before migration
 
 - [Job](../app/models.py) and [job_queue.py](../app/services/job_queue.py) persist
   pending/running/done/failed jobs, payloads, results, attempts, claim ownership,
@@ -78,7 +242,7 @@ concurrency numbers. Sales Buddy's SQLite writes need different concurrency poli
   Standalone development therefore needs explicit worker lifecycle wiring before
   queue-backed manual operations become the default.
 
-### Current disconnect-sensitive entry points
+### Pre-migration disconnect-sensitive entry points
 
 This is an evidence-backed seed inventory, not a completed exhaustive audit:
 
@@ -162,9 +326,9 @@ naive-UTC SQLite comparison conventions at the storage boundary.
 
 Proposed routes, subject to the repository's blueprint conventions:
 
-- `POST /api/jobs/<operation>`: validate/admit; return `202` and job ID/status URL.
+- `POST /api/jobs/start/<operation>`: validate/admit; return `202` and job ID/status URL.
 - `GET /api/jobs/<job_id>`: persisted state, stage, progress, result and error.
-- `GET /api/jobs?source=...`: active run plus bounded recent history for a source.
+- `GET /api/jobs`: the complete catalog, latest runs, retained successes and worker health.
 - Optional read-only event/history endpoint using a sequence cursor.
 - Explicit retry endpoint; optional cancellation endpoint for supported handlers.
 
@@ -248,7 +412,8 @@ Do not reload the whole page when a job finishes or overwrite unsaved forms/draf
 Invalidate affected caches and update safe views selectively; otherwise offer a
 small "New data available" action. No focus-stealing completion modal.
 
-Initially wire the Home bar plus existing import pages to the shared observer.
+The current slice uses the test console and existing import-page compatibility
+observer. Wiring launch controls into the Home bar remains deferred.
 If in-place launching must be available on every page, add one compact global
 activity entry point to the shared shell in a separately reviewed UX slice.
 Do not assume Home's footer already exists on note/report pages.

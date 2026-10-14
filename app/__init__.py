@@ -242,6 +242,10 @@ def create_app():
     app.register_blueprint(reports_bp)
     app.register_blueprint(metrics_bp)
     app.register_blueprint(one_on_one_bp)
+    from app.routes.jobs import bp as jobs_bp
+    from app.services.sync_jobs import register_handlers
+    app.register_blueprint(jobs_bp)
+    register_handlers()
     from app.routes.alignment import alignment_bp
     app.register_blueprint(alignment_bp)
 

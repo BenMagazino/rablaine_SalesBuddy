@@ -18,8 +18,10 @@ class TestImportAccountsUpsert:
     """Tests for the non-streaming import_accounts endpoint."""
 
     def _post_import(self, client, accounts, territories=None):
-        """Helper to call import_accounts."""
-        return client.post(
+        """Admit the HTTP import and execute its captured payload in the worker."""
+        from app.services import job_queue
+
+        response = client.post(
             '/api/msx/import-accounts',
             json={
                 "accounts": accounts,
@@ -27,6 +29,11 @@ class TestImportAccountsUpsert:
             },
             content_type='application/json',
         )
+        assert response.status_code == 202
+        job_queue.process_one('test-worker')
+        status = client.get(response.get_json()['status_url'])
+        assert status.get_json()['job']['status'] == 'done'
+        return status
 
     def test_new_customer_created(self, client, app):
         """First import should create customers."""
@@ -35,7 +42,7 @@ class TestImportAccountsUpsert:
                 {"tpid": 1001, "name": "Contoso Ltd", "territory_name": None, "seller_name": None},
             ])
             assert resp.status_code == 200
-            data = resp.get_json()
+            data = resp.get_json()['job']['result']
             assert data["success"] is True
             assert data["customers_created"] == 1
 
@@ -57,7 +64,7 @@ class TestImportAccountsUpsert:
             resp = self._post_import(client, [
                 {"tpid": 2001, "name": "New Name Corp"},
             ])
-            data = resp.get_json()
+            data = resp.get_json()['job']['result']
             assert data["customers_created"] == 0
             assert data["customers_updated"] == 1
             assert data["customers_unchanged"] == 0
@@ -92,7 +99,7 @@ class TestImportAccountsUpsert:
                     {"name": "West.ATU.01.01", "seller_name": "Bob Jones"},
                 ],
             )
-            data = resp.get_json()
+            data = resp.get_json()['job']['result']
             assert data["customers_updated"] == 1
 
             db.session.refresh(cust)
@@ -124,7 +131,7 @@ class TestImportAccountsUpsert:
                     {"name": "West.ATU.02.05"},
                 ],
             )
-            data = resp.get_json()
+            data = resp.get_json()['job']['result']
             assert data["customers_updated"] == 1
 
             db.session.refresh(cust)
@@ -137,7 +144,7 @@ class TestImportAccountsUpsert:
                 {"tpid": 5001, "name": "Dup Corp"},
                 {"tpid": 5001, "name": "Dup Corp Copy"},
             ])
-            data = resp.get_json()
+            data = resp.get_json()['job']['result']
             assert data["customers_created"] == 1
             assert data["customers_skipped"] == 1
 
@@ -177,7 +184,7 @@ class TestImportAccountsUpsert:
             resp = self._post_import(client, [
                 {"tpid": 7001, "name": "Static Corp"},
             ])
-            data = resp.get_json()
+            data = resp.get_json()['job']['result']
             assert data["customers_updated"] == 0
             assert data["customers_unchanged"] == 1
 

@@ -180,6 +180,10 @@ class TestToolCoverage:
             'No tool covers revenue alerts. Add one to salesiq_tools.py.'
         )
 
+    def test_sync_jobs_tool_exists(self):
+        """The sync console and durable job state must have a registered read tool."""
+        assert 'get_sync_job_status' in self._tool_names()
+
     def test_whitespace_report_tool_exists(self):
         """Whitespace report should have a tool."""
         names = self._tool_names()

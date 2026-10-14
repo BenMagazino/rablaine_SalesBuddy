@@ -352,7 +352,9 @@ def sync_fabric_consumption(
             except Exception:
                 db.session.rollback()
                 logger.exception("Could not persist failed Fabric import status")
-        return {"success": False, "error": message}
+        from app.services.sync_jobs import is_transient_failure
+        return {"success": False, "error": message,
+                **({"retryable": True} if is_transient_failure(exc) else {})}
     finally:
         heartbeat_stop.set()
         if heartbeat_thread and heartbeat_thread.is_alive():
@@ -472,7 +474,9 @@ def refresh_fabric_revenue(progress: Callable | None = None) -> dict:
             except Exception:
                 db.session.rollback()
                 logger.warning("Could not persist Fabric revenue failure status")
-        return {"success": False, "error": message}
+        from app.services.sync_jobs import is_transient_failure
+        return {"success": False, "error": message,
+                **({"retryable": True} if is_transient_failure(exc) else {})}
     finally:
         heartbeat_stop.set()
         if heartbeat_thread and heartbeat_thread.is_alive():

@@ -21,6 +21,22 @@ The MSI installer handles everything: prerequisites (Git, Python, Azure CLI, Nod
 
 ## Features
 
+Regular data syncs share a durable SQLite job queue and a separate local worker.
+Open **Settings > Sync Test Console** to start a sync, inspect measured progress,
+see worker availability, or retry a failed run. Closing the browser or leaving
+the page does not cancel an accepted job; reopening the console reads the same
+saved job. Unknown-duration source queries use an indeterminate bar rather than
+invented percentages. Last successful refreshes remain visible after failed runs.
+
+`scripts\dev.ps1 start` launches Flask and the worker with the same development
+database and Azure credentials, and restarts a crashed worker. Installed apps use
+the existing process supervisor. Queued jobs remain saved while a worker is
+unavailable. Safe transient failures have bounded retries; other failures require
+an explicit retry. Quitting the backend or shutting down the computer interrupts
+execution, not the saved job history. Destructive FY/restore, uploads, backups,
+interactive record edits and continuous sharing subscriptions are outside this
+regular-sync console.
+
 The Windows desktop title bar follows the saved theme and Light/Dark appearance,
 including changes made in Settings without a reload. The theme-matched menu strip
 opens the existing Windows-native File/Edit/View/Window/Help dropdowns and keeps

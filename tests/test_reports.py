@@ -610,9 +610,13 @@ class TestMilestoneAuditSync:
                     'errors': [],
                 }
                 resp = client.post('/api/reports/sync-milestone-dates')
-                assert resp.status_code == 200
+                assert resp.status_code == 202
+                mock_sync.assert_not_called()
+                from app.services.job_queue import process_one
+                process_one('test-worker')
                 data = resp.get_json()
                 assert data['success'] is True
+                assert client.get(data['status_url']).json['job']['status'] == 'done'
 
     def test_sync_clears_stale_dates(self, app, sample_data):
         """Milestones no longer Committed should have committed_at cleared."""

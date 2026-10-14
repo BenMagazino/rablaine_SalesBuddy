@@ -12,6 +12,18 @@ import base64
 from unittest.mock import patch, MagicMock
 
 import pytest
+from app.services.job_queue import process_one
+
+
+def _run_favicon_job(client, app, url):
+    """Verify durable admission, then execute only the captured favicon job."""
+    response = client.post(url)
+    assert response.status_code == 202
+    with app.app_context():
+        process_one('test-worker')
+    snapshot = client.get(response.get_json()['status_url']).get_json()['job']
+    assert snapshot['status'] == 'done'
+    return snapshot['result']
 
 
 # ===========================================================================
@@ -176,9 +188,7 @@ class TestFetchFaviconsEndpoint:
 
         mock_fetch.return_value = base64.b64encode(b"png-data").decode()
 
-        resp = client.post('/api/admin/fetch-favicons')
-        assert resp.status_code == 200
-        data = resp.get_json()
+        data = _run_favicon_job(client, app, '/api/admin/fetch-favicons')
         assert data['success'] is True
         assert data['fetched'] >= 1
 
@@ -193,9 +203,7 @@ class TestFetchFaviconsEndpoint:
 
     def test_fetch_favicons_no_customers_needed(self, app, client):
         """Returns success with 0 fetched when no customers need favicons."""
-        resp = client.post('/api/admin/fetch-favicons')
-        assert resp.status_code == 200
-        data = resp.get_json()
+        data = _run_favicon_job(client, app, '/api/admin/fetch-favicons')
         assert data['success'] is True
 
     @patch('app.routes.admin.fetch_favicon_for_domain')
@@ -208,8 +216,7 @@ class TestFetchFaviconsEndpoint:
             db.session.add(c)
             db.session.commit()
 
-        resp = client.post('/api/admin/fetch-favicons')
-        data = resp.get_json()
+        data = _run_favicon_job(client, app, '/api/admin/fetch-favicons')
         # Should not call fetch since customer already has a favicon
         mock_fetch.assert_not_called()
 
@@ -236,8 +243,7 @@ class TestRefreshFaviconsEndpoint:
         new_b64 = base64.b64encode(b"new-png").decode()
         mock_fetch.return_value = new_b64
 
-        resp = client.post('/api/admin/refresh-favicons')
-        data = resp.get_json()
+        data = _run_favicon_job(client, app, '/api/admin/refresh-favicons')
         assert data['success'] is True
         assert data['fetched'] >= 1
 

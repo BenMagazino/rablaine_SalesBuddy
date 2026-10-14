@@ -166,7 +166,7 @@ def test_capacity_overview_is_saved_data_only(client, app, monkeypatch):
     markup = BeautifulSoup(page.data, 'html.parser')
     assert markup.select_one('[data-overview-table] th')
     assert not markup.select_one('[data-overview-table]').has_attr('data-sb-sortable')
-    assert markup.select_one('script[src$="ui-fabric-capacity-label.js"]')
+    assert markup.select_one('script[src*="ui-fabric-capacity-label.js"]')
     assert markup.select_one('details') is None
     assert markup.select_one('.sb-fabric-import-band [data-overview-status]')
     assert 'Workload mix is customer-wide, repeated per capacity' not in markup.text
@@ -176,7 +176,7 @@ def test_capacity_overview_is_saved_data_only(client, app, monkeypatch):
     assert markup.select_one('[data-overview-mode] [data-mode="capacities"]').text == (
         'Only customers with capacities')
     assert markup.select_one('[data-overview-data-only]') is None
-    assert markup.select_one('script[src$="ui-fabric-preferences.js"]')
+    assert markup.select_one('script[src*="ui-fabric-preferences.js"]')
     assert client.get('/api/reports/fabric-consumption/overview').json['rows'] == []
     with app.app_context():
         assert execute_tool('report_fabric_consumption', {'overview': True}) == payload
@@ -195,7 +195,7 @@ def test_customer_detail_discloses_secondary_data(client):
         assert not disclosure.has_attr('open')
     assert markup.select_one('[data-fabric-capacity-chart]').find_parent('details') is None
     assert markup.select_one('[data-fabric-capacity-summary]')
-    assert markup.select_one('script[src$="ui-fabric-preferences.js"]')
+    assert markup.select_one('script[src*="ui-fabric-preferences.js"]')
     capacities = markup.select_one('[data-fabric-capacities]')
     assert 'sb-fabric-capacity-list' in capacities.parent['class']
     assert capacities.select('th')[0].text == 'Capacity / SKU'
@@ -283,61 +283,44 @@ def test_import_requires_customer_tpids(client, monkeypatch):
     assert 'valid TPIDs' in response.json['error']
 
 
-def test_running_import_returns_conflict(client, monkeypatch):
-    """Atomic claiming prevents repeated button clicks from launching another import."""
+def test_repeated_import_returns_same_durable_identity(client, monkeypatch):
+    """Identical button clicks coalesce instead of creating a second executor."""
     from app.services import revenue_pull
 
     monkeypatch.setattr(revenue_pull, 'get_customer_tpids', lambda: [(456789, 'Customer')])
-    monkeypatch.setattr(SyncStatus, 'try_mark_started', lambda key: False)
     response = client.post('/api/reports/fabric-consumption/import')
-    assert response.status_code == 409
+    repeated = client.post('/api/reports/fabric-consumption/import')
+    assert response.status_code == repeated.status_code == 202
+    assert response.json['job_id'] == repeated.json['job_id']
 
 
 def test_import_starts_background_job_with_claim(client, monkeypatch):
     """The import outlives page navigation and does not double-claim the job."""
-    import threading
     from app.services import fabric_consumption, revenue_pull
+    from app.services import job_queue, sync_jobs
 
     monkeypatch.setattr(revenue_pull, 'get_customer_tpids', lambda: [(456789, 'Customer')])
     monkeypatch.setattr(SyncStatus, 'try_mark_started', lambda key: True)
     sync = Mock(return_value={'success': True, 'trend_row_count': 1})
     monkeypatch.setattr(fabric_consumption, 'sync_fabric_consumption', sync)
 
-    class InlineThread:
-        """Execute the test job inline without introducing test database races."""
-
-        def __init__(self, *, target, args, daemon):
-            self.target = target
-            self.args = args
-            assert daemon is True
-
-        def start(self):
-            """Run only the mocked importer in the captured app context."""
-            self.target(*self.args)
-
-    monkeypatch.setattr(threading, 'Thread', InlineThread)
     response = client.post('/api/reports/fabric-consumption/import')
     assert response.status_code == 202
-    sync.assert_called_once_with(claimed=True)
+    sync.assert_not_called()
+    job_queue.process_one('test-worker')
+    sync.assert_called_once_with(progress=sync_jobs.publish_progress)
+    assert client.get(response.json['status_url']).json['job']['status'] == 'done'
 
 
-def test_import_thread_start_failure_is_visible(client, monkeypatch):
-    """A failed worker launch releases the claim and returns a real error."""
-    import threading
-    from app.services import fabric_consumption, revenue_pull
+def test_import_without_worker_is_durable_and_visibly_waiting(client, monkeypatch):
+    """A missing worker does not discard work or pretend execution succeeded."""
+    from app.services import revenue_pull
 
     monkeypatch.setattr(revenue_pull, 'get_customer_tpids', lambda: [(456789, 'Customer')])
-    monkeypatch.setattr(SyncStatus, 'try_mark_started', lambda key: True)
-    complete = Mock()
-    monkeypatch.setattr(SyncStatus, 'mark_completed', complete)
-    thread = Mock()
-    thread.start.side_effect = RuntimeError('Thread unavailable')
-    monkeypatch.setattr(threading, 'Thread', Mock(return_value=thread))
     response = client.post('/api/reports/fabric-consumption/import')
-    assert response.status_code == 500
-    complete.assert_called_once_with(
-        fabric_consumption.SYNC_TYPE, success=False, details='Import could not start.',
-    )
+    assert response.status_code == 202
+    assert response.json['job']['state'] == 'waiting_for_worker'
+    assert response.json['job']['status'] == 'pending'
 
 
 def test_claim_database_failure_is_visible(client, monkeypatch):
@@ -347,7 +330,7 @@ def test_claim_database_failure_is_visible(client, monkeypatch):
 
     monkeypatch.setattr(revenue_pull, 'get_customer_tpids', lambda: [(456789, 'Customer')])
     monkeypatch.setattr(
-        SyncStatus, 'try_mark_started', Mock(side_effect=SQLAlchemyError('Unavailable')),
+        'app.routes.jobs.admit_sync', Mock(side_effect=SQLAlchemyError('Unavailable')),
     )
     response = client.post('/api/reports/fabric-consumption/import')
     assert response.status_code == 500

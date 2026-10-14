@@ -60,10 +60,29 @@ function Get-DevFlask {
             )
             $runsFlask = (
                 $_.CommandLine -like '*flask.exe*run*' -or
-                $_.CommandLine -like '*-m flask*run*'
+                $_.CommandLine -like '*-m flask*run*' -or
+                $_.CommandLine -like '*-m app.worker*'
             )
             $usesRepoVenv -and $runsFlask
         }
+}
+
+function Stop-DevProcessFamily([int[]]$RootIds) {
+    if (-not $RootIds.Count) { return }
+    $ownedIds = @($RootIds)
+    $processes = @(Get-CimInstance Win32_Process)
+    do {
+        $children = @($processes | Where-Object {
+            $ownedIds -contains $_.ParentProcessId -and
+            $ownedIds -notcontains $_.ProcessId
+        })
+        $ownedIds += @($children.ProcessId)
+    } while ($children.Count -gt 0)
+    foreach ($process in ($processes | Where-Object {
+        $ownedIds -contains $_.ProcessId
+    } | Sort-Object CreationDate)) {
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Stop-DevFlask {
@@ -74,8 +93,8 @@ function Stop-DevFlask {
     }
     foreach ($p in $procs) {
         Write-Host "Stopping dev flask PID $($p.ProcessId)" -ForegroundColor Yellow
-        Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
     }
+    Stop-DevProcessFamily -RootIds @($procs.ProcessId)
     Start-Sleep -Milliseconds 400
     $left = @(Get-DevFlask).Count
     if ($left -eq 0) {
@@ -114,19 +133,41 @@ function Start-DevFlask {
     # into the corp tenant), clobbering unrelated az work like MSI code signing.
     $prevFlaskEnv = $env:FLASK_ENV
     $prevAzureConfigDir = $env:AZURE_CONFIG_DIR
+    $prevSupervised = $env:SALESBUDDY_SUPERVISED
 
     $env:FLASK_ENV = 'development'
     $env:AZURE_CONFIG_DIR = Join-Path $env:USERPROFILE 'SalesBuddyDev\.azure'
+    $env:SALESBUDDY_SUPERVISED = '1'
 
     Write-Host "Starting dev flask on port $Port (FLASK_ENV=development)" -ForegroundColor Cyan
     Write-Host "Azure config dir: $env:AZURE_CONFIG_DIR" -ForegroundColor DarkGray
     Write-Host "Ctrl+C to stop (or run: .\scripts\dev.ps1 stop)" -ForegroundColor DarkGray
     Write-Host ""
 
+    $worker = $null
+    $web = $null
     try {
-        flask run --port $Port
+        $worker = Start-Process -FilePath $VenvPython -ArgumentList '-m', 'app.worker' `
+            -WorkingDirectory $RepoRoot -PassThru -NoNewWindow
+        Write-Host "Started durable worker PID $($worker.Id)" -ForegroundColor Cyan
+        $web = Start-Process -FilePath $VenvPython `
+            -ArgumentList '-m', 'flask', 'run', '--port', "$Port" `
+            -WorkingDirectory $RepoRoot -PassThru -NoNewWindow
+        while (-not $web.WaitForExit(1000)) {
+            if ($worker.HasExited) {
+                Write-Warning "Durable worker exited ($($worker.ExitCode)); restarting in 5 seconds."
+                Start-Sleep -Seconds 5
+                if ($web.HasExited) { break }
+                $worker = Start-Process -FilePath $VenvPython -ArgumentList '-m', 'app.worker' `
+                    -WorkingDirectory $RepoRoot -PassThru -NoNewWindow
+                Write-Host "Restarted durable worker PID $($worker.Id)" -ForegroundColor Cyan
+            }
+        }
     }
     finally {
+        $ownedIds = @(@($web, $worker) | Where-Object { $null -ne $_ } |
+            ForEach-Object { $_.Id })
+        Stop-DevProcessFamily -RootIds $ownedIds
         # Restore (or remove, if they weren't set before) so the caller's shell
         # is left exactly as we found it.
         if ($null -eq $prevFlaskEnv) { Remove-Item Env:\FLASK_ENV -ErrorAction SilentlyContinue }
@@ -134,6 +175,8 @@ function Start-DevFlask {
 
         if ($null -eq $prevAzureConfigDir) { Remove-Item Env:\AZURE_CONFIG_DIR -ErrorAction SilentlyContinue }
         else { $env:AZURE_CONFIG_DIR = $prevAzureConfigDir }
+        if ($null -eq $prevSupervised) { Remove-Item Env:\SALESBUDDY_SUPERVISED -ErrorAction SilentlyContinue }
+        else { $env:SALESBUDDY_SUPERVISED = $prevSupervised }
     }
 }
 

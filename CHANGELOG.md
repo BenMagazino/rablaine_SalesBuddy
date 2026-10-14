@@ -8,6 +8,11 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/14/2026
+
+- Run regular data syncs independently of the browser, with saved progress, outcomes and safe retry handling.
+- Add Settings > Sync Test Console to start every sync and return to its current status or last result.
+
 ## 10/14/2026 - b7b65b93
 
 - Restore scrolling on the All Reports page.

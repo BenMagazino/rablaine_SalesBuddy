@@ -90,6 +90,17 @@ def get_mcp_tools() -> list[dict]:
     ]
 
 
+@tool(
+    'get_sync_job_status',
+    'Read every data sync operation, worker health, active/latest jobs and last successful refreshes.',
+    {'type': 'object', 'properties': {}},
+)
+def get_sync_job_status() -> dict:
+    """Read the same durable sync projection used by the test console."""
+    from app.services.sync_jobs import operation_snapshots
+    return operation_snapshots()
+
+
 def execute_tool(name: str, params: dict) -> Any:
     """Dispatch a tool call by name.
 

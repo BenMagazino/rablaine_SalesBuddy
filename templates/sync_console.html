@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Sync Test Console - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-sync-console.css') }}">
+{% endblock %}
+{% block content %}
+<section class="sb-sync-console sb-directory-frame sb-directory-frame-wide"
+         data-sb-page-surface data-sb-sync-console>
+    <header class="sb-sync-header" data-sb-page-band>
+        <div><h1>Sync Test Console</h1>
+            <p>Start a sync, leave this page, and return to the same backend run.</p></div>
+        <button type="button" data-sync-refresh>Check now</button>
+    </header>
+    <p class="sb-sync-worker" data-sb-page-band data-sync-worker role="status">Checking worker...</p>
+    <p class="sb-sync-error" data-sb-page-band data-sync-error role="alert" hidden></p>
+    <div class="sb-sync-reading" data-sb-page-body tabindex="0" aria-label="Sync operations">
+        {% for key, operation in operations.items() %}
+        <article class="sb-sync-row" data-sync-operation="{{ key }}">
+            <div class="sb-sync-identity"><h2>{{ operation.name }}</h2>
+                <p>{{ operation.description }}</p>
+                <details><summary>Options</summary>
+                    <label for="syncOptions{{ loop.index }}">Supported options (JSON)</label>
+                    <textarea id="syncOptions{{ loop.index }}" data-sync-options
+                              rows="3" spellcheck="false">{{ operation.defaults|tojson }}</textarea>
+                </details>
+            </div>
+            <div class="sb-sync-state">
+                <strong data-sync-state>Loading...</strong>
+                <progress max="100" data-sync-progress hidden
+                          aria-label="{{ operation.name }} progress"></progress>
+                <span data-sync-message></span>
+                <small data-sync-recovery hidden></small>
+                <small data-sync-success></small>
+                <small data-sync-run></small>
+                <p class="sb-sync-error" data-sync-row-error role="alert" hidden></p>
+            </div>
+            <div class="sb-sync-actions">
+                <button type="button" data-sync-start>Start sync</button>
+                <button type="button" data-sync-retry hidden>Retry last run</button>
+                <a data-sync-details hidden>Run details</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status"><span>Regular data syncs only</span>
+    <span>Closing this page stops observation, not the accepted job.</span></footer>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-sync-console.js') }}"></script>
+{% endblock %}

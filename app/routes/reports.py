@@ -65,46 +65,9 @@ def fabric_consumption_status():
 
 @bp.route('/api/reports/fabric-consumption/import', methods=['POST'])
 def fabric_consumption_import():
-    """Start a single customer-scoped Fabric import independently of page lifetime."""
-    import threading
-
-    from app.services.fabric_consumption import SYNC_TYPE, sync_fabric_consumption
-    from app.services.revenue_pull import get_customer_tpids
-
-    if not get_customer_tpids():
-        return jsonify(
-            success=False, error='Add customers with valid TPIDs before importing Fabric data.',
-        ), 400
-    try:
-        if not SyncStatus.try_mark_started(SYNC_TYPE):
-            return jsonify(success=False, error='A Fabric import is already running.'), 409
-    except SQLAlchemyError:
-        db.session.rollback()
-        logger.exception('Could not claim Fabric import')
-        return jsonify(success=False, error='Could not start the Fabric import. Try again.'), 500
-
-    def run_import(app):
-        """Run the import with its own database session and explicit failure status."""
-        with app.app_context():
-            try:
-                sync_fabric_consumption(claimed=True)
-            except Exception:
-                db.session.rollback()
-                logger.exception('Background Fabric import failed')
-                SyncStatus.mark_completed(
-                    SYNC_TYPE, success=False,
-                    details='Fabric import failed. The previous snapshot is retained.',
-                )
-
-    try:
-        threading.Thread(
-            target=run_import, args=(current_app._get_current_object(),), daemon=True,
-        ).start()
-    except RuntimeError:
-        logger.exception('Could not start Fabric import thread')
-        SyncStatus.mark_completed(SYNC_TYPE, success=False, details='Import could not start.')
-        return jsonify(success=False, error='Could not start the Fabric import. Try again.'), 500
-    return jsonify(success=True, message='Fabric import started.', async_import=True), 202
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('fabric', None)
 
 
 def _save_manager_report_changes() -> tuple:
@@ -653,13 +616,9 @@ def api_activity_coverage_create_milestone_hva(milestone_id):
 
 @bp.route('/api/reports/activity-coverage/populate', methods=['POST'])
 def api_activity_coverage_populate():
-    """Start or resume fiscal-year meeting population."""
-    from app.services.activity_coverage import start_population
-
-    started = start_population(current_app._get_current_object())
-    if not started:
-        return jsonify({'success': False, 'error': 'Population is already running or up to date'}), 409
-    return jsonify({'success': True})
+    """Admit resumable calendar population without request-owned execution."""
+    from app.routes.jobs import start_response
+    return start_response('calendar-population')
 
 
 @bp.route('/api/reports/activity-coverage/import-status')
@@ -672,16 +631,9 @@ def api_activity_coverage_import_status():
 
 @bp.route('/api/reports/activity-coverage/reconcile', methods=['POST'])
 def api_activity_coverage_reconcile():
-    """Refresh MSX activities and reconcile them with stored meetings."""
-    from app.services.activity_coverage import start_reconciliation
-
-    started = start_reconciliation(current_app._get_current_object())
-    if not started:
-        return jsonify({
-            'success': False,
-            'error': 'Activity reconciliation is already running',
-        }), 409
-    return jsonify({'success': True})
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('activity-reconciliation', None)
 
 
 @bp.route('/api/reports/activity-coverage/reconcile-status')
@@ -694,18 +646,9 @@ def api_activity_coverage_reconcile_status():
 
 @bp.route('/api/reports/activity-coverage/match-milestones', methods=['POST'])
 def api_activity_coverage_match_milestones():
-    """Queue durable WorkIQ enrichment and milestone matching."""
-    from app.services.activity_enrichment import start_enrichment
-
-    data = request.get_json(silent=True) or {}
-    result = start_enrichment(force=data.get('force') is True)
-    if not result['started'] and result['job_id']:
-        return jsonify({
-            'success': False,
-            'error': 'Milestone matching is already running',
-            **result,
-        }), 409
-    return jsonify({'success': True, **result})
+    """Admit meeting preparation using the shared queue contract."""
+    from app.routes.jobs import start_response
+    return start_response('meeting-preparation', request.get_json(silent=True))
 
 
 @bp.route('/api/reports/activity-coverage/match-status')
@@ -1244,20 +1187,9 @@ def report_workload():
 
 @bp.route('/api/reports/sync-milestone-dates', methods=['POST'])
 def sync_milestone_dates():
-    """Fetch audit history from MSX to populate committed_at/completed_at dates.
-
-    Hits the Dynamics 365 audit endpoint for each on-my-team milestone
-    to find the actual transition dates. Only called on-demand from the
-    1:1 report page.
-    """
-    from app.services.milestone_audit import sync_milestone_audit_dates
-
-    try:
-        result = sync_milestone_audit_dates()
-        return jsonify(result)
-    except Exception as e:
-        logger.exception("Milestone audit date sync failed")
-        return jsonify({"success": False, "error": str(e)}), 500
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('milestone-dates', None)
 
 
 # =========================================================================
@@ -2206,14 +2138,9 @@ def report_u2c():
 
 @bp.route('/api/reports/u2c/import-official', methods=['POST'])
 def api_u2c_import_official():
-    """Force the complete official MSX Insights U2C refresh workflow."""
-    from app.services.scheduled_sync import run_u2c_import
-
-    result = run_u2c_import(force=True)
-    if result.get('success'):
-        return jsonify(result), 200
-    status_code = 409 if result.get('outcome') == 'in_progress' else 502
-    return jsonify(result), status_code
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('u2c', {'force': True})
 
 
 def _get_connect_impact_date_presets(reference: date) -> list[dict[str, str]]:
