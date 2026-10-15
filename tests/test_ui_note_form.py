@@ -1,13 +1,36 @@
 """Final native note-editor presentation and original control parity."""
 
+import re
 from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import urlsplit
 
 import pytest
 from bs4 import BeautifulSoup
 from flask import Flask
 from flask.testing import FlaskClient
+
+
+def test_note_editor_fits_available_shell_space_without_clipping_status() -> None:
+    """Electron chrome must reduce the scroll pane, not push its bottom off screen."""
+    css = (Path(__file__).parents[1] / "static" / "css" / "ui-note-form.css").read_text("utf-8")
+    rules = {
+        ".sb-note-form-page #main-content": ["display:flex", "flex-direction:column"],
+        ".sb-note-form-page #main-content > #noteFormRow": [
+            "flex:1", "height:auto", "min-height:0",
+        ],
+        ".sb-note-form-page #noteFormLeftCol": ["min-height:0", "overflow:auto"],
+        ".sb-note-form-page #noteFormRightCol": ["min-height:0", "overflow:auto"],
+        ".sb-note-form-status": ["flex-shrink:0", "height:24px"],
+    }
+    for selector, declarations in rules.items():
+        rule = re.search(re.escape(selector) + r"\s*\{([^}]+)\}", css)
+        assert rule is not None, selector
+        for declaration in declarations:
+            assert declaration in rule.group(1), (selector, declaration)
+        if selector.endswith("#noteFormRow"):
+            assert "100dvh" not in rule.group(1)
 
 
 @pytest.mark.parametrize("kind", ["customer", "general", "edit"])
@@ -26,7 +49,9 @@ def test_note_form_retains_fields_commands_and_native_dialogs(
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     assert soup.select_one("body.sb-page-frame.sb-note-form-page")
-    assert soup.select_one('link[href="/static/css/ui-page-frame.css"]')
+    styles = [urlsplit(link["href"]).path for link in soup.select("link[href]")]
+    scripts = [urlsplit(script["src"]).path for script in soup.select("script[src]")]
+    assert "/static/css/ui-page-frame.css" in styles
     main = soup.select_one("#main-content")
     assert not main.select(
         ".btn,.badge,.card,.row,.form-control,.form-select,.offcanvas,.modal,"
@@ -68,8 +93,8 @@ def test_note_form_retains_fields_commands_and_native_dialogs(
                       "contactPhotoModal", "attendeeReviewModal"]:
         dialog = main.select_one(f"dialog.sb-dialog#{dialog_id}")
         assert dialog is not None and not dialog.has_attr("open")
-    assert soup.select_one('script[src="/static/js/ui-note-form-native.js"]')
-    assert soup.select_one('link[href="/static/css/ui-note-form-native.css"]')
+    assert "/static/js/ui-note-form-native.js" in scripts
+    assert "/static/css/ui-note-form-native.css" in styles
     assert all(dialog.get("data-sb-nonmodal") == "true"
                for dialog in main.select("dialog.sb-nf-drawer"))
     assert all(dialog.has_attr("data-sb-note-drawer")
@@ -92,7 +117,8 @@ def test_project_attachment_guidance_is_not_repeated_per_note(app: Flask) -> Non
     soup = BeautifulSoup(rendered, "html.parser")
     assert len(soup.select('input[name="note_ids"]')) == 2
     assert rendered.count("Only general notes not already attached") == 1
-    assert soup.select_one('link[href="/static/css/ui-project-form.css"]')
+    assert any(urlsplit(link["href"]).path == "/static/css/ui-project-form.css"
+               for link in soup.select("link[href]"))
 
 
 def test_editor_keeps_rich_text_drafts_and_calendar_workflow_contracts() -> None:
@@ -126,7 +152,8 @@ def test_note_detail_has_reading_frame_status_and_shell_free_fragment(
     assert page.select_one(
         "#noteReadingSurface.sb-directory-frame.sb-directory-frame-wide[data-sb-page-surface]"
     )
-    assert page.select_one('link[href="/static/css/ui-page-frame.css"]')
+    assert any(urlsplit(link["href"]).path == "/static/css/ui-page-frame.css"
+               for link in page.select("link[href]"))
     assert page.select_one('.sb-note-commands a[href="/notes"]')
     assert page.select_one(".sb-note-status")
     assert not fragment.select(
