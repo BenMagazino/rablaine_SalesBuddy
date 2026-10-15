@@ -20,6 +20,28 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('reports', __name__)
 
 
+@bp.route('/reports/p-to-f')
+def report_ptof():
+    """Show saved Premium-to-Fabric renewal assessments and subscription details."""
+    from app.services.se_specialty import is_data_se
+
+    return render_template('report_ptof.html', ptof_auto_sync=is_data_se())
+
+
+@bp.route('/api/reports/p-to-f')
+def ptof_data():
+    """Read saved P to F data, optionally scoped to one existing customer."""
+    from app.services.ptof import get_ptof_report
+
+    customer_id = request.args.get('customer_id', type=int)
+    if 'customer_id' in request.args:
+        if customer_id is None or customer_id <= 0:
+            return jsonify(success=False, error='Choose a valid customer.'), 400
+        if db.session.get(Customer, customer_id) is None:
+            return jsonify(success=False, error='Customer not found.'), 404
+    return jsonify(success=True, **get_ptof_report(customer_id))
+
+
 @bp.route('/reports/fabric-consumption')
 def report_fabric_consumption():
     """Show saved Fabric workload mix and capacity utilization."""
@@ -467,6 +489,16 @@ def reports_hub():
                     ),
                     'icon': 'bi-tag',
                     'url': url_for('reports.report_workload'),
+                },
+                {
+                    'id': 'p-to-f',
+                    'name': 'P to F',
+                    'description': (
+                        'Power BI Premium renewal dates, product families and source '
+                        'renewal status, matched to customer names and Fabric migration.'
+                    ),
+                    'icon': 'bi-arrow-left-right',
+                    'url': url_for('reports.report_ptof'),
                 },
                 {
                     'id': 'fabric-consumption',

@@ -206,6 +206,49 @@ def _validate_pull(payload: dict, tpids: set[int]) -> None:
                     )
 
 
+def sync_fabric_360(progress: Callable | None = None) -> dict:
+    """Refresh telemetry, revenue and renewals as one durable Fabric job."""
+    from app.models import Job
+    from app.services.job_queue import CURRENT_JOB_ID
+    from app.services.ptof import sync_ptof
+    from app.services.se_specialty import is_data_se
+    from app.services.sync_jobs import is_transient_failure
+
+    job_id = CURRENT_JOB_ID.get()
+    job = db.session.get(Job, job_id) if job_id is not None else None
+    if job is not None and job.initiator == "scheduled" and not is_data_se():
+        return {"success": True, "skipped": True,
+                "message": "Automatic Fabric 360 refresh requires the Data SE specialty."}
+
+    def report_stage(event: dict, source: str, offset: int, span: int) -> None:
+        """Keep both source phases on the same progress scale and job."""
+        if progress:
+            progress({
+                **event, "phase": f"{source}:{event.get('phase', 'reading')}",
+                "progress": min(99, offset + span * event.get("progress", 0) / 100),
+            })
+
+    telemetry = sync_fabric_consumption(
+        progress=lambda event: report_stage(event, "fabric", 0, 75),
+    )
+    if telemetry.get("success") is False:
+        return telemetry
+    report_stage({"progress": 0, "message": "Reading P to F renewals."}, "ptof", 75, 25)
+    try:
+        renewals = sync_ptof(
+            progress=lambda event: report_stage(event, "ptof", 75, 25),
+        )
+    except Exception as exc:
+        logger.exception("Fabric telemetry refreshed, but P to F renewals failed")
+        return {
+            "success": False, "fabric": telemetry,
+            "error": "Fabric telemetry and revenue were refreshed, but P to F failed. "
+                     f"Previous renewal data was retained. {exc}",
+            "retryable": is_transient_failure(exc),
+        }
+    return {**telemetry, "ptof": renewals}
+
+
 def sync_fabric_consumption(
         progress: Callable | None = None, *, claimed: bool = False) -> dict:
     """Import every DB customer's TPID atomically for manual or scheduled refreshes.

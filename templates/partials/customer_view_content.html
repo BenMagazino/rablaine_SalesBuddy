@@ -396,6 +396,9 @@
 
         {% if show_customer_fabric %}
         <section class="cd-panel" id="cdFabric" aria-labelledby="cdFabricTab" data-cd-lazy hidden>
+            {% with ptof_embedded=true %}
+            {% include 'partials/ptof_content.html' %}
+            {% endwith %}
             {% with fabric_embedded=true %}
             {% include 'partials/fabric_customer_content.html' %}
             {% endwith %}

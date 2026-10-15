@@ -63,7 +63,7 @@ OPERATIONS = {
                      'u2c', {'force': True}, legacy_status='u2c_import'),
     'marketing': Operation('Marketing', 'Customer summaries, interactions and contacts.',
                            'marketing', {}, True, legacy_status='marketing'),
-    'fabric': Operation('Fabric 360', 'Workloads, capacities, utilization and revenue.',
+    'fabric': Operation('Fabric 360', 'Workloads, capacities, utilization, revenue and P to F renewals.',
                         'fabric', {}, True, True, 'fabric_consumption'),
     'fabric-revenue': Operation('Fabric revenue', 'Refresh only saved Fabric revenue.',
                                 'fabric', {}, True, True),
@@ -370,9 +370,9 @@ def _execute_operation(operation: str, options: dict) -> dict:
             'success': True, 'skipped': True, 'message': 'Already up to date.'}
     if operation in ('fabric', 'fabric-revenue'):
         from app.services.fabric_consumption import (
-            refresh_fabric_revenue, sync_fabric_consumption,
+            refresh_fabric_revenue, sync_fabric_360,
         )
-        fn = sync_fabric_consumption if operation == 'fabric' else refresh_fabric_revenue
+        fn = sync_fabric_360 if operation == 'fabric' else refresh_fabric_revenue
         return fn(progress=publish_progress)
     if operation == 'copilot-actions':
         from app.services.copilot_actions import sync_copilot_action_items
@@ -616,7 +616,9 @@ def operation_schedules() -> dict[str, dict[str, Any]]:
     schedules['fabric'] = {
         'label': f'Every {FABRIC_SYNC_INTERVAL_DAYS} days' if is_data_se() else 'On demand',
         'detail': 'Automatic refresh is for Data SEs only. Checked at startup and every '
-                  'five minutes; requires customer TPIDs. Failed attempts wait one hour.',
+                  'five minutes; refreshes telemetry, revenue and P to F together when '
+                  'either snapshot is stale or missing. Requires customer TPIDs. '
+                  'Failed attempts wait one hour.',
     }
     for key, hour, detail in (
         ('meeting-aura', meeting_hour, 'Catches up at startup when cached meetings are stale '

@@ -15,8 +15,8 @@
     }
 
     function monthlyMix(row) {
-        const ri = row.reservation_revenue;
-        const paygo = row.paygo_revenue;
+        const ri = row.reservation_revenue ?? 0;
+        const paygo = row.paygo_revenue ?? 0;
         const total = row.total_revenue;
         if (![ri, paygo, total].every(reportedNumber)) {
             return {reason: 'Missing revenue measurements'};
@@ -74,6 +74,11 @@
                     bar.append(segment);
                 }
                 description += `. RI ${percent(mix.reservation)}, PAYG ${percent(mix.paygo)}.`;
+                if (row.reservation_revenue == null || row.paygo_revenue == null) {
+                    description += ' Only one revenue category was reported, and it matches ' +
+                        'the total. The chart shows 100% for that category; missing dollar ' +
+                        'amounts remain Not reported in the table.';
+                }
             }
             bar.title = description;
             bar.setAttribute('aria-label', description);
@@ -85,7 +90,9 @@
         container.replaceChildren(bars);
         note.hidden = unavailable === 0;
         note.textContent = unavailable ?
-            'Months with missing amounts, zero totals, negative adjustments, or unreconciled amounts have no percentage bar. Their reported amounts remain in the table.' : '';
+            'Months with missing totals, no reported components, zero totals, negative ' +
+            'adjustments, or unreconciled amounts have no percentage bar. A single reported ' +
+            'category matching the total shows 100%. Reported amounts remain in the table.' : '';
     }
 
     function renderMonthlyTable(headings, body, rows) {

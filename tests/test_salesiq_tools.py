@@ -147,6 +147,10 @@ class TestToolCoverage:
         """Saved Fabric measurements must be available without starting an import."""
         assert 'report_fabric_consumption' in self._tool_names()
 
+    def test_ptof_report_tool_exists(self):
+        """Renewal assessments and details must be queryable without refreshing."""
+        assert 'report_ptof' in self._tool_names()
+
     def test_caip_coverage_report_tool_exists(self):
         """CAIP analytical view should be available to SalesIQ."""
         names = {item['name'] for item in get_mcp_tools()}

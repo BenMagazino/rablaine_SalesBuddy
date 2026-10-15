@@ -1,0 +1,68 @@
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-ptof.css') }}">
+{% from 'partials/_sync_progress.html' import sync_progress %}
+<section class="sb-ptof{% if not ptof_embedded %} sb-directory-frame sb-directory-frame-wide{% endif %}"
+         data-ptof data-report-url="{{ url_for('reports.ptof_data') }}"
+         {% if ptof_embedded %}data-customer-id="{{ customer.id }}" hidden{% else %}data-sb-page-surface{% endif %}
+         aria-label="P to F renewals">
+    {% if not ptof_embedded %}
+    <header class="sb-ptof-header" data-sb-page-band>
+        <div>
+            <h1>P to F</h1>
+            <p>Power BI Premium renewals and migration to Fabric.</p>
+        </div>
+        <button type="button" class="sb-dialog-button" data-ptof-import>Refresh Fabric 360</button>
+    </header>
+    {{ sync_progress('fabric', '[data-ptof-import]', 'ptof-') }}
+    <div class="sb-ptof-controls" data-sb-page-band>
+        <label for="ptofSearch">Find a customer</label>
+        <input id="ptofSearch" type="search" placeholder="Customer name or TPID"
+               data-ptof-search autocomplete="off">
+        {% if request.args.get('customer_id') %}<a href="{{ url_for('reports.report_ptof') }}">Show all customers</a>{% endif %}
+        <span data-ptof-scope></span>
+    </div>
+    {% endif %}
+    <div class="sb-ptof-workarea" {% if not ptof_embedded %}data-sb-page-body{% endif %}>
+        {% if not ptof_embedded %}
+        <p data-ptof-freshness role="status">Loading saved renewal data...</p>
+        {% endif %}
+        <div class="sb-ptof-error" data-ptof-error role="alert" hidden>
+            <span></span>
+            <button type="button" class="sb-dialog-button" data-ptof-retry>Retry loading</button>
+        </div>
+        <p data-ptof-empty hidden></p>
+        <div data-ptof-data hidden>
+            <section class="sb-ptof-section" aria-label="Subscription details">
+                {% if ptof_embedded %}
+                <header><h3>P to F Status</h3></header>
+                {% else %}
+                <header><h3>Subscription details</h3><span data-ptof-detail-count></span></header>
+                <p>Status describes the subscription. Renewal Status is the source's account-level assessment.</p>
+                {% endif %}
+                <div class="sb-ptof-table-region" tabindex="0" role="region" aria-label="P to F subscription details">
+                    <table data-ptof-details></table>
+                </div>
+            </section>
+            {% if not ptof_embedded %}
+            <details class="sb-ptof-explanation">
+                <summary>How to read P to F</summary>
+                <p>P-SKU is Power BI Premium capacity; F-SKU is Microsoft Fabric capacity.
+                    SA Expiration $ is the source's expiring dollar baseline.
+                    A blank amount is not a confirmed zero.</p>
+                <p>The published calculation legend applies these rules in order:</p>
+                <ol>
+                    <li>Both P-SKU and F-SKU renewal percentages are at least 75%: PSKU Renewed + New Fabric.</li>
+                    <li>Only P-SKU is at least 75%: PSKU Renewed.</li>
+                    <li>Only F-SKU is at least 75%: P-to-F Renewed.</li>
+                    <li>F-SKU is at least 30% but below 75%: Partial P-to-F.</li>
+                    <li>Otherwise: Pending Renewal.</li>
+                </ol>
+                <p>The model also returns Not Renewed, which its legend does not explain.
+                    Sales Buddy keeps the actual source status rather than guessing that rule.
+                    If an account has multiple distinct source renewal statuses, all are listed
+                    together without duplicating its subscription rows.</p>
+            </details>
+            {% endif %}
+        </div>
+    </div>
+</section>
+<script src="{{ url_for('static', filename='js/ui-ptof.js') }}" defer></script>

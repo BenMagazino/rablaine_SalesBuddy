@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname,
     '../../static/js/ui-fabric-consumption.js'), 'utf8');
 
-function harness(hidden = true) {
+function harness(hidden = true, revenueState = null, fail = false) {
     const elements = new Map();
     function element() {
         return {hidden: false, dataset: {}, events: {}, style: {},
@@ -44,8 +44,10 @@ function harness(hidden = true) {
         },
         fetch: async url => {
             requests.push(String(url));
+            if (fail) throw new Error('Saved snapshot unavailable');
             return {ok: true, json: async () => ({success: true, snapshot: null,
                 customers: [], customer: {id: 42, name: 'Pinned customer', tpid: 123,
+                    revenue: revenueState ? {state: revenueState} : null,
                     status: 'no_data', capacities: []}})};
         },
         window: {
@@ -61,7 +63,7 @@ function harness(hidden = true) {
             }},
         }};
     vm.runInNewContext(source, context);
-    return {panel, elements, requests, history, saves, imports, revenues, observe,
+    return {root, panel, elements, requests, history, saves, imports, revenues, observe,
         flush: () => new Promise(resolve => setImmediate(resolve))};
 }
 
@@ -74,13 +76,15 @@ test('customer Fabric is lazy, pinned to its host and independent of report sele
     await h.flush();
     assert.equal(h.requests.length, 1);
     assert.equal(new URL(h.requests[0]).searchParams.get('customer_id'), '42');
-    assert.equal(h.imports.length, 1);
+    assert.equal(h.imports.length, 0);
     assert.equal(h.revenues[0].id, 42);
     assert.equal(h.elements.get('error').textContent, '');
-    assert.match(h.elements.get('detail-state').textContent, /No saved Fabric snapshot/);
+    assert.equal(h.elements.get('detail-state').hidden, true);
+    assert.equal(h.root.hidden, true);
+    assert.equal(h.elements.get('revenue').hidden, true);
 });
 
-test('a restored Fabric tab loads immediately and reuses its import controller', async () => {
+test('a restored Fabric tab reads immediately without starting an import observer', async () => {
     const h = harness(false);
     await h.flush();
     assert.equal(h.requests.length, 1);
@@ -91,7 +95,32 @@ test('a restored Fabric tab loads immediately and reuses its import controller',
     h.observe();
     await h.flush();
     assert.equal(h.requests.length, 2);
-    assert.equal(h.imports.length, 1);
+    assert.equal(h.imports.length, 0);
+});
+
+test('customer revenue remains visible without Fabric telemetry', async () => {
+    const h = harness(false, 'available');
+    await h.flush();
+    assert.equal(h.root.hidden, false);
+    assert.equal(h.elements.get('revenue').hidden, false);
+    assert.equal(h.elements.get('detail-body').hidden, true);
+});
+
+test('absent customer revenue hides while invalid saved states remain visible', async () => {
+    for (const state of ['not_imported', 'no_data', 'invalid']) {
+        const h = harness(false, state);
+        await h.flush();
+        assert.equal(h.root.hidden, state !== 'invalid');
+        assert.equal(h.elements.get('revenue').hidden, state !== 'invalid');
+    }
+});
+
+test('saved-data read errors remain visible even when there is no data', async () => {
+    const h = harness(false, null, true);
+    await h.flush();
+    assert.equal(h.root.hidden, false);
+    assert.equal(h.elements.get('error').hidden, false);
+    assert.match(h.elements.get('error').textContent, /Saved snapshot unavailable/);
 });
 
 test('capacity changes preserve the customer reading history', async () => {

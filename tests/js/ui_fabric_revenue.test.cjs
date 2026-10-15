@@ -163,7 +163,7 @@ test('missing, zero, negative and unreconciled data remain unplotted rather than
     const h = harness();
     const data = customer();
     data.revenue.months = [
-        {fiscal_month: 'Missing', reservation_revenue: null, paygo_revenue: 100, total_revenue: 100},
+        {fiscal_month: 'Missing', reservation_revenue: null, paygo_revenue: 100, total_revenue: null},
         {fiscal_month: 'Zero', reservation_revenue: 0, paygo_revenue: 0, total_revenue: 0},
         {fiscal_month: 'Adjustment', reservation_revenue: -5, paygo_revenue: 105, total_revenue: 100},
         {fiscal_month: 'Mismatch', reservation_revenue: 30, paygo_revenue: 60, total_revenue: 100},
@@ -178,6 +178,47 @@ test('missing, zero, negative and unreconciled data remain unplotted rather than
     assert.equal(h.nodes['chart-note'].hidden, false);
     assert.match(text(h.nodes.months), /-5\.00/);
     assert.match(text(h.nodes.months), /Not reported/);
+});
+
+test('a single reported revenue category fills the bar without rewriting missing amounts', () => {
+    for (const absent of [null, undefined, 0]) {
+        for (const kind of ['ri', 'paygo']) {
+            const h = harness();
+            const data = customer();
+            data.revenue.months = [{fiscal_month: 'Single category',
+                reservation_revenue: kind === 'ri' ? 100 : absent,
+                paygo_revenue: kind === 'paygo' ? 100 : absent,
+                total_revenue: 100}];
+            h.render(data);
+            const bar = h.nodes.chart.children[0].children[0].children[0];
+            const [ri, paygo] = bar.children;
+            const full = kind === 'ri' ? ri : paygo;
+            const empty = kind === 'ri' ? paygo : ri;
+            assert.equal(full.style.height, '100%');
+            assert.equal(full.textContent, '100%');
+            assert.equal(empty.style.height, '0%');
+            assert.match(full.className, new RegExp(`segment--${kind}`));
+            assert.equal(h.nodes['chart-note'].hidden, true);
+            const missingRow = kind === 'ri' ? 1 : 0;
+            assert.equal(h.nodes.months.children[missingRow].children[1].textContent,
+                absent === 0 ? '0.00' : 'Not reported');
+            if (absent == null) assert.match(bar.title, /Only one revenue category was reported/);
+        }
+    }
+});
+
+test('unknown or invalid revenue components do not fabricate a single-category mix', () => {
+    const h = harness();
+    const data = customer();
+    data.revenue.months = [
+        {reservation_revenue: null, paygo_revenue: null, total_revenue: 100},
+        {reservation_revenue: null, paygo_revenue: 60, total_revenue: 100},
+        {reservation_revenue: NaN, paygo_revenue: 100, total_revenue: 100},
+        {reservation_revenue: null, paygo_revenue: -100, total_revenue: -100},
+    ];
+    h.render(data);
+    const bars = h.nodes.chart.children[0].children.map(column => column.children[0]);
+    assert.ok(bars.every(bar => bar.children[0].textContent === 'No mix'));
 });
 
 test('rounded labels total 100 and tiny known shares are not mislabeled as zero', () => {
