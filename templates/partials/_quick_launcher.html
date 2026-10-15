@@ -1,0 +1,35 @@
+<dialog class="sb-dialog sb-dialog-picker" id="quickLauncherModal"
+        aria-labelledby="quickLauncherTitle" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <header class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <div class="sb-dialog-eyebrow">Navigation</div>
+                <h2 id="quickLauncherTitle">Quick Launcher</h2>
+            </div>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close
+                    aria-label="Close quick launcher"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </header>
+        <div class="sb-dialog-body">
+            <label class="sb-picker-label" for="quickLauncherSearch">Go to a page</label>
+            <div class="sb-picker-field">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input type="search" class="sb-picker-input" id="quickLauncherSearch"
+                       placeholder="Search pages and reports..." autocomplete="off" autofocus
+                       aria-controls="quickLauncherResults"
+                       aria-describedby="quickLauncherCount quickLauncherHint">
+            </div>
+            <p class="sb-picker-label" id="quickLauncherCount" role="status" aria-live="polite"></p>
+            <div class="sb-picker-results" id="quickLauncherResults" role="region"
+                 aria-label="Matching pages"></div>
+        </div>
+        <footer class="sb-dialog-footer">
+            <small id="quickLauncherHint">Tab or arrow keys to move; Enter to open; Esc to close.</small>
+            <button type="button" class="sb-dialog-button" data-sb-dialog-close>Cancel</button>
+        </footer>
+    </div>
+    <template id="quickLauncherPages">
+        <a href="{{ url_for('main.index') }}">Home</a>
+        <a href="{{ url_for('jobs.sync_console') }}">Sync Status</a>
+        <a href="{{ url_for('sellers.sellers_list') }}">Sellers</a>
+    </template>
+</dialog>
