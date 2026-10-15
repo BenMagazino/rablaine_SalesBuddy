@@ -114,6 +114,10 @@ def create_app():
                 conn.execute(text('PRAGMA busy_timeout=10000'))
                 conn.execute(text('PRAGMA synchronous=NORMAL'))
                 conn.commit()
+            from app.services.sync_runtime import install_write_gate
+            install_write_gate(engine)
+            from app.services.sync_runtime import finish_save
+            app.after_request(finish_save)
     
     # Import models to register them with SQLAlchemy
     from app import models
@@ -242,6 +246,10 @@ def create_app():
     app.register_blueprint(reports_bp)
     app.register_blueprint(metrics_bp)
     app.register_blueprint(one_on_one_bp)
+    from app.routes.jobs import bp as jobs_bp
+    from app.services.sync_jobs import register_handlers
+    app.register_blueprint(jobs_bp)
+    register_handlers()
     from app.routes.alignment import alignment_bp
     app.register_blueprint(alignment_bp)
 
@@ -335,7 +343,7 @@ def create_app():
     if not app.config.get('TESTING') and not _is_reloader_parent:
         schedulers_started = ['update_checker', 'telemetry_flush']
 
-        # Heavy background jobs (MSX / WorkIQ / meeting aura) run in the worker
+        # Heavy background jobs (MSX / WorkIQ / meeting sync) run in the worker
         # process, or inline in an unsupervised web process (graceful
         # degradation) so a directly-launched web server still does background
         # work. Under the supervisor the worker owns them and the web is idle.

@@ -31,6 +31,34 @@ def revenue_payload(tpids: list[int], *, total=100, reserved=25, paygo=75, ratio
     }
 
 
+def test_canonical_revenue_progress_does_not_write_legacy_heartbeats(
+    revenue_accounts, monkeypatch,
+):
+    """Real source callbacks use file status, not a hidden SQLite progress transaction."""
+    from app.models import Job
+    from app.services import job_queue, sync_jobs, sync_runtime
+    customers, snapshot = revenue_accounts
+    tpids = [customer.tpid for customer in customers]
+
+    def fetch(values, progress=None):
+        """Exercise the actual callback instead of bypassing source progress."""
+        assert values == tpids
+        assert sync_runtime.write_owner() is None
+        progress({'phase': 'query', 'progress': 50, 'message': 'Revenue query finished.'})
+        assert sync_runtime.write_owner() is None
+        return revenue_payload(tpids)
+
+    monkeypatch.setattr(service, 'pull_fabric_revenue', fetch)
+    monkeypatch.setattr(SyncStatus, 'update_heartbeat',
+                        Mock(side_effect=AssertionError('Canonical heartbeat used SQLite')))
+    job = sync_jobs.admit_sync('fabric-revenue')
+    job_queue.process_one('worker')
+    db.session.refresh(job)
+    assert job.status == Job.STATUS_DONE, job.last_error
+    assert FabricConsumptionRecord.query.filter_by(kind='capacity').count() == 1
+    assert FabricConsumptionRecord.query.filter_by(kind='revenue_summary').count() == 2
+
+
 @pytest.fixture
 def revenue_accounts(app):
     """Use only isolated local test data and preserve the normal telemetry generation."""

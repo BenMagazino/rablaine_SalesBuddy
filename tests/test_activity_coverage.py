@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 import pytest
 from bs4 import BeautifulSoup
@@ -51,8 +52,10 @@ def test_coverage_native_frame_owns_reading_and_status(client, query, label):
     assert soup.select_one('body > footer.sb-page-status #activityCoverageRows')
     assert not surface.select('[data-bs-toggle], .btn, .badge, .form-control, .form-select')
     assert not surface.select('style')
-    assert soup.select_one('link[href$="css/ui-activity-coverage.css"]')
-    assert surface.select_one('script[src$="js/ui-activity-coverage.js"]')
+    assert any(urlsplit(link['href']).path.endswith('css/ui-activity-coverage.css')
+               for link in soup.select('link[href]'))
+    assert any(urlsplit(script['src']).path.endswith('js/ui-activity-coverage.js')
+               for script in surface.select('script[src]'))
 
 
 @pytest.mark.parametrize('query', [
@@ -1087,18 +1090,14 @@ def test_enrichment_uses_non_hva_fallback_when_needed(text, expected):
 
 
 def test_enrichment_refreshes_local_milestones_before_matching():
-    """Preparation consumes the batched sync and requires its completion."""
-    events = iter([
-        'event: start\ndata: {"total": 2}\n\n',
-        'event: complete\ndata: {"success": true, "synced": 2}\n\n',
-    ])
+    """Preparation requests the canonical dependency rather than another execution path."""
     with patch(
-        'app.services.milestone_sync.sync_all_customer_milestones_stream',
-        return_value=events,
+        'app.services.sync_jobs.run_dependency',
+        return_value={'success': True, 'synced': 2},
     ) as sync:
         result = activity_enrichment._refresh_local_milestones()
 
-    sync.assert_called_once_with()
+    sync.assert_called_once_with('milestones')
     assert result == {'success': True, 'synced': 2}
 
 
@@ -1118,8 +1117,8 @@ def test_enrichment_detects_improved_account_sync(app):
 def test_enrichment_runs_improved_account_sync_once(app):
     """Missing version marker triggers account sync before milestone refresh."""
     with app.app_context(), patch(
-        'app.routes.msx.run_account_sync_headless',
-        side_effect=lambda: SyncStatus.mark_completed(
+        'app.services.sync_jobs.run_dependency',
+        side_effect=lambda *args: SyncStatus.mark_completed(
             'accounts',
             success=True,
             details='{"sync_version": 2}',
@@ -1131,7 +1130,7 @@ def test_enrichment_runs_improved_account_sync_once(app):
         assert activity_enrichment._ensure_current_account_sync() is True
         assert activity_enrichment._ensure_current_account_sync() is False
 
-    account_sync.assert_called_once_with()
+    account_sync.assert_called_once_with('accounts', {'skip_aura': True})
 
 
 def test_enrichment_status_reports_msx_refresh_phase(app, coverage_data):
@@ -1212,7 +1211,7 @@ def test_enrichment_job_persists_result(app, coverage_data):
                 'meeting_ids': [meeting.id],
             })
 
-        assert result == {'total': 1, 'completed': 1, 'failed': 0}
+        assert result == {'success': True, 'total': 1, 'completed': 1, 'failed': 0}
         assert meeting.enrichment_status == activity_enrichment.STATUS_COMPLETE
         assert meeting.enrichment_summary.startswith('Discussed Fabric')
         assert meeting.suggested_milestone_id == coverage_data['milestone_id']
@@ -1548,7 +1547,7 @@ def test_population_status_reads_durable_pending_job(app):
     """Progress survives web navigation and process restart through SQLite."""
     with app.app_context():
         ActivityCoveragePopulation.query.delete()
-        Job.query.filter_by(job_type='activity_coverage_population').delete()
+        Job.query.filter_by(job_type='sync:calendar-population').delete()
         row = ActivityCoveragePopulation(
             id=1,
             fiscal_year_end=2027,
@@ -1574,7 +1573,7 @@ def test_population_status_reads_durable_pending_job(app):
             assert status['current_date'] == '2026-07-03'
             assert status['can_start'] is False
         finally:
-            Job.query.filter_by(job_type='activity_coverage_population').delete()
+            Job.query.filter_by(job_type='sync:calendar-population').delete()
             ActivityCoveragePopulation.query.delete()
             db.session.commit()
 
@@ -1592,16 +1591,14 @@ def test_start_population_enqueues_one_durable_job(app):
             assert activity_coverage.start_population(app) is False
 
             jobs = Job.query.filter_by(
-                job_type='activity_coverage_population',
+                job_type='sync:calendar-population',
             ).all()
             assert len(jobs) == 1
             assert jobs[0].status == Job.STATUS_PENDING
-            assert jobs[0].dedupe_key == 'activity-coverage-population'
-            assert get_handler('activity_coverage_population') is (
-                activity_coverage.process_population_job
-            )
+            assert jobs[0].active_key.startswith('sync:calendar-population:')
+            assert get_handler('sync:calendar-population') is not None
         finally:
-            Job.query.filter_by(job_type='activity_coverage_population').delete()
+            Job.query.filter_by(job_type='sync:calendar-population').delete()
             ActivityCoveragePopulation.query.delete()
             db.session.commit()
 
@@ -1678,7 +1675,7 @@ def test_workiq_development_override_enables_five_day_reimport(
     monkeypatch.setenv('SALESBUDDY_CALENDAR_SOURCE', 'workiq')
     with app.app_context():
         ActivityCoveragePopulation.query.delete()
-        Job.query.filter_by(job_type='activity_coverage_population').delete()
+        Job.query.filter_by(job_type='sync:calendar-population').delete()
         db.session.add(ActivityCoveragePopulation(
             id=1,
             fiscal_year_end=2027,
@@ -1693,15 +1690,21 @@ def test_workiq_development_override_enables_five_day_reimport(
 
             assert activity_coverage.start_population(app) is True
             job = Job.query.filter_by(
-                job_type='activity_coverage_population',
+                job_type='sync:calendar-population',
             ).one()
             payload = json.loads(job.payload)
             expected_dates = activity_coverage._recent_weekdays(date.today(), 5)
-            assert payload['dates'] == [value.isoformat() for value in expected_dates]
+            assert payload == {'through': date.today().isoformat()}
+            assert db.session.get(ActivityCoveragePopulation, 1).populated_through == date.today()
+            with patch(
+                'app.services.activity_coverage._populate_fiscal_year_from_workiq',
+                return_value={'completed_count': 5, 'error': None},
+            ):
+                activity_coverage.process_population_job(payload)
             row = db.session.get(ActivityCoveragePopulation, 1)
             assert row.populated_through == expected_dates[0] - timedelta(days=1)
         finally:
-            Job.query.filter_by(job_type='activity_coverage_population').delete()
+            Job.query.filter_by(job_type='sync:calendar-population').delete()
             ActivityCoveragePopulation.query.delete()
             db.session.commit()
 
@@ -1975,15 +1978,11 @@ def test_f1_help_explains_activity_coverage_workflow():
 
 def test_reconciliation_routes(client):
     """Report can start reconciliation and poll its status."""
-    with patch(
-        'app.services.activity_coverage.start_reconciliation',
-        return_value=True,
-    ) as start:
-        response = client.post('/api/reports/activity-coverage/reconcile')
+    response = client.post('/api/reports/activity-coverage/reconcile')
 
-    assert response.status_code == 200
+    assert response.status_code == 202
     assert response.get_json()['success'] is True
-    start.assert_called_once()
+    assert response.get_json()['job']['operation'] == 'activity-reconciliation'
 
     status = client.get('/api/reports/activity-coverage/reconcile-status')
     assert status.status_code == 200
@@ -1992,23 +1991,14 @@ def test_reconciliation_routes(client):
 
 def test_enrichment_routes(client):
     """Report can queue enrichment and poll durable progress."""
-    with patch(
-        'app.services.activity_enrichment.start_enrichment',
-        return_value={'started': True, 'job_id': 42, 'queued': 8},
-    ) as start:
-        response = client.post(
-            '/api/reports/activity-coverage/match-milestones',
-            json={'force': True},
-        )
+    response = client.post(
+        '/api/reports/activity-coverage/match-milestones',
+        json={'force': True},
+    )
 
-    assert response.status_code == 200
-    assert response.get_json() == {
-        'success': True,
-        'started': True,
-        'job_id': 42,
-        'queued': 8,
-    }
-    start.assert_called_once_with(force=True)
+    assert response.status_code == 202
+    assert response.get_json()['job']['options'] == {'force': True}
+    assert response.get_json()['job']['status'] == 'pending'
 
     status = client.get('/api/reports/activity-coverage/match-status')
     assert status.status_code == 200
@@ -2017,9 +2007,7 @@ def test_enrichment_routes(client):
 
 def test_force_enrichment_clears_prior_preparation(app, coverage_data):
     """Re-running replaces generated drafts but preserves meeting identity and customer."""
-    with app.app_context(), patch(
-        'app.services.activity_enrichment.enqueue',
-    ) as enqueue:
+    with app.app_context():
         meeting = db.session.get(PrefetchedMeeting, coverage_data['meeting_id'])
         meeting.milestone_id = coverage_data['milestone_id']
         meeting.draft_subject = 'Old generated subject'
@@ -2031,11 +2019,12 @@ def test_force_enrichment_clears_prior_preparation(app, coverage_data):
         meeting.milestone_match_reason = 'Old reason'
         meeting.enrichment_attempts = 2
         db.session.commit()
-        enqueue.return_value.id = 99
-
         result = activity_enrichment.start_enrichment(force=True)
 
-        assert result == {'started': True, 'job_id': 99, 'queued': 1}
+        assert result['started'] is True
+        assert Job.query.one().id == result['job_id']
+        assert meeting.draft_subject == 'Old generated subject'
+        activity_enrichment.prepare_enrichment(force=True)
         assert meeting.customer_id == coverage_data['customer_id']
         assert meeting.milestone_id is None
         assert meeting.draft_subject is None
@@ -2046,7 +2035,6 @@ def test_force_enrichment_clears_prior_preparation(app, coverage_data):
         assert meeting.milestone_match_reason is None
         assert meeting.enrichment_attempts == 0
         assert meeting.enrichment_status == activity_enrichment.STATUS_QUEUED
-        enqueue.assert_called_once()
 
 
 def test_milestone_options_include_team_membership(client, coverage_data):

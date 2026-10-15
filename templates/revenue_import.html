@@ -15,6 +15,7 @@
 {% endblock %}
 
 {% block content %}
+{% from 'partials/_sync_progress.html' import sync_progress %}
 {% macro count_cell(value) -%}
 <td data-sb-sort-value="{{ value if value is not none else '' }}">{{ '{:,}'.format(value) if value is not none else '-' }}</td>
 {%- endmacro %}
@@ -35,22 +36,15 @@
             <a class="sb-revenue-command" href="{{ url_for('revenue.revenue_dashboard') }}">Revenue Analyzer</a>
         </div>
     </header>
-    <div class="sb-import-sync-band" id="revenueImportCard" data-sb-page-band>
-        <p id="syncLastRun" role="status">Checking last sync</p>
-        <button type="button" class="sb-revenue-command" data-sb-import-check>Check status</button>
+    {% call sync_progress('revenue', '#syncBtn') %}
         <div id="revImportBrainrotToggle" class="brainrot-card-toggle brainrot-pos-top-right sb-hidden">
             <input type="checkbox" id="revImportBrainrotCheck">
             <label for="revImportBrainrotCheck">brainrot mode</label>
         </div>
         <p data-sb-import-brainrot-error role="alert" hidden></p>
-        <div id="syncProgress" hidden>
-            <progress id="syncBar" max="100" aria-labelledby="syncText"></progress>
-            <p id="syncText" role="status" aria-live="polite">Starting revenue sync</p>
-        </div>
-        <div id="syncResults" role="status" aria-live="polite" hidden></div>
         <a href="{{ url_for('revenue.revenue_import', embed=request.args.get('embed')) }}"
            class="sb-revenue-command" data-sb-import-refresh hidden>Refresh stored-data tables</a>
-    </div>
+    {% endcall %}
     <div id="bucketNotice" data-sb-page-band hidden>
         <h2>MSXI changed its revenue buckets</h2>
         <div data-sb-import-notice-body></div>

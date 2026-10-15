@@ -75,6 +75,20 @@ def run_migrations(db):
         db, inspector, 'manager_initiative_items', 'points_created_at', 'DATETIME',
     )
     _migrate_initiative_project_links(db)
+    for column, definition in (
+        ('active_key', 'VARCHAR(200)'),
+        ('request_key', 'VARCHAR(200)'),
+        ('initiator', 'VARCHAR(32)'),
+        ('progress_json', 'TEXT'),
+        ('progress_at', 'DATETIME'),
+        ('last_success_at', 'DATETIME'),
+    ):
+        _add_column_if_not_exists(db, inspector, 'jobs', column, definition)
+    from sqlalchemy import Index, MetaData, Table
+
+    jobs = Table('jobs', MetaData(), autoload_with=db.engine)
+    for column in ('active_key', 'request_key'):
+        Index(f'uq_jobs_{column}', jobs.c[column], unique=True).create(db.engine, checkfirst=True)
     
     # Migration: Upgrade milestones table for MSX integration
     _migrate_milestones_for_msx(db, inspector)

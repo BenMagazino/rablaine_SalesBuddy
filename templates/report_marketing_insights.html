@@ -18,6 +18,7 @@
 <td class="sb-marketing-number" data-sb-sort-value="{{ value if value is not none else '' }}">{{ value if value is not none else '-' }}</td>
 {%- endmacro %}
 {% block content %}
+{% from 'partials/_sync_progress.html' import sync_progress %}
 <section class="sb-marketing" data-sb-marketing data-sb-page-surface
          data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          aria-labelledby="marketingTitle">
@@ -28,20 +29,9 @@
         {% set export_title = 'Marketing Insights' %}
         {% include 'partials/_report_export.html' %}
     </header>
-    <div class="sb-marketing-sync" data-state="{{ sync_status.state }}" data-sb-page-band role="status">
-        {% if sync_status.state == 'never_run' %}
-        <span>Marketing data has not been synced yet.</span>
-        <a href="{{ url_for('admin.admin_panel') }}">Run sync in Admin</a>
-        {% elif sync_status.state == 'in_progress' %}
-        <span>Marketing sync is currently running...</span>
-        {% elif sync_status.state == 'complete' %}
-        <span>Last synced: {% if sync_status.completed_at %}<span class="local-datetime" data-utc="{{ sync_status.completed_at.strftime('%Y-%m-%dT%H:%M:%SZ') }}">{{ sync_status.completed_at.strftime('%Y-%m-%dT%H:%M:%SZ') }}</span>{% else %}Unknown{% endif %}
-        {% if sync_status.items_synced is not none %} - {{ sync_status.items_synced }} customers synced{% endif %}</span>
-        <a href="{{ url_for('admin.admin_panel') }}">Re-sync in Admin</a>
-        {% elif sync_status.state in ('failed', 'incomplete') %}
-        <span>Last sync {{ sync_status.state }}.</span><a href="{{ url_for('admin.admin_panel') }}">Retry in Admin</a>
-        {% endif %}
-    </div>
+    {% call sync_progress('marketing', '', 'marketing-') %}
+    <a href="{{ url_for('admin.admin_panel') }}">Sync in Admin</a>
+    {% endcall %}
     {% if customer_data %}
     <div class="sb-marketing-scope" data-sb-page-band>
         <span>Report totals, all synced customers</span>

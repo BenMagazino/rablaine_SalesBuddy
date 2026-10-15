@@ -10,7 +10,7 @@ from typing import Any
 from app.gateway_client import gateway_call
 from app.models import Job, Milestone, PrefetchedMeeting, SyncStatus, UserPreference, db
 from app.services.activity_coverage import fiscal_year_bounds
-from app.services.job_queue import enqueue, job_handler
+from app.services.job_queue import job_handler
 from app.services.msx_api import HVA_TASK_CATEGORIES
 from app.services.workiq_service import get_meeting_summary
 
@@ -174,7 +174,7 @@ def _active_job() -> Job | None:
     """Return an unfinished enrichment job, if one exists."""
     return (
         Job.query
-        .filter(Job.job_type == JOB_TYPE)
+        .filter(Job.job_type.in_([JOB_TYPE, 'sync:meeting-preparation']))
         .filter(Job.status.in_([Job.STATUS_PENDING, Job.STATUS_RUNNING]))
         .order_by(Job.id.desc())
         .first()
@@ -198,9 +198,9 @@ def _ensure_current_account_sync() -> bool:
     if _account_sync_is_current():
         return False
 
-    from app.routes.msx import run_account_sync_headless
+    from app.services.sync_jobs import run_dependency
 
-    run_account_sync_headless()
+    run_dependency('accounts', {'skip_aura': True})
     if not _account_sync_is_current():
         raise RuntimeError('Improved MSX account sync did not complete')
     return True
@@ -208,38 +208,12 @@ def _ensure_current_account_sync() -> bool:
 
 def _refresh_local_milestones() -> dict[str, Any]:
     """Refresh the batched local MSX cache before building match candidates."""
-    from app.services.milestone_sync import sync_all_customer_milestones_stream
-
-    completed = None
-    for event in sync_all_customer_milestones_stream():
-        lines = event.splitlines()
-        event_type = next(
-            (line.removeprefix('event: ') for line in lines if line.startswith('event: ')),
-            '',
-        )
-        data_line = next(
-            (line.removeprefix('data: ') for line in lines if line.startswith('data: ')),
-            None,
-        )
-        data = json.loads(data_line) if data_line else {}
-        if event_type == 'vpn_blocked':
-            raise RuntimeError(data.get('message') or 'MSX milestone refresh was blocked')
-        if event_type == 'complete':
-            completed = data
-
-    if not completed:
-        raise RuntimeError('MSX milestone refresh did not complete')
-    if not completed.get('success'):
-        raise RuntimeError('MSX milestone refresh failed')
-    return completed
+    from app.services.sync_jobs import run_dependency
+    return run_dependency('milestones')
 
 
-def start_enrichment(force: bool = False) -> dict[str, Any]:
-    """Queue eligible fiscal-year meetings, optionally replacing prior preparation."""
-    active = _active_job()
-    if active:
-        return {'started': False, 'job_id': active.id, 'queued': 0}
-
+def prepare_enrichment(force: bool = False) -> dict[str, Any]:
+    """Prepare eligible meeting inputs in the worker, not in a request."""
     PrefetchedMeeting.query.filter_by(enrichment_status=STATUS_RUNNING).update({
         PrefetchedMeeting.enrichment_status: STATUS_FAILED,
         PrefetchedMeeting.enrichment_error: 'Previous enrichment was interrupted',
@@ -257,6 +231,7 @@ def start_enrichment(force: bool = False) -> dict[str, Any]:
         query = query.filter(db.or_(
             PrefetchedMeeting.enrichment_status.is_(None),
             PrefetchedMeeting.enrichment_status == STATUS_FAILED,
+            PrefetchedMeeting.enrichment_status == STATUS_QUEUED,
         ))
     meetings = query.all()
     for meeting in meetings:
@@ -273,23 +248,15 @@ def start_enrichment(force: bool = False) -> dict[str, Any]:
         meeting.enrichment_status = STATUS_QUEUED
         meeting.enrichment_error = None
     db.session.commit()
-    if not meetings:
-        return {'started': False, 'job_id': None, 'queued': 0}
+    return {'meeting_ids': [meeting.id for meeting in meetings]}
 
-    try:
-        job = enqueue(
-            JOB_TYPE,
-            {'meeting_ids': [meeting.id for meeting in meetings]},
-            dedupe_key=JOB_DEDUPE_KEY,
-            max_attempts=3,
-        )
-    except Exception:
-        for meeting in meetings:
-            meeting.enrichment_status = STATUS_FAILED
-            meeting.enrichment_error = 'Could not queue meeting preparation'
-        db.session.commit()
-        raise
-    return {'started': True, 'job_id': job.id, 'queued': len(meetings)}
+
+def start_enrichment(force: bool = False) -> dict[str, Any]:
+    """Admit meeting preparation through the shared resource and retry rules."""
+    from app.services.sync_jobs import admit_sync
+
+    job = admit_sync('meeting-preparation', {'force': force})
+    return {'started': True, 'job_id': job.id, 'queued': 0}
 
 
 def get_enrichment_status() -> dict[str, Any]:
@@ -309,6 +276,8 @@ def get_enrichment_status() -> dict[str, Any]:
         for status in (STATUS_QUEUED, STATUS_RUNNING, STATUS_COMPLETE, STATUS_FAILED)
     }
     active = _active_job()
+    from app.services.sync_jobs import operation_runs
+    latest, _ = operation_runs('meeting-preparation')
     prepared = counts[STATUS_COMPLETE]
     phase = 'idle'
     if active:
@@ -328,13 +297,15 @@ def get_enrichment_status() -> dict[str, Any]:
         'running_job': bool(active),
         'job_id': active.id if active else None,
         'phase': phase,
+        'error': latest.last_error if latest and latest.status == Job.STATUS_FAILED else None,
     }
 
 
-@job_handler(JOB_TYPE)
 def process_enrichment_job(payload: dict[str, Any]) -> dict[str, Any]:
     """Enrich queued meetings concurrently and persist each completed result."""
     meeting_ids = [int(value) for value in payload.get('meeting_ids', [])]
+    if not meeting_ids:
+        return {'success': True, 'total': 0, 'completed': 0, 'failed': 0}
     PrefetchedMeeting.query.filter(
         PrefetchedMeeting.id.in_(meeting_ids),
         PrefetchedMeeting.enrichment_status == STATUS_RUNNING,
@@ -343,6 +314,8 @@ def process_enrichment_job(payload: dict[str, Any]) -> dict[str, Any]:
         PrefetchedMeeting.enrichment_error: 'Resuming interrupted preparation',
     }, synchronize_session=False)
     db.session.commit()
+    from app.services.sync_jobs import publish_progress
+    publish_progress({'phase': 'prerequisites', 'message': 'Refreshing matching prerequisites.'})
     _ensure_current_account_sync()
     _refresh_local_milestones()
     meetings = (
@@ -406,9 +379,26 @@ def process_enrichment_job(payload: dict[str, Any]) -> dict[str, Any]:
                 meeting.enriched_at = datetime.now(timezone.utc)
                 completed += 1
             except Exception as exc:
+                logger.exception('Could not prepare meeting %s', meeting.id)
                 meeting.enrichment_status = STATUS_FAILED
                 meeting.enrichment_error = str(exc)[:2000]
                 failed += 1
             db.session.commit()
+            publish_progress({'phase': 'preparing', 'current': completed + failed,
+                              'total': len(work_items),
+                              'progress': 100 * (completed + failed) / max(len(work_items), 1),
+                              'message': 'Preparing meeting evidence and milestone matches.'})
 
-    return {'total': len(work_items), 'completed': completed, 'failed': failed}
+    return {'success': failed == 0, 'total': len(work_items), 'completed': completed,
+            'failed': failed,
+            **({'error': 'Some meeting preparations failed. Inspect their recorded errors.'}
+               if failed else {})}
+
+
+@job_handler(JOB_TYPE)
+def admit_legacy_enrichment_job(payload: dict[str, Any]) -> dict[str, Any]:
+    """Translate pre-upgrade queued work into the single canonical admission path."""
+    from app.services.sync_jobs import admit_sync
+
+    job = admit_sync('meeting-preparation', initiator='legacy-queue')
+    return {'accepted': True, 'job_id': job.id}

@@ -136,23 +136,27 @@ document.addEventListener('DOMContentLoaded', function() {
         actions.forEach(action => action.disabled = true);
         btn.setAttribute('aria-busy', 'true');
         btn.innerHTML = '<span class="sb-admin-busy sb-admin-busy-small"></span> Working...';
-        showStatus('Fetching favicons (4 parallel workers)...', 'info');
+        showStatus('Submitting favicon sync...', 'info');
 
         try {
-            const resp = await fetch(url, { method: 'POST' });
+            const resp = await fetch(url, {
+                method: 'POST',
+                onJobProgress: job => showStatus(window.SBJobs.message(job), 'info'),
+            });
             const data = await resp.json();
-            if (resp.ok && data.success) {
-                showStatus(data.message, 'success');
-                // Auto-reload after brief delay so user sees the message
-                setTimeout(() => location.reload(), 1500);
+            if (resp.ok && data.success === true && !data.accepted) {
+                const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+                const message = data.message ||
+                    `Fetched ${data.fetched || 0} favicons, ${data.failed || 0} unavailable.`;
+                const detail = [message, ...warnings];
+                if (data.fetched > 0) detail.push('Use Reload Page to update the gallery.');
+                showStatus(detail.join(' '), data.failed > 0 || warnings.length ? 'warning' : 'success');
             } else {
-                showStatus('Error: ' + (data.error || 'Unknown'), 'danger');
-                actions.forEach(action => action.disabled = false);
-                btn.setAttribute('aria-busy', 'false');
-                btn.innerHTML = origText;
+                showStatus('Error: ' + (data.error || 'The favicon sync did not report completion.'), 'danger');
             }
         } catch (e) {
             showStatus('Network error: ' + e.message, 'danger');
+        } finally {
             actions.forEach(action => action.disabled = false);
             btn.setAttribute('aria-busy', 'false');
             btn.innerHTML = origText;

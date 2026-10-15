@@ -565,115 +565,16 @@ def milestone_tracker():
 
 @bp.route('/api/milestone-tracker/sync', methods=['POST'])
 def api_sync_milestones():
-    """
-    Trigger a milestone sync from MSX with Server-Sent Events progress.
-
-    Streams real-time progress events as each customer is synced.
-    Falls back to JSON response if Accept header doesn't include event-stream.
-    """
-    from app.models import Customer
-    if Customer.query.first() is None:
-        return jsonify({'success': False, 'error': 'Import accounts first'}), 400
-
-    from app.services.milestone_sync import (
-        sync_all_customer_milestones,
-        sync_all_customer_milestones_stream,
-        _sse_event,
-    )
-
-    def record_failure() -> None:
-        """Roll back pending sync writes and persist a failed terminal status."""
-        from app.models import SyncStatus
-
-        db.session.rollback()
-        logger.exception("Milestone sync failed")
-        try:
-            SyncStatus.mark_completed(
-                'milestones', success=False,
-                details=json.dumps({'error': 'Sync failed. Review the server log.'}),
-            )
-        except SQLAlchemyError:
-            db.session.rollback()
-            logger.exception("Could not record milestone sync failure")
-
-    # SSE streaming path
-    if 'text/event-stream' in request.headers.get('Accept', ''):
-        def generate():
-            """Report unexpected sync exceptions as a terminal SSE error."""
-            try:
-                yield from sync_all_customer_milestones_stream()
-            except Exception:
-                record_failure()
-                yield _sse_event('error', {
-                    'message': 'Milestone sync failed. Some earlier changes may already be saved. '
-                               'Review the server log for details.',
-                })
-
-        return Response(
-            stream_with_context(generate()),
-            mimetype='text/event-stream',
-            headers={
-                'Cache-Control': 'no-cache',
-                'X-Accel-Buffering': 'no',
-            },
-        )
-
-    # JSON fallback for non-SSE clients (e.g. scheduled task script).
-    # Fire-and-forget: start sync in a background thread and return 202
-    # immediately so the caller doesn't time out on long syncs.
-    import threading
-
-    def _run_sync(app):
-        with app.app_context():
-            try:
-                sync_all_customer_milestones()
-            except Exception:
-                record_failure()
-
-    t = threading.Thread(
-        target=_run_sync,
-        args=(current_app._get_current_object(),),
-        daemon=True,
-    )
-    t.start()
-    return jsonify({
-        "success": True,
-        "message": "Milestone sync started in background.",
-        "async": True,
-    }), 202
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('milestones', None)
 
 
 @bp.route('/api/milestone-tracker/sync-customer/<int:customer_id>', methods=['POST'])
 def api_sync_customer_milestones(customer_id):
-    """
-    Sync milestones from MSX for a single customer.
-    
-    Args:
-        customer_id: The customer ID to sync.
-        
-    Returns:
-        JSON with sync results for the single customer.
-    """
-    from app.models import Customer
-    from app.services.milestone_sync import sync_customer_milestones
-    
-    customer = Customer.query.get_or_404(customer_id)
-    
-    if not customer.tpid_url:
-        return jsonify({
-            "success": False,
-            "error": "Customer has no MSX account link (tpid_url).",
-        }), 400
-    
-    try:
-        result = sync_customer_milestones(customer)
-        return jsonify(result)
-    except Exception as e:
-        logger.exception(f"Milestone sync failed for customer {customer_id}")
-        return jsonify({
-            "success": False,
-            "error": str(e),
-        }), 500
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('customer-milestones', {'customer_id': customer_id})
 
 
 # =============================================================================

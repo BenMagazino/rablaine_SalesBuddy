@@ -141,36 +141,15 @@ def _run_sync(app):
         with app.app_context():
             from app import db
             from app.models import UserPreference
-            from app.services.milestone_sync import sync_all_customer_milestones
+            from app.services.sync_jobs import admit_sync
 
-            result = sync_all_customer_milestones()
-            if result.get('success'):
-                logger.info(
-                    "Milestone sync complete: %d customers, %d new, %d updated",
-                    result.get('customers_synced', 0),
-                    result.get('milestones_created', 0),
-                    result.get('milestones_updated', 0),
-                )
-            else:
-                logger.error("Milestone sync failed: %s", result.get('error', 'Unknown'))
-
-            # Update last sync time regardless of success (avoid retry storms)
+            job = admit_sync('milestones', initiator='scheduled')
+            logger.info("Milestone sync admitted as job %s", job.id)
             pref = UserPreference.query.first()
             if pref:
                 pref.last_milestone_sync = datetime.now(timezone.utc)
                 db.session.commit()
 
-            # Run marketing insights sync after milestone sync completes
-            _run_marketing_sync(app)
-
-            # Refresh revenue from MSXI. Chained here rather than given its own
-            # timer, but rate-limited to weekly - ACR only moves monthly and a
-            # full pull is far heavier than a milestone sync.
-            _run_revenue_sync()
-
-            # Refresh the official U2C baseline. Runs after the milestone sync
-            # so freshly synced milestones can be matched to MSXi rows.
-            _run_u2c_import()
     except Exception:
         logger.exception("Error during milestone sync")
     finally:
@@ -208,17 +187,9 @@ def _run_revenue_sync():
     if not _revenue_sync_due():
         return
     try:
-        from app.services.revenue_sync import sync_revenue
+        from app.services.sync_jobs import admit_sync
         logger.info("Starting revenue sync (weekly)")
-        result = sync_revenue()
-        if result.get('success'):
-            logger.info(
-                "Revenue sync complete: %d bucket rows, %d product rows, %d customers with data",
-                result.get('bucket_rows', 0), result.get('product_rows', 0),
-                result.get('customers_with_data', 0),
-            )
-        else:
-            logger.error("Revenue sync failed: %s", result.get('error', 'Unknown'))
+        admit_sync('revenue', initiator='scheduled')
     except Exception:
         logger.exception("Error during revenue sync")
 
@@ -226,11 +197,9 @@ def _run_revenue_sync():
 def _run_marketing_sync(app):
     """Run marketing insights sync in the current thread (already in app context)."""
     try:
-        from app.services.marketing_sync import sync_marketing_stream
+        from app.services.sync_jobs import admit_sync
         logger.info("Starting marketing insights sync (post-milestone)")
-        for _ in sync_marketing_stream():
-            pass  # Consume generator to completion
-        logger.info("Marketing insights sync complete")
+        admit_sync('marketing', initiator='scheduled')
     except Exception:
         logger.exception("Error during marketing insights sync")
 
@@ -335,11 +304,14 @@ def _run_u2c_import_locked(force: bool = False) -> dict | None:
     from app.services.u2c_snapshot import (
         OUTCOME_BROKEN, refresh_official_snapshot, rematch_current_snapshot,
     )
+    from app.services.sync_jobs import publish_progress
 
     try:
+        publish_progress({'phase': 'matching', 'message': 'Matching the saved U2C baseline.'})
         rematch_current_snapshot()
     except Exception:
         logger.exception("Error re-matching U2C snapshot items")
+        raise
 
     if not force and not _u2c_import_due():
         return None
@@ -364,10 +336,14 @@ def _run_u2c_import_locked(force: bool = False) -> dict | None:
             except Exception:
                 logger.exception("Error updating U2C import heartbeat")
 
-    heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
-    heartbeat_thread.start()
+    from app.services.job_queue import CURRENT_SYNC_OWNER
+    heartbeat_thread = None
+    if CURRENT_SYNC_OWNER.get() is None:
+        heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
+        heartbeat_thread.start()
 
     try:
+        publish_progress({'phase': 'query', 'message': 'Reading the official MSXI U2C baseline.'})
         result = refresh_official_snapshot()
     except Exception as exc:
         logger.exception("Error refreshing the official U2C baseline")
@@ -378,7 +354,8 @@ def _run_u2c_import_locked(force: bool = False) -> dict | None:
         }
     finally:
         heartbeat_stop.set()
-        heartbeat_thread.join()
+        if heartbeat_thread is not None:
+            heartbeat_thread.join()
 
     outcome = result.get('outcome')
     if result.get('success'):
@@ -406,7 +383,12 @@ def _run_u2c_import_locked(force: bool = False) -> dict | None:
 
 def _run_u2c_import() -> dict | None:
     """Run the scheduled U2C refresh when its cadence is due."""
-    return run_u2c_import()
+    from app.services.sync_jobs import admit_sync
+
+    if not _u2c_import_due():
+        return None
+    job = admit_sync('u2c', {'force': False}, initiator='scheduled')
+    return {'success': True, 'accepted': True, 'job_id': job.id}
 
 
 def run_u2c_import_if_due(app):

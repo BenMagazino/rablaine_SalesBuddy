@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.models import db, Milestone, MsxTask, SyncStatus
+from app.services import job_queue
 
 
 def test_stream_database_error_reports_failure_and_rolls_back(client, app, sample_data):
@@ -35,7 +36,9 @@ def test_stream_database_error_reports_failure_and_rolls_back(client, app, sampl
     ):
         response = client.post(
             '/api/milestone-tracker/sync', headers={'Accept': 'text/event-stream'},
+            buffered=False,
         )
+        job_queue.process_one('test-worker', app=app, with_heartbeat=True)
         body = response.get_data(as_text=True)
     assert 'event: start' in body
     assert 'event: error' in body
@@ -47,8 +50,8 @@ def test_stream_database_error_reports_failure_and_rolls_back(client, app, sampl
         assert MsxTask.query.filter_by(msx_task_id='failed-sync-task').first() is None
 
 
-def test_failure_status_write_error_still_emits_terminal_event(client, sample_data, caplog):
-    """Even a database unable to persist failure status must end the UI stream clearly."""
+def test_legacy_failure_status_write_cannot_hide_job_failure(client, app, sample_data, caplog):
+    """Durable failure does not depend on the old SyncStatus failure-write path."""
     with patch(
         'app.services.milestone_sync.sync_all_customer_milestones_stream',
         side_effect=RuntimeError('Internal sync error'),
@@ -57,10 +60,13 @@ def test_failure_status_write_error_still_emits_terminal_event(client, sample_da
     ):
         response = client.post(
             '/api/milestone-tracker/sync', headers={'Accept': 'text/event-stream'},
+            buffered=False,
         )
+        job_queue.process_one('test-worker', app=app, with_heartbeat=True)
         body = response.get_data(as_text=True)
     assert 'event: error' in body
-    assert 'Could not record milestone sync failure' in caplog.text
+    assert SyncStatus.get_status('milestones')['state'] == 'failed'
+    assert 'Internal sync error' in caplog.text
 
 
 @pytest.mark.skipif(shutil.which('node') is None, reason='Node.js is required for JS tests')

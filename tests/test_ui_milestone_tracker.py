@@ -69,7 +69,7 @@ def test_native_tracker_preserves_provider_order_and_every_raw_key(
     assert len(headers) == 8
     assert all(h["data-export-label"] == h.get_text(strip=True) for h in headers)
     assert not any(h.has_attr("data-sb-sort-type") for h in table.select("th")[-2:])
-    assert len(soup.select('script[src="/static/js/ui-table-sort.js"]')) == 1
+    assert len(soup.select('script[src^="/static/js/ui-table-sort.js"]')) == 1
     assert soup.select_one("footer.sb-page-status #trackerStatus")
     assert soup.select_one(".milestone-tracker-instance > .mt-reading > .mt-list")
     assert soup.find(id="milestonePreviewDialog").name == "dialog"
@@ -94,7 +94,7 @@ def test_tracker_alias_and_locked_seller_contract(client, tracker_records, sampl
         client.get(f'/seller/{sample_data["seller1_id"]}').data, "html.parser"
     )
     assert seller.select_one(".milestone-tracker-instance > .mt-reading")
-    assert len(seller.select('script[src="/static/js/ui-milestone-tracker-actions.js"]')) == 1
+    assert len(seller.select('script[src^="/static/js/ui-milestone-tracker-actions.js"]')) == 1
 
 
 def test_tracker_empty_scope_retains_commands_and_calendar(client) -> None:

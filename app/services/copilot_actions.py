@@ -202,6 +202,7 @@ def sync_copilot_action_items(app=None) -> dict:
     from app.services.workiq_service import query_workiq
 
     def _do_sync():
+        from app.services.sync_jobs import publish_progress
         logger.info("Starting Copilot action items sync")
         try:
             # Build prompt with exclusions from recently completed items
@@ -209,6 +210,7 @@ def sync_copilot_action_items(app=None) -> dict:
             logger.info("Copilot prompt: %s", prompt[:200])
 
             # Query WorkIQ (this takes ~30-60 seconds)
+            publish_progress({'phase': 'query', 'message': 'Reading WorkIQ action suggestions.'})
             response = query_workiq(prompt, timeout=120,
                                     operation='copilot_actions')
             if not response or not response.strip():
@@ -222,6 +224,8 @@ def sync_copilot_action_items(app=None) -> dict:
                                "First 500 chars: %s", response[:500])
                 return {"success": False, "error": "No action items parsed"}
 
+            publish_progress({'phase': 'saving', 'total': len(parsed),
+                              'message': f'Saving {len(parsed)} parsed action suggestions.'})
             # Delete open copilot items (keep completed ones for exclusion list)
             deleted = ActionItem.query.filter_by(source='copilot', status='open').delete()
             # Also clean up completed copilot items older than 7 days
@@ -325,12 +329,9 @@ def start_copilot_sync_background(app) -> None:
             return
 
     logger.info("Copilot action items sync needed, starting background thread")
-    thread = threading.Thread(
-        target=sync_copilot_action_items,
-        kwargs={'app': app},
-        daemon=True,
-    )
-    thread.start()
+    with app.app_context():
+        from app.services.sync_jobs import admit_sync
+        admit_sync('copilot-actions', initiator='scheduled')
 
 
 def start_daily_scheduler(app) -> None:
@@ -365,7 +366,8 @@ def start_daily_scheduler(app) -> None:
                             continue
                         if should_sync():
                             logger.info("Daily scheduler triggering Copilot sync")
-                            sync_copilot_action_items(app=app)
+                            from app.services.sync_jobs import admit_sync
+                            admit_sync('copilot-actions', initiator='scheduled')
                     last_sync_date = today
 
                 # Sleep 5 minutes between checks

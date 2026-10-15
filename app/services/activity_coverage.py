@@ -26,7 +26,7 @@ from app.models import (
     PrefetchedMeeting,
     db,
 )
-from app.services.job_queue import enqueue, job_handler
+from app.services.job_queue import job_handler
 from app.services.msx_api import HVA_TASK_CATEGORIES, TASK_CATEGORIES
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,6 @@ _WORKIQ_IMPORT_WORKERS = 5
 
 _create_lock = threading.Lock()
 _milestone_create_lock = threading.Lock()
-_reconcile_lock = threading.Lock()
 _reconcile_state_lock = threading.Lock()
 _reconcile_state: dict[str, Any] = {
     'running': False,
@@ -285,18 +284,28 @@ def reconcile_existing_activities(today: date | None = None) -> dict[str, int]:
 
 def get_reconciliation_status() -> dict[str, Any]:
     """Return current activity refresh and reconciliation state."""
+    from app.services.sync_jobs import ACTIVE_STATES, job_snapshot
+
+    job = Job.query.filter_by(job_type='sync:activity-reconciliation').order_by(
+        Job.id.desc()).first()
+    if job:
+        snapshot = job_snapshot(job)
+        return {**snapshot['progress'], 'running': job.status in ACTIVE_STATES,
+                'error': snapshot['error'], 'job_id': job.id}
     with _reconcile_state_lock:
         return dict(_reconcile_state)
 
 
-def _sync_and_reconcile() -> None:
+def _sync_and_reconcile() -> dict[str, Any]:
     """Refresh MSX tasks for known milestones, then reconcile local meetings."""
     from app.services.milestone_sync import (
         _sync_all_tasks,
         _sync_caip_activities,
         _sync_team_milestones,
     )
+    from app.services.sync_jobs import publish_progress
 
+    publish_progress({'phase': 'team', 'message': 'Refreshing on-team milestones.'})
     with _reconcile_state_lock:
         _reconcile_state['phase'] = 'syncing'
     team_result = _sync_team_milestones()
@@ -307,7 +316,10 @@ def _sync_and_reconcile() -> None:
     task_sync = _sync_all_tasks()
     try:
         while True:
-            next(task_sync)
+            current, total, message, status = next(task_sync)
+            publish_progress({'phase': 'tasks', 'current': current, 'total': total,
+                              'progress': 70 * current / max(total, 1),
+                              'message': message, 'status': status})
     except StopIteration as stop:
         sync_result = stop.value
     if not sync_result.get('success'):
@@ -324,49 +336,19 @@ def _sync_and_reconcile() -> None:
             'tasks_created': sync_result.get('tasks_created', 0),
             'tasks_updated': sync_result.get('tasks_updated', 0),
         })
+    publish_progress({'phase': 'matching', 'progress': 85,
+                      'message': 'Matching saved meetings to refreshed activities.'})
     result = reconcile_existing_activities()
     with _reconcile_state_lock:
         _reconcile_state.update(result)
-
-
-def _reconciliation_worker(app: Flask) -> None:
-    """Run activity reconciliation inside an application context."""
-    try:
-        with app.app_context():
-            _sync_and_reconcile()
-    except Exception as exc:
-        logger.exception('Activity coverage reconciliation failed')
-        with _reconcile_state_lock:
-            _reconcile_state['error'] = str(exc)
-    finally:
-        with _reconcile_state_lock:
-            _reconcile_state['running'] = False
-            _reconcile_state['phase'] = None
-        _reconcile_lock.release()
+    return {'success': True, 'tasks_created': sync_result.get('tasks_created', 0),
+            'tasks_updated': sync_result.get('tasks_updated', 0), **result}
 
 
 def start_reconciliation(app: Flask) -> bool:
-    """Start one background MSX refresh and reconciliation pass."""
-    if not _reconcile_lock.acquire(blocking=False):
-        return False
-    with _reconcile_state_lock:
-        _reconcile_state.update({
-            'running': True,
-            'phase': 'starting',
-            'scanned': 0,
-            'linked': 0,
-            'ambiguous': 0,
-            'tasks_created': 0,
-            'tasks_updated': 0,
-            'error': None,
-        })
-    thread = threading.Thread(
-        target=_reconciliation_worker,
-        args=(app,),
-        daemon=True,
-        name='activity-coverage-reconciliation',
-    )
-    thread.start()
+    """Admit the same persisted reconciliation job for every launcher."""
+    from app.services.sync_jobs import admit_sync
+    admit_sync('activity-reconciliation')
     return True
 
 
@@ -1041,6 +1023,19 @@ def get_population_status(today: date | None = None) -> dict[str, Any]:
     pending = _population_dates(populated_through, today)
     _, fiscal_end = fiscal_year_bounds(today)
     active_job = _active_population_job()
+    error = None
+    if not active_job:
+        latest_job = (
+            Job.query
+            .filter(Job.job_type.in_([_POPULATION_JOB_TYPE, 'sync:calendar-population']))
+            .order_by(Job.id.desc())
+            .first()
+        )
+        error = (
+            latest_job.last_error
+            if latest_job and latest_job.status == Job.STATUS_FAILED
+            else row.last_error if row else None
+        )
     job_dates: list[date] = []
     if active_job and active_job.payload:
         try:
@@ -1056,10 +1051,22 @@ def get_population_status(today: date | None = None) -> dict[str, Any]:
         (value for value in job_dates if populated_through is None or value > populated_through),
         None,
     )
+    if active_job and active_job.job_type == 'sync:calendar-population':
+        from app.services.sync_jobs import job_snapshot
+        live_progress = job_snapshot(active_job)['progress']
+        completed_count = live_progress.get('processed') or 0
+        total_dates = live_progress.get('total') or len(pending)
+        current_date = None
+    else:
+        live_progress = {}
+        total_dates = len(job_dates)
 
     if active_job:
         label = 'Populating'
-        detail = f'{completed_count} of {len(job_dates)} days'
+        detail = live_progress.get('message') or f'{completed_count} of {total_dates} days'
+    elif error:
+        label = 'Retry Calendar Import'
+        detail = error
     elif populated_through is None:
         label = f'Import FY{fiscal_end.year % 100:02d} Calendar'
         detail = f'{len(pending)} weekdays through today'
@@ -1081,7 +1088,7 @@ def get_population_status(today: date | None = None) -> dict[str, Any]:
         'running': bool(active_job),
         'current_date': current_date.isoformat() if current_date else None,
         'completed_count': completed_count,
-        'total_dates': len(job_dates),
+        'total_dates': total_dates,
         'attempt': active_job.attempts if active_job else 0,
         'retrying': bool(active_job and active_job.attempts > 1),
         'label': label,
@@ -1092,7 +1099,7 @@ def get_population_status(today: date | None = None) -> dict[str, Any]:
         'populated_through': populated_through.isoformat() if populated_through else None,
         'last_completed_at': row.last_completed_at.isoformat() if row and row.last_completed_at else None,
         'pending_count': len(pending),
-        'error': row.last_error if row else None,
+        'error': error,
     }
 
 
@@ -1100,9 +1107,9 @@ def _active_population_job() -> Job | None:
     """Return pending or running durable calendar population job."""
     return (
         Job.query
-        .filter(Job.job_type == _POPULATION_JOB_TYPE)
+        .filter(Job.job_type.in_([_POPULATION_JOB_TYPE, 'sync:calendar-population']))
         .filter(Job.status.in_([Job.STATUS_PENDING, Job.STATUS_RUNNING]))
-        .order_by(Job.id.desc())
+        .order_by((Job.status == Job.STATUS_RUNNING).desc(), Job.id.desc())
         .first()
     )
 
@@ -1146,7 +1153,7 @@ def populate_fiscal_year(today: date | None = None) -> dict[str, Any]:
     row.last_error = None
     db.session.commit()
 
-    for target in dates:
+    for index, target in enumerate(dates):
         target_str = target.isoformat()
         error = _sync_date_with_retries(target_str)
         if error:
@@ -1161,6 +1168,10 @@ def populate_fiscal_year(today: date | None = None) -> dict[str, Any]:
         row.populated_through = target
         row.last_error = None
         db.session.commit()
+        from app.services.sync_jobs import publish_progress
+        publish_progress({'phase': 'calendar', 'current': index + 1, 'total': len(dates),
+                          'progress': 100 * (index + 1) / max(len(dates), 1),
+                          'message': f'Stored calendar through {target_str}.'})
 
     row.last_completed_at = datetime.now(timezone.utc)
     db.session.commit()
@@ -1221,13 +1232,17 @@ def _populate_fiscal_year_from_workiq(today: date) -> dict[str, Any]:
             row.last_error = None
             db.session.commit()
             completed_count += 1
+            from app.services.sync_jobs import publish_progress
+            publish_progress({'phase': 'calendar', 'current': completed_count,
+                              'total': len(dates),
+                              'progress': 100 * completed_count / max(len(dates), 1),
+                              'message': f'Stored calendar through {target.isoformat()}.'})
 
     row.last_completed_at = datetime.now(timezone.utc)
     db.session.commit()
     return {'completed_count': completed_count, 'error': None, 'source': 'workiq'}
 
 
-@job_handler(_POPULATION_JOB_TYPE)
 def process_population_job(payload: dict[str, Any]) -> dict[str, Any]:
     """Run durable calendar population using Outlook or parallel WorkIQ."""
     through = date.fromisoformat(payload['through'])
@@ -1236,11 +1251,28 @@ def process_population_job(payload: dict[str, Any]) -> dict[str, Any]:
     force_workiq = _force_workiq_in_development()
     if force_workiq:
         logger.info('Calendar population source forced to WorkIQ in development')
+        row = _population_row(through, create=True)
+        if not _population_dates(row.populated_through, through):
+            test_dates = _recent_weekdays(through, _WORKIQ_IMPORT_WORKERS)
+            row.populated_through = test_dates[0] - timedelta(days=1)
+            row.last_completed_at = None
+            row.last_error = None
+            db.session.commit()
     elif corporate_outlook_available():
         result = populate_fiscal_year(through)
         result['source'] = 'outlook'
         return result
     return _populate_fiscal_year_from_workiq(through)
+
+
+@job_handler(_POPULATION_JOB_TYPE)
+def admit_legacy_population_job(payload: dict[str, Any]) -> dict[str, Any]:
+    """Translate pre-upgrade queued work without a second sync executor."""
+    from app.services.sync_jobs import admit_sync
+
+    job = admit_sync('calendar-population', {'through': payload['through']},
+                     initiator='legacy-queue')
+    return {'accepted': True, 'job_id': job.id}
 
 
 def start_population(app: Flask) -> bool:
@@ -1249,24 +1281,6 @@ def start_population(app: Flask) -> bool:
     if status['running'] or not status['can_start']:
         return False
     today = date.today()
-    row = _population_row(today, create=_force_workiq_in_development())
-    if _force_workiq_in_development() and not _population_dates(
-        row.populated_through if row else None,
-        today,
-    ):
-        test_dates = _recent_weekdays(today, _WORKIQ_IMPORT_WORKERS)
-        row.populated_through = test_dates[0] - timedelta(days=1)
-        row.last_completed_at = None
-        row.last_error = None
-        db.session.commit()
-    dates = _population_dates(row.populated_through if row else None, today)
-    enqueue(
-        _POPULATION_JOB_TYPE,
-        {
-            'through': today.isoformat(),
-            'dates': [value.isoformat() for value in dates],
-        },
-        dedupe_key=_POPULATION_DEDUPE_KEY,
-        max_attempts=3,
-    )
+    from app.services.sync_jobs import admit_sync
+    admit_sync('calendar-population', {'through': today.isoformat()})
     return True

@@ -257,12 +257,15 @@ def sync_marketing_stream() -> Generator[str, None, None]:
     actual_workers = len(chunks)
 
     with ThreadPoolExecutor(max_workers=actual_workers) as pool:
-        for chunk in chunks:
-            pool.submit(_fetch_worker, chunk, progress_q)
+        futures = [pool.submit(_fetch_worker, chunk, progress_q) for chunk in chunks]
 
-        done_count = 0
-        while done_count < actual_workers:
-            msg = progress_q.get()
+        while True:
+            try:
+                msg = progress_q.get(timeout=0.4)
+            except queue.Empty:
+                if all(future.done() for future in futures):
+                    break
+                continue
             evt, cust_id, cust_name, result = msg
 
             if evt == 'vpn':
@@ -292,7 +295,9 @@ def sync_marketing_stream() -> Generator[str, None, None]:
                     'progress': pct,
                 })
             elif evt == 'done':
-                done_count += 1
+                continue
+        for future in futures:
+            future.result()
 
     if vpn_hit:
         SyncStatus.mark_completed(

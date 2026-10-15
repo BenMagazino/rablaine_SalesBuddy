@@ -21,6 +21,30 @@ The MSI installer handles everything: prerequisites (Git, Python, Azure CLI, Nod
 
 ## Features
 
+Regular data syncs share a durable SQLite job queue and a separate local worker.
+Open **Admin Panel > Sync Status** to start a sync, inspect measured progress,
+see worker availability, or start a new run after a failure. Closing the browser or leaving
+the page does not cancel an accepted job. Compact rows show automatic schedules,
+last status and success, with run diagnostics on hover or keyboard focus.
+Reopening the console reads the same saved job. Unknown-duration source queries
+use an indeterminate bar rather than
+invented percentages. Last successful refreshes remain visible after failed runs.
+Independent sync groups fetch concurrently; conflicting runs wait with a named
+blocker, and background database transactions take turns. Live progress and
+heartbeats use atomic local JSON files beside the database, so a long save cannot
+hide status. If your own save waits behind a sync, a notice explains who is saving
+and stays until the request finishes. Keep that page open; a failure remains an
+explicit failure, not a promised automatic save.
+
+`scripts\dev.ps1 start` launches Flask and the worker with the same development
+database and Azure credentials, and restarts a crashed worker. Installed apps use
+the existing process supervisor. Queued jobs remain saved while a worker is
+unavailable. Safe transient failures have bounded retries; other failures require
+a new manual start. Quitting the backend or shutting down the computer interrupts
+execution, not the saved job history. Destructive FY/restore, uploads, backups,
+interactive record edits and continuous sharing subscriptions are outside this
+Sync Status page.
+
 The Windows desktop title bar follows the saved theme and Light/Dark appearance,
 including changes made in Settings without a reload. The theme-matched menu strip
 opens the existing Windows-native File/Edit/View/Window/Help dropdowns and keeps

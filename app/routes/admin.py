@@ -680,139 +680,16 @@ def fetch_favicon_for_domain(domain: str, timeout: int = 5) -> str | None:
 
 @admin_bp.route('/api/admin/fetch-favicons', methods=['POST'])
 def api_fetch_favicons():
-    """Fetch favicons for all customers that have a website but no favicon.
-
-    Uses 4 parallel workers to speed up the Google favicon API calls.
-    Skips customers that already have a favicon or have no website set.
-
-    Returns:
-        JSON with counts of fetched, skipped, and failed favicons.
-    """
-    try:
-        SyncStatus.mark_started('favicons')
-
-        customers = Customer.query.filter(
-            Customer.website.isnot(None),
-            Customer.website != '',
-            (Customer.favicon_b64.is_(None)) | (Customer.favicon_b64 == ''),
-        ).all()
-
-        if not customers:
-            SyncStatus.mark_completed('favicons', success=True, items_synced=0,
-                                      details='No customers need favicon updates')
-            return jsonify({
-                'success': True,
-                'message': 'No customers need favicon updates.',
-                'fetched': 0, 'skipped': 0, 'failed': 0,
-            })
-
-        # Build work items: (customer_id, domain)
-        work = [(c.id, c.website) for c in customers]
-
-        # Parallel fetch (I/O bound - threads are ideal)
-        results: dict[int, str | None] = {}
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            future_to_id = {
-                pool.submit(fetch_favicon_for_domain, domain): cid
-                for cid, domain in work
-            }
-            for future in as_completed(future_to_id):
-                cid = future_to_id[future]
-                results[cid] = future.result()
-
-        # Apply results to DB
-        fetched = 0
-        failed = 0
-        for cid, b64 in results.items():
-            if b64:
-                cust = db.session.get(Customer, cid)
-                if cust:
-                    cust.favicon_b64 = b64
-                    fetched += 1
-            else:
-                failed += 1
-
-        db.session.commit()
-        SyncStatus.mark_completed(
-            'favicons', success=True, items_synced=fetched,
-            details=f'{fetched} fetched, {failed} unavailable',
-        )
-        return jsonify({
-            'success': True,
-            'message': f'Fetched {fetched} favicons, {failed} unavailable.',
-            'fetched': fetched,
-            'skipped': 0,
-            'failed': failed,
-        })
-    except Exception as e:
-        db.session.rollback()
-        SyncStatus.mark_completed('favicons', success=False, details=str(e))
-        return jsonify({'success': False, 'error': str(e)}), 500
+    """Admit a missing-only favicon refresh through the shared queue."""
+    from app.routes.jobs import start_response
+    return start_response('favicons', {'missing_only': True})
 
 
 @admin_bp.route('/api/admin/refresh-favicons', methods=['POST'])
 def api_refresh_favicons():
-    """Re-fetch ALL favicons, including ones already fetched.
-
-    Uses 4 parallel workers. Useful when favicon quality improves or domains change.
-    """
-    try:
-        SyncStatus.mark_started('favicons')
-
-        customers = Customer.query.filter(
-            Customer.website.isnot(None),
-            Customer.website != '',
-        ).all()
-
-        if not customers:
-            SyncStatus.mark_completed('favicons', success=True, items_synced=0,
-                                      details='No customers with websites')
-            return jsonify({
-                'success': True,
-                'message': 'No customers with websites.',
-                'fetched': 0, 'failed': 0,
-            })
-
-        work = [(c.id, c.website) for c in customers]
-
-        results: dict[int, str | None] = {}
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            future_to_id = {
-                pool.submit(fetch_favicon_for_domain, domain): cid
-                for cid, domain in work
-            }
-            for future in as_completed(future_to_id):
-                cid = future_to_id[future]
-                results[cid] = future.result()
-
-        fetched = 0
-        failed = 0
-        for cid, b64 in results.items():
-            cust = db.session.get(Customer, cid)
-            if not cust:
-                continue
-            if b64:
-                cust.favicon_b64 = b64
-                fetched += 1
-            else:
-                cust.favicon_b64 = None
-                failed += 1
-
-        db.session.commit()
-        SyncStatus.mark_completed(
-            'favicons', success=True, items_synced=fetched,
-            details=f'{fetched} refreshed, {failed} unavailable',
-        )
-        return jsonify({
-            'success': True,
-            'message': f'Refreshed {fetched} favicons, {failed} unavailable.',
-            'fetched': fetched,
-            'failed': failed,
-        })
-    except Exception as e:
-        db.session.rollback()
-        SyncStatus.mark_completed('favicons', success=False, details=str(e))
-        return jsonify({'success': False, 'error': str(e)}), 500
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('favicons', None)
 
 
 @admin_bp.route('/admin/favicons')

@@ -50,14 +50,10 @@ def health_check():
         # supervisor is responsible for restarting a dead worker.
         worker = 'unknown'
         try:
-            from app.models import SyncStatus
-            state = SyncStatus.get_status('worker_process').get('state')
-            if state == 'in_progress':
-                worker = 'alive'
-            elif state == 'never_run':
-                worker = 'not_started'
-            else:
-                worker = 'stale'
+            from app.services.sync_jobs import worker_health
+            health = worker_health()
+            worker = 'alive' if health['alive'] else (
+                'stale' if health['heartbeat_at'] else 'not_started')
         except Exception:
             worker = 'unknown'
 
@@ -1906,11 +1902,9 @@ def update_start_minimized():
 
 @main_bp.route('/api/copilot-actions/sync', methods=['POST'])
 def trigger_copilot_sync():
-    """Manually trigger a Copilot action items sync."""
-    from app.services.copilot_actions import sync_copilot_action_items
-    from flask import current_app
-    result = sync_copilot_action_items(app=current_app._get_current_object())
-    return jsonify(result)
+    """Admit a durable sync; the worker owns its execution."""
+    from app.routes.jobs import start_response
+    return start_response('copilot-actions', None)
 
 
 # =============================================================================

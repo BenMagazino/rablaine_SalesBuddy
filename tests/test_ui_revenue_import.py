@@ -2,6 +2,7 @@
 
 from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
+from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 from flask import Flask
@@ -45,7 +46,7 @@ def test_import_records_sort_keys_and_contexts(
     assert bool(soup.select(".sb-page-status")) is not embedded
     assert bool(root.select("#bucketPickerCard")) is not dss
     assert not root.select(".card, .btn, .progress, .list-group, .container")
-    styles = [link["href"] for link in soup.select('link[rel="stylesheet"]')]
+    styles = [urlsplit(link["href"]).path for link in soup.select('link[rel="stylesheet"]')]
     detail = next(value for value in styles if value.endswith("/ui-revenue-detail.css"))
     frame = next(value for value in styles if value.endswith("/ui-page-frame.css"))
     assert styles.count(detail) == 1 and styles.index(detail) < styles.index(frame)
@@ -83,7 +84,7 @@ def test_import_help_describes_recovery(client: FlaskClient) -> None:
     """Help matches sortable panes, refresh and confirmed notice/save behavior."""
     source = client.get("/static/js/page-help.js").get_data(as_text=True)
     section = source.split("title: 'Revenue Import'", 1)[1].split("`},", 1)[0]
-    for text in ("Check status", "Refresh stored-data tables", "both directions",
+    for text in ("updates automatically", "Refresh stored-data tables", "both directions",
                  "No selection shows every bucket", "server confirms dismissal"):
         assert text in section
 

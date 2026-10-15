@@ -6,12 +6,14 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-fabric-consumption.css') }}">
 {% endblock %}
 {% block content %}
+{% from 'partials/_sync_progress.html' import sync_progress %}
 <section class="sb-fabric sb-fabric-overview" data-sb-page-surface data-fabric-overview
          aria-labelledby="fabricTitle"
          data-report-url="{{ url_for('reports.fabric_capacity_overview_data') }}"
          data-import-url="{{ url_for('reports.fabric_consumption_import') }}"
          data-status-url="{{ url_for('reports.fabric_consumption_status') }}">
     {% include 'partials/_fabric_report_header.html' %}
+    {{ sync_progress('fabric', '[data-fabric-import]', 'fabric-') }}
     <div class="sb-fabric-import-band" data-sb-page-band>
         <label>Find customer or capacity <input type="search" data-overview-search placeholder="Name, TPID, capacity or SKU"></label>
         <div class="sb-fabric-mode" role="group" aria-label="Show customers" data-overview-mode>

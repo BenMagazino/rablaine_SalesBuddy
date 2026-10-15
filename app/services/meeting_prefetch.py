@@ -872,10 +872,23 @@ def prefetch_for_date_full(
     it here lets the legacy DailyMeetingCache be populated from the SAME
     WorkIQ call instead of making a second one.
     """
+    raw_meetings, error = fetch_meetings_for_date(date_str)
+    if error:
+        return 0, [], error
+    if raw_meetings is None:
+        logger.error('Meeting source returned no data for %s', date_str)
+        return 0, [], 'Meeting source returned no data.'
+    return store_prefetched_meetings_for_date(date_str, raw_meetings)
+
+
+def fetch_meetings_for_date(
+    date_str: str,
+) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
+    """Fetch a date without database writes, preserving the historical Outlook fallback."""
     try:
         target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
     except ValueError as exc:
-        return 0, [], f"Bad date: {exc}"
+        return None, f"Bad date: {exc}"
 
     # NOTE: purge_expired() is intentionally NOT called here. Per the
     # ghost-aura design it should only run during the scheduled morning
@@ -901,11 +914,8 @@ def prefetch_for_date_full(
             )
 
     if raw_meetings is None:
-        raw_meetings, error = fetch_workiq_meetings_for_date(date_str)
-        if error:
-            return 0, [], error
-
-    return store_prefetched_meetings_for_date(date_str, raw_meetings)
+        return fetch_workiq_meetings_for_date(date_str)
+    return raw_meetings, None
 
 
 def fetch_workiq_meetings_for_date(

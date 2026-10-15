@@ -90,6 +90,17 @@ def get_mcp_tools() -> list[dict]:
     ]
 
 
+@tool(
+    'get_sync_job_status',
+    'Read every data sync operation, worker health, active/latest jobs and last successful refreshes.',
+    {'type': 'object', 'properties': {}},
+)
+def get_sync_job_status() -> dict:
+    """Read the same durable sync projection used by the Sync Status page."""
+    from app.services.sync_jobs import operation_snapshots
+    return operation_snapshots()
+
+
 def execute_tool(name: str, params: dict) -> Any:
     """Dispatch a tool call by name.
 
@@ -131,7 +142,7 @@ def execute_tool(name: str, params: dict) -> Any:
     }},
 )
 def report_fabric_consumption(customer_id: int | None = None, overview: bool = False) -> dict:
-    """Read the same manually imported snapshot as the Fabric report."""
+    """Read the same saved snapshot as the Fabric report and customer tab."""
     from app.services.fabric_consumption import get_fabric_capacity_overview, get_fabric_report
 
     if overview:

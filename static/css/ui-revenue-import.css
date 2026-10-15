@@ -1,12 +1,6 @@
 .sb-revenue-import [hidden] { display: none !important; }
 .sb-page-frame .sb-revenue-import .sb-revenue-page-header { padding-inline: 24px; }
 .sb-import-sync { background: var(--sb-ui-selection); border-color: var(--sb-ui-control-line); }
-.sb-import-sync-band { padding: 8px 24px; border-bottom: 1px solid var(--sb-ui-line); position: relative; }
-.sb-import-sync-band > p { display: inline; margin: 0; color: var(--sb-ui-muted); font-size: 12px; }
-.sb-import-sync-band progress { display: block; width: min(600px, 100%); height: 8px; margin: 10px 0 6px; accent-color: var(--sb-ui-accent); }
-.sb-import-sync-band #syncText { margin: 0; font-size: 12px; }
-.sb-import-sync-band #syncResults { padding-top: 8px; font-size: 12px; }
-.sb-import-sync-band #syncResults p { margin: 0 0 4px; }
 .sb-revenue-import [data-tone="danger"] { color: var(--sb-ui-danger); }
 .sb-revenue-import [data-tone="positive"] { color: var(--sb-ui-milestone-rail); }
 .sb-revenue-import #bucketNotice { padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); color: var(--sb-ui-warning); }

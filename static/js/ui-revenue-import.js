@@ -41,7 +41,12 @@
                 failure.name = 'RevenueSyncFailure';
                 throw failure;
             }
-            if (type === 'complete') complete = payload;
+            if (type === 'accepted') {
+                if (!Number.isInteger(payload.job_id) || payload.job_id <= 0) {
+                    throw new Error('Invalid accepted sync job.');
+                }
+                progress({message: 'Revenue sync accepted. Waiting for the worker.'});
+            } else if (type === 'complete') complete = payload;
             else if (type === 'start' || type === 'progress') progress(payload);
             else throw new Error('Unexpected sync event: ' + type);
             event = ''; data = [];
@@ -99,9 +104,9 @@
 
     function create(root) {
         const find = selector => root.querySelector(selector);
-        const button = find('#syncBtn'), wrap = find('#syncProgress'), bar = find('#syncBar');
-        const text = find('#syncText'), results = find('#syncResults'), last = find('#syncLastRun');
-        const refresh = find('[data-sb-import-refresh]'), check = find('[data-sb-import-check]');
+        const button = find('#syncBtn');
+        const results = find('#syncResults'), last = find('#syncLastRun');
+        const refresh = find('[data-sb-import-refresh]');
         const notice = find('#bucketNotice'), noticeBody = find('[data-sb-import-notice-body]');
         const noticeError = find('[data-sb-import-notice-error]'), dismiss = find('[data-sb-import-dismiss]');
         const rail = root.dataset.embedded === 'true' ? null :
@@ -109,7 +114,7 @@
         const picker = find('#bucketPickerCard'), list = find('#bucketPickerList');
         const bucketStatus = find('[data-sb-import-bucket-status]');
         const bucketRetry = find('[data-sb-import-bucket-retry]');
-        let running = false, readingBuckets = false, saving = false;
+        let readingBuckets = false, saving = false;
         let desired = null, failedSelection = null, bucketReadFailed = false;
         let statusVersion = 0, noticeVersion = 0;
 
@@ -149,35 +154,18 @@
         }
         async function status() {
             const version = ++statusVersion, noticeRead = noticeVersion;
-            check.disabled = true;
             try {
                 const data = await json(root.dataset.statusUrl);
                 if (version !== statusVersion) return;
-                const state = data.status?.state;
-                if (!['never_run', 'in_progress', 'failed', 'incomplete', 'complete'].includes(state)) {
-                    throw new Error('Invalid revenue sync status.');
-                }
                 if (noticeRead === noticeVersion) renderNotice(data.bucket_notice);
-                let message = {never_run: 'No completed sync yet', in_progress: 'A revenue sync is in progress',
-                    failed: 'The last sync attempt failed', incomplete: 'Previous sync incomplete'}[state];
-                if (state === 'complete') {
-                    const date = new Date(data.status.completed_at);
-                    if (!data.status.completed_at || Number.isNaN(date.getTime())) {
-                        throw new Error('Invalid completed sync timestamp.');
-                    }
-                    message = 'Last synced ' + date.toLocaleString();
-                }
-                last.textContent = message;
-                last.setAttribute('role', 'status');
-                delete last.dataset.tone;
-                if (!running) say(message);
+                await syncView.check();
             } catch (error) {
                 if (version !== statusVersion) {
                     console.error('Superseded revenue status read failed:', error); return;
                 }
-                errorAt(last, 'Sync status unavailable.', error);
-                if (!running) say('Sync status unavailable');
-            } finally { if (version === statusVersion) check.disabled = false; }
+                errorAt(noticeError, 'Revenue status or bucket notice unavailable.', error);
+                say('Sync status unavailable');
+            }
         }
         async function saveBuckets(values) {
             desired = values.slice();
@@ -230,22 +218,10 @@
             find('[data-sb-import-bucket-count]').textContent =
                 RevenueBucketFilter.getSelected().length + ' selected';
         }
-        function progress(data) {
-            if (data.progress !== undefined) {
-                if (!Number.isFinite(data.progress) || data.progress < 0 || data.progress > 100) {
-                    throw new Error('Invalid sync progress.');
-                }
-                bar.value = data.progress;
-            }
-            if (data.message !== undefined) {
-                if (typeof data.message !== 'string') throw new Error('Invalid sync progress message.');
-                text.textContent = data.message; say(data.message);
-            }
-        }
         function completed(data) {
             validateResult(data);
             renderNotice(data.taxonomy);
-            noticeVersion++; statusVersion++; check.disabled = false;
+            noticeVersion++; statusVersion++;
             last.textContent = 'Last sync completed just now';
             last.setAttribute('role', 'status'); delete last.dataset.tone;
             results.replaceChildren(node('p', 'Revenue synced'));
@@ -267,26 +243,22 @@
             results.dataset.tone = 'positive'; results.setAttribute('role', 'status');
             refresh.hidden = false; say('Sync complete; refresh tables to see newly stored data');
         }
-        async function sync() {
-            if (running) return;
-            running = true; button.disabled = true; wrap.hidden = false; results.hidden = true;
-            refresh.hidden = true; bar.removeAttribute('value');
-            text.textContent = 'Starting revenue sync'; say(text.textContent);
-            try {
-                const response = await fetch(root.dataset.syncUrl, {method: 'POST',
-                    headers: {'Content-Type': 'application/json', Accept: 'text/event-stream'},
-                    body: JSON.stringify({})});
-                const data = await consume(response, progress);
-                completed(data);
+        const syncView = window.SBSyncProgress.create(find('[data-sb-sync-progress]'), {
+            onComplete: async job => {
+                completed(job.result);
                 if (picker) { picker.hidden = false; await loadBuckets(); }
-            } catch (error) {
-                errorAt(results, error.name === 'RevenueSyncFailure' ? 'Sync failed.' :
-                    'Sync result unavailable. Check status before starting again.', error);
-                say('Sync did not report completion');
-            } finally { running = false; button.disabled = false; wrap.hidden = true; }
+            },
+            onChange: job => {
+                const active = job && ['pending', 'running'].includes(job.status);
+                if (active) { refresh.hidden = true; say(window.SBJobs.message(job)); }
+                else say(last.textContent);
+                find('#revImportBrainrotToggle').classList.toggle('sb-hidden', !active);
+            },
+        });
+        function sync() {
+            return syncView.start().catch(() => {});
         }
         button.addEventListener('click', sync);
-        check.addEventListener('click', status);
         dismiss.addEventListener('click', async () => {
             dismiss.disabled = true;
             try {

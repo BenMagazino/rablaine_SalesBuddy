@@ -1,4 +1,4 @@
-"""Atomic manual Fabric imports and report reads, with no scheduler registration."""
+"""Atomic Fabric imports and saved report reads for manual and scheduled refreshes."""
 from __future__ import annotations
 
 import json
@@ -208,7 +208,7 @@ def _validate_pull(payload: dict, tpids: set[int]) -> None:
 
 def sync_fabric_consumption(
         progress: Callable | None = None, *, claimed: bool = False) -> dict:
-    """Import every DB customer's TPID atomically, only when explicitly called.
+    """Import every DB customer's TPID atomically for manual or scheduled refreshes.
 
     Set ``claimed=True`` only after the route has atomically claimed SyncStatus.
     Heartbeats continue during network waits. Empty, partial, and failed pulls
@@ -252,6 +252,11 @@ def sync_fabric_consumption(
             """Persist progress for polling clients without committing snapshot writes."""
             if event.get("sync_type", SYNC_TYPE) != SYNC_TYPE:
                 raise FabricPullError("Revenue-only progress cannot update telemetry import status.")
+            from app.services.job_queue import CURRENT_SYNC_OWNER
+            if CURRENT_SYNC_OWNER.get() is not None:
+                if progress:
+                    progress(event)
+                return
             status = SyncStatus.query.filter_by(
                 sync_type=SYNC_TYPE, started_at=claim_started_at,
                 completed_at=None, success=None,
@@ -264,8 +269,10 @@ def sync_fabric_consumption(
             if progress:
                 progress(event)
 
-        heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
-        heartbeat_thread.start()
+        from app.services.job_queue import CURRENT_SYNC_OWNER
+        if CURRENT_SYNC_OWNER.get() is None:
+            heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
+            heartbeat_thread.start()
         customers = Customer.query.order_by(Customer.id).all()
         _current_tpids(customers)
         mapping = {int(customer.tpid): customer.id for customer in customers
@@ -284,7 +291,6 @@ def sync_fabric_consumption(
             metadata_json=payload["metadata"],
         )
         db.session.add(snapshot)
-        db.session.flush()
         observed: list[datetime] = []
         for name, kind in _KINDS.items():
             if name in _REVENUE_KINDS:
@@ -294,15 +300,17 @@ def sync_fabric_consumption(
                 if stamp:
                     observed.append(stamp)
                 db.session.add(FabricConsumptionRecord(
-                    import_id=snapshot.id, customer_id=mapping[int(row["tpid"])],
+                    snapshot=snapshot, customer_id=mapping[int(row["tpid"])],
                     tpid=int(row["tpid"]), kind=kind, capacity_id=row.get("capacity_id"),
                     sku=row.get("sku"), observed_at=stamp, metrics_json=_metrics(row, kind),
                 ))
-        _stage_revenue(snapshot, {
-            "metadata": payload["metadata"]["revenue"],
-            **{name: payload[name] for name in _REVENUE_KINDS},
-        }, customers, snapshot.imported_at)
+        with db.session.no_autoflush:
+            _stage_revenue(snapshot, {
+                "metadata": payload["metadata"]["revenue"],
+                **{name: payload[name] for name in _REVENUE_KINDS},
+            }, customers, snapshot.imported_at)
         snapshot.source_as_of = max(observed) if observed else None
+        db.session.flush()
         # Replacement and insertion share one transaction: a failed write keeps
         # the previous complete snapshot and avoids unbounded time-series storage.
         FabricConsumptionRecord.query.filter(
@@ -335,7 +343,7 @@ def sync_fabric_consumption(
         return result
     except Exception as exc:
         db.session.rollback()
-        logger.exception("Manual Fabric consumption import failed")
+        logger.exception("Fabric consumption import failed")
         message = str(exc) if isinstance(exc, FabricPullError) else (
             "Fabric import failed. Your previous successful import is unchanged."
         )
@@ -352,7 +360,9 @@ def sync_fabric_consumption(
             except Exception:
                 db.session.rollback()
                 logger.exception("Could not persist failed Fabric import status")
-        return {"success": False, "error": message}
+        from app.services.sync_jobs import is_transient_failure
+        return {"success": False, "error": message,
+                **({"retryable": True} if is_transient_failure(exc) else {})}
     finally:
         heartbeat_stop.set()
         if heartbeat_thread and heartbeat_thread.is_alive():
@@ -370,7 +380,7 @@ def _stage_revenue(snapshot, payload: dict, customers: list, stamp: datetime) ->
         for row in payload[name]:
             for customer_id in mapping[int(row["tpid"])]:
                 db.session.add(FabricConsumptionRecord(
-                    import_id=snapshot.id, customer_id=customer_id, tpid=int(row["tpid"]),
+                    snapshot=snapshot, customer_id=customer_id, tpid=int(row["tpid"]),
                     kind=kind, metrics_json=_metrics(row, kind),
                 ))
     snapshot.metadata_json = {
@@ -407,8 +417,10 @@ def refresh_fabric_revenue(progress: Callable | None = None) -> dict:
                 except Exception:
                     logger.warning("Could not update Fabric revenue heartbeat")
 
-        heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
-        heartbeat_thread.start()
+        from app.services.job_queue import CURRENT_SYNC_OWNER
+        if CURRENT_SYNC_OWNER.get() is None:
+            heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
+            heartbeat_thread.start()
         snapshot = FabricConsumptionImport.query.order_by(
             FabricConsumptionImport.imported_at.desc(), FabricConsumptionImport.id.desc(),
         ).first()
@@ -422,7 +434,8 @@ def refresh_fabric_revenue(progress: Callable | None = None) -> dict:
 
         def report_progress(event: dict) -> None:
             """Keep the maintenance claim alive before any source records are staged."""
-            SyncStatus.update_heartbeat(REVENUE_SYNC_TYPE)
+            if CURRENT_SYNC_OWNER.get() is None:
+                SyncStatus.update_heartbeat(REVENUE_SYNC_TYPE)
             if progress:
                 progress(event)
 
@@ -434,11 +447,12 @@ def refresh_fabric_revenue(progress: Callable | None = None) -> dict:
         ).first()
         if latest is None or latest.id != snapshot_id:
             raise FabricPullError("Fabric telemetry changed during the revenue refresh. Retry.")
-        FabricConsumptionRecord.query.filter(
-            FabricConsumptionRecord.import_id == snapshot_id,
-            FabricConsumptionRecord.kind.in_(_REVENUE_KINDS.values()),
-        ).delete(synchronize_session=False)
-        _stage_revenue(latest, payload, customers, datetime.now(timezone.utc))
+        with db.session.no_autoflush:
+            _stage_revenue(latest, payload, customers, datetime.now(timezone.utc))
+            FabricConsumptionRecord.query.filter(
+                FabricConsumptionRecord.import_id == snapshot_id,
+                FabricConsumptionRecord.kind.in_(_REVENUE_KINDS.values()),
+            ).delete(synchronize_session=False)
         result = {
             "success": True, "import_id": snapshot_id, "customer_count": len(tpids),
             "summary_row_count": len(payload["revenue_summary"]),
@@ -472,7 +486,9 @@ def refresh_fabric_revenue(progress: Callable | None = None) -> dict:
             except Exception:
                 db.session.rollback()
                 logger.warning("Could not persist Fabric revenue failure status")
-        return {"success": False, "error": message}
+        from app.services.sync_jobs import is_transient_failure
+        return {"success": False, "error": message,
+                **({"retryable": True} if is_transient_failure(exc) else {})}
     finally:
         heartbeat_stop.set()
         if heartbeat_thread and heartbeat_thread.is_alive():

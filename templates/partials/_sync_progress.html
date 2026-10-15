@@ -1,0 +1,14 @@
+{% macro sync_progress(operation, controls='', prefix='', active_only=false) -%}
+<section class="sb-sync-progress-band" data-sb-sync-progress="{{ operation }}"
+         data-sync-label="{{ operation|replace('-', ' ')|capitalize }}"
+         data-sync-controls="{{ controls }}" data-sync-active-only="{{ 'true' if active_only else 'false' }}"
+         data-sb-page-band aria-label="Sync status">
+    <p id="{{ prefix }}syncLastRun" data-sync-last role="status">Checking sync status</p>
+    <div id="{{ prefix }}syncProgress" data-sync-running hidden>
+        <progress id="{{ prefix }}syncBar" max="100" aria-label="Sync progress"></progress>
+        <p id="{{ prefix }}syncText" data-sync-message role="status" aria-live="polite"></p>
+    </div>
+    <div id="{{ prefix }}syncResults" data-sync-result role="status" aria-live="polite" hidden></div>
+    {% if caller is defined %}{{ caller() }}{% endif %}
+</section>
+{%- endmacro %}

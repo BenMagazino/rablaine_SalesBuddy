@@ -63,6 +63,7 @@ function controller({position, missing, storageError = false} = {}) {
     document.activeElement = elements.get('opener');
     const context = {
         document,
+        SBJobs: {message: job => job.progress.message},
         console: {error: (...args) => errors.push(args), warn: (...args) => warnings.push(args)},
         localStorage: {
             getItem(key) { if (storageError) throw new Error('Storage denied'); return storage.get(key); },
@@ -127,6 +128,29 @@ test('completed background syncs request an immediate freshness check, unlike vi
     h.api.hide({reload: true});
     assert.equal(h.events[0].type, 'sb:meetings-cache-updated');
     assert.equal(h.refreshes(), 1);
+});
+
+test('durable queue and fetch messages replace misleading day-by-day progress', () => {
+    const h = controller();
+    h.api.forceShow({...active(), job: {
+        progress: {message: 'Fetching 5 meeting dates concurrently.'},
+    }});
+    assert.equal(h.elements.get('syncStatusCurrent').hidden, true);
+    assert.equal(h.elements.get('syncStatusProgress').textContent,
+        'Fetching 5 meeting dates concurrently.');
+});
+
+test('terminal job failures stay visible without an endless polling spinner', async () => {
+    const h = controller();
+    h.api.forceShow(active());
+    h.queue.push(response({running: false, error: 'WorkIQ unavailable.'}));
+    await h.tick();
+    assert.equal(h.elements.get('syncStatusCard').hidden, false);
+    assert.equal(h.elements.get('syncStatusCard').dataset.sbState, 'error');
+    assert.equal(h.elements.get('syncStatusCurrent').hidden, true);
+    assert.match(h.elements.get('syncStatusProgress').textContent, /WorkIQ unavailable/);
+    assert.equal(h.timers.size, 0);
+    assert.equal(h.events.length, 0);
 });
 
 test('check uses the same read-only endpoint and never shows an inactive sync', async () => {

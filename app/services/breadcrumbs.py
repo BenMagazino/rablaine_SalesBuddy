@@ -15,6 +15,7 @@ SYSTEM_ENDPOINTS = {
     "main.analytics", "main.action_items_hub",
     "admin.admin_panel", "admin.admin_ai_logs", "admin.admin_favicon_gallery",
     "metrics.metrics_dashboard", "connect_export.connect_export_page",
+    "jobs.sync_console",
 }
 
 
@@ -44,6 +45,8 @@ def system_breadcrumbs(endpoint: str, label: str) -> list[Breadcrumb] | None:
     elif endpoint.startswith("admin.") and endpoint != "admin.admin_panel":
         ancestors.append(link("Admin Panel", "admin.admin_panel"))
     elif endpoint == "metrics.metrics_dashboard":
+        ancestors.append(link("Admin Panel", "admin.admin_panel"))
+    elif endpoint == "jobs.sync_console":
         ancestors.append(link("Admin Panel", "admin.admin_panel"))
     elif endpoint in {"main.analytics", "connect_export.connect_export_page"}:
         ancestors.append(link("Reports", "reports.reports_hub"))

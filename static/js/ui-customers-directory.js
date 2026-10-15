@@ -205,7 +205,29 @@
             const details = [];
             if (data.territory_name) details.push('Territory: ' + data.territory_name);
             if (data.seller_name) details.push('Seller: ' + data.seller_name);
-            document.getElementById('importSuccessDetails').textContent = details.join(' | ');
+            const importDetails = document.getElementById('importSuccessDetails');
+            importDetails.textContent = details.join(' | ');
+            if (data.sync?.accepted && data.sync.job_id) {
+                const importedAccount = account;
+                const showSync = message => {
+                    if (!imported || account !== importedAccount) return;
+                    importDetails.textContent = [...details, message].join(' | ');
+                };
+                showSync('MSX data sync queued.');
+                window.SBJobs.observe(data.sync.job_id, {
+                    onProgress: job => showSync(window.SBJobs.message(job)),
+                }).then(job => {
+                    if (job.status === 'failed') {
+                        console.error('Imported customer data sync failed:', job.error);
+                        showSync('Customer imported, but its MSX data sync failed: ' + job.error);
+                    } else {
+                        showSync('MSX data sync completed.');
+                    }
+                }).catch(error => {
+                    console.error('Could not observe imported customer data sync:', error);
+                    showSync('Customer imported. Data sync status unavailable: ' + error.message);
+                });
+            }
             view.href = '/customer/' + data.customer_id;
         } catch (failure) { showError(importError, failure); }
         finally {

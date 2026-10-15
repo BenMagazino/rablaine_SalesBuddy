@@ -291,30 +291,13 @@ class TestMeetingsAPI:
             DailyMeetingCache.query.filter_by(meeting_date=date.today()).delete()
             db.session.commit()
 
-    @patch('app.services.workiq_service.get_meetings_for_date')
-    def test_api_meetings_live_fetch_for_non_today(self, mock_fetch, client):
-        """GET /api/meetings for a past date does a live WorkIQ fetch."""
-        mock_fetch.return_value = (
-            [
-                {
-                    'id': 'x',
-                    'title': 'Old Meeting',
-                    'start_time': datetime(2026, 3, 15, 11, 0),
-                    'customer': 'Fabrikam',
-                    'attendees': [],
-                    'start_time_str': '11:00 AM',
-                },
-            ],
-            'raw response',
-        )
-
+    def test_api_meetings_non_today_cache_miss_admits_detached_refresh(self, client):
+        """A historical cache miss never blocks the web request on WorkIQ."""
         resp = client.get('/api/meetings?date=2026-03-15')
         data = resp.get_json()
-        assert resp.status_code == 200
-        assert data['from_cache'] is False
-        assert len(data['meetings']) == 1
-        assert data['meetings'][0]['title'] == 'Old Meeting'
-        mock_fetch.assert_called_once_with('2026-03-15')
+        assert resp.status_code == 202
+        assert data['job']['options']['date'] == '2026-03-15'
+        assert data['job']['status'] == 'pending'
 
     @patch('app.services.workiq_service.query_workiq')
     def test_api_meetings_today_no_cache_does_live_fetch_and_caches(
@@ -339,6 +322,11 @@ class TestMeetingsAPI:
             '"is_recurring": false, "attendees": []}]\n```'
         )
 
+        resp = client.get(f'/api/meetings?date={today_str}')
+        assert resp.status_code == 202
+        with app.app_context():
+            from app.services.job_queue import process_one
+            process_one('test-worker')
         resp = client.get(f'/api/meetings?date={today_str}')
         data = resp.get_json()
         assert resp.status_code == 200
@@ -397,8 +385,11 @@ class TestMeetingsAPI:
             json={'date': today_str},
             content_type='application/json',
         )
-        data = resp.get_json()
-        assert resp.status_code == 200
+        assert resp.status_code == 202
+        with app.app_context():
+            from app.services.job_queue import process_one
+            process_one('test-worker')
+        data = client.get(resp.get_json()['status_url']).get_json()['job']['result']
         assert len(data['meetings']) == 1
         assert data['meetings'][0]['title'] == 'Fresh Meeting'
 

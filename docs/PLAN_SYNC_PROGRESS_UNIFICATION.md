@@ -5,10 +5,9 @@ revenue sync.
 **Trigger:** Four separate implementations of "run work in parallel, stream its
 progress to an SSE consumer" now exist, and one of them can hang.
 
-**Follow-up, October 3, 2026:** The [detached data-jobs plan](PLAN_DETACHED_DATA_JOBS.md)
-broadens this work to durable execution independent of browser navigation, with
-persisted progress and shared observers. Use that plan for ownership/API migration;
-this document remains reference for progress-drain and exception requirements.
+**Follow-up:** [Detached data syncs](../README.md#features) now provide durable
+execution independent of browser navigation, with persisted progress and shared
+observers. This document remains reference for progress-drain and exception requirements.
 
 ---
 

@@ -1,6 +1,7 @@
 """Native preferences, administration and insights retain their product contracts."""
 
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 from bs4 import BeautifulSoup
@@ -21,6 +22,37 @@ SURFACES = (
 )
 
 
+def test_sync_console_belongs_to_admin_not_the_control_menu(client: FlaskClient) -> None:
+    """Sync diagnostics remain discoverable without widening the shared Control menu."""
+    soup = BeautifulSoup(client.get("/admin").data, "html.parser")
+    link = soup.select_one('.sb-admin-page-heading a[href="/admin/sync-console"]')
+    assert link.get_text(strip=True) == "Sync Status"
+    assert not soup.select_one('#settingsMenu a[href="/admin/sync-console"]')
+
+
+@pytest.mark.parametrize("route", ["/admin", "/admin/favicons"])
+def test_admin_durable_sync_observation_contract(client: FlaskClient, route: str) -> None:
+    """Admin callers render the shared JSON observer and retain progress callbacks."""
+    response = client.get(route)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert any(
+        urlparse(script.get("src", "")).path.endswith("/js/ui-jobs.js")
+        for script in soup.select("script[src]")
+    )
+    scripts = "\n".join(script.get_text() for script in soup.select("script:not([src])"))
+    assert "onJobProgress:" in scripts
+    assert "window.SBJobs.message(job)" in scripts
+    if route == "/admin":
+        assert "async function readAdminSync(" in scripts
+        assert "The sync connection ended before completion." in scripts
+        for operation in ("accounts", "milestones", "marketing"):
+            panel = soup.select_one(f'[data-sb-sync-progress="{operation}"]')
+            assert panel.select_one("progress")
+            assert panel.select_one("[data-sync-message]")
+        assert "window.SBSyncProgress.create(" in scripts
+
+
 @pytest.mark.parametrize("route,template,width", SURFACES)
 def test_native_administration_surface_contract(
     client: FlaskClient, route: str, template: str, width: int,
@@ -38,7 +70,10 @@ def test_native_administration_surface_contract(
     assert not root.select(".card, .row, .btn, .modal, .form-control, .form-select, .alert")
     assert "sb-page-frame" in soup.body["class"]
     assert soup.select_one(".sb-page-status")
-    assert soup.select_one('script[src$="js/ui-shortcuts.js"]')
+    assert any(
+        urlparse(script.get("src", "")).path.endswith("/js/ui-shortcuts.js")
+        for script in soup.select("script[src]")
+    )
     assert not soup.select_one('script[src*="bootstrap.bundle"], link[href*="bootstrap.min.css"]')
     source = (ROOT / "templates" / template).read_text(encoding="utf-8")
     assert "bootstrap." not in source

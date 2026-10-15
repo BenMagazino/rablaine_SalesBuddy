@@ -118,7 +118,123 @@ def force_workiq_fallback(monkeypatch):
 # ensure_meeting_aura
 # ---------------------------------------------------------------------------
 
+def test_progress_retains_completed_dates_between_queries(monkeypatch, reset_sync_state):
+    """Starting the next source query must preserve measured calendar progress."""
+    from app.services.meeting_sync import _set_sync_state
+
+    published = []
+    monkeypatch.setattr(
+        'app.services.sync_jobs.publish_progress', published.append,
+    )
+    dates = ['2026-04-20', '2026-04-21', '2026-04-22']
+    _set_sync_state(running=True, aura_dates=dates, current_date=dates[0])
+    _set_sync_state(current_date=dates[1])
+    _set_sync_state(current_date=dates[2])
+
+    assert [event['current'] for event in published] == [0, 1, 2]
+    assert [event['total'] for event in published] == [3, 3, 3]
+    assert [event['progress'] for event in published] == pytest.approx(
+        [0, 100 / 3, 200 / 3],
+    )
+    assert published[-1]['message'] == 'Refreshing 2026-04-22 (3/3).'
+
 class TestEnsureMeetingAura:
+    def test_parallel_refresh_finishes_through_the_durable_worker(
+        self, app, clean_meeting_tables, reset_sync_state, monkeypatch,
+    ):
+        """Fetch threads must not detach the owning job or lose its persisted outcome."""
+        from app.models import Job
+        from app.services import job_queue, sync_jobs
+
+        monkeypatch.setattr(
+            'app.services.meeting_prefetch.fetch_meetings_for_date',
+            lambda day_str: ([], None),
+        )
+        with app.app_context():
+            job = sync_jobs.admit_sync(
+                'meeting-aura', {'anchor': '2026-04-20', 'days_ahead': 4})
+            assert job_queue.process_one('parallel-test-worker', app=app)
+            db.session.refresh(job)
+            assert job.status == Job.STATUS_DONE
+            result = json.loads(job.result)
+            assert result['success'] is True
+            assert len(result['counts']) == 5
+            assert result['errors'] == {}
+            assert DailyMeetingCache.query.count() == 5
+            assert sync_jobs.job_snapshot(job)['progress']['percent'] == 100
+
+    def test_all_five_dates_fetch_together_before_serial_saves(
+        self, app, clean_meeting_tables, reset_sync_state, monkeypatch,
+    ):
+        """All five external calls overlap and no database save runs in their threads."""
+        from app.services import meeting_sync
+
+        barrier = threading.Barrier(5)
+        lock = threading.Lock()
+        fetched = set()
+        saved = []
+        published = []
+        owner_thread = threading.get_ident()
+        original_store = meeting_sync.sync_meetings_for_date
+
+        def fetch(day_str):
+            """Hold each source until all five dates have actually started."""
+            assert threading.get_ident() != owner_thread
+            barrier.wait(timeout=5)
+            with lock:
+                fetched.add(day_str)
+            return [], None
+
+        def store(day_str, prefetched_meetings=None):
+            """Verify preparation finished before the first real cache transaction."""
+            assert threading.get_ident() == owner_thread
+            assert len(fetched) == 5
+            saved.append(day_str)
+            return original_store(day_str, prefetched_meetings=prefetched_meetings)
+
+        monkeypatch.setattr('app.services.meeting_prefetch.fetch_meetings_for_date', fetch)
+        monkeypatch.setattr(meeting_sync, 'sync_meetings_for_date', store)
+        monkeypatch.setattr('app.services.sync_jobs.publish_progress', published.append)
+        with app.app_context():
+            counts, errors = meeting_sync.ensure_meeting_aura(
+                start=date(2026, 4, 20), days_ahead=4)
+            assert DailyMeetingCache.query.count() == 5
+
+        assert errors == {}
+        assert len(counts) == 5
+        assert saved == sorted(fetched)
+        assert [event['current'] for event in published] == list(range(11))
+        assert all(event['total'] == 10 for event in published)
+        assert published[0]['message'] == 'Fetching 5 meeting dates in parallel.'
+        assert published[5]['progress'] == 50
+        assert published[-1]['message'] == 'Saved 5/5 meeting dates (0 failed).'
+
+    def test_parallel_fetch_failure_preserves_cache_and_saves_other_dates(
+        self, app, clean_meeting_tables, reset_sync_state, monkeypatch,
+    ):
+        """A failed date keeps its prior cache while independent successful dates save."""
+        from app.services.meeting_sync import ensure_meeting_aura
+
+        failed_date = date(2026, 4, 21)
+
+        def fetch(day_str):
+            """Return one explicit source failure among otherwise empty valid calendars."""
+            if day_str == failed_date.isoformat():
+                return None, 'WorkIQ unavailable for this date'
+            return [], None
+
+        monkeypatch.setattr('app.services.meeting_prefetch.fetch_meetings_for_date', fetch)
+        with app.app_context():
+            db.session.add(DailyMeetingCache(
+                meeting_date=failed_date, meetings_json='[{"title":"Keep this cache"}]'))
+            db.session.commit()
+            counts, errors = ensure_meeting_aura(start=date(2026, 4, 20), days_ahead=4)
+            cached = DailyMeetingCache.query.filter_by(meeting_date=failed_date).one()
+            assert cached.meetings_json == '[{"title":"Keep this cache"}]'
+            assert DailyMeetingCache.query.count() == 5
+        assert len(counts) == 5
+        assert errors == {failed_date.isoformat(): 'WorkIQ unavailable for this date'}
+
     def test_skips_weekends(
         self, app, clean_meeting_tables, reset_sync_state, monkeypatch,
     ):

@@ -113,10 +113,7 @@
 .mt-notice { padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); font: 12px/1.45 var(--sb-ui-font); background: var(--sb-ui-context); color: var(--sb-ui-ink); }
 .mt-notice.is-warning, .mt-notice.is-danger { color: var(--sb-ui-warning); }
 .mt-sync-banner { display: flex; align-items: center; gap: 8px; }
-.mt-progress-wrap { margin-top: 8px; }
 .mt-sync-detail { margin-top: 4px; }
-.mt-progress { height: 22px; overflow: hidden; background: var(--sb-ui-raised); }
-.mt-progress-bar { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--sb-ui-control-ink); background: var(--sb-ui-control-fill); font: 11px var(--sb-ui-font); }
 #msCalendarTable .mt-calendar-message { padding: 24px; text-align: center; }
 .mt-calendar-outside { background: var(--sb-ui-context); }
 .mt-calendar-day-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
