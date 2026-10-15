@@ -12,13 +12,14 @@
 :where(.sb-note-form-page) a {color:var(--sb-ui-accent);}
 .sb-note-form-page .sb-nf-card-title {font-size:19px;}
 .sb-note-form-page #main-content {
+    display:flex;flex-direction:column;
     width:100%;max-width:none;padding:0;margin:0!important;background:var(--sb-ui-canvas);
 }
 .sb-note-form-page > .sb-flash-stack:not(:has(.sb-notice)) {display:none;}
 .sb-note-form-page #main-content > #noteFormRow {
     display:grid;grid-template-columns:minmax(0,1.16fr) minmax(0,1fr);
     gap:0;
-    height:calc(100dvh - var(--sb-ui-header-height) - 32px - 24px);
+    flex:1;height:auto;min-height:0;
     background:var(--sb-ui-surface);
 }
 .sb-note-form-page #main-content > #noteFormRow:not(:has(#noteFormRightCol)),
@@ -26,10 +27,10 @@
     display:block;
 }
 .sb-note-form-page #noteFormLeftCol {
-    min-width:0;width:100%;height:100%;overflow:auto;padding:18px 22px;
+    min-width:0;min-height:0;width:100%;height:100%;overflow:auto;padding:18px 22px;
 }
 .sb-note-form-page #noteFormRightCol {
-    min-width:0;overflow:auto;padding:18px 20px;border-left:1px solid var(--sb-ui-line);
+    min-width:0;min-height:0;overflow:auto;padding:18px 20px;border-left:1px solid var(--sb-ui-line);
 }
 .sb-note-form-page #noteFormLeftCol > :first-child h1 {font-size:21px;line-height:1.4;}
 .sb-note-form-page #noteFormLeftCol > .sb-nf-card {border:0;}
@@ -84,6 +85,7 @@ body.copilot-chat-open .sb-nf-drawer[open] {right:var(--sb-chat-context-inset,0p
 .sb-note-form-page #relatedNotesContainer .call-content h3 {font-size:18px;}
 .sb-note-form-status {
     display:flex;justify-content:space-between;align-items:center;gap:12px;
+    flex-shrink:0;
     height:24px;padding:0 18px;border-top:1px solid var(--sb-ui-line);
     background:var(--sb-ui-context);color:var(--sb-ui-muted);font-size:11px;
 }

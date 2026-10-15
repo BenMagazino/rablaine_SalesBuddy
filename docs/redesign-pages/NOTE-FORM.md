@@ -23,6 +23,9 @@
 
 ## Implementation
 
+- The editor fills the space remaining below desktop chrome and notices, rather
+  than calculating its height from the viewport. Its status footer does not shrink;
+  single and paired editor panes scroll within the remaining space.
 - Static and generated markup use app-owned controls, notices, layout and tags.
   Native menus/collapse and shared SBDialog replace Bootstrap widgets.
 - Corrected shared native project fields retain the existing editor IDs and write
