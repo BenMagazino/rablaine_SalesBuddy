@@ -1,4 +1,5 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-project-detail.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-action-item-order.css') }}">
 <section class="sb-project-detail {% if parent_modal_id is not defined %}sb-project-page sb-directory-frame sb-directory-frame-wide{% endif %}"
          data-sb-project-detail="{{ project.id }}" data-sb-page-surface
          {% if parent_modal_id is defined %}data-project-parent="{{ parent_modal_id }}"{% endif %}
@@ -50,9 +51,20 @@
                         <h2 id="projectTasksTitle">Action Items</h2>
                         <span class="sb-project-count">{{ project.action_items|length }}</span>
                     </div>
+                    <label class="sb-action-order">Order
+                        <select class="sb-record-field" data-action-order aria-label="Action item order">
+                            <option value="due">Due date (earliest first)</option>
+                            <option value="due-desc">Due date (latest first)</option>
+                            <option value="manual">Manual order</option>
+                        </select>
+                    </label>
+                    <p class="sb-action-order-notice" data-action-order-notice role="alert" hidden></p>
                     {% if project.action_items %}
-                    <div class="sb-project-tasks">
+                    <div class="sb-project-tasks" data-action-order-list>
                         {% for task in project.action_items %}
+                        <div data-action-order-id="{{ task.id }}"
+                             data-action-order-status="{{ task.status }}"
+                             data-action-order-due="{{ task.due_date.isoformat() if task.due_date else '' }}">
                         <button type="button" class="sb-project-task" data-project-task="{{ task.id }}"
                                 data-status="{{ task.status }}" data-priority="{{ task.priority }}">
                             <i class="bi {% if task.status == 'completed' %}bi-check-circle-fill{% else %}bi-circle{% endif %}"
@@ -64,6 +76,7 @@
                                   title="{{ task.due_date.strftime('%b %d, %Y') }}{% if task.is_overdue %} (overdue){% endif %}">{{ task.due_date.strftime('%b %d') }}</time>
                             {% endif %}
                         </button>
+                        </div>
                         {% endfor %}
                     </div>
                     {% else %}
@@ -110,8 +123,17 @@
         </button>
     </form>
     {% include 'partials/_action_item_detail_modal.html' %}
+    <script src="{{ url_for('static', filename='js/ui-action-item-order.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui-project-detail.js') }}"></script>
     <script>
-    window.SBProjectDetail.mount(document.currentScript.closest('[data-sb-project-detail]'));
+    {
+        const root = document.currentScript.closest('[data-sb-project-detail]');
+        window.SBProjectDetail.mount(root);
+        window.SBActionItemOrder.mount(root, {
+            key: `actionItemOrder:project:${root.dataset.sbProjectDetail}`,
+            url: `/api/project/${root.dataset.sbProjectDetail}/action-items/reorder`,
+            isBusy: () => root._projectDetail.isBusy(),
+        });
+    }
     </script>
 </section>

@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app.models import db, Project, ActionItem, Note, notes_projects
+from app.services.action_item_ordering import save_action_item_order
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +154,8 @@ def project_add_action_item(id):
             pass
 
     try:
+        item.sort_order = (db.session.query(db.func.max(ActionItem.sort_order))
+                           .filter_by(project_id=id).scalar() or 0) + 1
         db.session.add(item)
         db.session.commit()
     except Exception:
@@ -160,6 +163,14 @@ def project_add_action_item(id):
         logger.exception('Could not add action item to project %s', id)
         return jsonify(success=False, error='Could not add the action item. Please try again.'), 500
     return jsonify(success=True, id=item.id)
+
+
+@projects_bp.route('/api/project/<int:id>/action-items/reorder', methods=['POST'])
+def project_reorder_action_items(id: int):
+    """Persist the complete manual order of this project's open action items."""
+    Project.query.get_or_404(id)
+    result, status = save_action_item_order('project', id, request.get_json(silent=True))
+    return jsonify(result), status
 
 
 @projects_bp.route('/api/project/create-inline', methods=['POST'])

@@ -61,7 +61,7 @@
             state() !== baseline || taskDirty() ||
             (review?.open && reviewState() !== controller.reviewBaseline);
         controller.isDirty = dirty;
-        controller.isBusy = () => Boolean(controller.pending);
+        controller.isBusy = () => Boolean(controller.pending || root._actionOrder?.isBusy());
         const guard = event => {
             if (controller.isBusy()) {
                 event.preventDefault();
@@ -97,6 +97,7 @@
         };
         window.addEventListener('beforeunload', unloadGuard);
         controller.dispose = () => {
+            root._actionOrder?.dispose();
             parent?.removeEventListener('sb:dialog-before-close', parentGuard);
             window.removeEventListener('beforeunload', unloadGuard);
         };
@@ -189,7 +190,9 @@
     async function request(root, url, options = {}) {
         const write = options.method && options.method !== 'GET';
         const controller = root._engagement;
-        if (write && controller.pending) throw new Error('A save is already in progress.');
+        if (write && (controller.pending || root._actionOrder?.isBusy())) {
+            throw new Error('A save is already in progress.');
+        }
         if (write) controller.pending = true;
         try {
             const response = await window.fetch(url, options);

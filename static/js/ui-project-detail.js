@@ -42,7 +42,7 @@
                 discard: root.querySelector('#aiDiscardDialog'), onChanged: reload,
             });
         const dirty = () => state() !== baseline || task.isDirty();
-        const busy = () => pending || task.isBusy();
+        const busy = () => pending || task.isBusy() || Boolean(root._actionOrder?.isBusy());
         function guard(event) {
             if (busy()) {
                 event.preventDefault();
@@ -80,7 +80,7 @@
         window.addEventListener('beforeunload', unload);
         form.addEventListener('submit', async event => {
             event.preventDefault();
-            if (pending || task.isBusy() || !title.value.trim() || !form.reportValidity()) return;
+            if (busy() || !title.value.trim() || !form.reportValidity()) return;
             const payload = {title: title.value.trim()};
             if (due.value) payload.due_date = due.value;
             pending = true;
@@ -130,6 +130,7 @@
         const api = {isDirty: dirty, isBusy: busy, dispose() {
             if (disposed) return;
             disposed = true;
+            root._actionOrder?.dispose();
             task.dispose();
             navigationRoot.removeEventListener('click', navigationGuard);
             parentModal?.removeEventListener('sb:dialog-before-close', parentGuard);
