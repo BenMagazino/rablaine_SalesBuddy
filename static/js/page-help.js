@@ -855,7 +855,7 @@ const PageHelp = (function () {
         <li>Pillar Penetration counts historical positive spend. Its denominator includes every customer with imported pillar revenue, including zero-only customers. Click a pillar for the with-spend and without-spend lists.</li>
         <li>Data headings sort both directions using raw values. Missing amounts stay last. Click a grid amount for existing product details and full history without losing this report.</li>
       </ul>
-      <p>CSV, Clipboard and Email export only the loaded grid, in its current order and coverage scope, even when another analysis tab is selected. Back restores the analysis view, selected pillars, sorting and reading positions. Failed reads offer Retry.</p>
+      <p>CSV, Clipboard and Email export only the loaded grid, in its current order and coverage scope, even when another analysis tab is selected. Pillar selections and column sorting are saved on this device and restored on future visits. Sorts are kept separately for each set of columns. Back also restores the analysis view and reading positions. Failed reads or preference saves offer Retry.</p>
     `},
     { pattern: /^\/reports\/connect-impact/, title: 'Connect Impact', content: `
       <p>Customers rank by total estimated monthly ACR from committed milestones you are on the team for. Committed since uses the commitment date, inclusively, not the due date. All execution statuses qualify, including Completed and Cancelled.</p>

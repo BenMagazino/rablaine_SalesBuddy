@@ -78,8 +78,33 @@
         return data;
     }
 
+    const PREFERENCES_KEY = 'salesbuddy_whitespace_preferences';
+
+    function parsePreferences(raw) {
+        if (raw === null) return {version: 1, sorts: {}};
+        const value = JSON.parse(raw);
+        if (!value || Array.isArray(value) || value.version !== 1 ||
+            !value.sorts || typeof value.sorts !== 'object' || Array.isArray(value.sorts)) {
+            throw new Error('Invalid whitespace preferences');
+        }
+        if (value.pillars !== undefined) requireStrings(value.pillars);
+        for (const [key, state] of Object.entries(value.sorts)) {
+            const match = /^whitespace:(gridTable|penetrationTable):(.+)$/.exec(key);
+            const columns = match ? JSON.parse(match[2]) : null;
+            if (!Array.isArray(columns) || !columns.length ||
+                columns.some(column => !Array.isArray(column) || column.length !== 2 ||
+                    typeof column[0] !== 'string' || !['text', 'number'].includes(column[1])) ||
+                (state !== null && (!state || !Number.isInteger(state.column) ||
+                    state.column < 0 || state.column >= columns.length ||
+                    !['ascending', 'descending'].includes(state.direction)))) {
+                throw new Error('Invalid saved whitespace sort');
+            }
+        }
+        return value;
+    }
+
     const helpers = {displayName, formatRevenue, visibleCustomers, matchingCustomers,
-        createLatestReader, requireGrid};
+        createLatestReader, requireGrid, parsePreferences};
     if (typeof module !== 'undefined' && module.exports) module.exports = helpers;
     if (!global.document) return;
     const root = document.querySelector('[data-sb-whitespace]');
@@ -94,6 +119,7 @@
     const frame = find('[data-bucket-frame]');
     const retries = {};
     const sorts = {};
+    let preferences = parsePreferences(null);
     const restoredReadings = new Set();
     let availableBuckets = [];
     let grid = null;
@@ -186,6 +212,50 @@
         }
     }
 
+    function preferenceError(action, error) {
+        console.error('Whitespace preferences ' + action + ' failed:', error);
+        const notice = find('[data-error="preferences"]');
+        notice.querySelector('[role="alert"]').textContent = action === 'restore'
+            ? 'Saved pillar selections and sorting could not be restored. Current settings are shown.'
+            : 'Pillar selections and sorting could not be saved on this device.';
+        notice.querySelector('button').textContent = action === 'restore'
+            ? 'Retry loading preferences' : 'Retry saving preferences';
+        retries.preferences = action === 'restore' ? () => {
+            if (restorePreferences()) {
+                loadDefaults();
+                if (penetrationLoaded) loadPenetration();
+            }
+        } : savePreferences;
+        notice.hidden = false;
+    }
+
+    function restorePreferences() {
+        try {
+            preferences = parsePreferences(global.localStorage.getItem(PREFERENCES_KEY));
+            find('[data-error="preferences"]').hidden = true;
+            return true;
+        } catch (error) {
+            preferenceError('restore', error);
+            return false;
+        }
+    }
+
+    function savePreferences() {
+        const pillars = availableBuckets.length ? selectedBuckets() : preferences.pillars;
+        preferences = {
+            version: 1,
+            ...(pillars === undefined ? {} : {pillars}),
+            sorts: {...preferences.sorts, ...Object.fromEntries(
+                Object.entries(sorts).map(([key, sort]) => [key, sort.state]))},
+        };
+        try {
+            global.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+            find('[data-error="preferences"]').hidden = true;
+        } catch (error) {
+            preferenceError('save', error);
+        }
+    }
+
     function restoreReading(key) {
         const panel = find('#' + key + 'Panel');
         if (panel && !panel.hidden && !restoredReadings.has(key)) {
@@ -197,7 +267,8 @@
 
     function makeTable(id, columns, host, rows) {
         const key = 'whitespace:' + id + ':' + JSON.stringify(columns);
-        const previousSort = sorts[key]?.state ?? saved.sorts?.[key];
+        const previousSort = Object.hasOwn(preferences.sorts, key) ? preferences.sorts[key] :
+            Object.hasOwn(sorts, key) ? sorts[key].state : saved.sorts?.[key];
         const table = element('table');
         table.id = id;
         table.setAttribute('data-sb-sortable', '');
@@ -214,7 +285,10 @@
         rows.forEach(row => body.append(row));
         host.replaceChildren(table);
         sorts[key] = global.SBTableSort.create(table);
-        if (previousSort) sorts[key].restore(previousSort);
+        if (previousSort !== undefined) sorts[key].restore(previousSort);
+        table.addEventListener('click', event => {
+            if (event.target.closest('[data-sb-table-sort]')) savePreferences();
+        });
         return table;
     }
 
@@ -324,8 +398,8 @@
         });
         if (!loaded || version !== defaultsVersion || !availableBuckets.length) return;
         try {
-            const defaults = Array.isArray(saved.buckets)
-                ? requireStrings(saved.buckets) : availableBuckets;
+            const defaults = preferences.pillars ?? (Array.isArray(saved.buckets)
+                ? requireStrings(saved.buckets) : availableBuckets);
             find('#bucketCheckboxes').querySelectorAll('input').forEach(input => {
                 input.checked = defaults.includes(input.value);
             });
@@ -586,6 +660,7 @@
     }
     find('#bucketCheckboxes').addEventListener('change', () => {
         cancelDefaults();
+        savePreferences();
         loadGrid();
     });
     find('#showAllCustomers').addEventListener('change', renderGrid);
@@ -636,5 +711,6 @@
         loadReverse();
     }
     setMode(saved.mode || 'grid');
+    restorePreferences();
     loadDefaults();
 })(typeof window === 'undefined' ? globalThis : window);

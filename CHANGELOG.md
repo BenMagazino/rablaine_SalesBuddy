@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/15/2026
+
+- Remember Whitespace pillar selections and column sorting between visits.
+
 ## 10/15/2026 - 266da0c1
 
 - Jump to pages and reports from anywhere with Ctrl+Space and the searchable Quick Launcher.

@@ -30,6 +30,9 @@
         <a class="sb-dialog-button" href="{{ url_for('revenue.revenue_import') }}">Import Data</a>
     </div>
     {% else %}
+    <div class="sb-whitespace-notice" data-error="preferences" data-sb-page-band hidden>
+        <span role="alert"></span><button type="button" data-retry="preferences">Retry preferences</button>
+    </div>
     <nav class="sb-whitespace-tabs" data-sb-page-band role="tablist" aria-label="Analysis views">
         {% for key, label in [('grid', 'Whitespace Grid'), ('reverse', 'Reverse Lookup'), ('penetration', 'Pillar Penetration')] %}
         <button type="button" id="{{ key }}-tab" role="tab" data-mode="{{ key }}"

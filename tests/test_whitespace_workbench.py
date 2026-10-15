@@ -69,6 +69,8 @@ def test_native_structure(client, embedded):
     assert root.select_one("dialog.sb-dialog [data-bucket-frame]")
     assert root.select_one("#bucketCheckboxes")
     assert not root.select(".sb-whitespace-tools button")
+    assert root.select_one('[data-error="preferences"][hidden] [role="alert"]')
+    assert root.select_one('[data-retry="preferences"]')
     assert root.select_one('#reverseCustomerSearch[role="combobox"]')
     assert not root.select(".card, .nav-tabs, .modal, [data-bs-toggle]")
     assert bool(soup.select_one("body.sb-page-frame")) is not embedded
@@ -97,7 +99,8 @@ def test_whitespace_help_explains_distinct_scope(client):
     help_text = source[start:source.index("title: 'Revenue Reports'", start)]
     for phrase in ["62 days", "zero-only", "does not change the saved Revenue filter",
                    "export only the loaded grid", "nickname or TPID",
-                   "checkboxes automatically updates the grid"]:
+                   "checkboxes automatically updates the grid",
+                   "saved on this device and restored on future visits"]:
         assert phrase in help_text
 
 

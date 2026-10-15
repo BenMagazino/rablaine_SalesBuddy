@@ -18,6 +18,10 @@
   and hover feedback. Embedded reports retain their host width.
 - Pillar checkbox changes update the grid immediately. The label and checkbox
   row share vertical alignment; Back restores the selected scope directly.
+- Pillar selection and table sorting persist in localStorage across reloads and
+  fresh visits. Sorts are isolated by table and column set. Empty selections are
+  retained, and unavailable or invalid saved preferences show explicit feedback
+  and Retry without blocking the report.
 
 The checkpoint evidence below describes the earlier bucket-based implementation.
 

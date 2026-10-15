@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const {displayName, formatRevenue, visibleCustomers, matchingCustomers, createLatestReader,
-    requireGrid} = require('../../static/js/ui-whitespace.js');
+    requireGrid, parsePreferences} = require('../../static/js/ui-whitespace.js');
 
 const customers = [
     {id: 1, name: 'Beta', nickname: 'Nickname', tpid: 123456, buckets: {Databases: 1234.56}},
@@ -100,4 +100,62 @@ test('HTTP, transport and malformed JSON failures propagate for explicit Retry',
         throw new SyntaxError('Malformed JSON');
     }}));
     await assert.rejects(json.read('reverse', '/reverse'), /Malformed JSON/);
+});
+
+const gridKey = 'whitespace:gridTable:' + JSON.stringify([
+    ['Customer', 'text'], ['AI', 'number'], ['Gaps', 'number'],
+]);
+const otherGridKey = 'whitespace:gridTable:' + JSON.stringify([
+    ['Customer', 'text'], ['Analytics', 'number'], ['Security', 'number'], ['Gaps', 'number'],
+]);
+const penetrationKey = 'whitespace:penetrationTable:' + JSON.stringify([
+    ['Pillar', 'text'], ['Customers with Spend', 'number'],
+    ['Adoption Rate', 'number'], ['Gap', 'number'],
+]);
+
+test('missing preferences keep default pillars distinct from an intentionally empty selection', () => {
+    assert.deepEqual(parsePreferences(null), {version: 1, sorts: {}});
+    assert.deepEqual(parsePreferences(JSON.stringify({version: 1, pillars: [], sorts: {}})),
+        {version: 1, pillars: [], sorts: {}});
+});
+
+test('stored preferences round-trip independent grid scopes, penetration and explicit sort reset', () => {
+    const preferences = {
+        version: 1, pillars: ['AI', 'Security'],
+        sorts: {
+            [gridKey]: {column: 1, direction: 'descending'},
+            [otherGridKey]: {column: 2, direction: 'ascending'},
+            [penetrationKey]: {column: 3, direction: 'descending'},
+        },
+    };
+    assert.deepEqual(parsePreferences(JSON.stringify(preferences)), preferences);
+    preferences.sorts[gridKey] = null;
+    assert.equal(parsePreferences(JSON.stringify(preferences)).sorts[gridKey], null);
+});
+
+test('malformed, obsolete or invalid selections cannot masquerade as saved preferences', () => {
+    assert.throws(() => parsePreferences('{'), SyntaxError);
+    for (const value of [null, [], {}, {version: 0, sorts: {}},
+        {version: 1, pillars: null, sorts: {}}, {version: 1, pillars: [42], sorts: {}},
+        {version: 1, sorts: []}]) {
+        assert.throws(() => parsePreferences(JSON.stringify(value)));
+    }
+});
+
+test('saved sorts reject wrong table keys, broken column schemas and invalid direction or index', () => {
+    const invalid = [
+        ['otherTable', {column: 1, direction: 'ascending'}],
+        ['whitespace:gridTable:invalid-json', null],
+        ['whitespace:gridTable:[]', null],
+        ['whitespace:gridTable:[["Customer","invalid"]]', null],
+        [gridKey, {column: 9, direction: 'ascending'}],
+        [gridKey, {column: -1, direction: 'ascending'}],
+        [gridKey, {column: '1', direction: 'ascending'}],
+        [gridKey, {column: 1, direction: 'sideways'}],
+    ];
+    for (const [key, state] of invalid) {
+        assert.throws(() => parsePreferences(JSON.stringify({
+            version: 1, pillars: ['AI'], sorts: {[key]: state},
+        })));
+    }
 });
