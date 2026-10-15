@@ -42,6 +42,19 @@
 .sb-nf-btn:hover,.sb-nf-dropdown-item:hover,.sb-nf-list-group-item-action:hover {
     background:var(--sb-ui-raised);
 }
+.sb-nf-list-group-item-action.active,
+.sb-nf-list-group:not(:focus-within) > .sb-nf-list-group-item-action.enter-target,
+.sb-nf-list-group-item-action:focus-visible {
+    background:var(--sb-ui-selection);color:var(--sb-ui-ink);
+}
+.sb-note-form-page .sb-nf-list-group-item-action:focus-visible {
+    outline:1px solid var(--sb-ui-accent);outline-offset:-1px;
+}
+.sb-nf-suggestions {
+    padding:4px 0;border:1px solid var(--sb-ui-control-line);
+    background:var(--sb-ui-surface);
+}
+.sb-nf-suggestions > .sb-nf-list-group-item {border:0;padding:6px 10px;}
 .sb-nf-btn:disabled {opacity:.55;cursor:wait;}
 .sb-nf-btn-close::before {content:"×";font-size:21px;line-height:1;}
 .sb-nf-dropdown-menu.show,.sb-nf-collapse.show {display:block;}
