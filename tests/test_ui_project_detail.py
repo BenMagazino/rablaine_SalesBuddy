@@ -63,8 +63,8 @@ def test_full_and_inline_dossier_preserve_values_links_order_and_commands(client
         assert not root.select_one('#newTaskDue').has_attr('required')
         assert root.select_one('#aiEditDesc')
         assert root.select_one('#aiDetailCompleted')
-        assert len(root.select('script[src$="ui-action-item-dialog.js"]')) == 1
-        assert len(root.select('script[src$="ui-project-detail.js"]')) == 1
+        assert len(root.select('script[src^="/static/js/ui-action-item-dialog.js"]')) == 1
+        assert len(root.select('script[src^="/static/js/ui-project-detail.js"]')) == 1
         assert not root.select('.card, .btn, .modal, [data-bs-toggle], table')
     assert page.select_one('body.sb-page-frame')
     assert page.select_one('.sb-project-page.sb-directory-frame-wide')

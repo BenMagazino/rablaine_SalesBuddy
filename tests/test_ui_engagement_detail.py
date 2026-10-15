@@ -98,7 +98,7 @@ def test_complete_native_dossier_inventory(client, app, dossier, fragment):
     ]
     assert root.select_one(f'a[href="/milestone/{dossier["milestone"]}"]')
     assert root.select_one(f'a[href="/opportunity/{dossier["opportunity"]}"]')
-    assert len(root.select('script[src$="ui-engagement-detail.js"]')) == 1
+    assert len(root.select('script[src^="/static/js/ui-engagement-detail.js"]')) == 1
     assert "const ENGAGEMENT_ID =" in response.text
     assert "SBEngagementDetail.document(root)" in response.text
     assert "SBEngagementDetail.mount(root)" in response.text
@@ -112,7 +112,7 @@ def test_complete_native_dossier_inventory(client, app, dossier, fragment):
         assert root.select_one('form[method="POST"] input[name="note_ids"]')["value"] == (
             str(dossier["unassigned"])
         )
-        assert len(soup.select('script[src$="ui-table-sort.js"]')) == 1
+        assert len(soup.select('script[src^="/static/js/ui-table-sort.js"]')) == 1
     with app.app_context():
         engagement = db.session.get(Engagement, dossier["engagement"])
         assert (engagement.updated_at, engagement.technical_problem,

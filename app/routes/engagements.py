@@ -17,6 +17,7 @@ from app.models import (
 )
 from app.services.milestone_tracking import track_engagement_on_milestones
 from app.services.seller_mode import get_seller_mode_seller_id
+from app.services.action_item_ordering import save_action_item_order
 
 logger = logging.getLogger(__name__)
 
@@ -1197,17 +1198,8 @@ def action_item_not_useful(id: int):
 def action_item_reorder(id: int):
     """Persist new sort order for action items on an engagement."""
     Engagement.query.get_or_404(id)
-    data = request.get_json(silent=True) or {}
-    task_ids = data.get('task_ids', [])
-    if not isinstance(task_ids, list):
-        return jsonify(success=False, error='task_ids must be a list.'), 400
-
-    for idx, tid in enumerate(task_ids):
-        task = ActionItem.query.filter_by(id=tid, engagement_id=id).first()
-        if task:
-            task.sort_order = idx
-    db.session.commit()
-    return jsonify(success=True)
+    result, status = save_action_item_order('engagement', id, request.get_json(silent=True))
+    return jsonify(result), status
 
 
 @engagements_bp.route('/action-item/<int:id>', methods=['DELETE'])

@@ -28,6 +28,10 @@ test('shared request gates writes through complete JSON and retains explicit fai
         const response = await pending;
         assert.equal(root._engagement.pending, false);
         assert.equal((await response.json()).task.id, 3);
+        root._actionOrder = {isBusy: () => true};
+        await assert.rejects(request(root, '/engagement/7/action-items', {method: 'POST'}),
+            /already in progress/);
+        delete root._actionOrder;
         for (const failure of [
             {ok: false, status: 500, json: async () => ({error: 'Save refused'})},
             {ok: true, status: 200, json: async () => ({success: false, error: 'Save refused'})},
@@ -43,6 +47,7 @@ test('shared request gates writes through complete JSON and retains explicit fai
 
 function tasks() {
     const fields = new Map(), calls = [], writes = [], dialogs = [];
+    const ordering = {saves: 0};
     let reloads = 0;
     const element = id => {
         if (!fields.has(id)) fields.set(id, {id, value: '', style: {}, handlers: {},
@@ -68,7 +73,10 @@ function tasks() {
         writes.push({url, options, resolve, reject}));
     const context = {window: {document: doc, SBEngagementDetail: {
         document: () => doc, fetch: (_root, url, options) => fetch(url, options), mount() {},
-    }}, Quill, Sortable, SBDialog: {open(dialog) { dialog.open = true; dialogs.push(dialog.id); }},
+    }, SBActionItemOrder: {mount(_root, options) {
+        ordering.options = options;
+        return {save() { ordering.saves++; }};
+    }}}, Quill, Sortable, SBDialog: {open(dialog) { dialog.open = true; dialogs.push(dialog.id); }},
     fetch, console: {error() {}}, alert: text => calls.push(text), confirm: () => true,
     setTimeout: fn => fn(), viewActionItem: (...args) => calls.push(args)};
     const script = [...partial.matchAll(/<script>([\s\S]*?)<\/script>/g)]
@@ -77,7 +85,7 @@ function tasks() {
     const api = root._engagement;
     const reply = (index, task) => writes[index].resolve({json: async () =>
         ({success: true, task})});
-    return {api, fields, element, writes, reply, dialogs, calls, root,
+    return {api, fields, element, writes, reply, dialogs, calls, root, ordering,
         quill: () => quill, sortable: () => sortable, reloads: () => reloads};
 }
 async function settle() { for (let i = 0; i < 15; i++) await Promise.resolve(); }
@@ -136,7 +144,7 @@ test('rapid task replacement ignores late and wrong-record reads rather than ope
     assert.equal(h.element('editTaskTitle').value, '');
 });
 
-test('quick-add, toggle, delete and drag ordering keep original methods and payloads', async () => {
+test('task writes keep their payloads and dragging delegates to shared order persistence', async () => {
     const h = tasks();
     h.element('ghostTaskTitle').value = 'Quick task';
     h.api.quickAddTask();
@@ -148,10 +156,10 @@ test('quick-add, toggle, delete and drag ordering keep original methods and payl
     h.reply(1, {id: 9}); await settle();
     h.api.deleteTask(9);
     assert.equal(h.writes[2].options.method, 'DELETE');
-    h.element('sortableTaskList').querySelectorAll = () =>
-        [5, 2, 7].map(id => ({dataset: {taskId: String(id)}}));
     h.sortable().onEnd();
-    assert.equal(h.writes[3].url, '/engagement/7/action-items/reorder');
-    assert.deepEqual(JSON.parse(h.writes[3].options.body), {task_ids: [5, 2, 7]});
+    assert.equal(h.ordering.saves, 1);
+    assert.equal(h.ordering.options.url, '/engagement/7/action-items/reorder');
+    assert.equal(h.ordering.options.key, 'actionItemOrder:engagement:7');
+    assert.equal(h.sortable().disabled, true);
     assert.equal(h.sortable().handle, '.drag-handle');
 });
