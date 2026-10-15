@@ -2,18 +2,17 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
-import sqlite3
 import time
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time as clock_time, timezone
 from typing import Any
 
 import requests
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session
 
-from app.models import Customer, Job, JobEvent, SyncStatus, db
+from app.models import Customer, Job, JobEvent, SyncStatus, UserPreference, db
 from app.services import job_queue
 
 logger = logging.getLogger(__name__)
@@ -70,7 +69,8 @@ OPERATIONS = {
                                 'fabric', {}, True, True),
     'meetings': Operation('Meetings for a date', 'WorkIQ calendar and attendee cache.',
                           'meetings', {'date': None}, recovery_safe=True),
-    'meeting-aura': Operation('Meeting aura', 'Today and the next four business days.',
+    'meeting-aura': Operation('Meeting sync',
+                              'Pulls meeting details for today and the next four business days.',
                               'meetings', {'anchor': None, 'days_ahead': 4}, recovery_safe=True),
     'copilot-actions': Operation('Copilot actions', 'Refresh suggested daily action items.',
                                  'copilot-actions', {}),
@@ -100,6 +100,24 @@ def is_transient_failure(error: Exception) -> bool:
     """Recognize typed network failures, including a source wrapper's explicit cause."""
     return any(isinstance(candidate, (requests.Timeout, requests.ConnectionError))
                for candidate in (error, error.__cause__))
+
+
+def conflicting_job_types(job_type: str) -> list[str]:
+    """Describe whole-run conflicts, including account mappings used by other imports."""
+    operation = job_type.removeprefix('sync:')
+    spec = OPERATIONS[operation]
+
+    def resources(key: str) -> set[str]:
+        """Preparation consumes both calendar records and milestone matching state."""
+        if key in ('meeting-preparation', 'activity-reconciliation'):
+            return {'meetings', 'milestones'}
+        if key == 'u2c':
+            return {'u2c', 'milestones'}
+        return {OPERATIONS[key].resource}
+
+    return [f'sync:{key}' for key, other in OPERATIONS.items()
+            if resources(key) & resources(operation) or
+            'accounts' in (spec.resource, other.resource)]
 
 
 def validate_options(operation: str, options: dict | None) -> dict:
@@ -175,8 +193,19 @@ def admit_sync(operation: str, options: dict | None = None, *,
         raise SyncAdmissionError('Idempotency-Key must contain 1 to 200 characters.')
     spec = OPERATIONS[operation]
     payload = json.dumps(options, sort_keys=True, separators=(',', ':'))
-    active_key = f'sync:{spec.resource}'
+    digest = hashlib.sha256(f'{operation}:{payload}'.encode('utf-8')).hexdigest()
+    active_key = f'sync:{operation}:{digest}'
     job_type = f'sync:{operation}'
+    existing_request = Job.query.filter_by(request_key=request_key).first() if request_key else None
+    if existing_request is not None:
+        if existing_request.job_type != job_type or existing_request.payload != payload:
+            raise SyncAdmissionError('This request key belongs to a different sync request.', 409)
+        return existing_request
+    existing = Job.query.filter(
+        Job.job_type == job_type, Job.payload == payload,
+        Job.status.in_(ACTIVE_STATES)).first()
+    if existing is not None:
+        return existing
     job = Job(job_type=job_type, payload=payload, active_key=active_key,
               request_key=request_key, initiator=initiator,
               max_attempts=3 if spec.recovery_safe else 1)
@@ -210,27 +239,11 @@ def admit_sync(operation: str, options: dict | None = None, *,
 
 
 def publish_progress(data: dict, event_type: str = 'progress') -> None:
-    """Persist worker progress independently of pending domain writes."""
+    """Publish live progress without competing with SQLite domain writes."""
     job_id = job_queue.CURRENT_JOB_ID.get()
     if job_id is None:
         return
-    session = db.session()
-    if db.engine.dialect.name == 'sqlite' and session.in_transaction():
-        connection = session.connection().connection.driver_connection
-        if isinstance(connection, sqlite3.Connection) and connection.in_transaction:
-            if 'sync_deferred_progress' not in session.info:
-                logger.info('Job %s progress deferred until its atomic SQLite save commits.', job_id)
-            session.info['sync_deferred_progress'] = (job_id, dict(data), event_type)
-            return
-    flush_deferred_progress()
     _write_progress(job_id, data, event_type)
-
-
-def flush_deferred_progress() -> None:
-    """Publish the last measured unit after an atomic domain transaction commits."""
-    pending = db.session().info.pop('sync_deferred_progress', None)
-    if pending is not None:
-        _write_progress(*pending)
 
 
 def _write_progress(job_id: int, data: dict, event_type: str) -> None:
@@ -249,22 +262,29 @@ def _write_progress(job_id: int, data: dict, event_type: str) -> None:
         'processed': raw.get('current'),
         'total': raw.get('total'),
     }
-    with Session(db.engine) as session:
-        job = session.get(Job, job_id)
-        if job is None or job.status != Job.STATUS_RUNNING:
-            raise RuntimeError('Progress belongs to a job that is not running.')
-        job.progress_json = json.dumps(progress)
-        job.progress_at = datetime.now(timezone.utc)
-        session.add(JobEvent(job_id=job.id, attempt=job.attempts,
-                             event_type=event_type, data_json=json.dumps(raw)))
-        session.flush()
-        cutoff = session.query(JobEvent.id).filter_by(job_id=job.id).order_by(
-            JobEvent.id.desc()).offset(EVENT_LIMIT).limit(1).scalar()
-        if cutoff:
-            session.query(JobEvent).filter(
-                JobEvent.job_id == job.id, JobEvent.id <= cutoff).delete(
-                    synchronize_session=False)
-        session.commit()
+    from app.services import sync_runtime
+    owner = job_queue.CURRENT_SYNC_OWNER.get()
+    if owner is None:
+        raise RuntimeError('Only the current sync attempt can publish live progress.')
+    sync_runtime.update(owner['identity'], progress=progress, event_type=event_type)
+
+
+def persist_live_status(job: Job) -> None:
+    """Archive bounded live progress/events alongside the terminal durable outcome."""
+    if not job.job_type.startswith('sync:'):
+        return
+    from app.services import sync_runtime
+    live = sync_runtime.read(job)
+    if live is None:
+        return
+    job.progress_json = json.dumps(live['progress'])
+    job.progress_at = datetime.fromisoformat(live['progress_at']) if live['progress_at'] else None
+    job.heartbeat_at = datetime.fromisoformat(live['heartbeat_at'])
+    JobEvent.query.filter_by(job_id=job.id).delete(synchronize_session=False)
+    for event in live['events']:
+        db.session.add(JobEvent(
+            job_id=job.id, attempt=event['attempt'], event_type=event['type'],
+            data_json=event['data'], created_at=datetime.fromisoformat(event['created_at'])))
 
 
 def consume_stream(stream) -> dict:
@@ -406,7 +426,6 @@ def _run_operation(operation: str, options: dict) -> dict:
             raise job_queue.NonRetryableJobError(result.get('error') or
                                                  'Sync reported failed or partial results.',
                                                  result=result)
-        flush_deferred_progress()
         if operation == 'milestones':
             from app.services.scheduled_sync import _revenue_sync_due
             for followup, followup_options in (
@@ -425,14 +444,14 @@ def _run_operation(operation: str, options: dict) -> dict:
     except (requests.Timeout, requests.ConnectionError):
         if OPERATIONS[operation].recovery_safe:
             raise
-        raise job_queue.NonRetryableJobError('Network error; explicit retry required.')
+        raise job_queue.NonRetryableJobError('Network error. Start a new sync when ready.')
     except job_queue.NonRetryableJobError:
         raise
     except SQLAlchemyError as exc:
         logger.exception('Could not save %s sync results', operation)
         raise job_queue.NonRetryableJobError(
             'Sync could not save its results. Some earlier changes may already be saved. '
-            'Check backend logs before retrying.') from exc
+            'Check backend logs before starting a new sync.') from exc
     except Exception as exc:
         raise job_queue.NonRetryableJobError(str(exc)) from exc
 
@@ -446,8 +465,11 @@ def register_handlers() -> None:
 
 def worker_health() -> dict:
     """Distinguish a healthy/busy worker from a missing or stale heartbeat."""
-    worker = SyncStatus.query.filter_by(sync_type='worker_process').first()
-    beat = worker.heartbeat_at if worker else None
+    from app.services import sync_runtime
+    live = sync_runtime.worker_state()
+    worker = SyncStatus.query.filter_by(sync_type='worker_process').first() if not live else None
+    beat = datetime.fromisoformat(live['heartbeat_at']) if live else (
+        worker.heartbeat_at if worker else None)
     age = (datetime.now(timezone.utc) - beat.replace(
         tzinfo=beat.tzinfo or timezone.utc)).total_seconds() if beat else None
     alive = age is not None and age < Job.HEARTBEAT_STALE_SECONDS
@@ -463,8 +485,17 @@ def project_sync_status(sync_type: str) -> dict | None:
                       if spec.legacy_status == sync_type), None)
     if operation is None:
         return None
-    active_key = f'sync:{OPERATIONS[operation].resource}'
-    job = Job.query.filter_by(active_key=active_key).first()
+    family = [f'sync:{key}' for key, spec in OPERATIONS.items()
+              if spec.resource == OPERATIONS[operation].resource]
+    current_id = job_queue.CURRENT_JOB_ID.get()
+    current = db.session.get(Job, current_id) if current_id is not None else None
+    if current is not None and current.job_type in family:
+        return None
+    active = Job.query.filter(
+        Job.job_type.in_(family),
+        Job.status.in_(ACTIVE_STATES)).order_by(Job.id).all()
+    job = next((run for run in active if run.status == Job.STATUS_RUNNING), active[0]) \
+        if active else None
     if job is None:
         job = Job.query.filter_by(job_type=f'sync:{operation}').order_by(Job.id.desc()).first()
     if job is None:
@@ -492,21 +523,41 @@ def project_sync_status(sync_type: str) -> dict | None:
             'percent'), 'error': snapshot['error'], 'job_id': job.id,
             'job_state': snapshot['state']}),
         'job_id': job.id,
+        'job': snapshot,
     }
 
 
 def job_snapshot(job: Job) -> dict:
     """Read actual persisted progress and outcome, never browser-owned state."""
+    from app.services import sync_runtime
+    live = sync_runtime.read(job)
+    heartbeat = datetime.fromisoformat(live['heartbeat_at']) if live else job.heartbeat_at
+    progress = live['progress'] if live else json.loads(job.progress_json or '{}')
+    blocker = None
     state = job.status
     if state == Job.STATUS_PENDING:
         state = 'retry_waiting' if job.attempts else (
             'queued' if worker_health()['alive'] else 'waiting_for_worker')
-    elif state == Job.STATUS_RUNNING and job.heartbeat_at:
-        age = (datetime.now(timezone.utc) - job.heartbeat_at.replace(
-            tzinfo=job.heartbeat_at.tzinfo or timezone.utc)).total_seconds()
+        blocking = Job.query.filter(
+            Job.id != job.id,
+            Job.job_type.in_(conflicting_job_types(job.job_type)),
+            db.or_(Job.status == Job.STATUS_RUNNING,
+                   db.and_(Job.status == Job.STATUS_PENDING, Job.id < job.id)),
+        ).order_by(Job.id).first()
+        if blocking:
+            state = 'waiting_for_group'
+            blocker = {'id': blocking.id,
+                       'name': OPERATIONS[blocking.job_type.removeprefix('sync:')].name}
+    elif state == Job.STATUS_RUNNING and heartbeat:
+        age = (datetime.now(timezone.utc) - heartbeat.replace(
+            tzinfo=heartbeat.tzinfo or timezone.utc)).total_seconds()
         if age >= Job.HEARTBEAT_STALE_SECONDS:
             state = 'interrupted'
-    progress = json.loads(job.progress_json) if job.progress_json else {}
+        elif live and live.get('waiting_for_write'):
+            state = 'waiting_for_write'
+            blocker = sync_runtime.write_owner()
+        elif live and live.get('writing'):
+            state = 'saving'
     if job.status == Job.STATUS_DONE:
         result = json.loads(job.result or '{}')
         progress = {**progress, 'phase': 'complete', 'percent': 100,
@@ -517,17 +568,114 @@ def job_snapshot(job: Job) -> dict:
             'initiator': job.initiator, 'attempt': job.attempts,
             'max_attempts': job.max_attempts, 'progress': progress,
             'created_at': _iso(job.created_at), 'started_at': _iso(job.started_at),
-            'finished_at': _iso(job.finished_at), 'heartbeat_at': _iso(job.heartbeat_at),
-            'progress_at': _iso(job.progress_at), 'retry_at': _iso(job.available_at),
+            'finished_at': _iso(job.finished_at), 'heartbeat_at': _iso(heartbeat),
+            'progress_at': live['progress_at'] if live else _iso(job.progress_at),
+            'blocker': blocker, 'retry_at': _iso(job.available_at),
             'error': job.last_error, 'result': json.loads(job.result) if job.result else None}
+
+
+def operation_schedules() -> dict[str, dict[str, Any]]:
+    """Describe actual automatic triggers without assigning times or admitting work."""
+    from app.services.copilot_actions import SYNC_HOUR as copilot_hour
+    from app.services.meeting_sync import SYNC_HOUR as meeting_hour
+    from app.services.scheduled_sync import (
+        REVENUE_SYNC_INTERVAL_DAYS,
+        SYNC_DAYS, U2C_IMPORT_INTERVAL_HOURS, U2C_RETRY_INTERVAL_HOURS,
+    )
+
+    schedules = {key: {'label': 'On demand', 'detail': 'No recurring schedule.'}
+                 for key in OPERATIONS}
+    preference = UserPreference.query.first()
+    weekdays = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
+    milestone_label = ', '.join(weekdays[day] for day in sorted(SYNC_DAYS))
+    if preference and preference.milestone_sync_hour is not None \
+            and preference.milestone_sync_minute is not None:
+        at = clock_time(preference.milestone_sync_hour, preference.milestone_sync_minute)
+        milestone_label += f" · {at.strftime('%I:%M %p').lstrip('0')} local"
+    milestone_detail = ('Catches up at startup after account setup. '
+                        'The worker assigns a time if one has not been saved yet.')
+    if preference and not preference.milestone_auto_sync:
+        milestone_label, milestone_detail = 'Disabled', 'Milestone auto-sync is off in Settings.'
+    elif preference is None:
+        milestone_label, milestone_detail = 'Not configured', 'Complete initial app setup first.'
+    schedules['milestones'] = {'label': milestone_label, 'detail': milestone_detail}
+    schedules['revenue'] = {
+        'label': f'Every {REVENUE_SYNC_INTERVAL_DAYS} days',
+        'detail': 'Checked after successful milestone syncs; queued when revenue is due.',
+    }
+    schedules['marketing'] = {
+        'label': 'After milestone sync',
+        'detail': 'Queued after every successful milestone sync, including manual runs.',
+    }
+    schedules['u2c'] = {
+        'label': f'Every {U2C_IMPORT_INTERVAL_HOURS} hours',
+        'detail': f'Checked at startup and every five minutes, and after milestone syncs. '
+                  f'Failed imports are eligible again after {U2C_RETRY_INTERVAL_HOURS} hour.',
+    }
+    for key, hour, detail in (
+        ('meeting-aura', meeting_hour, 'Catches up at startup when cached meetings are stale '
+         'or missing. Automatically queued after Account Sync finishes successfully, '
+         'unless its skip_aura option is true.'),
+        ('copilot-actions', copilot_hour, 'Catches up at startup when due. Requires completed '
+         'account setup and Copilot actions enabled in Settings.'),
+    ):
+        schedules[key] = {
+            'label': f"Daily · {clock_time(hour).strftime('%I:%M %p').lstrip('0')} local",
+            'detail': detail,
+        }
+    if preference and not preference.copilot_actions_enabled:
+        schedules['copilot-actions'] = {
+            'label': 'Disabled', 'detail': 'Copilot actions are off in Settings.',
+        }
+    schedules['meetings'] = {
+        'label': 'Startup if needed',
+        'detail': "Today's attendee data is refreshed at startup if missing while the "
+                  'meeting window is already cached. Other dates are on demand.',
+    }
+    schedules['revenue-analysis'] = {
+        'label': 'With revenue import',
+        'detail': 'Trend analysis runs within revenue sync unless run_analysis is false. '
+                  'This standalone operation can also be started on demand.',
+    }
+    automatic_triggers = {
+        'accounts': [
+            'Activity Coverage meeting preparation runs Account Sync once if the required '
+            'account-discovery upgrade has not completed. It does not start Meeting sync.',
+        ],
+        'milestones': [
+            'Activity Coverage meeting preparation automatically refreshes milestones '
+            'before matching meetings.',
+        ],
+        'customer-data': ['Automatically queued after importing a customer by TPID.'],
+        'meeting-aura': [
+            'After Account Sync finishes successfully, Meeting sync automatically runs, '
+            'unless Account Sync has skip_aura set to true.',
+        ],
+        'meetings': [
+            'Opening an uncached meeting date in the note editor automatically fetches that date.',
+        ],
+    }
+    for key, schedule in schedules.items():
+        schedule['triggers'] = automatic_triggers.get(key, [])
+    return schedules
+
+
+def operation_runs(operation: str) -> tuple[Job | None, list[Job]]:
+    """Select the running request before queued or finished runs for one operation."""
+    query = Job.query.filter_by(job_type=f'sync:{operation}')
+    active = query.filter(Job.status.in_(ACTIVE_STATES)).order_by(Job.id).all()
+    latest = next((job for job in active if job.status == Job.STATUS_RUNNING), active[0]) \
+        if active else query.order_by(Job.id.desc()).first()
+    return latest, active
 
 
 def operation_snapshots() -> dict:
     """Project active/latest runs and retained successes for every allowlisted sync."""
     operations = []
+    schedules = operation_schedules()
     for key, spec in OPERATIONS.items():
         query = Job.query.filter_by(job_type=f'sync:{key}')
-        latest = query.order_by(Job.id.desc()).first()
+        latest, active = operation_runs(key)
         success = query.filter_by(status=Job.STATUS_DONE).order_by(Job.id.desc()).first()
         legacy = SyncStatus.query.filter_by(sync_type=spec.legacy_status).first() \
             if spec.legacy_status else None
@@ -538,11 +686,15 @@ def operation_snapshots() -> dict:
         operations.append({
             'operation': key, 'name': spec.name, 'description': spec.description,
             'defaults': spec.defaults, 'recovery_safe': spec.recovery_safe,
+            'schedule': schedules[key],
             'latest': job_snapshot(latest) if latest else None,
+            'queued': [job_snapshot(job) for job in active if job.id != latest.id],
             'last_success_at': _iso(last_success),
             'legacy_state': SyncStatus.get_status(spec.legacy_status) if spec.legacy_status else None,
         })
-    return {'worker': worker_health(), 'operations': operations}
+    from app.services import sync_runtime
+    return {'worker': worker_health(), 'operations': operations,
+            'writer': sync_runtime.write_owner()}
 
 
 def run_dependency(operation: str, options: dict | None = None) -> dict:
@@ -553,22 +705,26 @@ def run_dependency(operation: str, options: dict | None = None) -> dict:
     if parent_id is None:
         raise RuntimeError('Sync dependencies must be executed by the durable worker.')
     parent = db.session.get(Job, parent_id)
+    worker_id = parent.claimed_by
     child = admit_sync(operation, options, initiator=f'job:{parent_id}')
     while child.status in ACTIVE_STATES:
         if child.status == Job.STATUS_RUNNING:
-            raise job_queue.NonRetryableJobError(f'Dependency job {child.id} is already running.')
+            publish_progress({'phase': 'dependency',
+                              'message': f'Waiting for {OPERATIONS[operation].name}, job {child.id}.'})
+            db.session.expire_all()
+            time.sleep(0.2)
+            child = db.session.get(Job, child.id)
+            continue
         if child.available_at and child.available_at > job_queue._now():
             time.sleep(min(1, (child.available_at - job_queue._now()).total_seconds()))
             db.session.refresh(child)
             continue
-        claimed = Job.query.filter_by(id=child.id, status=Job.STATUS_PENDING).update({
-            Job.status: Job.STATUS_RUNNING, Job.claimed_by: parent.claimed_by,
-            Job.attempts: Job.attempts + 1, Job.started_at: job_queue._now(),
-            Job.heartbeat_at: job_queue._now(),
-        }, synchronize_session=False)
-        db.session.commit()
-        if claimed != 1:
-            raise job_queue.NonRetryableJobError('Dependency could not be claimed.')
+        claimed = job_queue.claim_next(worker_id, job_id=child.id, ancestors=(parent_id,))
+        if claimed is None:
+            db.session.expire_all()
+            time.sleep(0.2)
+            db.session.refresh(child)
+            continue
         db.session.refresh(child)
         job_queue._execute(child, app=current_app._get_current_object(), with_heartbeat=True)
         db.session.refresh(child)
@@ -583,13 +739,18 @@ def observe_job_stream(job_id: int):
     yield f'event: accepted\ndata: {json.dumps({"job_id": job_id})}\n\n'
     while True:
         db.session.expire_all()
-        events = JobEvent.query.filter(JobEvent.job_id == job_id, JobEvent.id > cursor).order_by(
-            JobEvent.id).limit(EVENT_LIMIT).all()
         job = db.session.get(Job, job_id)
+        from app.services import sync_runtime
+        live = sync_runtime.read(job)
+        events = live['events'] if live else [
+            {'id': event.id, 'type': event.event_type, 'data': event.data_json}
+            for event in JobEvent.query.filter_by(job_id=job_id).order_by(JobEvent.id).all()]
         for event in events:
-            cursor = event.id
-            prefix = '' if job.job_type == 'sync:accounts' else f'event: {event.event_type}\n'
-            yield f'{prefix}data: {event.data_json}\n\n'
+            if event['id'] <= cursor:
+                continue
+            cursor = event['id']
+            prefix = '' if job.job_type == 'sync:accounts' else f"event: {event['type']}\n"
+            yield f"{prefix}data: {event['data']}\n\n"
         if job.status not in ACTIVE_STATES:
             data = json.loads(job.result) if job.result else {
                 'success': False, 'error': job.last_error, 'message': job.last_error}

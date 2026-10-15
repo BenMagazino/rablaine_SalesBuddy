@@ -7592,7 +7592,7 @@ function _doMeetingImport() {
     showMeetingStatusCard(
         '<div class="sb-nf-d-flex sb-nf-align-items-center">' +
         '<span class="sb-nf-spinner-border sb-nf-spinner-border-sm sb-nf-text-primary sb-nf-me-2"></span>' +
-        '<div><strong>Loading meetings...</strong><br><small class="sb-nf-text-muted">' +
+        '<div><strong>Loading meetings...</strong><br><small id="meetingCacheProgress" class="sb-nf-text-muted">' +
         (isNoteToday ? 'Checking cache...' : 'This can take up to a minute') +
         '</small></div></div>'
     );
@@ -7604,8 +7604,20 @@ function _doMeetingImport() {
         url += '&customer_name=' + encodeURIComponent(customerName);
     }
 
-    fetch(url, { signal: _meetingAbortController.signal })
-        .then(response => response.json())
+    fetch(url, {
+        signal: _meetingAbortController.signal,
+        onJobProgress: job => {
+            document.getElementById('meetingCacheProgress').textContent = window.SBJobs.message(job);
+        },
+    })
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok || data.error || !Array.isArray(data.meetings) ||
+                    data.date !== dateStr) {
+                throw new Error(data.error || 'The server did not return the requested meetings.');
+            }
+            return data;
+        })
         .then(data => {
             _meetingAbortController = null;
 
@@ -7722,33 +7734,40 @@ function refreshMeetings() {
     // Force-refresh meetings from WorkIQ and update the daily cache.
     var dateStr = document.getElementById('call_date').value;
     if (!dateStr) return;
+    var refreshBtn = document.getElementById('refreshMeetingsBtn');
+    if (refreshBtn && refreshBtn.disabled) return;
 
     // Show loading state in the modal
     document.getElementById('meetingImportContent').style.display = 'none';
     document.getElementById('meetingImportLoading').style.display = 'block';
     document.getElementById('meetingImportLoading').innerHTML =
         '<div class="sb-nf-spinner-border sb-nf-text-primary" role="status"></div>' +
-        '<p class="sb-nf-mt-2">Refreshing meetings from WorkIQ...</p>' +
+        '<p class="sb-nf-mt-2" id="meetingRefreshProgress">Refreshing meetings from WorkIQ...</p>' +
         '<small class="sb-nf-text-muted">This can take up to a minute</small>';
 
-    var refreshBtn = document.getElementById('refreshMeetingsBtn');
     if (refreshBtn) refreshBtn.disabled = true;
 
     fetch('/api/meetings/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        onJobProgress: function(job) {
+            document.getElementById('meetingRefreshProgress').textContent = window.SBJobs.message(job);
+        },
         body: JSON.stringify({ date: dateStr })
     })
-    .then(function(r) { return r.json(); })
+    .then(async function(response) {
+        var data = await response.json();
+        if (!response.ok || data.error || !Array.isArray(data.meetings) ||
+                data.date !== dateStr || !data.synced_at ||
+                !Number.isFinite(Date.parse(data.synced_at))) {
+            throw new Error(data.error || 'The server did not confirm the meeting refresh.');
+        }
+        return data;
+    })
     .then(function(data) {
         if (refreshBtn) refreshBtn.disabled = false;
 
-        if (data.error) {
-            showMeetingImportModalWithError('Refresh failed: ' + data.error);
-            return;
-        }
-
-        loadedMeetings = data.meetings || [];
+        loadedMeetings = data.meetings;
         _lastMeetingContext = { meetings: loadedMeetings, selectedIndex: null, syncedAt: data.synced_at };
         selectedMeetingIndex = null;
 

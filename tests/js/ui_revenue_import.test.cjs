@@ -17,6 +17,7 @@ function fixture(options = {}) {
         constructor(text = '') {
             this.textContent = text; this.dataset = {}; this.hidden = false;
             this.children = []; this.handlers = {}; this.attributes = {};
+            this.classList = {toggle() {}};
         }
         setAttribute(key, value) { this.attributes[key] = String(value); }
         removeAttribute(key) { delete this.attributes[key]; }
@@ -27,9 +28,10 @@ function fixture(options = {}) {
     }
     const elements = {}, errors = [], requests = [], filterCalls = [], rail = new Element();
     for (const name of ['#syncBtn', '#syncProgress', '#syncBar', '#syncText', '#syncResults',
-        '#syncLastRun', '[data-sb-import-refresh]', '[data-sb-import-check]', '#bucketNotice',
+        '#syncLastRun', '[data-sb-import-refresh]', '#bucketNotice',
         '[data-sb-import-notice-body]', '[data-sb-import-notice-error]', '[data-sb-import-dismiss]',
-        '#revImportBrainrotCheck', '[data-sb-import-brainrot-error]']) elements[name] = new Element();
+        '#revImportBrainrotCheck', '#revImportBrainrotToggle',
+        '[data-sb-import-brainrot-error]']) elements[name] = new Element();
     for (const name of ['#syncProgress', '#syncResults', '#bucketNotice',
         '[data-sb-import-notice-error]', '[data-sb-import-brainrot-error]']) elements[name].hidden = true;
     if (options.picker) {
@@ -41,9 +43,35 @@ function fixture(options = {}) {
     const root = {dataset: {syncUrl: '/api/revenue/sync', statusUrl: '/api/revenue/sync/status',
         noticeUrl: '/api/revenue/bucket-notice', embedded: String(!!options.embedded)},
         querySelector: selector => elements[selector] || null};
+    const shared = {dataset: {sbSyncProgress: 'revenue', syncControls: '#syncBtn'},
+        querySelector: selector => ({
+            '[data-sync-last]': elements['#syncLastRun'],
+            '[data-sync-running]': elements['#syncProgress'],
+            '[data-sync-message]': elements['#syncText'],
+            '[data-sync-result]': elements['#syncResults'],
+        })[selector]};
+    elements['#syncProgress'].querySelector = () => elements['#syncBar'];
+    elements['[data-sb-sync-progress="revenue"]'] = shared;
+    elements['[data-sb-sync-progress]'] = shared;
+    let job = options.job || null;
+    const running = () => ({id: 42, operation: 'revenue', status: 'running',
+        progress: {percent: 35, message: 'Pulling revenue'}});
     const context = {
-        window: {}, document: {querySelector: selector => selector === '[data-sb-import]' ? null : rail,
+        window: {addEventListener() {}, SBJobs: {
+            latest: async () => job,
+            message: value => value.progress.message,
+            start: async (operation, payload) => {
+                requests.push({url: '/api/jobs/start/' + operation,
+                    init: {method: 'POST', body: JSON.stringify(payload)}});
+                job = options.start ? await options.start() : running();
+                return job;
+            },
+        }}, document: {
+            addEventListener() {},
+            querySelectorAll: () => [elements['#syncBtn']],
+            querySelector: selector => selector === '[data-sb-import]' ? null : rail,
             createElement: () => new Element()},
+        setTimeout: () => 1, clearTimeout() {},
         console: {error: (...args) => errors.push(args)}, TextDecoder,
         localStorage: {getItem: () => {
             if (options.storageError) throw new Error('Storage blocked');
@@ -64,10 +92,19 @@ function fixture(options = {}) {
             return reply({success: true});
         },
     };
-    vm.createContext(context); vm.runInContext(source, context);
+    vm.createContext(context);
+    vm.runInContext(fs.readFileSync(
+        path.join(__dirname, '../../static/js/ui-sync-progress.js'), 'utf8'), context);
+    vm.runInContext(source, context);
     const api = context.window.SBRevenueImport;
     const controller = options.mount ? api.create(root) : null;
-    return {api, controller, root, elements, rail, errors, requests, filterCalls, context};
+    return {api, controller, root, elements, rail, errors, requests, filterCalls, context,
+        async complete(value = result) {
+            job = {...running(), status: 'done',
+                finished_at: '2026-10-15T03:00:00Z', result: value};
+            await context.window.SBSyncProgress.create(shared).check();
+            await settle();
+        }};
 }
 
 function stream(text, chunkSize = 1, headers = 'text/event-stream; charset=utf-8') {
@@ -100,6 +137,18 @@ test('terminal event at EOF is accepted without falsely accepting a truncated st
         () => {}), /without a sync result/);
 });
 
+test('durable admission keeps observing progress through the terminal result', async () => {
+    const h = fixture(), updates = [];
+    const value = await h.api.consume(stream(
+        'event: accepted\ndata: {"job_id":42}\n\n' +
+        'event: progress\ndata: {"progress":35,"message":"Pulling revenue"}\n\n' +
+        terminal(result),
+    ), update => updates.push(update));
+    assert.equal(value.bucket_rows, result.bucket_rows);
+    assert.match(updates[0].message, /accepted/i);
+    assert.equal(updates[1].progress, 35);
+});
+
 test('stream errors never turn into completion', async t => {
     const h = fixture();
     for (const [text, message] of [
@@ -107,6 +156,7 @@ test('stream errors never turn into completion', async t => {
         ['event: progress\ndata: malformed\n\n', /JSON|Unexpected/],
         ['event: complete\ndata: []\n\n', /Invalid sync event/],
         ['event: surprise\ndata: {}\n\n', /Unexpected sync event/],
+        ['event: accepted\ndata: {"job_id":null}\n\n', /Invalid accepted sync job/],
         ['event: progress\ndata: null\n\n', /Invalid sync event/],
     ]) await t.test(text.split('\n')[0] + message, async () => {
         await assert.rejects(h.api.consume(stream(text), () => {}), message);
@@ -141,22 +191,23 @@ test('invalid completion metrics cannot render success or silently manufacture z
         customers_with_data: 0, customers: 0, linked_pct: 0, duration_s: 0});
 });
 
-test('sync uses the original empty payload, guards repeated clicks and renders all metrics', async () => {
+test('shared admission uses an empty payload and completion renders all revenue metrics', async () => {
     let resolve;
-    const h = fixture({mount: true, picker: true, empty: true, fetch: (url, init) =>
-        init?.method === 'POST' ? new Promise(done => { resolve = done; }) :
-            Promise.resolve(reply(url.endsWith('/status') ?
-                {status: {state: 'incomplete'}} : ['Fabric', 'Databases']))});
+    const h = fixture({mount: true, picker: true, empty: true,
+        start: () => new Promise(done => { resolve = done; })});
     await settle();
     assert.equal(h.requests.length, 1);
     const sync = h.controller.sync();
-    await h.controller.sync();
+    h.controller.sync();
+    await settle();
     assert.equal(h.elements['#syncBtn'].disabled, true);
     assert.equal(h.elements['#syncProgress'].hidden, false);
     const request = h.requests.find(row => row.init?.method === 'POST');
-    assert.equal(request.init.headers.Accept, 'text/event-stream');
+    assert.equal(request.url, '/api/jobs/start/revenue');
     assert.equal(request.init.body, '{}');
-    resolve(stream(terminal(result), 64)); await sync;
+    resolve({id: 42, status: 'running', progress: {message: 'Pulling revenue'}});
+    await sync;
+    await h.complete();
     assert.equal(h.elements['#syncBtn'].disabled, false);
     assert.equal(h.elements['#syncProgress'].hidden, true);
     assert.equal(h.elements['#syncResults'].dataset.tone, 'positive');
@@ -169,42 +220,68 @@ test('sync uses the original empty payload, guards repeated clicks and renders a
     assert.doesNotMatch(source, /innerHTML|bootstrap|data-bs-/);
 });
 
-test('bad progress, invalid result and lost connection restore controls and keep failure visible', async () => {
-    for (const body of [
-        'event: progress\ndata: {"progress":101}\n\n',
-        terminal({...result, product_rows: undefined}),
-        'event: progress\ndata: {"message":"Pulling"}\n\n',
-        terminal({...result, taxonomy: {status: 'bad'}}),
+test('invalid revenue results stay explicit without relabeling the source job as failed', async () => {
+    for (const value of [
+        {...result, product_rows: undefined},
+        {...result, taxonomy: {status: 'bad'}},
     ]) {
-        const h = fixture({mount: true, fetch: async (url, init) => init?.method === 'POST' ?
-            stream(body, 20) : reply({status: {state: 'never_run'}})});
-        await settle(); await h.controller.sync();
+        const h = fixture({mount: true});
+        await settle(); await h.controller.sync(); await h.complete(value);
         assert.equal(h.elements['#syncBtn'].disabled, false);
         assert.equal(h.elements['#syncResults'].dataset.tone, 'danger');
         assert.equal(h.elements['[data-sb-import-refresh]'].hidden, true);
-        assert.ok(h.elements['#syncResults'].textContent.includes('Check status'));
+        assert.match(h.elements['#syncResults'].textContent, /page could not update/);
         assert.ok(h.errors.length);
     }
 });
 
-test('all status states are truthful and malformed completed timestamps stay retryable', async () => {
-    for (const [state, expected] of [
-        ['never_run', 'No completed'], ['incomplete', 'incomplete'], ['failed', 'failed'],
-        ['in_progress', 'in progress'], ['complete', 'Last synced'],
+test('accepted jobs keep the progress UI visible until the worker finishes', async () => {
+    const h = fixture({mount: true});
+    await settle();
+    await h.controller.sync();
+    assert.equal(h.elements['#syncProgress'].hidden, false);
+    assert.equal(h.elements['#syncBtn'].disabled, true);
+    assert.match(h.elements['#syncText'].textContent, /35%.*Pulling revenue/);
+    assert.equal(h.elements['#syncResults'].hidden, true);
+    assert.equal(h.elements['#syncBar'].value, 35);
+    assert.equal(h.elements['#syncProgress'].hidden, false);
+    await h.complete();
+    assert.equal(h.elements['#syncProgress'].hidden, true);
+    assert.equal(h.elements['#syncBtn'].disabled, false);
+    assert.equal(h.elements['#syncResults'].dataset.tone, 'positive');
+    assert.equal(h.errors.length, 0);
+});
+
+test('the canonical status, not the legacy bucket-status payload, drives sync state', async () => {
+    for (const [job, expected] of [
+        [null, 'No completed'],
+        [{id: 42, status: 'failed', error: 'Source failed'}, 'failed'],
+        [{id: 42, status: 'running', progress: {message: 'Pulling'}}, 'in progress'],
+        [{id: 42, status: 'done', finished_at: '2026-10-15T03:00:00Z'}, 'Last synced'],
     ]) {
-        const h = fixture({mount: true, state, completedAt: 'Mon, 05 Oct 2026 18:16:15 GMT'});
+        const h = fixture({mount: true, job});
         await settle();
         assert.ok(h.elements['#syncLastRun'].textContent.includes(expected));
-        assert.equal(h.elements['[data-sb-import-check]'].disabled, false);
+        assert.equal(h.elements['#syncBtn'].disabled, job?.status === 'running');
     }
-    const h = fixture({mount: true, state: 'complete', completedAt: null});
+    const h = fixture({mount: true, job: {id: 42, status: 'done', finished_at: null}});
     await settle();
-    assert.equal(h.elements['#syncLastRun'].dataset.tone, 'danger');
-    assert.ok(h.elements['#syncLastRun'].textContent.includes('Invalid completed'));
-    h.context.fetch = async () => reply({status: {state: 'incomplete'}});
-    await h.controller.status();
-    assert.equal(h.elements['#syncLastRun'].textContent, 'Previous sync incomplete');
-    assert.equal(h.elements['#syncLastRun'].dataset.tone, undefined);
+    assert.equal(h.elements['#syncResults'].dataset.tone, 'danger');
+    assert.match(h.elements['#syncResults'].textContent, /invalid completion timestamp/);
+});
+
+test('returning to the import page follows its active job without another POST', async () => {
+    const h = fixture({mount: true, job: {id: 42, status: 'running',
+        progress: {percent: 45, message: 'Pulling product revenue'}}});
+    await settle();
+    assert.equal(h.elements['#syncProgress'].hidden, false);
+    assert.equal(h.elements['#syncBtn'].disabled, true);
+    assert.equal(h.elements['#syncBar'].value, 45);
+    assert.match(h.elements['#syncText'].textContent, /45%.*Pulling product revenue/);
+    assert.ok(h.requests.every(request => request.init?.method !== 'POST'));
+    await h.complete();
+    assert.equal(h.elements['#syncResults'].dataset.tone, 'positive');
+    assert.equal(h.elements['#syncBtn'].disabled, false);
 });
 
 test('first-import and unchanged results have no notice; review/reset names remain literal', async () => {
@@ -318,11 +395,13 @@ test('late status reads cannot erase a newer completion or resurrect a dismissed
     const reads = [];
     const h = fixture({mount: true, fetch: (url, init) => init?.method === 'DELETE' ?
         Promise.resolve(reply({success: true})) : new Promise(resolve => reads.push(resolve))});
-    h.controller.completed({...result, taxonomy: {status: 'reset', missing_selected: ['Old']}});
+    await settle();
+    await h.controller.sync();
+    await h.complete({...result, taxonomy: {status: 'reset', missing_selected: ['Old']}});
     reads[0](reply({status: {state: 'incomplete'}, bucket_notice: null})); await settle();
     assert.equal(h.elements['#syncLastRun'].textContent, 'Last sync completed just now');
     assert.equal(h.elements['#bucketNotice'].hidden, false);
-    assert.equal(h.elements['[data-sb-import-check]'].disabled, false);
+    assert.equal(h.elements['#syncBtn'].disabled, false);
     const pending = h.controller.status();
     await h.elements['[data-sb-import-dismiss]'].fire('click');
     reads[1](reply({status: {state: 'incomplete'}, bucket_notice: {status: 'review'}}));
@@ -331,10 +410,9 @@ test('late status reads cannot erase a newer completion or resurrect a dismissed
 });
 
 test('bucket refresh failure cannot relabel a completed server sync as failed', async () => {
-    const h = fixture({mount: true, picker: true, empty: true, fetch: async (url, init) =>
-        init?.method === 'POST' ? stream(terminal(result), 100) :
-            url.endsWith('/status') ? reply({status: {state: 'never_run'}}) : {ok: false, status: 503}});
-    await settle(); await h.controller.sync();
+    const h = fixture({mount: true, picker: true, empty: true, fetch: async url =>
+        url.endsWith('/status') ? reply({status: {state: 'never_run'}}) : {ok: false, status: 503}});
+    await settle(); await h.controller.sync(); await h.complete();
     assert.equal(h.elements['#syncResults'].dataset.tone, 'positive');
     assert.equal(h.elements['[data-sb-import-bucket-status]'].dataset.tone, 'danger');
     assert.equal(h.elements['[data-sb-import-refresh]'].hidden, false);

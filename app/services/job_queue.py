@@ -8,8 +8,7 @@ SQLite, jobs survive a restart and a job that was running when the worker died
 is detectable via a stale heartbeat and can be reclaimed and retried.
 
 Design notes:
-- There is realistically a single worker process, so claiming uses a simple
-  guarded UPDATE rather than heavyweight distributed locking.
+- Guarded claims serialize conflicting sync groups, not independent fetching.
 - All service-managed timestamps are stored as naive UTC to keep SQLite text
   comparisons correct (aware datetimes serialize with an offset that breaks
   ``<=`` string comparisons).
@@ -43,6 +42,7 @@ _MAX_BACKOFF_SECONDS = 300
 # Handler registry: job_type -> callable.
 _HANDLERS: dict[str, Callable[[dict], Optional[dict]]] = {}
 CURRENT_JOB_ID: ContextVar[int | None] = ContextVar('current_job_id', default=None)
+CURRENT_SYNC_OWNER: ContextVar[dict | None] = ContextVar('current_sync_owner', default=None)
 
 
 class NonRetryableJobError(RuntimeError):
@@ -138,7 +138,8 @@ def enqueue(
 # Claim / heartbeat / complete / fail
 # ---------------------------------------------------------------------------
 
-def claim_next(worker_id: str) -> Optional[Job]:
+def claim_next(worker_id: str, job_id: int | None = None,
+               ancestors: tuple[int, ...] = ()) -> Optional[Job]:
     """Atomically claim the next runnable job, or return None.
 
     Picks the highest-priority, oldest pending job whose ``available_at`` has
@@ -146,21 +147,27 @@ def claim_next(worker_id: str) -> Optional[Job]:
     never claim the same job.
     """
     now = _now()
-    candidates = (
+    query = (
         Job.query
         .filter(Job.status == Job.STATUS_PENDING)
         .filter(db.or_(Job.available_at.is_(None), Job.available_at <= now))
         .order_by(Job.priority.desc(), Job.id.asc())
-        .limit(5)
-        .all()
     )
+    if job_id is not None:
+        query = query.filter(Job.id == job_id)
+    candidates = query.all()
     for candidate in candidates:
         claim = Job.query.filter(Job.id == candidate.id, Job.status == Job.STATUS_PENDING)
         if candidate.job_type.startswith('sync:'):
-            running = db.session.query(Job.id).filter(
-                Job.job_type.startswith('sync:'), Job.status == Job.STATUS_RUNNING,
+            from app.services.sync_jobs import conflicting_job_types
+            blockers = db.session.query(Job.id).filter(
+                Job.job_type.in_(conflicting_job_types(candidate.job_type)),
+                Job.id != candidate.id, Job.id.notin_(ancestors),
+                db.or_(Job.status == Job.STATUS_RUNNING,
+                       db.and_(Job.status == Job.STATUS_PENDING, Job.id < candidate.id,
+                               not ancestors)),
             ).exists()
-            claim = claim.filter(~running)
+            claim = claim.filter(~blockers)
         updated = (
             claim
             .update(
@@ -184,11 +191,17 @@ def heartbeat(job_id: int) -> None:
     """Refresh a running job's heartbeat so it isn't reclaimed as stale."""
     job = db.session.get(Job, job_id)
     if job is not None and job.status == Job.STATUS_RUNNING:
+        if job.job_type.startswith('sync:'):
+            from app.services import sync_runtime
+            sync_runtime.update(sync_runtime.identity(job), heartbeat_at=sync_runtime.timestamp())
+            return
         job.heartbeat_at = _now()
         db.session.commit()
 
 
 def _complete_job(job: Job, result: Optional[Any] = None) -> None:
+    from app.services.sync_jobs import persist_live_status
+    persist_live_status(job)
     job.status = Job.STATUS_DONE
     job.result = json.dumps(result) if result is not None else None
     job.finished_at = _now()
@@ -198,6 +211,8 @@ def _complete_job(job: Job, result: Optional[Any] = None) -> None:
 
 
 def _fail_job(job: Job, error: str, retry: bool = True) -> None:
+    from app.services.sync_jobs import persist_live_status
+    persist_live_status(job)
     job.last_error = (error or "")[:2000]
     if retry and job.attempts < job.max_attempts:
         # Requeue with exponential backoff.
@@ -242,9 +257,20 @@ def reclaim_stale() -> int:
         .filter(Job.heartbeat_at.isnot(None), Job.heartbeat_at < cutoff)
         .all()
     )
+    reclaimed = 0
     for job in stale:
+        if job.job_type.startswith('sync:'):
+            from app.services import sync_runtime
+            live = sync_runtime.read(job)
+            if live and datetime.fromisoformat(live['heartbeat_at']).replace(tzinfo=None) >= cutoff:
+                continue
+            writer = sync_runtime.write_owner()
+            if writer and writer['id'] == job.id:
+                logger.warning('Job %s has a stale status but still owns a write transaction.', job.id)
+                continue
         _fail_job(job, "worker died (stale heartbeat)", retry=True)
-    return len(stale)
+        reclaimed += 1
+    return reclaimed
 
 
 # ---------------------------------------------------------------------------
@@ -267,7 +293,7 @@ class _HeartbeatPulse(threading.Thread):
                 with self._app.app_context():
                     heartbeat(self._job_id)
             except Exception:
-                logger.debug("heartbeat pulse failed", exc_info=True)
+                logger.exception("Job %s heartbeat could not be published", self._job_id)
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -282,11 +308,19 @@ def _execute(job: Job, app=None, with_heartbeat: bool = False) -> None:
         return
 
     pulse = None
+    runtime_token = None
+    if job.job_type.startswith('sync:'):
+        from app.services import sync_runtime
+        owner = sync_runtime.start(job)
+        runtime_token = CURRENT_SYNC_OWNER.set({
+            'identity': owner, 'operation': job.job_type.removeprefix('sync:')})
     if with_heartbeat and app is not None:
         pulse = _HeartbeatPulse(app, job.id)
         pulse.start()
 
     token = CURRENT_JOB_ID.set(job.id)
+    previous_autoflush = db.session.autoflush
+    db.session.autoflush = False
     job_id, job_type = job.id, job.job_type
     try:
         try:
@@ -302,17 +336,19 @@ def _execute(job: Job, app=None, with_heartbeat: bool = False) -> None:
         _complete_job(job, result if isinstance(result, (dict, list)) else None)
     except Exception as exc:  # noqa: BLE001 - any handler error is a job failure
         db.session.rollback()
-        db.session().info.pop('sync_deferred_progress', None)
         logger.exception("Job %s (%s) failed", job_id, job_type)
         if isinstance(exc, NonRetryableJobError) and exc.result is not None:
             job.result = json.dumps(exc.result)
         _fail_job(job, f"{type(exc).__name__}: {exc}",
                   retry=not isinstance(exc, NonRetryableJobError))
     finally:
+        db.session.autoflush = previous_autoflush
         CURRENT_JOB_ID.reset(token)
         if pulse is not None:
             pulse.stop()
             pulse.join(timeout=5)
+        if runtime_token is not None:
+            CURRENT_SYNC_OWNER.reset(runtime_token)
 
 
 def process_one(worker_id: str = "worker", app=None,
@@ -332,31 +368,46 @@ def run_worker_loop(
     reclaim_interval: float = 60.0,
     stop_event: Optional[threading.Event] = None,
 ) -> None:
-    """Run the job worker loop until ``stop_event`` is set.
-
-    Periodically reclaims stale jobs, then drains pending jobs one at a time,
-    sleeping ``poll_interval`` when the queue is empty. Each job runs inside an
-    application context with a heartbeat pulse so a long or hung job is visible.
-    """
+    """Dispatch independent runs concurrently; guarded claims retain group ownership."""
     worker_id = worker_id or f"worker-{os.getpid()}"
     stop_event = stop_event or threading.Event()
     logger.info("Job worker %s started", worker_id)
 
     last_reclaim = 0.0
+    executions: list[threading.Thread] = []
+
+    def execute(job_id: int) -> None:
+        """Give each run its own Flask context and SQLAlchemy session."""
+        try:
+            with app.app_context():
+                job = db.session.get(Job, job_id)
+                _execute(job, app=app, with_heartbeat=True)
+        except Exception:
+            logger.exception('Worker could not execute job %s', job_id)
+
     while not stop_event.is_set():
         try:
             monotonic = time.monotonic()
             if monotonic - last_reclaim >= reclaim_interval:
                 with app.app_context():
                     reclaimed = reclaim_stale()
+                    from app.services.sync_runtime import cleanup
+                    cleanup()
                 if reclaimed:
                     logger.warning("Reclaimed %d stale job(s)", reclaimed)
                 last_reclaim = monotonic
 
             with app.app_context():
-                job = process_one(worker_id, app=app, with_heartbeat=True)
+                job = claim_next(worker_id)
+                job_id = job.id if job else None
+            executions = [thread for thread in executions if thread.is_alive()]
+            if job_id is not None:
+                thread = threading.Thread(target=execute, args=(job_id,),
+                                          name=f'sync-job-{job_id}', daemon=True)
+                executions.append(thread)
+                thread.start()
 
-            if job is None:
+            if job_id is None:
                 stop_event.wait(poll_interval)
         except Exception:
             logger.exception("Job worker loop error")

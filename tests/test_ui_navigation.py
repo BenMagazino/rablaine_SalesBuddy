@@ -23,6 +23,12 @@ def render_navigation(
     return BeautifulSoup(html, "html.parser")
 
 
+def test_control_menu_contains_only_settings_and_admin(app):
+    """Diagnostics belong to Admin rather than the compact shared Control menu."""
+    soup = render_navigation(app)
+    assert [a["href"] for a in soup.select("#settingsMenu a")] == ["/preferences", "/admin"]
+
+
 def test_navigation_preserves_report_and_browse_destinations(app):
     """All original static menu destinations remain accessible."""
     soup = render_navigation(app, user_role="se", seller_mode=False)

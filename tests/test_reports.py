@@ -60,9 +60,10 @@ class TestReportsHub:
             ['Connect Goals', 'Initiative Tracker', '1:1 Report', 'Connect Impact'],
             ['U2C Attainment', 'Milestone Tracker', 'Activity Coverage', 'Whitespace Analysis'],
             ['Hygiene Report', 'MSX Workspace', "What's New"],
-            ['Revenue Analyzer', 'Workload Report', 'Marketing Insights', 'Synapse Customers'],
+            ['Revenue Analyzer', 'Workload Report', 'Fabric Consumption', 'Marketing Insights',
+             'Synapse Customers'],
         ]
-        assert len(links) == len(set(links)) == 16
+        assert len(links) == len(set(links)) == 17
         hub_links = {link['href'] for link in soup.select('main a[href]')}
         assert set(links[1:]).issubset(hub_links)
         assert [heading.get_text(strip=True) for heading in menu.select('.sb-menu-heading')] == [

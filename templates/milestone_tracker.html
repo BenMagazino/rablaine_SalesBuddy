@@ -13,41 +13,8 @@
 {% endblock %}
 
 {% block content %}
+{% from 'partials/_sync_progress.html' import sync_progress %}
 <div class="sb-milestone-tracker sb-directory-frame sb-directory-frame-wide" data-sb-page-surface>
-{% if sync_status and sync_status.state == 'in_progress' %}
-<div class="mt-notice mt-sync-banner" role="alert">
-    <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
-    <div>
-        <strong>Milestone sync is running.</strong>
-        Data is being updated in the background. Refresh the page in a minute to see new results.
-        {% if sync_status.started_at %}
-            <span class="mt-muted mt-small">(Started <span class="local-datetime" data-utc="{{ sync_status.started_at.isoformat() }}" data-fmt="short"></span>)</span>
-        {% endif %}
-    </div>
-</div>
-{% elif sync_status and sync_status.state == 'incomplete' %}
-<div class="mt-notice is-warning mt-sync-banner" role="alert">
-    <i class="bi bi-exclamation-triangle-fill"></i>
-    <div>
-        <strong>Last milestone sync didn't finish.</strong>
-        Your milestone data may be incomplete. Click "Sync from MSX" to run a full sync.
-        {% if sync_status.started_at %}
-            <span class="mt-muted mt-small">(Started <span class="local-datetime" data-utc="{{ sync_status.started_at.isoformat() }}" data-fmt="short"></span>)</span>
-        {% endif %}
-    </div>
-</div>
-{% elif sync_status and sync_status.state == 'failed' %}
-<div class="mt-notice is-danger mt-sync-banner" role="alert">
-    <i class="bi bi-x-circle-fill"></i>
-    <div>
-        <strong>Last milestone sync failed.</strong>
-        Your milestone data may be incomplete or outdated. Click "Sync from MSX" to try again.
-        {% if sync_status.details %}
-            <span class="mt-muted mt-small">({{ sync_status.details }})</span>
-        {% endif %}
-    </div>
-</div>
-{% endif %}
 <header class="mt-heading" data-sb-page-band>
     <div>
         <h2>Milestone Tracker</h2>
@@ -70,23 +37,12 @@
     </div>
 </header>
 
-<!-- Sync Progress Alert (hidden by default) -->
-<div id="syncAlert" class="mt-notice sb-hidden" role="alert" style="position: relative;">
+{% call sync_progress('milestones', '#syncBtn, #syncBtnEmpty') %}
     <div id="syncBrainrotToggle" class="brainrot-card-toggle brainrot-pos-top-right sb-hidden">
         <input type="checkbox" id="syncBrainrotCheck">
         <label for="syncBrainrotCheck" class="mt-small">brainrot mode</label>
     </div>
-    <div id="syncMessage"></div>
-    <div id="syncProgressWrap" class="mt-progress-wrap sb-hidden">
-        <div class="mt-progress">
-            <div id="syncProgressBar" class="mt-progress-bar"
-                 role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                0%
-            </div>
-        </div>
-        <div id="syncDetail" class="mt-sync-detail mt-small mt-muted"></div>
-    </div>
-</div>
+{% endcall %}
 
 {% include 'partials/milestone_tracker_content.html' %}
 
@@ -437,230 +393,38 @@
 // =============================================================================
 // Sync from MSX
 // =============================================================================
-function syncMilestones() {
-    const btn = document.getElementById('syncBtn');
-    const btnEmpty = document.getElementById('syncBtnEmpty');
-    const alertEl = document.getElementById('syncAlert');
-    const msg = document.getElementById('syncMessage');
-    const progressWrap = document.getElementById('syncProgressWrap');
-    const progressBar = document.getElementById('syncProgressBar');
-    const detail = document.getElementById('syncDetail');
-    let syncFinished = false;
-
-    // Disable both sync buttons so user can't double-trigger
-    const syncingHtml = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Syncing...';
-    if (btn) { btn.disabled = true; btn.innerHTML = syncingHtml; }
-    if (btnEmpty) { btnEmpty.disabled = true; btnEmpty.innerHTML = syncingHtml; }
-
-    function restoreButtons() {
-        const originalHtml = '<i class="bi bi-arrow-repeat"></i> Sync from MSX';
-        if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
-        if (btnEmpty) { btnEmpty.disabled = false; btnEmpty.innerHTML = originalHtml; }
-    }
-
-    // Show progress alert
-    alertEl.className = 'mt-notice';
-    msg.innerHTML = '<i class="bi bi-hourglass-split"></i> Connecting to MSX...';
-
-    // Show brainrot toggle
-    const brainrotToggle = document.getElementById('syncBrainrotToggle');
-    if (brainrotToggle) brainrotToggle.classList.remove('sb-hidden');
-    // If brainrot is already enabled, show the panel
-    if (window.isBrainrotOn && window.isBrainrotOn() && window.showBrainrotPanel) {
-        window.showBrainrotPanel();
-    }
-    progressWrap.classList.add('sb-hidden');
-
-    // Use EventSource-style fetch for SSE
-    fetch('/api/milestone-tracker/sync', {
-        method: 'POST',
-        headers: { 'Accept': 'text/event-stream' },
-    }).then(response => {
-        if (!response.ok || !response.headers.get('Content-Type')?.includes('text/event-stream')) {
-            throw new Error(`Could not start milestone sync (HTTP ${response.status}). ` +
-                'Review the server log for details.');
-        }
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        function processEvents(text) {
-            buffer += text;
-            const events = buffer.split('\n\n');
-            buffer = events.pop(); // keep incomplete chunk
-
-            for (const block of events) {
-                if (!block.trim()) continue;
-                let eventType = 'message';
-                let eventData = '';
-                for (const line of block.split('\n')) {
-                    if (line.startsWith('event: ')) eventType = line.slice(7);
-                    else if (line.startsWith('data: ')) eventData = line.slice(6);
+const milestoneProgress = window.SBSyncProgress.create(
+    document.querySelector('[data-sb-sync-progress="milestones"]'), {
+        onChange: job => {
+            const active = job && ['pending', 'running'].includes(job.status);
+            document.getElementById('syncBrainrotToggle').classList.toggle('sb-hidden', !active);
+            if (active && window.isBrainrotOn?.()) window.showBrainrotPanel?.();
+            if (!active) window.hideBrainrotPanel?.();
+            if (job?.status === 'done') {
+                const data = job.result;
+                const summary = [];
+                if (Number.isFinite(data.synced) && Number.isFinite(data.total)) {
+                    summary.push(`${data.synced} of ${data.total} customers synced.`);
                 }
-                if (!eventData) continue;
-                const data = JSON.parse(eventData);
-                handleSyncEvent(eventType, data);
+                for (const [key, label] of [
+                    ['created', 'new milestones'], ['updated', 'updated milestones'],
+                    ['deactivated', 'deactivated milestones'],
+                    ['opportunities_created', 'new opportunities'], ['tasks_created', 'new tasks'],
+                    ['tasks_updated', 'updated tasks'], ['comments_synced', 'cached comments'],
+                ]) {
+                    if (data[key] > 0) summary.push(`${data[key]} ${label}.`);
+                }
+                const result = document.getElementById('syncResults');
+                result.textContent = [...summary, ...(data.warnings || [])].join(' ') ||
+                    'Milestone sync completed. No changes.';
+                result.hidden = false;
             }
-        }
-
-        function handleSyncEvent(type, data) {
-            if (type === 'start') {
-                progressWrap.classList.remove('sb-hidden');
-                msg.innerHTML = `<i class="bi bi-arrow-repeat"></i> Syncing milestones for <strong>${data.total}</strong> customers...`;
-                progressBar.style.width = '0%';
-                progressBar.textContent = '0%';
-            } else if (type === 'progress') {
-                // Use explicit progress pct if provided, else calculate from current/total
-                const pct = data.progress != null ? data.progress : Math.round((data.current / data.total) * 100);
-                progressBar.style.width = pct + '%';
-                progressBar.textContent = pct + '%';
-                progressBar.setAttribute('aria-valuenow', pct);
-
-                if (data.status === 'fetching') {
-                    detail.innerHTML = `<i class="bi bi-cloud-download mt-info"></i> Fetching: ${data.customer}`;
-                } else if (data.status === 'retrying') {
-                    detail.innerHTML = `<i class="bi bi-arrow-repeat mt-warning"></i> ${data.customer}`;
-                } else if (data.status === 'ok') {
-                    let info = `<i class="bi bi-check-circle mt-success"></i> ${data.customer}`;
-                    if (data.created > 0 || data.updated > 0) {
-                        info += ` <span class="mt-muted">(${data.created} new, ${data.updated} updated)</span>`;
-                    }
-                    detail.innerHTML = info;
-                } else {
-                    detail.innerHTML = `<i class="bi bi-x-circle mt-danger"></i> ${data.customer}: ${data.error}`;
-                    // Show VPN banner if error indicates IP block
-                    if (data.error && window.isVpnBlocked && window.isVpnBlocked(data.error)) {
-                        window.showVpnBanner();
-                    }
-                }
-            } else if (type === 'vpn_blocked') {
-                syncFinished = true;
-                // VPN block detected — show banner and stop the progress display
-                if (window.showVpnBanner) window.showVpnBanner();
-                restoreButtons();
-                alertEl.className = 'mt-notice is-danger';
-                msg.innerHTML = '<i class="bi bi-shield-exclamation"></i> ' +
-                    '<strong>VPN Required:</strong> ' + (data.message || 'IP address is blocked.') +
-                    (data.skipped ? ' (' + data.skipped + ' customers skipped)' : '');
-                detail.innerHTML = '';
-            } else if (type === 'error') {
-                syncFinished = true;
-                throw new Error(data.message || 'Milestone sync failed. Review the server log.');
-            } else if (type === 'task_sync_start') {
-                detail.innerHTML = `<i class="bi bi-list-task mt-info"></i> ${data.message}`;
-            } else if (type === 'task_sync_end') {
-                let taskInfo = '';
-                let taskParts = [];
-                if (data.tasks_created > 0) taskParts.push(`${data.tasks_created} new`);
-                if (data.tasks_updated > 0) taskParts.push(`${data.tasks_updated} updated`);
-                taskInfo = taskParts.length > 0 ? taskParts.join(', ') : 'No task changes';
-                detail.innerHTML = `<i class="bi bi-list-task mt-success"></i> Tasks: ${taskInfo}`;
-            } else if (type === 'comment_sync_start') {
-                detail.innerHTML = `<i class="bi bi-chat-dots mt-info"></i> ${data.message}`;
-            } else if (type === 'comment_sync_end') {
-                let commentInfo = `${data.comments_synced} milestone(s) comments fetched`;
-                if (data.comments_skipped > 0) commentInfo += `, ${data.comments_skipped} already cached`;
-                if (data.comments_failed > 0) commentInfo += `, ${data.comments_failed} failed`;
-                detail.innerHTML = `<i class="bi bi-chat-dots-fill mt-success"></i> ${commentInfo}`;
-            } else if (type === 'audit_sync_start') {
-                detail.innerHTML = `<i class="bi bi-clock-history mt-info"></i> ${data.message || 'Syncing audit trail...'}`;
-            } else if (type === 'audit_sync_end') {
-                let auditInfo = `${data.audit_fields_saved || 0} field changes tracked`;
-                detail.innerHTML = `<i class="bi bi-clock-history mt-success"></i> Audit trail: ${auditInfo}`;
-            } else if (type === 'complete') {
-                syncFinished = true;
-                progressBar.style.width = '100%';
-                progressBar.textContent = '100%';
-                restoreButtons();
-
-                if (data.success) {
-                    const brToggle = document.getElementById('syncBrainrotToggle');
-                    if (brToggle) brToggle.classList.add('sb-hidden');
-                    if (window.hideBrainrotPanel) window.hideBrainrotPanel();
-                    alertEl.className = 'mt-notice is-success';
-                    let parts = [];
-                    if (data.created > 0) parts.push(`${data.created} new`);
-                    if (data.updated > 0) parts.push(`${data.updated} updated`);
-                    if (data.deactivated > 0) parts.push(`${data.deactivated} deactivated`);
-                    let summary = parts.length > 0 ? parts.join(', ') : 'No changes';
-                    let oppText = '';
-                    if (data.opportunities_created > 0) {
-                        oppText = ` Opportunities: ${data.opportunities_created} new.`;
-                    }
-                    let taskText = '';
-                    if (data.tasks_created > 0 || data.tasks_updated > 0) {
-                        let taskParts = [];
-                        if (data.tasks_created > 0) taskParts.push(`${data.tasks_created} new`);
-                        if (data.tasks_updated > 0) taskParts.push(`${data.tasks_updated} updated`);
-                        taskText = ` Tasks: ${taskParts.join(', ')}.`;
-                    }
-                    let commentText = '';
-                    if (data.comments_synced > 0) {
-                        commentText = ` Comments: ${data.comments_synced} cached.`;
-                    }
-                    let resultHtml = `<i class="bi bi-check-circle-fill"></i> Sync complete! ` +
-                        `${data.synced} of ${data.total} customers synced in ${data.duration}s. ` +
-                        `Milestones: ${summary}.${oppText}${taskText}${commentText}`;
-                    if (data.errors && data.errors.length > 0) {
-                        resultHtml += `<br><small class="mt-warning"><i class="bi bi-exclamation-triangle"></i> ` +
-                            `${data.errors.length} error(s): ${data.errors.slice(0, 3).join('; ')}</small>`;
-                    }
-                    sessionStorage.setItem('syncResult', JSON.stringify({
-                        html: resultHtml, className: 'mt-notice is-success'
-                    }));
-                    window.location.reload();
-                } else {
-                    const brToggle2 = document.getElementById('syncBrainrotToggle');
-                    if (brToggle2) brToggle2.classList.add('sb-hidden');
-                    if (window.hideBrainrotPanel) window.hideBrainrotPanel();
-                    alertEl.className = 'mt-notice is-danger';
-                    let errorMsg = data.errors ? data.errors.join('; ') : 'Unknown error';
-                    msg.innerHTML = `<i class="bi bi-x-circle-fill"></i> Sync failed: ${errorMsg}`;
-                }
-            }
-        }
-
-        function pump() {
-            return reader.read().then(({ done, value }) => {
-                if (done) {
-                    if (!syncFinished) {
-                        throw new Error('The milestone sync connection ended before completion. ' +
-                            'Some changes may already be saved. Review the server log.');
-                    }
-                    return;
-                }
-                processEvents(decoder.decode(value, { stream: true }));
-                return pump();
-            });
-        }
-        return pump();
-    }).catch(error => {
-        restoreButtons();
-        alertEl.className = 'mt-notice is-danger';
-        msg.textContent = `Sync error: ${error.message}`;
-        const brToggle3 = document.getElementById('syncBrainrotToggle');
-        if (brToggle3) brToggle3.classList.add('sb-hidden');
-        if (window.setBrainrot) window.setBrainrot(false);
+        },
+        onComplete: () => window.location.reload(),
     });
+function syncMilestones() {
+    return milestoneProgress.start().catch(() => {});
 }
-
-// --- Show sync results saved before reload ---
-(function() {
-    const saved = sessionStorage.getItem('syncResult');
-    if (saved) {
-        sessionStorage.removeItem('syncResult');
-        try {
-            const result = JSON.parse(saved);
-            const alertEl = document.getElementById('syncAlert');
-            const msg = document.getElementById('syncMessage');
-            if (alertEl && msg) {
-                alertEl.className = result.className;
-                msg.innerHTML = result.html;
-                document.getElementById('syncProgressWrap').classList.add('sb-hidden');
-            }
-        } catch (e) { /* ignore parse errors */ }
-    }
-})();
 
 // --- Wire up brainrot checkbox for milestone sync ---
 (function() {

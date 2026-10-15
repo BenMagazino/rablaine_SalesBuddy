@@ -1,7 +1,7 @@
 """
 Background worker process entrypoint for Sales Buddy.
 
-Runs the heavy background schedulers (MSX / WorkIQ / meeting aura) and the
+Runs the heavy background schedulers (MSX / WorkIQ / meeting sync) and the
 durable job-queue consumer in a process **separate** from the web server, so a
 slow or hung background job can never wedge the UI. The web server (waitress or
 ``flask run``) runs with the default ``web`` role and no longer starts these
@@ -26,23 +26,19 @@ _HEARTBEAT_INTERVAL_SECONDS = 30.0
 
 
 def _start_worker_heartbeat(app, stop_event: threading.Event) -> None:
-    """Record a periodic worker heartbeat in SyncStatus for /health to read."""
-    from app.models import SyncStatus
+    """Keep worker liveness observable even during a long SQLite write."""
+    from app.services.sync_runtime import worker_heartbeat
 
     with app.app_context():
-        SyncStatus.mark_started(WORKER_HEARTBEAT_KEY)
-        # Beat immediately so /health reports the worker alive right away,
-        # instead of 'stale' for the first heartbeat interval (which would make
-        # the supervisor falsely restart a healthy, just-started worker).
-        SyncStatus.update_heartbeat(WORKER_HEARTBEAT_KEY)
+        worker_heartbeat()
 
     def _beat() -> None:
         while not stop_event.wait(_HEARTBEAT_INTERVAL_SECONDS):
             try:
                 with app.app_context():
-                    SyncStatus.update_heartbeat(WORKER_HEARTBEAT_KEY)
+                    worker_heartbeat()
             except Exception:
-                logger.debug("worker heartbeat failed", exc_info=True)
+                logger.exception("Worker heartbeat could not be published")
 
     threading.Thread(target=_beat, daemon=True, name="worker-heartbeat").start()
 

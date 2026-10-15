@@ -17,6 +17,7 @@
 {% endblock %}
 
 {% block content %}
+{% from 'partials/_sync_progress.html' import sync_progress %}
 <section class="sb-u2c{% if not request.args.get('embed') %} sb-directory-frame{% endif %}" data-sb-page-surface
          data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          aria-labelledby="u2cTitle">
@@ -26,6 +27,7 @@
         <p class="u2c-muted">Track uncommitted-to-committed milestone attainment against a quarterly snapshot baseline.</p>
     </div>
 </header>
+{{ sync_progress('u2c', '#importOfficialBtn, #importOfficialBtnEmpty', 'u2c-') }}
 <p id="u2cNavigationStatus" class="u2c-notice" data-sb-page-band role="alert" hidden></p>
 
 {% if u2c_sync_error %}
@@ -86,6 +88,7 @@
                 </span>
                 {% endif %}
                 <button type="button" class="u2c-command is-success" id="importOfficialBtn"
+                        data-sync-unavailable="{{ 'true' if not territory_count else 'false' }}"
                         onclick="importOfficialSnapshot()"
                         {% if not territory_count %}disabled title="Add your sales territories first"{% endif %}>
                     <i class="bi bi-cloud-download"></i> Refresh {{ current_fq }} from MSXi
@@ -428,6 +431,7 @@
         </p>
         <div class="u2c-inline is-center">
             <button class="u2c-command is-primary" id="importOfficialBtnEmpty" onclick="importOfficialSnapshot()"
+                    data-sync-unavailable="{{ 'true' if not territory_count else 'false' }}"
                     {% if not territory_count %}disabled title="Add your sales territories first"{% endif %}>
                 <i class="bi bi-cloud-download"></i> Import Official {{ current_fq }} Snapshot
             </button>
@@ -1090,45 +1094,22 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-function importOfficialSnapshot() {
-    const btns = Array.from(document.querySelectorAll('#importOfficialBtn, #importOfficialBtnEmpty'));
-    if (btns.some(button => button.disabled)) return;
-    const notice = el('u2cNavigationStatus');
-    notice.hidden = true;
-    const original = btns.map(b => b.innerHTML);
-    btns.forEach(b => {
-        b.disabled = true;
-        b.innerHTML = '<i class="bi bi-hourglass-split"></i> Importing...';
-    });
-    const restore = () => btns.forEach((b, i) => {
-        b.disabled = false;
-        b.innerHTML = original[i];
-    });
-
-    fetch('{{ url_for("reports.api_u2c_import_official") }}', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-    })
-    .then(async response => {
-        const data = await response.json();
-        if (!response.ok || data.success !== true ||
-            !/^FY\d{2} Q[1-4]$/.test(data.fiscal_quarter || '')) {
-            throw new Error(data.error || 'Could not confirm the official snapshot refresh.');
+const u2cSync = window.SBSyncProgress.create(
+    document.querySelector('[data-sb-sync-progress="u2c"]'), {
+    onComplete: job => {
+        const data = job.result;
+        if (!/^FY\d{2} Q[1-4]$/.test(data.fiscal_quarter || '')) {
+            throw new Error('Could not confirm the official snapshot refresh.');
         }
-        return data;
-    })
-    .then(data => {
         const target = new URL('{{ url_for("reports.report_u2c") }}', location.href);
         target.searchParams.set('fq', data.fiscal_quarter);
         const embedded = new URL(location.href).searchParams.get('embed');
         if (embedded) target.searchParams.set('embed', embedded);
         location.href = target.toString();
-    })
-    .catch(err => {
-        SBU2c.reportError('Could not refresh the official snapshot. ' + err.message, err);
-        restore();
-    });
+    },
+});
+function importOfficialSnapshot() {
+    return u2cSync.start().catch(() => {});
 }
 
 </script>

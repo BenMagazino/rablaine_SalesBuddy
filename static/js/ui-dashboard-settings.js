@@ -15,7 +15,10 @@
 
     async function request(url, options) {
         const response = await fetch(url, options);
-        if (!response.ok) throw new Error('Request failed (HTTP ' + response.status + ').');
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data?.error || 'Request failed (HTTP ' + response.status + ').');
+        }
         const data = await response.json();
         if (data?.success !== true) {
             throw new Error(data?.error || 'The server did not confirm this change.');
@@ -66,7 +69,10 @@
         refresh.setAttribute('aria-busy', 'true');
         message(result, 'Refreshing Copilot action items...', 'busy');
         try {
-            const data = await request('/api/copilot-actions/sync', {method: 'POST'});
+            const data = await request('/api/copilot-actions/sync', {
+                method: 'POST',
+                onJobProgress: job => message(result, window.SBJobs.message(job), 'busy'),
+            });
             if (!Number.isInteger(data.items_created) || data.items_created < 0) {
                 throw new Error('The server returned an invalid action item count.');
             }

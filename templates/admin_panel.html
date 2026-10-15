@@ -21,6 +21,7 @@
 {% endblock %}
 
 {% block content %}
+{% from 'partials/_sync_progress.html' import sync_progress %}
 <script src="{{ url_for('static', filename='js/ui-admin-panel.js') }}"></script>
 
 <section class="sb-administration sb-admin-admin-panel sb-directory-frame sb-directory-frame-wide" data-sb-page-surface>
@@ -28,6 +29,9 @@
     <h1>Admin Panel</h1>
     <div class="sb-admin-d-flex sb-admin-align-items-center">
         <span class="sb-admin-text-muted sb-admin-small">Integrations, health and fiscal-year management</span>
+        <a class="sb-admin-command" href="{{ url_for('jobs.sync_console') }}">
+            <i class="bi bi-arrow-repeat"></i> Sync Status
+        </a>
         <button type="button" class="sb-admin-command" id="adminReviewSetupBtn" onclick="window.openSetupWizard()">
             <i class="bi bi-eye"></i> Review setup
         </button>
@@ -206,17 +210,7 @@
                         </div>
                         <small class="sb-admin-text-muted sb-admin-d-block sb-admin-mt-1">Syncs all accounts you're assigned to in MSX, along with territories, PODs, sellers, solution engineers, and verticals. Usually takes about 3 minutes.</small>
                         
-                        <!-- MSX Import Progress -->
-                        <div id="msxImportProgress" class="sb-admin-mt-3 sb-admin-d-none">
-                            <div class="sb-admin-d-flex sb-admin-justify-content-between sb-admin-mb-1">
-                                <small class="sb-admin-text-muted" id="msxImportStatusText">Starting sync...</small>
-                                <small class="sb-admin-text-muted" id="msxImportProgressPercent">0%</small>
-                            </div>
-                            <div class="sb-admin-progress" style="height: 10px;">
-                                <div class="sb-admin-progress-fill sb-admin-progress-bar-striped sb-admin-progress-bar-animated sb-admin-bg-primary"
-                                     role="progressbar" id="msxImportProgressBar" style="width: 0%"></div>
-                            </div>
-                        </div>
+                        {{ sync_progress('accounts', '#importFromMsxBtn', 'accounts-') }}
                         
                         <!-- MSX Import Results -->
                         <div id="msxImportResults" class="sb-admin-mt-3 sb-admin-d-none">
@@ -226,13 +220,6 @@
                             </div>
                         </div>
                         
-                        <!-- MSX Sync Error -->
-                        <div id="msxImportError" class="sb-admin-mt-3 sb-admin-d-none">
-                            <div class="sb-admin-notice sb-admin-alert-danger sb-admin-mb-0">
-                                <h6 class="sb-admin-alert-heading"><i class="bi bi-exclamation-triangle"></i> Sync Error</h6>
-                                <p class="sb-admin-mb-0" id="msxImportErrorText" style="white-space: pre-line;"></p>
-                            </div>
-                        </div>
 
                         <!-- Milestone Sync -->
                         <hr class="sb-admin-my-3">
@@ -251,17 +238,7 @@
                             </div>
                         </div>
                         <small class="sb-admin-text-muted sb-admin-d-block sb-admin-mt-1">Auto-syncs milestones from MSX on Mon/Wed/Fri at a randomly assigned time. Catches up on startup if missed.</small>
-                        <div id="adminMilestoneSyncProgress" class="sb-admin-mt-2 sb-admin-d-none">
-                            <div class="sb-admin-d-flex sb-admin-justify-content-between sb-admin-mb-1">
-                                <small class="sb-admin-text-muted" id="adminMilestoneSyncText">Starting sync...</small>
-                                <small class="sb-admin-text-muted" id="adminMilestoneSyncPercent">0%</small>
-                            </div>
-                            <div class="sb-admin-progress" style="height: 8px;">
-                                <div class="sb-admin-progress-fill sb-admin-progress-bar-striped sb-admin-progress-bar-animated sb-admin-bg-primary"
-                                     role="progressbar" id="adminMilestoneSyncBar" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div id="adminMilestoneSyncResult" class="sb-admin-mt-2 sb-admin-d-none"></div>
+                        {{ sync_progress('milestones', '#adminMilestoneSyncBtn', 'milestones-') }}
 
                         <!-- Marketing Insights Sync -->
                         <hr class="sb-admin-my-3">
@@ -275,17 +252,7 @@
                             <span id="marketingSyncStatus" class="sb-admin-text-muted sb-admin-small"></span>
                         </div>
                         <small class="sb-admin-text-muted sb-admin-d-block sb-admin-mt-1">Sync marketing engagement data from MSX for all customers with TPIDs. Runs automatically after each milestone sync.</small>
-                        <div id="adminMarketingSyncProgress" class="sb-admin-mt-2 sb-admin-d-none">
-                            <div class="sb-admin-d-flex sb-admin-justify-content-between sb-admin-mb-1">
-                                <small class="sb-admin-text-muted" id="adminMarketingSyncText">Starting sync...</small>
-                                <small class="sb-admin-text-muted" id="adminMarketingSyncPercent">0%</small>
-                            </div>
-                            <div class="sb-admin-progress" style="height: 8px;">
-                                <div class="sb-admin-progress-fill sb-admin-progress-bar-striped sb-admin-progress-bar-animated sb-admin-bg-primary"
-                                     role="progressbar" id="adminMarketingSyncBar" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div id="adminMarketingSyncResult" class="sb-admin-mt-2 sb-admin-d-none"></div>
+                        {{ sync_progress('marketing', '#adminMarketingSyncBtn', 'marketing-') }}
 
                     </div>
                 </section>
@@ -1165,6 +1132,66 @@
 </style>
 
 <script>
+async function readAdminSync(response, onEvent, accountSync = false) {
+    if (!response.ok) {
+        let detail;
+        try {
+            const data = await response.json();
+            detail = data.error || data.message;
+        } catch (_) {}
+        throw new Error(detail || `Could not start sync (HTTP ${response.status}).`);
+    }
+    if (!response.body) throw new Error('The sync response has no event stream.');
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let terminal = null;
+    async function processEvents() {
+        const blocks = buffer.split(/\r?\n\r?\n/);
+        buffer = blocks.pop();
+        for (const block of blocks) {
+            let type = 'message';
+            const lines = [];
+            for (const line of block.split(/\r?\n/)) {
+                if (line.startsWith('event:')) type = line.slice(6).trim();
+                if (line.startsWith('data:')) lines.push(line.slice(5).trimStart());
+            }
+            if (!lines.length) continue;
+            const data = JSON.parse(lines.join('\n'));
+            if (type === 'error' || type === 'vpn_blocked' || data.error) {
+                throw new Error(data.error || data.message || 'Sync failed. Check MSX sign-in and VPN.');
+            }
+            const complete = accountSync ? data.complete === true : type === 'complete';
+            if (complete && (data.success === false || (!accountSync && data.success !== true))) {
+                throw new Error(data.message || (data.errors || []).join('; ') || 'Sync failed.');
+            }
+            if (complete && accountSync && !data.summary) {
+                throw new Error('The account sync completed without a summary. Check Sync Status.');
+            }
+            if (type === 'accepted') {
+                data.message = data.message || `Sync accepted (job ${data.job_id}). Queued or running...`;
+            }
+            if (complete) terminal = data;
+            await onEvent(type, data);
+            if (terminal) break;
+        }
+    }
+    try {
+        while (!terminal) {
+            const {done, value} = await reader.read();
+            buffer += done ? decoder.decode() : decoder.decode(value, {stream: true});
+            if (done && buffer.trim()) buffer += '\n\n';
+            await processEvents();
+            if (done) break;
+        }
+        if (!terminal) throw new Error('The sync connection ended before completion. Check Sync Status.');
+        return terminal;
+    } finally {
+        try { await reader.cancel(); } catch (_) {}
+        reader.releaseLock();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
 
 // ---- Alignment Override ----
@@ -1474,32 +1501,35 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 
 // Fetch Favicons
-function _faviconAction(url, btn, originalHtml) {
+async function _faviconAction(url, btn, originalHtml = btn.innerHTML) {
+    if (btn.disabled) return;
     const statusEl = document.getElementById('faviconStatus');
-    btn.disabled = true;
+    const actions = document.querySelectorAll('#fetchFaviconsBtn, #refreshFaviconsBtn');
+    actions.forEach(action => action.disabled = true);
+    btn.setAttribute('aria-busy', 'true');
     btn.innerHTML = '<span class="sb-admin-busy sb-admin-busy-small"></span> Fetching...';
     statusEl.style.display = 'block';
     statusEl.className = 'sb-admin-mt-2 sb-admin-small sb-admin-text-muted';
-    statusEl.textContent = 'Contacting Google favicon service...';
-    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-            if (data.success) {
-                statusEl.className = 'sb-admin-mt-2 sb-admin-small sb-admin-text-success';
-                statusEl.textContent = data.message;
-            } else {
-                statusEl.className = 'sb-admin-mt-2 sb-admin-small sb-admin-text-danger';
-                statusEl.textContent = data.error || 'Unknown error';
-            }
-        })
-        .catch(err => {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-            statusEl.className = 'sb-admin-mt-2 sb-admin-small sb-admin-text-danger';
-            statusEl.textContent = 'Network error: ' + err.message;
+    statusEl.textContent = 'Submitting favicon sync...';
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            onJobProgress: job => { statusEl.textContent = window.SBJobs.message(job); },
         });
+        const data = await response.json();
+        if (!response.ok || data.success !== true || data.accepted) {
+            throw new Error(data.error || 'The favicon sync did not report completion.');
+        }
+        statusEl.className = 'sb-admin-mt-2 sb-admin-small sb-admin-text-success';
+        statusEl.textContent = data.message || 'Favicon sync complete.';
+    } catch (err) {
+        statusEl.className = 'sb-admin-mt-2 sb-admin-small sb-admin-text-danger';
+        statusEl.textContent = 'Favicon sync failed: ' + err.message;
+    } finally {
+        actions.forEach(action => action.disabled = false);
+        btn.setAttribute('aria-busy', 'false');
+        btn.innerHTML = originalHtml;
+    }
 }
 document.getElementById('fetchFaviconsBtn').addEventListener('click', function() {
     _faviconAction('/api/admin/fetch-favicons', this, '<i class="bi bi-download"></i> Fetch Missing Favicons');
@@ -2089,93 +2119,14 @@ document.getElementById('adminRerunWizardBtn').addEventListener('click', async f
     }
 });
 
-// MSX Sync Accounts (SSE streaming)
-document.getElementById('importFromMsxBtn').addEventListener('click', async function() {
-    // Pre-flight VPN check
-    if (window.isVpnBlocked && window.isVpnBlocked()) {
-        window.showVpnBanner();
-        return;
-    }
-    const btn = this;
-    const progressDiv = document.getElementById('msxImportProgress');
-    const resultsDiv = document.getElementById('msxImportResults');
-    const errorDiv = document.getElementById('msxImportError');
-    const statusText = document.getElementById('msxImportStatusText');
-    const progressPercent = document.getElementById('msxImportProgressPercent');
-    const progressBar = document.getElementById('msxImportProgressBar');
-    const summaryDiv = document.getElementById('msxImportSummary');
-    
-    // Reset UI
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Importing...';
-    
-    progressDiv.classList.remove('sb-admin-d-none');
-    resultsDiv.classList.add('sb-admin-d-none');
-    errorDiv.classList.add('sb-admin-d-none');
-    statusText.textContent = 'Starting sync...';
-    progressPercent.textContent = '0%';
-    progressBar.style.width = '0%';
-    
-    try {
-        const response = await fetch('/api/msx/accounts/sync', {
-            method: 'POST',
-            headers: { 'Accept': 'text/event-stream' },
-        });
-        
-        if (!response.ok) {
-            // Try to extract a useful error message from the response body
-            let detail = '';
-            try {
-                const body = await response.json();
-                detail = body.error || body.message || '';
-            } catch (_) {
-                try { detail = (await response.text()).slice(0, 200); } catch (_) {}
-            }
-            throw new Error(detail || `HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop();
-            
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    try {
-                        const data = JSON.parse(line.slice(6));
-                        
-                        if (data.error) {
-                            // Show error immediately — don't throw (inner catch would swallow it)
-                            progressDiv.classList.add('sb-admin-d-none');
-                            errorDiv.classList.remove('sb-admin-d-none');
-                            document.getElementById('msxImportErrorText').textContent = data.error;
-                            reader.cancel();
-                            return;
-                        }
-                        
-                        if (data.message) {
-                            statusText.textContent = data.message;
-                        }
-                        
-                        if (data.progress !== undefined) {
-                            progressPercent.textContent = `${data.progress}%`;
-                            progressBar.style.width = `${data.progress}%`;
-                        }
-                        
-                        if (data.complete && data.summary) {
-                            progressDiv.classList.add('sb-admin-d-none');
-                            resultsDiv.classList.remove('sb-admin-d-none');
-                            loadSyncStatus('accounts', 'accountsSyncStatus');
-                            
-                            const s = data.summary;
-                            summaryDiv.innerHTML = `
+const accountsSync = window.SBSyncProgress.create(
+    document.querySelector('[data-sb-sync-progress="accounts"]'), {
+        onComplete: job => {
+            const s = job.result.summary;
+            if (!s) throw new Error('Account sync did not return its summary.');
+            document.getElementById('msxImportResults').classList.remove('sb-admin-d-none');
+            loadSyncStatus('accounts', 'accountsSyncStatus');
+            document.getElementById('msxImportSummary').innerHTML = `
                                 <ul class="sb-admin-mb-0">
                                     <li>PODs: ${s.pods_created || 0} created</li>
                                     <li>Territories: ${s.territories_created || 0} created</li>
@@ -2191,39 +2142,15 @@ document.getElementById('importFromMsxBtn').addEventListener('click', async func
                                 <a href="{{ url_for('customers.customers_list') }}" class="sb-admin-command sb-admin-btn-sm sb-admin-btn-outline-primary sb-admin-mt-2">
                                     <i class="bi bi-people"></i> View Customers
                                 </a>
-                            `;
-
-                            // Auto-trigger favicon fetch after account sync
-                            fetch('/api/admin/fetch-favicons', { method: 'POST' })
-                                .then(r => r.json())
-                                .then(d => {
-                                    if (d.success && d.fetched > 0) {
-                                        const faviconStatus = document.getElementById('faviconStatus');
-                                        if (faviconStatus) {
-                                            faviconStatus.style.display = 'block';
-                                            faviconStatus.className = 'sb-admin-mt-2 sb-admin-small sb-admin-text-success';
-                                            faviconStatus.textContent = `Auto-fetched ${d.fetched} favicons after account sync.`;
-                                        }
-                                    }
-                                })
-                                .catch(() => {});  // Silent fail - not critical
-                        }
-                    } catch (parseError) {
-                        if (parseError.message !== 'Unexpected end of JSON input') {
-                            console.error('SSE parse error:', parseError);
-                        }
-                    }
-                }
-            }
-        }
-    } catch (error) {
-        progressDiv.classList.add('sb-admin-d-none');
-        errorDiv.classList.remove('sb-admin-d-none');
-        document.getElementById('msxImportErrorText').textContent = error.message;
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Now';
-    }
+                `;
+            _faviconAction('/api/admin/fetch-favicons',
+                document.getElementById('fetchFaviconsBtn'));
+        },
+    });
+document.getElementById('importFromMsxBtn').addEventListener('click', function() {
+    if (window.isVpnBlocked?.()) { window.showVpnBanner(); return; }
+    document.getElementById('msxImportResults').classList.add('sb-admin-d-none');
+    accountsSync.start().catch(() => {});
 });
 
 // Setup Wizard chevron rotation
@@ -3595,123 +3522,10 @@ function loadSyncStatus(syncType, elementId) {
 }
 
 function runAdminMilestoneSync() {
-    let terminalEvent = false;
-    let completed = false;
-    const btn = document.getElementById('adminMilestoneSyncBtn');
-    const progressDiv = document.getElementById('adminMilestoneSyncProgress');
-    const resultDiv = document.getElementById('adminMilestoneSyncResult');
-    const statusText = document.getElementById('adminMilestoneSyncText');
-    const pctText = document.getElementById('adminMilestoneSyncPercent');
-    const bar = document.getElementById('adminMilestoneSyncBar');
-
-    btn.disabled = true;
-    btn.innerHTML = '<span class="sb-admin-busy sb-admin-busy-small"></span> Syncing...';
-    progressDiv.classList.remove('sb-admin-d-none');
-    resultDiv.classList.add('sb-admin-d-none');
-    bar.style.width = '0%';
-    pctText.textContent = '0%';
-    statusText.textContent = 'Starting sync...';
-
-    return fetch('/api/milestone-tracker/sync', {
-        method: 'POST',
-        headers: { 'Accept': 'text/event-stream' }
-    }).then(response => {
-        if (!response.ok) throw new Error(`Could not start sync (HTTP ${response.status}).`);
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        function processEvents(text) {
-            buffer += text;
-            const events = buffer.split('\n\n');
-            buffer = events.pop();
-
-            for (const block of events) {
-                if (!block.trim()) continue;
-                let eventType = 'message';
-                let eventData = '';
-                for (const line of block.split('\n')) {
-                    if (line.startsWith('event: ')) eventType = line.slice(7);
-                    else if (line.startsWith('data: ')) eventData = line.slice(6);
-                }
-                if (!eventData) continue;
-                try {
-                    handleSyncEvent(eventType, JSON.parse(eventData));
-                } catch (e) { /* skip parse errors */ }
-            }
-        }
-
-        function read() {
-            return reader.read().then(({ done, value }) => {
-                if (done) {
-                    if (buffer.trim()) processEvents('\n\n');
-                    if (completed) onSyncDone();
-                    else if (!terminalEvent) onSyncError('The sync connection ended before completion.');
-                    return;
-                }
-                processEvents(decoder.decode(value, { stream: true }));
-                return read();
-            });
-        }
-        return read();
-    }).catch(err => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Now';
-        progressDiv.classList.add('sb-admin-d-none');
-        resultDiv.classList.remove('sb-admin-d-none');
-        resultDiv.innerHTML = '<span class="sb-admin-text-danger"><i class="bi bi-exclamation-triangle"></i> Sync failed: ' + err.message + '</span>';
-    });
-
-    function handleSyncEvent(type, data) {
-        if (terminalEvent) return;
-        if (type === 'progress') {
-            const pct = data.progress != null ? data.progress : Math.round((data.current / data.total) * 100);
-            bar.style.width = pct + '%';
-            pctText.textContent = pct + '%';
-            statusText.textContent = data.customer ? ('Syncing: ' + data.customer) : ('Syncing ' + data.current + ' of ' + data.total + '...');
-        } else if (type === 'start') {
-            statusText.textContent = data.message || ('Syncing milestones for ' + data.total + ' customers...');
-        } else if (type === 'vpn_blocked') {
-            onSyncError('VPN or network issue - cannot reach MSX. Make sure you are connected to corpnet or VPN.');
-        } else if (type === 'complete') {
-            if (data.success === false) {
-                onSyncError(data.message || (data.errors || []).join('; ') || 'Sync failed.');
-                return;
-            }
-            terminalEvent = true;
-            completed = true;
-            bar.style.width = '100%';
-            pctText.textContent = '100%';
-            bar.classList.remove('sb-admin-progress-bar-animated');
-        } else if (type === 'error') {
-            onSyncError(data.message || 'Sync failed.');
-        }
-    }
-
-    function onSyncDone() {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-circle"></i> Done!';
-        btn.classList.remove('sb-admin-btn-primary');
-        btn.classList.add('sb-admin-btn-success');
-        progressDiv.classList.add('sb-admin-d-none');
-        resultDiv.classList.remove('sb-admin-d-none');
-        resultDiv.innerHTML = '<span class="sb-admin-text-success"><i class="bi bi-check-circle"></i> Milestone sync complete.</span>';
-        loadMilestoneSyncStatus();
-        setTimeout(() => {
-            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Now';
-            btn.classList.remove('sb-admin-btn-success');
-            btn.classList.add('sb-admin-btn-primary');
-        }, 3000);
-    }
-
-    function onSyncError(msg) {
-        terminalEvent = true;
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Now';
-        progressDiv.classList.add('sb-admin-d-none');
-        resultDiv.classList.remove('sb-admin-d-none');
-        resultDiv.innerHTML = '<span class="sb-admin-text-danger"><i class="bi bi-exclamation-triangle"></i> ' + msg + '</span>';
-    }
+    return window.SBSyncProgress.create(
+        document.querySelector('[data-sb-sync-progress="milestones"]'), {
+            onComplete: () => loadMilestoneSyncStatus(),
+        }).start().catch(() => {});
 }
 
 // =============================================================================
@@ -3719,122 +3533,10 @@ function runAdminMilestoneSync() {
 // =============================================================================
 
 function runAdminMarketingSync() {
-    let terminalEvent = false;
-    let completed = false;
-    const btn = document.getElementById('adminMarketingSyncBtn');
-    const progressDiv = document.getElementById('adminMarketingSyncProgress');
-    const resultDiv = document.getElementById('adminMarketingSyncResult');
-    const statusText = document.getElementById('adminMarketingSyncText');
-    const pctText = document.getElementById('adminMarketingSyncPercent');
-    const bar = document.getElementById('adminMarketingSyncBar');
-
-    btn.disabled = true;
-    btn.innerHTML = '<span class="sb-admin-busy sb-admin-busy-small"></span> Syncing...';
-    progressDiv.classList.remove('sb-admin-d-none');
-    resultDiv.classList.add('sb-admin-d-none');
-    bar.style.width = '0%';
-    pctText.textContent = '0%';
-    statusText.textContent = 'Starting sync...';
-
-    return fetch('/api/msx/sync-marketing', {
-        method: 'POST',
-        headers: { 'Accept': 'text/event-stream' }
-    }).then(response => {
-        if (!response.ok) throw new Error(`Could not start sync (HTTP ${response.status}).`);
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        function processEvents(text) {
-            buffer += text;
-            const events = buffer.split('\n\n');
-            buffer = events.pop();
-            for (const block of events) {
-                if (!block.trim()) continue;
-                let eventType = 'message';
-                let eventData = '';
-                for (const line of block.split('\n')) {
-                    if (line.startsWith('event: ')) eventType = line.slice(7);
-                    else if (line.startsWith('data: ')) eventData = line.slice(6);
-                }
-                if (!eventData) continue;
-                try {
-                    handleMktEvent(eventType, JSON.parse(eventData));
-                } catch (e) { /* skip parse errors */ }
-            }
-        }
-
-        function read() {
-            return reader.read().then(({ done, value }) => {
-                if (done) {
-                    if (buffer.trim()) processEvents('\n\n');
-                    if (completed) onMktDone();
-                    else if (!terminalEvent) onMktError('The sync connection ended before completion.');
-                    return;
-                }
-                processEvents(decoder.decode(value, { stream: true }));
-                return read();
-            });
-        }
-        return read();
-    }).catch(err => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Now';
-        progressDiv.classList.add('sb-admin-d-none');
-        resultDiv.classList.remove('sb-admin-d-none');
-        resultDiv.innerHTML = '<span class="sb-admin-text-danger"><i class="bi bi-exclamation-triangle"></i> Sync failed: ' + err.message + '</span>';
-    });
-
-    function handleMktEvent(type, data) {
-        if (terminalEvent) return;
-        if (type === 'progress') {
-            const pct = data.progress != null ? data.progress : Math.round((data.current / data.total) * 100);
-            bar.style.width = pct + '%';
-            pctText.textContent = pct + '%';
-            statusText.textContent = data.customer ? ('Syncing: ' + data.customer) : ('Syncing ' + data.current + ' of ' + data.total + '...');
-        } else if (type === 'start') {
-            statusText.textContent = 'Syncing marketing data for ' + data.total + ' customers...';
-        } else if (type === 'vpn_blocked') {
-            onMktError('VPN or network issue - cannot reach MSX.');
-        } else if (type === 'complete') {
-            if (data.success === false) {
-                onMktError(data.message || (data.errors || []).join('; ') || 'Sync failed.');
-                return;
-            }
-            terminalEvent = true;
-            completed = true;
-            bar.style.width = '100%';
-            pctText.textContent = '100%';
-            bar.classList.remove('sb-admin-progress-bar-animated');
-        } else if (type === 'error') {
-            onMktError(data.message || 'Sync failed.');
-        }
-    }
-
-    function onMktDone() {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-circle"></i> Done!';
-        btn.classList.remove('sb-admin-btn-primary');
-        btn.classList.add('sb-admin-btn-success');
-        progressDiv.classList.add('sb-admin-d-none');
-        resultDiv.classList.remove('sb-admin-d-none');
-        resultDiv.innerHTML = '<span class="sb-admin-text-success"><i class="bi bi-check-circle"></i> Marketing sync complete.</span>';
-        loadSyncStatus('marketing', 'marketingSyncStatus');
-        setTimeout(() => {
-            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Now';
-            btn.classList.remove('sb-admin-btn-success');
-            btn.classList.add('sb-admin-btn-primary');
-        }, 3000);
-    }
-
-    function onMktError(msg) {
-        terminalEvent = true;
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Now';
-        progressDiv.classList.add('sb-admin-d-none');
-        resultDiv.classList.remove('sb-admin-d-none');
-        resultDiv.innerHTML = '<span class="sb-admin-text-danger"><i class="bi bi-exclamation-triangle"></i> ' + msg + '</span>';
-    }
+    return window.SBSyncProgress.create(
+        document.querySelector('[data-sb-sync-progress="marketing"]'), {
+            onComplete: () => loadSyncStatus('marketing', 'marketingSyncStatus'),
+        }).start().catch(() => {});
 }
 
 // =============================================================================
@@ -4095,6 +3797,8 @@ async function runFYSync(suffix) {
     const progressBar = document.getElementById('fySyncProgressBar' + suffix);
     const resultsDiv = document.getElementById('fySyncResults' + suffix);
     const errorDiv = document.getElementById('fySyncError' + suffix);
+    if (syncSection.dataset.syncRunning === 'true') return;
+    syncSection.dataset.syncRunning = 'true';
 
     syncSection.style.display = '';
     progressDiv.style.display = '';
@@ -4124,47 +3828,22 @@ async function runFYSync(suffix) {
             throw new Error(detail || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let syncCompleted = false;
+        await readAdminSync(response, async (type, data) => {
+            if (data.message) statusText.textContent = data.message;
+            if (data.progress !== undefined) {
+                progressPercent.textContent = `${data.progress}%`;
+                progressBar.style.width = `${data.progress}%`;
+            }
+            if (data.complete === true && data.summary) {
+                const marked = await fetch('/api/admin/fy/sync-complete', { method: 'POST' });
+                if (!marked.ok) throw new Error('Accounts synced, but FY status could not be saved.');
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop();
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    try {
-                        const data = JSON.parse(line.slice(6));
-
-                        if (data.error) throw new Error(data.error);
-
-                        if (data.message) statusText.textContent = data.message;
-
-                        if (data.progress !== undefined) {
-                            progressPercent.textContent = `${data.progress}%`;
-                            progressBar.style.width = `${data.progress}%`;
-                        }
-
-                        if (data.complete && data.summary) {
-                            syncCompleted = true;
-                            // Mark sync complete on server
-                            await fetch('/api/admin/fy/sync-complete', { method: 'POST' });
-
-                            progressDiv.style.display = 'none';
-                            // Hide the "please wait" alert if present
-                            const waitAlert = document.getElementById('fySyncWait');
-                            if (waitAlert) waitAlert.style.display = 'none';
-                            const s = data.summary;
-                            resultsDiv.style.display = '';
-
-                            // Initial/resume sync — show Continue to homepage
-                            resultsDiv.innerHTML =
+                progressDiv.style.display = 'none';
+                const waitAlert = document.getElementById('fySyncWait');
+                if (waitAlert) waitAlert.style.display = 'none';
+                const s = data.summary;
+                resultsDiv.style.display = '';
+                resultsDiv.innerHTML =
                                 `<div class="sb-admin-notice sb-admin-alert-success">
                                     <h6 class="sb-admin-alert-heading"><i class="bi bi-check-circle"></i> Sync Complete!</h6>
                                     <ul class="sb-admin-mb-2">
@@ -4178,26 +3857,16 @@ async function runFYSync(suffix) {
                                     </button>
                                 </div>`;
 
-                            // Auto-fetch favicons
-                            fetch('/api/admin/fetch-favicons', { method: 'POST' }).catch(() => {});
-                        }
-                    } catch (parseError) {
-                        if (parseError.message !== 'Unexpected end of JSON input') {
-                            throw parseError;
-                        }
-                    }
-                }
+                // The account worker owns meeting sync; this retains the favicon follow-up.
+                fetch('/api/admin/fetch-favicons', { method: 'POST' }).catch(() => {});
             }
-        }
-        if (!syncCompleted) {
-            throw new Error('The sync connection ended before completion. Retry the sync.');
-        }
+        }, true);
     } catch (error) {
         progressDiv.style.display = 'none';
         errorDiv.style.display = '';
         errorDiv.innerHTML =
             `<div class="sb-admin-notice sb-admin-alert-danger">
-                <i class="bi bi-exclamation-triangle"></i> Sync failed: ${error.message}
+                <i class="bi bi-exclamation-triangle"></i> <span data-fy-sync-error></span>
                 <hr class="sb-admin-my-2">
                 <button class="sb-admin-command sb-admin-btn-sm sb-admin-btn-warning" onclick="runFYSync('${suffix}')">
                     <i class="bi bi-arrow-clockwise"></i> Retry Sync
@@ -4206,7 +3875,9 @@ async function runFYSync(suffix) {
                     Skip for now
                 </button>
             </div>`;
+        errorDiv.querySelector('[data-fy-sync-error]').textContent = 'Sync failed: ' + error.message;
     } finally {
+        syncSection.dataset.syncRunning = 'false';
         window.removeEventListener('beforeunload', warnOnLeave);
     }
 }
@@ -4216,6 +3887,7 @@ async function finalizeFY() {
     if (!confirm('FINAL WARNING: This cannot be undone. The archived database is your only backup. Continue?')) return;
 
     const btn = document.getElementById('fyFinalizeBtn');
+    if (btn.disabled) return;
     const progressEl = document.getElementById('fyFinalizeProgress');
     const resultEl = document.getElementById('fyFinalizeResult');
     btn.disabled = true;
@@ -4257,38 +3929,16 @@ async function finalizeFY() {
             throw new Error(detail || `Sync failed: HTTP ${response.status}`);
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let syncSummary = null;
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop();
-            for (const line of lines) {
-                if (!line.startsWith('data: ')) continue;
-                try {
-                    const data = JSON.parse(line.slice(6));
-                    if (data.error) throw new Error(data.error);
+        const syncResult = await readAdminSync(response, (type, data) => {
                     if (data.message) statusText.textContent = data.message;
                     if (data.progress !== undefined) {
                         percentText.textContent = data.progress + '%';
                         bar.style.width = data.progress + '%';
                     }
-                    if (data.complete && data.summary) syncSummary = data.summary;
-                } catch (pe) {
-                    if (pe.message !== 'Unexpected end of JSON input') throw pe;
-                }
-            }
-        }
-
-        if (!syncSummary) {
-            throw new Error('The sync connection ended before completion. Retry the sync.');
-        }
-        await fetch('/api/admin/fy/sync-complete', { method: 'POST' });
+        }, true);
+        const syncSummary = syncResult.summary;
+        const marked = await fetch('/api/admin/fy/sync-complete', { method: 'POST' });
+        if (!marked.ok) throw new Error('Accounts synced, but FY status could not be saved.');
         streamEl.style.display = 'none';
         const custCount = (syncSummary?.customers_created || 0) + (syncSummary?.customers_updated || 0) + (syncSummary?.customers_unchanged || 0);
         setStep(1, CHECK, custCount + ' customers');

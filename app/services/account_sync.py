@@ -1150,7 +1150,7 @@ def sync_accounts_stream(source: str = 'accountteams', skip_aura: bool = False):
             },
         })
 
-        # Kick off the meeting aura in the background now that we have
+        # Kick off the meeting sync in the background now that we have
         # customers in the DB. Onboarding users were getting a calendar
         # full of unmatched ghosts because aura ran (or had run) before
         # the account import completed. Fire-and-forget; aura manages
@@ -1161,7 +1161,7 @@ def sync_accounts_stream(source: str = 'accountteams', skip_aura: bool = False):
                 from app.services.sync_jobs import admit_sync
                 admit_sync('meeting-aura', initiator='followup')
                 logger.info(
-                    "Post-import: meeting aura kicked off in background"
+                    "Post-import: meeting sync kicked off in background"
                 )
             except Exception:
                 # Non-fatal: scheduled aura will still pick this up at 7 AM.

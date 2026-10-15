@@ -307,6 +307,30 @@ pytest --cov=app tests/  # with coverage
 - **Topics:** Display as badge tags with `bg-warning text-dark` styling and tag icon (`<i class="bi bi-tag"></i>`)
 - Maintain consistent badge styling across all views for visual parity
 
+## Discord Notifications
+
+- When the user requests a Discord notification, use the standalone CLI in
+  `C:\dev\GHCPDiscordNotifier`. It is not an MCP tool and does not need to appear
+  in the connected tools list. Do not declare notifications unavailable without
+  checking this tool.
+- Read [the notifier's AGENTS.md](../../GHCPDiscordNotifier/AGENTS.md) before use.
+  Use its existing configuration and default recipient. Do not inspect credentials,
+  reconfigure it, activate another environment, or start a bot/server.
+- Send only when explicitly requested for the current task. These instructions
+  are not standing authorization to notify after every task.
+- Send once when the requested checkpoint is actually verified and ready, before
+  ending the turn. Do not send a belated notification after the user has returned
+  and already received the update, unless they explicitly ask again.
+
+```powershell
+& 'C:\dev\GHCPDiscordNotifier\.venv\Scripts\ghcp-notify.exe' send --project 'SalesBuddy' --status ready --message 'Requested work is verified and ready for your review.'
+```
+
+- Keep the message short and generic. Never send source code, logs, customer data,
+  secrets, or private URLs.
+- Exit `0` means Discord accepted the message, not that the user read it. Report
+  failures honestly. Exit `3` means delivery is uncertain: do not automatically resend.
+
 ## Communication Style
 
 **Tone & Personality:**

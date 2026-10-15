@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Sync Test Console - Sales Buddy{% endblock %}
+{% block title %}Sync Status - Sales Buddy{% endblock %}
 {% block body_class %}sb-page-frame{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
@@ -9,39 +9,121 @@
 <section class="sb-sync-console sb-directory-frame sb-directory-frame-wide"
          data-sb-page-surface data-sb-sync-console>
     <header class="sb-sync-header" data-sb-page-band>
-        <div><h1>Sync Test Console</h1>
+        <div><h1>Sync Status</h1>
             <p>Start a sync, leave this page, and return to the same backend run.</p></div>
-        <button type="button" data-sync-refresh>Check now</button>
+        <div class="sb-sync-header-actions">
+            <label class="sb-sync-show-options">
+                <input type="checkbox" data-sync-show-options> Show options
+            </label>
+        </div>
     </header>
     <p class="sb-sync-worker" data-sb-page-band data-sync-worker role="status">Checking worker...</p>
     <p class="sb-sync-error" data-sb-page-band data-sync-error role="alert" hidden></p>
     <div class="sb-sync-reading" data-sb-page-body tabindex="0" aria-label="Sync operations">
-        {% for key, operation in operations.items() %}
+        <div class="sb-sync-columns" aria-hidden="true">
+            <span>Sync</span><span>Schedule</span><span>Last status</span>
+            <span>Last success</span><span>Start sync</span>
+        </div>
+        {% set labels = {'accounts': 'Account Sync', 'milestones': 'Milestone Sync',
+                         'revenue': 'Revenue Sync'} %}
+        {% for title, description, keys in groups %}
+        <section class="sb-sync-group" aria-labelledby="syncGroup{{ loop.index }}">
+        <header class="sb-sync-group-header">
+            <h2 id="syncGroup{{ loop.index }}">{{ title }}</h2>
+            <p>{{ description }}</p>
+        </header>
+        {% for key in keys %}
+        {% set operation = operations[key] %}
         <article class="sb-sync-row" data-sync-operation="{{ key }}">
-            <div class="sb-sync-identity"><h2>{{ operation.name }}</h2>
+            <div class="sb-sync-identity"><h3>
+                {%- if key in report_endpoints -%}
+                <a href="{{ url_for(report_endpoints[key]) }}">{{ labels.get(key, operation.name) }}</a>
+                {%- else -%}
+                {{ labels.get(key, operation.name) }}
+                {%- endif -%}
+                {% if key in related_pages %}
+                <a class="sb-sync-related-page" href="{{ url_for(related_pages[key][0]) }}">({{ related_pages[key][1] }})</a>
+                {% endif %}
+                </h3>
                 <p>{{ operation.description }}</p>
-                <details><summary>Options</summary>
-                    <label for="syncOptions{{ loop.index }}">Supported options (JSON)</label>
-                    <textarea id="syncOptions{{ loop.index }}" data-sync-options
-                              rows="3" spellcheck="false">{{ operation.defaults|tojson }}</textarea>
-                </details>
+            </div>
+            <div class="sb-sync-schedule" aria-label="Schedule">
+                <span data-sync-schedule>{{ schedules[key].label }}</span>
+                <div class="sb-sync-inspect" data-sync-inspect data-sync-schedule-inspect tabindex="0"
+                     aria-label="{{ labels.get(key, operation.name) }} automatic triggers"
+                     aria-describedby="syncSchedule-{{ key }}"
+                     {% if not schedules[key].triggers %}hidden{% endif %}>
+                    <svg class="sb-sync-inspect-label" viewBox="0 0 16 16"
+                         aria-hidden="true" focusable="false">
+                        <circle cx="8" cy="8" r="6.5"></circle>
+                        <path d="M6.2 6a1.8 1.8 0 0 1 3.6 0c0 1.4-1.8 1.4-1.8 3"></path>
+                        <circle class="sb-sync-inspect-dot" cx="8" cy="11.3" r=".65"></circle>
+                    </svg>
+                    <div class="sb-sync-run-card" id="syncSchedule-{{ key }}">
+                        <strong>Automatic triggers</strong>
+                        <p class="sb-sync-trigger-list" data-sync-schedule-triggers>{{ schedules[key].triggers|join('\n') }}</p>
+                    </div>
+                </div>
             </div>
             <div class="sb-sync-state">
-                <strong data-sync-state>Loading...</strong>
-                <progress max="100" data-sync-progress hidden
-                          aria-label="{{ operation.name }} progress"></progress>
-                <span data-sync-message></span>
-                <small data-sync-recovery hidden></small>
-                <small data-sync-success></small>
-                <small data-sync-run></small>
-                <p class="sb-sync-error" data-sync-row-error role="alert" hidden></p>
+                <strong data-sync-state aria-label="Last status">Loading...</strong>
+                <div class="sb-sync-inspect" data-sync-inspect tabindex="0"
+                     aria-label="{{ labels.get(key, operation.name) }} run details"
+                     aria-describedby="syncRun-{{ key }}">
+                    <svg class="sb-sync-inspect-label" viewBox="0 0 16 16"
+                         aria-hidden="true" focusable="false">
+                        <circle cx="8" cy="8" r="6.5"></circle>
+                        <path d="M6.2 6a1.8 1.8 0 0 1 3.6 0c0 1.4-1.8 1.4-1.8 3"></path>
+                        <circle class="sb-sync-inspect-dot" cx="8" cy="11.3" r=".65"></circle>
+                    </svg>
+                    <div class="sb-sync-run-card" id="syncRun-{{ key }}">
+                        <strong>{{ labels.get(key, operation.name) }}</strong>
+                        <p data-sync-run>No run recorded.</p>
+                        <p data-sync-trigger></p>
+                        <p data-sync-timing></p>
+                        <p data-sync-heartbeat hidden></p>
+                        <p data-sync-message></p>
+                        <p class="sb-sync-recovery" data-sync-recovery hidden></p>
+                        <p data-sync-queued hidden></p>
+                        <a data-sync-details hidden>Open full run details</a>
+                    </div>
+                </div>
             </div>
+            <div class="sb-sync-success" data-sync-success aria-label="Last successful sync">Never</div>
             <div class="sb-sync-actions">
                 <button type="button" data-sync-start>Start sync</button>
-                <button type="button" data-sync-retry hidden>Retry last run</button>
-                <a data-sync-details hidden>Run details</a>
+                <p class="sb-sync-error" data-sync-row-error role="alert" hidden></p>
             </div>
+            <div class="sb-sync-live-progress" data-sync-live-progress hidden>
+                <div class="sb-sync-progress-heading">
+                    <span data-sync-progress-label></span>
+                    <small data-sync-progress-message></small>
+                </div>
+                <progress max="100" data-sync-progress hidden
+                          aria-label="{{ operation.name }} progress"></progress>
+            </div>
+            {% if operation.defaults %}
+            <details class="sb-sync-options" hidden><summary>Options</summary>
+                <label class="sb-sync-options-label" for="syncOptions-{{ key }}">Supported options (JSON)</label>
+                <div class="sb-sync-options-layout">
+                    <div class="sb-sync-options-editor">
+                        <textarea id="syncOptions-{{ key }}" data-sync-options
+                                  aria-describedby="syncHelp-{{ key }}"
+                                  rows="{{ operation.defaults|length + 2 }}"
+                                  spellcheck="false">{{ operation.defaults|tojson(indent=2) }}</textarea>
+                    </div>
+                    <dl class="sb-sync-option-help" id="syncHelp-{{ key }}">
+                        {% for option, default in operation.defaults.items() %}
+                        <dt><code>{{ option }}</code> <span>Default: {{ default|tojson }}</span></dt>
+                        <dd>{{ option_help[key][option] }}</dd>
+                        {% endfor %}
+                    </dl>
+                </div>
+            </details>
+            {% endif %}
         </article>
+        {% endfor %}
+        </section>
         {% endfor %}
     </div>
 </section>

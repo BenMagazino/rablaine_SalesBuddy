@@ -336,8 +336,11 @@ def _run_u2c_import_locked(force: bool = False) -> dict | None:
             except Exception:
                 logger.exception("Error updating U2C import heartbeat")
 
-    heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
-    heartbeat_thread.start()
+    from app.services.job_queue import CURRENT_SYNC_OWNER
+    heartbeat_thread = None
+    if CURRENT_SYNC_OWNER.get() is None:
+        heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
+        heartbeat_thread.start()
 
     try:
         publish_progress({'phase': 'query', 'message': 'Reading the official MSXI U2C baseline.'})
@@ -351,7 +354,8 @@ def _run_u2c_import_locked(force: bool = False) -> dict | None:
         }
     finally:
         heartbeat_stop.set()
-        heartbeat_thread.join()
+        if heartbeat_thread is not None:
+            heartbeat_thread.join()
 
     outcome = result.get('outcome')
     if result.get('success'):

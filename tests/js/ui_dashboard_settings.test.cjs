@@ -39,6 +39,7 @@ function fixture(response) {
     let reply = response || {ok: true, json: async () => ({success: true, items_created: 2})};
     vm.runInNewContext(source, {
         document: {querySelector: () => root, createElement: element},
+        window: {SBJobs: {message: job => job.progress.message}},
         console: {error: (...args) => errors.push(args)},
         fetch: async (url, options) => {
             requests.push({url, options});
@@ -73,7 +74,7 @@ test('each toggle sends exactly its original field and reports confirmed persist
 });
 
 for (const [description, response] of [
-    ['HTTP', {ok: false, status: 503}],
+    ['HTTP', {ok: false, status: 503, json: async () => ({})}],
     ['network', new Error('Network unavailable')],
     ['JSON', {ok: true, json: async () => { throw new Error('Invalid JSON'); }}],
     ['rejected', {ok: true, json: async () => ({success: false, error: '<literal error>'})}],
@@ -127,6 +128,31 @@ test('refresh preserves the POST, reports zero/singular/plural counts and keeps 
         assert.equal(h.result.textContent,
             count + ' action item' + (count === 1 ? '' : 's') + ' created.');
     }
+});
+
+test('Copilot refresh shows durable progress without enabling another start', async () => {
+    let finish;
+    const h = fixture(() => new Promise(resolve => { finish = resolve; }));
+    const pending = h.refresh.handlers.click();
+    h.requests[0].options.onJobProgress({progress: {message: 'Waiting for WorkIQ.'}});
+    assert.equal(h.result.textContent, 'Waiting for WorkIQ.');
+    assert.equal(h.result.dataset.state, 'busy');
+    assert.equal(h.refresh.disabled, true);
+    finish({ok: true, json: async () => ({success: true, items_created: 1})});
+    await pending;
+    assert.equal(h.result.textContent, '1 action item created.');
+    assert.equal(h.refresh.disabled, false);
+});
+
+test('Copilot terminal HTTP failures retain the actual durable job error', async () => {
+    const h = fixture({
+        ok: false, status: 502,
+        json: async () => ({success: false, error: 'WorkIQ authentication expired.'}),
+    });
+    await h.refresh.handlers.click();
+    assert.match(h.result.textContent, /WorkIQ authentication expired/);
+    assert.equal(h.result.dataset.state, 'error');
+    assert.equal(h.refresh.disabled, false);
 });
 
 test('failed or malformed refresh results stay visible and cannot claim success', async () => {

@@ -2921,7 +2921,7 @@ class AlignmentSelection(db.Model):
 
 
 class FabricConsumptionImport(db.Model):
-    """One complete, manually requested Fabric consumption snapshot."""
+    """One complete Fabric consumption snapshot from a manual or scheduled import."""
 
     __tablename__ = 'fabric_consumption_imports'
 

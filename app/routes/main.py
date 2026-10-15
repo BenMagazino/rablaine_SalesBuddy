@@ -50,14 +50,10 @@ def health_check():
         # supervisor is responsible for restarting a dead worker.
         worker = 'unknown'
         try:
-            from app.models import SyncStatus
-            state = SyncStatus.get_status('worker_process').get('state')
-            if state == 'in_progress':
-                worker = 'alive'
-            elif state == 'never_run':
-                worker = 'not_started'
-            else:
-                worker = 'stale'
+            from app.services.sync_jobs import worker_health
+            health = worker_health()
+            worker = 'alive' if health['alive'] else (
+                'stale' if health['heartbeat_at'] else 'not_started')
         except Exception:
             worker = 'unknown'
 

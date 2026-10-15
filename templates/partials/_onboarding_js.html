@@ -476,6 +476,95 @@
                     return true;
                 }
 
+                function showOnboardingJobProgress(name, job) {
+                    const progress = job.progress || {};
+                    const message = window.SBJobs?.message?.(job) || progress.message;
+                    setPhaseProgress(name, progress.percent, message);
+                }
+
+                // Admission is not completion. Only a terminal result can unlock the next phase.
+                async function readOnboardingSync(resp, name, onProgress) {
+                    if (!resp.ok) {
+                        let detail = '';
+                        try {
+                            const body = await resp.clone().json();
+                            detail = body.error || body.message || '';
+                        } catch (_) {
+                            try { detail = (await resp.text()).slice(0, 200); } catch (_) {}
+                        }
+                        throw new Error(detail || ('HTTP ' + resp.status + ': ' + resp.statusText));
+                    }
+                    function checkError(type, data) {
+                        if (type === 'vpn_blocked' || data.vpn_blocked ||
+                            (window.isVpnBlocked && window.isVpnBlocked(data.error || data.message || ''))) {
+                            if (window.showVpnBanner) window.showVpnBanner();
+                        }
+                        if (type === 'error' || type === 'vpn_blocked' || data.success === false ||
+                            (data.error && (name !== 'milestones' || type === 'complete'))) {
+                            throw new Error(data.error || data.message || 'Sync failed');
+                        }
+                    }
+                    if (resp.headers.get('Content-Type')?.includes('json')) {
+                        // The global job observer resolves JSON admissions to a terminal result.
+                        const result = await resp.json();
+                        checkError('complete', result);
+                        if (resp.status === 202 || result.accepted || result.success !== true) {
+                            throw new Error('Sync was admitted but completion could not be confirmed.');
+                        }
+                        return result;
+                    }
+                    if (!resp.body) throw new Error('Sync returned no observation stream.');
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    function readBlock(block) {
+                        let type = '';
+                        const dataLines = [];
+                        for (const line of block.split('\n')) {
+                            if (line.startsWith('event:')) type = line.slice(6).trim();
+                            if (line.startsWith('data:')) dataLines.push(line.slice(5).replace(/^ /, ''));
+                        }
+                        if (!dataLines.length) return null; // Keepalive or comment.
+                        const data = JSON.parse(dataLines.join('\n'));
+                        checkError(type, data);
+                        if (type === 'complete' || data.complete === true) {
+                            if (data.accepted || (data.complete !== true && data.success !== true)) {
+                                throw new Error('Sync completion could not be confirmed.');
+                            }
+                            return data;
+                        }
+                        if (type === 'accepted' || type === 'queued' || data.phase === 'queued') {
+                            setPhaseProgress(name, null, data.message ||
+                                (type === 'accepted' ? 'Sync accepted, waiting for worker...' : 'Sync queued...'));
+                        } else {
+                            onProgress(type, data);
+                        }
+                        return null;
+                    }
+                    try {
+                        while (true) {
+                            const {done, value} = await reader.read();
+                            buffer += done ? decoder.decode() : decoder.decode(value, {stream: true});
+                            buffer = buffer.replace(/\r\n/g, '\n');
+                            let boundary;
+                            while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+                                const block = buffer.slice(0, boundary);
+                                buffer = buffer.slice(boundary + 2);
+                                const terminal = readBlock(block);
+                                if (terminal) return terminal;
+                            }
+                            if (done) {
+                                const terminal = readBlock(buffer);
+                                if (terminal) return terminal;
+                                throw new Error('Sync observation ended before completion. The sync may still be running; check Sync Status before retrying.');
+                            }
+                        }
+                    } finally {
+                        try { await reader.cancel(); } catch (_) {}
+                        reader.releaseLock();
+                    }
+                }
+
                 async function runAccounts() {
                     setPhaseState('accounts', 'running', 'Connecting...');
                     setPhaseProgress('accounts', 0);
@@ -487,62 +576,15 @@
                         const resp = await fetch('/api/msx/accounts/sync', {
                             method: 'POST',
                             headers: { 'Accept': 'text/event-stream' },
+                            onJobProgress: job => showOnboardingJobProgress('accounts', job),
                         });
-                        if (!resp.ok) {
-                            // Try to extract a useful error message from the response body
-                            let detail = '';
-                            try {
-                                const body = await resp.json();
-                                detail = body.error || body.message || '';
-                            } catch (_) {
-                                try { detail = (await resp.text()).slice(0, 200); } catch (_) {}
+                        const result = await readOnboardingSync(resp, 'accounts', (type, data) => {
+                            if (data.message) setPhaseProgress('accounts', null, data.message);
+                            if (typeof data.progress === 'number') {
+                                setPhaseProgress('accounts', data.progress);
                             }
-                            throw new Error(detail || ('HTTP ' + resp.status + ': ' + resp.statusText));
-                        }
-                        const reader = resp.body.getReader();
-                        const decoder = new TextDecoder();
-                        let buffer = '';
-                        let finalSummary = null;
-
-                        while (true) {
-                            const { done, value } = await reader.read();
-                            if (done) break;
-                            buffer += decoder.decode(value, { stream: true });
-                            const lines = buffer.split('\n');
-                            buffer = lines.pop();
-                            for (const line of lines) {
-                                if (!line.startsWith('data: ')) continue;
-                                try {
-                                    const data = JSON.parse(line.slice(6));
-
-                                    if (data.error) {
-                                        // Show VPN banner if this is an IP-blocked error
-                                        if (data.vpn_blocked || (window.isVpnBlocked && window.isVpnBlocked(data.error))) {
-                                            window.showVpnBanner();
-                                        }
-                                        throw new Error(data.error);
-                                    }
-
-                                    if (data.message) {
-                                        // Check SSE messages for VPN block indicators
-                                        if (window.isVpnBlocked && window.isVpnBlocked(data.message)) {
-                                            window.showVpnBanner();
-                                        }
-                                        setPhaseProgress('accounts', null, data.message);
-                                    }
-
-                                    if (data.progress !== undefined) {
-                                        setPhaseProgress('accounts', data.progress);
-                                    }
-
-                                    if (data.complete && data.summary) {
-                                        finalSummary = data.summary;
-                                    }
-                                } catch (parseErr) {
-                                    if (parseErr.message && !parseErr.message.includes('JSON')) throw parseErr;
-                                }
-                            }
-                        }
+                        });
+                        const finalSummary = result.summary || result;
 
                         accountsImported = true;
 
@@ -587,11 +629,6 @@
                 }
 
                 // --- Import Milestones ---
-                // The milestone sync endpoint uses named SSE events:
-                //   event: start\ndata: {"total": N}
-                //   event: progress\ndata: {"current":1, "total":N, "customer":"...", "status":"ok"}
-                //   event: complete\ndata: {"synced":N, "created":N, ...}
-                // We need to parse both the 'event:' and 'data:' lines.
                 async function runMilestones() {
                     setPhaseState('milestones', 'running', 'Connecting...');
                     setPhaseProgress('milestones', 0);
@@ -602,63 +639,34 @@
                     try {
                         const resp = await fetch('/api/milestone-tracker/sync', {
                             method: 'POST',
-                            headers: { 'Accept': 'text/event-stream' }
+                            headers: { 'Accept': 'text/event-stream' },
+                            onJobProgress: job => showOnboardingJobProgress('milestones', job),
                         });
-                        if (!resp.ok) throw new Error('HTTP ' + resp.status + ': ' + resp.statusText);
-                        const reader = resp.body.getReader();
-                        const decoder = new TextDecoder();
-                        let buffer = '';
-                        let completeSummary = null;
-
-                        while (true) {
-                            const { done, value } = await reader.read();
-                            if (done) break;
-                            buffer += decoder.decode(value, { stream: true });
-
-                            // SSE events are separated by double newlines
-                            const blocks = buffer.split('\n\n');
-                            buffer = blocks.pop(); // keep incomplete block
-
-                            for (const block of blocks) {
-                                if (!block.trim()) continue;
-                                let eventType = '';
-                                let eventData = null;
-                                for (const line of block.split('\n')) {
-                                    if (line.startsWith('event: ')) eventType = line.slice(7).trim();
-                                    else if (line.startsWith('data: ')) {
-                                        try { eventData = JSON.parse(line.slice(6)); } catch(e) {}
-                                    }
-                                }
-                                if (!eventData) continue;
-
+                        const completeSummary = await readOnboardingSync(resp, 'milestones',
+                            (eventType, eventData) => {
                                 if (eventType === 'start') {
-                                    setPhaseProgress('milestones', null, 'Syncing ' + (eventData.total || 0) + ' customers...');
+                                    setPhaseProgress('milestones', null, eventData.message ||
+                                        (typeof eventData.total === 'number'
+                                            ? 'Syncing ' + eventData.total + ' customers...'
+                                            : 'Worker started this sync...'));
                                 } else if (eventType === 'progress') {
                                     const pct = eventData.progress != null
                                         ? eventData.progress
-                                        : (eventData.total > 0 ? Math.round(eventData.current / eventData.total * 100) : 0);
+                                        : (eventData.total > 0 && typeof eventData.current === 'number'
+                                            ? Math.round(eventData.current / eventData.total * 100) : null);
                                     let label;
                                     if (eventData.status === 'retrying') {
-                                        label = eventData.customer || 'Timeout, retrying...';
+                                        label = eventData.customer || eventData.message || 'Timeout, retrying...';
                                     } else {
-                                        label = eventData.customer || ('Customer ' + eventData.current);
+                                        label = eventData.customer || eventData.message ||
+                                            (typeof eventData.current === 'number'
+                                                ? 'Customer ' + eventData.current : 'Syncing milestones...');
                                     }
                                     setPhaseProgress('milestones', pct, label);
-                                    // Show VPN banner if a progress error indicates IP block
-                                    if (eventData.error && window.isVpnBlocked && window.isVpnBlocked(eventData.error)) {
-                                        window.showVpnBanner();
-                                    }
-                                } else if (eventType === 'vpn_blocked') {
-                                    // VPN block, show banner and treat as fatal.
-                                    if (window.showVpnBanner) window.showVpnBanner();
-                                    throw new Error(eventData.message || 'IP address is blocked - connect to VPN and retry.');
-                                } else if (eventType === 'complete') {
-                                    completeSummary = eventData;
-                                } else if (eventType === 'error') {
-                                    throw new Error(eventData.message || eventData.error || 'Sync failed');
+                                } else if (eventData.message) {
+                                    setPhaseProgress('milestones', null, eventData.message);
                                 }
-                            }
-                        }
+                            });
 
                         milestonesImported = true;
                         const summaryDiv = document.getElementById('phaseMilestonesSummary');
@@ -677,8 +685,6 @@
                         setPhaseState('milestones', 'done', completeSummary && completeSummary.duration ? 'Done in ' + completeSummary.duration + 's' : 'Done');
                         setWizardProgress(importProgressPct());
                         updateNextButton();
-                        // Kick off background marketing insights sync (fire-and-forget)
-                        fetch('/api/msx/sync-marketing', { method: 'POST' }).catch(() => {});
                         return true;
                     } catch (err) {
                         const mMsg = err.message || 'Connection error during sync';
@@ -697,34 +703,15 @@
                         const resp = await fetch('/api/revenue/sync', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+                            onJobProgress: job => showOnboardingJobProgress('revenue', job),
                             body: JSON.stringify({})
                         });
-                        if (!resp.ok) throw new Error('HTTP ' + resp.status + ': ' + resp.statusText);
-                        const reader = resp.body.getReader();
-                        const decoder = new TextDecoder();
-                        let buffer = '';
-                        let finalResult = null;
-                        let evt = null;
-
-                        while (true) {
-                            const { done, value } = await reader.read();
-                            if (done) break;
-                            buffer += decoder.decode(value, { stream: true });
-                            const lines = buffer.split('\n');
-                            buffer = lines.pop();
-                            for (const line of lines) {
-                                if (line.startsWith('event: ')) { evt = line.slice(7).trim(); continue; }
-                                if (!line.startsWith('data: ')) continue;
-                                let data;
-                                try { data = JSON.parse(line.slice(6)); } catch (e) { continue; }
-                                if (evt === 'error' || data.error) throw new Error(data.error || 'Sync failed');
-                                if (evt === 'complete') { finalResult = data; continue; }
-                                if (data.message) setPhaseProgress('revenue', null, data.message);
-                                if (typeof data.progress === 'number') {
-                                    setPhaseProgress('revenue', data.progress);
-                                }
+                        const finalResult = await readOnboardingSync(resp, 'revenue', (type, data) => {
+                            if (data.message) setPhaseProgress('revenue', null, data.message);
+                            if (typeof data.progress === 'number') {
+                                setPhaseProgress('revenue', data.progress);
                             }
-                        }
+                        });
 
                         revenueImported = true;
                         const summaryDiv = document.getElementById('phaseRevenueSummary');

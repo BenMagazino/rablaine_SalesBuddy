@@ -17,10 +17,8 @@
             <span id="milestoneRefreshLabel">{% if reconciliation.running %}Refreshing MSX{% else %}Refresh MSX Activities{% endif %}</span>
         </button>
     </div>
-    <div class="coverage-caption-text coverage-caption {% if reconciliation.error %}is-danger{% else %}coverage-muted{% endif %}{% if not reconciliation.running and not reconciliation.error %} is-hidden{% endif %}" id="milestoneRefreshStatus">
-        {% if reconciliation.error %}{{ reconciliation.error }}{% elif reconciliation.running %}Syncing activities from MSX...{% endif %}
-    </div>
 </div>
+{{ sync_progress('activity-reconciliation', '#milestoneRefreshButton', 'reconcile-', true) }}
 
 <div id="activityCoverageReading" class="coverage-reading" data-sb-page-body
      role="region" aria-label="Fiscal-year milestone HVA audit" tabindex="0">
@@ -197,7 +195,7 @@
 
 </div>
 <script>
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
     'use strict';
 
     function requestJson(url, options) {
@@ -408,63 +406,18 @@
     var refreshSpinner = document.getElementById('milestoneRefreshSpinner');
     var refreshIcon = document.getElementById('milestoneRefreshIcon');
     var refreshLabel = document.getElementById('milestoneRefreshLabel');
-    var refreshStatus = document.getElementById('milestoneRefreshStatus');
-    var refreshTimer = null;
-
-    function pollRefresh() {
-        requestJson('/api/reports/activity-coverage/reconcile-status').then(function(data) {
-            if (data.running) {
-                refreshStatus.classList.remove('is-hidden', 'is-danger');
-                refreshStatus.classList.add('coverage-muted');
-                refreshStatus.textContent = data.phase === 'syncing'
-                    ? 'Syncing activities from MSX...'
-                    : 'Reconciling activities with meetings...';
-                return;
-            }
-            window.clearInterval(refreshTimer);
-            if (data.error) {
-                refreshButton.disabled = false;
-                refreshSpinner.classList.add('is-hidden');
-                refreshIcon.classList.remove('is-hidden');
-                refreshLabel.textContent = 'Retry MSX Refresh';
-                refreshStatus.classList.remove('is-hidden', 'coverage-muted');
-                refreshStatus.classList.add('is-danger');
-                refreshStatus.textContent = data.error;
-            } else {
-                window.location.reload();
-            }
-        }).catch(function(error) {
-            window.clearInterval(refreshTimer);
-            refreshStatus.classList.remove('is-hidden', 'coverage-muted');
-            refreshStatus.classList.add('is-danger');
-            refreshStatus.textContent = error.message;
+    var refreshSync = window.SBSyncProgress.create(
+        document.querySelector('[data-sb-sync-progress="activity-reconciliation"]'), {
+            onChange: function(job) {
+                var busy = job && ['pending', 'running'].includes(job.status);
+                refreshSpinner.classList.toggle('is-hidden', !busy);
+                refreshIcon.classList.toggle('is-hidden', Boolean(busy));
+                refreshLabel.textContent = busy ? 'Refreshing MSX' : 'Refresh MSX Activities';
+            },
+            onComplete: function() { window.location.reload(); },
         });
-    }
-
     refreshButton.addEventListener('click', function() {
-        refreshButton.disabled = true;
-        refreshSpinner.classList.remove('is-hidden');
-        refreshIcon.classList.add('is-hidden');
-        refreshLabel.textContent = 'Refreshing MSX';
-        requestJson('/api/reports/activity-coverage/reconcile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        }).then(function() {
-            refreshTimer = window.setInterval(pollRefresh, 1200);
-            pollRefresh();
-        }).catch(function(error) {
-            refreshButton.disabled = false;
-            refreshSpinner.classList.add('is-hidden');
-            refreshIcon.classList.remove('is-hidden');
-            refreshLabel.textContent = 'Retry MSX Refresh';
-            refreshStatus.classList.remove('is-hidden');
-            refreshStatus.textContent = error.message;
-        });
+        refreshSync.start().catch(function() {});
     });
-
-    {% if reconciliation.running %}
-    refreshTimer = window.setInterval(pollRefresh, 1200);
-    pollRefresh();
-    {% endif %}
-})();
+});
 </script>

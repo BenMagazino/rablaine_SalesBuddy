@@ -162,6 +162,8 @@ def init_telemetry(app: Flask) -> None:
         """Log the completed request/response to the usage_events table."""
         path = request.path
 
+        if request.blueprint == 'jobs' and request.method in ('GET', 'HEAD'):
+            return response
         if not _should_log(path):
             return response
 

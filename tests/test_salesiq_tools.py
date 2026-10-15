@@ -181,7 +181,7 @@ class TestToolCoverage:
         )
 
     def test_sync_jobs_tool_exists(self):
-        """The sync console and durable job state must have a registered read tool."""
+        """Sync Status and durable job state must have a registered read tool."""
         assert 'get_sync_job_status' in self._tool_names()
 
     def test_whitespace_report_tool_exists(self):

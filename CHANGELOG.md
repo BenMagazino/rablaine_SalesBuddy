@@ -8,10 +8,11 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/14/2026
+## 10/15/2026
 
-- Run regular data syncs independently of the browser, with saved progress, outcomes and safe retry handling.
-- Add Settings > Sync Test Console to start every sync and return to its current status or last result.
+- Keep data syncs running after you leave a page, with saved progress, outcomes and safe recovery.
+- Add Admin Panel > Sync Status to view schedules, start syncs, and follow progress across the app.
+- Run independent syncs together and explain queued work or saves waiting behind a sync.
 
 ## 10/14/2026 - b7b65b93
 

@@ -12,12 +12,14 @@
 </footer>
 {% endblock %}
 {% block content %}
+{% from 'partials/_sync_progress.html' import sync_progress %}
 <section class="sb-fabric" data-sb-page-surface
          data-fabric-report aria-labelledby="fabricTitle"
          data-report-url="{{ url_for('reports.fabric_consumption_data') }}"
          data-import-url="{{ url_for('reports.fabric_consumption_import') }}"
          data-status-url="{{ url_for('reports.fabric_consumption_status') }}">
     {% include 'partials/_fabric_report_header.html' %}
+    {{ sync_progress('fabric', '[data-fabric-import]', 'fabric-') }}
     <div class="sb-fabric-workarea" data-sb-page-body>
         <aside class="sb-fabric-directory" aria-labelledby="fabricAccountsTitle">
             <header><h2 id="fabricAccountsTitle">Customers</h2>

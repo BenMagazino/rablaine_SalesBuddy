@@ -30,9 +30,9 @@ not today's active work.
   The New note/edit form layout is not migrated.
   No push, merge or deployment is authorized.
 
-The approved freshness bar prompted a separate deferred feature:
-[detached data jobs](../PLAN_DETACHED_DATA_JOBS.md). Its in-place launchers are
-planning only, not part of the current read-only bar.
+The approved freshness bar prompted a separate detached data-sync feature,
+now documented in the [feature overview](../../README.md#features). Its in-place
+launchers were planning only at this checkpoint, not part of the read-only bar.
 
 ## Scope and preserved inventory
 
@@ -1905,8 +1905,9 @@ Committed locally as `a6b6253` after user approval.
   overflow. Theme attributes, saved preferences and viewport remain unchanged.
   The actual embed has all 10/27/19 records in a stacked composition, without
   navbar, shell/status or horizontal overflow.
-- A controlled live GET-status 503 displays an alert and recovers through the
-  real Check status command after the interception is removed. The truthful
+- A controlled live GET-status 503 displays an alert and recovers through a
+  status read after the interception is removed. The manual refresh control
+  used for this historical check has since been replaced by automatic polling. The truthful
   live result remains Previous sync incomplete, not a fabricated successful
   sync inferred from import history. No live sync, preference POST, notice
   DELETE or media activation is performed; those paths are isolated tests.

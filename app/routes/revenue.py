@@ -184,7 +184,7 @@ def revenue_analyze():
     from app.services.sync_jobs import SyncAdmissionError, admit_sync
     try:
         admit_sync('revenue-analysis')
-        flash('Revenue analysis queued. Follow its progress in the Sync Test Console.', 'success')
+        flash('Revenue analysis queued. Follow its progress on the Sync Status page.', 'success')
     except SyncAdmissionError as exc:
         flash(str(exc), 'warning')
     return redirect(url_for('jobs.sync_console'))

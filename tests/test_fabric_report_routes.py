@@ -111,7 +111,7 @@ def test_fabric_views_share_header_navigation_and_manual_import(client, view):
     assert markup.select_one('.sb-fabric-tab-band [data-fabric-progress]')
     assert markup.select_one('.sb-fabric-import-status') is None
     assert markup.select_one('[data-fabric-import-error][role="alert"]')
-    assert markup.select_one('script[src$="ui-fabric-import.js"]')
+    assert markup.select_one('script[src*="ui-fabric-import.js"]')
     assert 'Manual import only; no scheduled refresh' in markup.select_one('.sb-page-status').text
     if view == 'detail':
         assert markup.select_one('h2 [data-fabric-customer-title]').name == 'a'

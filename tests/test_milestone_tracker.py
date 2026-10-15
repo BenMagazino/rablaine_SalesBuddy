@@ -1287,11 +1287,13 @@ class TestMilestoneTrackerRoutes:
         
         data = response.get_json()
         assert data["success"] is True
-        assert data["async"] is True
+        assert data["accepted"] is True
+        assert data["job_id"] > 0
+        mock_sync.assert_not_called()
     
     @patch('app.services.milestone_sync.sync_all_customer_milestones')
     def test_sync_api_partial_failure(self, mock_sync, client, app, sample_data):
-        """Sync with partial failures should return 207."""
+        """Admission must not report a source outcome before the worker executes."""
         mock_sync.return_value = {
             "success": False,
             "customers_synced": 0,
@@ -1306,7 +1308,8 @@ class TestMilestoneTrackerRoutes:
         response = client.post('/api/milestone-tracker/sync')
         assert response.status_code == 202
         data = response.get_json()
-        assert data["async"] is True
+        assert data["accepted"] is True
+        mock_sync.assert_not_called()
     
     def test_tracker_page_has_sync_button(self, client, app, sample_data):
         """Tracker page should have a sync button."""
@@ -1410,7 +1413,7 @@ class TestSyncCustomerEndpoint:
     
     @patch('app.services.milestone_sync.sync_customer_milestones')
     def test_sync_single_customer(self, mock_sync, client, app, sample_data):
-        """Should sync milestones for a single customer."""
+        """A single-customer refresh admits durable work instead of blocking the request."""
         # customer1 has tpid_url
         mock_sync.return_value = {
             "success": True,
@@ -1423,9 +1426,12 @@ class TestSyncCustomerEndpoint:
         response = client.post(
             f'/api/milestone-tracker/sync-customer/{sample_data["customer1_id"]}'
         )
-        assert response.status_code == 200
+        assert response.status_code == 202
         data = response.get_json()
         assert data["success"] is True
+        assert data["accepted"] is True
+        assert data["job"]["operation"] == "customer-milestones"
+        mock_sync.assert_not_called()
     
     def test_sync_customer_without_tpid_url(self, client, app, sample_data):
         """Should fail if customer has no tpid_url."""
@@ -1583,14 +1589,16 @@ class TestSSESync:
             assert response.status_code == 202
             data = response.get_json()
             assert data["success"] is True
-            assert data["async"] is True
+            assert data["accepted"] is True
+            mock_sync.assert_not_called()
 
     def test_tracker_page_has_progress_bar_html(self, client, app, sample_data):
         """Tracker page should have the progress bar container."""
         response = client.get('/reports/milestone-tracker')
         assert response.status_code == 200
-        assert b'syncProgressBar' in response.data
-        assert b'syncProgressWrap' in response.data
+        assert b'data-sb-sync-progress="milestones"' in response.data
+        assert b'<progress id="syncBar"' in response.data
+        assert b'data-sync-message' in response.data
 
     def test_tracker_page_has_area_filter(self, client, app, sample_data):
         """Tracker page should have the area filter dropdown."""
@@ -2258,21 +2266,24 @@ class TestSyncStatusHeartbeat:
             assert status['state'] == 'complete'
 
     def test_in_progress_banner_on_tracker_page(self, app, client):
-        """Milestone tracker should show 'sync is running' when heartbeat is fresh."""
-        from app.models import SyncStatus, Customer, db
+        """The shared observer receives the actual active job on page arrival."""
+        from app.models import Customer, Job, db
+        from app.services.sync_jobs import admit_sync
         with app.app_context():
             if not Customer.query.first():
                 db.session.add(Customer(name='Banner Test', tpid=88888))
                 db.session.commit()
-            SyncStatus.mark_started('milestones')
-            SyncStatus.update_heartbeat('milestones')
+            job = admit_sync('milestones')
+            job.status = Job.STATUS_RUNNING
+            db.session.commit()
         resp = client.get('/reports/milestone-tracker')
         assert resp.status_code == 200
-        assert b'Milestone sync is running' in resp.data
-        assert b'spinner-border' in resp.data
+        assert b'data-sb-sync-progress="milestones"' in resp.data
+        snapshot = client.get('/api/jobs/operations/milestones').json['job']
+        assert snapshot['status'] == 'running'
 
     def test_incomplete_banner_on_tracker_page(self, app, client):
-        """Milestone tracker should show 'didn\\'t finish' when heartbeat is stale."""
+        """Stale legacy heartbeats cannot create a competing progress implementation."""
         from app.models import SyncStatus, Customer, utc_now, db
         from datetime import timedelta
         with app.app_context():
@@ -2285,7 +2296,8 @@ class TestSyncStatusHeartbeat:
             db.session.commit()
         resp = client.get('/reports/milestone-tracker')
         assert resp.status_code == 200
-        assert b"didn&#39;t finish" in resp.data or b"didn't finish" in resp.data
+        assert b'data-sb-sync-progress="milestones"' in resp.data
+        assert client.get('/api/jobs/operations/milestones').json['job'] is None
 
 
 # ---------------------------------------------------------------------------

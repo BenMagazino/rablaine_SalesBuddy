@@ -152,3 +152,43 @@ test('failed preference writes remain visibly failed without reloading or changi
     assert.equal(h.reloads(), 0);
     assert.equal(h.history.state.sbCustomerDirectory.top, 234);
 });
+
+test('TPID creation stays successful while its admitted data sync progresses or fails', async () => {
+    const h = harness(), dialog = h.field('tpidImportModal');
+    let update, finish;
+    h.window.SBJobs = {
+        message: job => job.progress.message,
+        observe: (id, options) => {
+            assert.equal(id, 42);
+            update = options.onProgress;
+            return new Promise(resolve => { finish = resolve; });
+        },
+    };
+    await dialog.fire('sb:dialog-opened');
+    h.field('tpidInput').value = '77';
+    h.field('tpidLookupBtn').fire('click');
+    h.requests[0].resolve({ok: true, json: async () => ({
+        success: true, account: {tpid: 77, name: 'Exact customer'},
+    })});
+    await settle();
+    h.field('tpidImportBtn').fire('click');
+    h.requests[1].resolve({ok: true, json: async () => ({
+        success: true, customer_id: 18, customer_name: 'Exact customer',
+        sync: {accepted: true, job_id: 42},
+    })});
+    await settle();
+    assert.equal(h.field('tpidStep3').hidden, false);
+    assert.match(h.field('importSuccessDetails').textContent, /sync queued/);
+    update({progress: {message: 'Fetching customer milestones.'}});
+    assert.equal(h.field('importSuccessDetails').textContent, 'Fetching customer milestones.');
+    finish({status: 'failed', error: 'MSX unavailable.'});
+    await settle();
+    assert.equal(h.field('importSuccessMsg').textContent, 'Exact customer imported!');
+    assert.match(h.field('importSuccessDetails').textContent, /sync failed: MSX unavailable/);
+    assert.equal(h.field('tpidImportError').hidden, true);
+    assert.equal(h.field('tpidViewBtn').href, '/customer/18');
+    await dialog.fire('sb:dialog-opened');
+    h.field('importSuccessDetails').textContent = 'Another customer';
+    update({progress: {message: 'Old customer progress.'}});
+    assert.equal(h.field('importSuccessDetails').textContent, 'Another customer');
+});

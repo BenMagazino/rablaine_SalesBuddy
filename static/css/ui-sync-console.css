@@ -2,16 +2,59 @@
 .sb-sync-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 24px; border-bottom: 1px solid var(--sb-ui-line); }
 .sb-sync-header h1 { margin: 0; font-size: 20px; font-weight: 600; }
 .sb-sync-header p, .sb-sync-identity p { margin: 4px 0 0; color: var(--sb-ui-muted); }
+.sb-sync-header-actions { display: flex; align-items: center; gap: 24px; }
+.sb-sync-show-options { display: flex; align-items: center; gap: 8px; white-space: nowrap; cursor: pointer; }
+.sb-sync-show-options input { accent-color: var(--sb-ui-accent); }
 .sb-sync-worker { margin: 0; padding: 8px 24px; background: var(--sb-ui-context); border-bottom: 1px solid var(--sb-ui-line); }
 .sb-sync-console .sb-sync-reading { overflow: auto; scrollbar-gutter: stable; }
-.sb-sync-row { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.3fr) 120px; gap: 24px; padding: 16px 24px; border-bottom: 1px solid var(--sb-ui-line); }
-.sb-sync-identity h2 { margin: 0; font-size: 13px; font-weight: 600; }
-.sb-sync-identity p, .sb-sync-state small, .sb-sync-row label { font-size: 12px; }
-.sb-sync-identity details { margin-top: 8px; }
-.sb-sync-row textarea { box-sizing: border-box; display: block; width: 100%; margin-top: 4px; padding: 6px 8px; background: var(--sb-ui-context); border: 1px solid var(--sb-ui-control-line); color: var(--sb-ui-ink); font: inherit; }
-.sb-sync-state, .sb-sync-actions { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
-.sb-sync-state span, .sb-sync-error { overflow-wrap: anywhere; }
-.sb-sync-state small { color: var(--sb-ui-muted); }
+.sb-sync-group + .sb-sync-group { margin-top: 16px; }
+.sb-sync-group-header { padding: 12px 24px; background: var(--sb-ui-context); border-bottom: 1px solid var(--sb-ui-line); }
+.sb-sync-group-header h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.sb-sync-group-header p { margin: 4px 0 0; color: var(--sb-ui-muted); }
+.sb-sync-columns, .sb-sync-row { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(150px, 1.2fr) minmax(144px, 1fr) minmax(140px, 1fr) minmax(160px, 1.1fr); column-gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-sync-columns { position: sticky; top: 0; z-index: 1; padding-top: 8px; padding-bottom: 8px; background: var(--sb-ui-context); color: var(--sb-ui-muted); font-size: 12px; font-weight: 600; }
+.sb-sync-row { align-items: start; row-gap: 8px; }
+.sb-sync-row > * { min-width: 0; }
+.sb-sync-row:hover { background: var(--sb-ui-raised); }
+.sb-sync-identity h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.sb-sync-identity .sb-sync-related-page { font-weight: 400; }
+.sb-sync-identity p, .sb-sync-row label { font-size: 12px; }
+.sb-sync-schedule, .sb-sync-success { font-size: 12px; }
+.sb-sync-schedule { display: flex; align-items: center; gap: 8px; }
+.sb-sync-trigger-list { white-space: pre-line; }
+.sb-sync-success { font-variant-numeric: tabular-nums; color: var(--sb-ui-muted); }
+.sb-sync-state strong { display: inline-block; font-size: 12px; font-weight: 600; }
+.sb-sync-state { display: flex; align-items: center; gap: 8px; }
+.sb-sync-row[data-state="failed"] .sb-sync-state,
+.sb-sync-row[data-state="interrupted"] .sb-sync-state { color: var(--sb-ui-danger); }
+.sb-sync-row[data-state="running"] .sb-sync-state,
+.sb-sync-row[data-state="saving"] .sb-sync-state { color: var(--sb-ui-accent); }
+.sb-sync-inspect { flex: none; width: 16px; height: 16px; cursor: help; }
+.sb-sync-inspect-label { display: block; width: 16px; height: 16px; fill: none; stroke: var(--sb-ui-muted); stroke-width: 1.2; stroke-linecap: round; }
+.sb-sync-inspect-dot { fill: var(--sb-ui-muted); stroke: none; }
+.sb-sync-run-card { display: none; position: fixed; z-index: 20; width: 340px; max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; padding: 16px; border: 1px solid var(--sb-ui-control-line); background: var(--sb-ui-surface); color: var(--sb-ui-ink); font-size: 12px; cursor: auto; overflow-wrap: anywhere; }
+.sb-sync-run-card p { margin: 8px 0; }
+.sb-sync-inspect:hover .sb-sync-run-card,
+.sb-sync-inspect:focus-within .sb-sync-run-card { display: block; }
+.sb-sync-inspect[data-dismissed="true"] .sb-sync-run-card { display: none; }
+.sb-sync-recovery { color: var(--sb-ui-muted); }
+.sb-sync-options { grid-column: 1 / -1; }
+.sb-sync-options-label { display: block; margin-top: 12px; }
+.sb-sync-options-layout { display: grid; grid-template-columns: minmax(280px, .9fr) minmax(0, 1.3fr); gap: 24px; margin-top: 4px; }
+.sb-sync-options-editor { min-width: 0; }
+.sb-sync-option-help { margin: 0; font-size: 12px; }
+.sb-sync-option-help dt { margin-top: 8px; font-weight: 600; }
+.sb-sync-option-help dt:first-child { margin-top: 0; }
+.sb-sync-option-help dt span { color: var(--sb-ui-muted); font-weight: 400; }
+.sb-sync-option-help dd { margin: 4px 0 0; }
+.sb-sync-row textarea { box-sizing: border-box; display: block; width: 100%; margin-top: 4px; padding: 12px; background: var(--sb-ui-context); border: 1px solid var(--sb-ui-control-line); color: var(--sb-ui-ink); font: 13px/1.7 Consolas, "Courier New", monospace; tab-size: 2; resize: vertical; }
+.sb-sync-options-editor textarea { margin-top: 0; }
+.sb-sync-actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 0; }
+.sb-sync-live-progress { grid-column: 1 / -1; }
+.sb-sync-live-progress small { display: block; min-width: 0; text-align: right; font-size: 12px; color: var(--sb-ui-muted); overflow-wrap: anywhere; }
+.sb-sync-progress-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.sb-sync-progress-heading > span { flex-shrink: 0; }
+.sb-sync-error { overflow-wrap: anywhere; }
 .sb-sync-console progress { width: 100%; height: 10px; accent-color: var(--sb-ui-accent); }
 .sb-sync-console button { padding: 6px 10px; border: 1px solid var(--sb-ui-control-line); background: var(--sb-ui-context); color: var(--sb-ui-ink); font: inherit; cursor: pointer; }
 .sb-sync-console button:hover { background: var(--sb-ui-raised); }

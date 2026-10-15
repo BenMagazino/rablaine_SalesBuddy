@@ -138,16 +138,17 @@
     }
 
     function update(state) {
+        const message = state.job ? window.SBJobs.message(state.job) : '';
         title.textContent = 'Refreshing meetings';
         card.dataset.sbState = 'running';
-        current.hidden = false;
+        current.hidden = Boolean(message);
         progress.hidden = false;
         errorPanel.hidden = true;
         retry.disabled = false;
         date.textContent = state.current_date || 'today';
         const index = state.aura_dates?.indexOf(state.current_date) ?? -1;
-        progress.textContent = index >= 0 ?
-            `Day ${index + 1} of ${state.aura_dates.length}` : '';
+        progress.textContent = message || (index >= 0 ?
+            `Day ${index + 1} of ${state.aura_dates.length}` : '');
         constrainPosition();
     }
 
@@ -187,6 +188,18 @@
         }
         if (version !== generation) return;
         if (!state.running) {
+            if (state.error) {
+                title.textContent = 'Meeting sync failed';
+                card.dataset.sbState = 'error';
+                current.hidden = true;
+                progress.hidden = false;
+                progress.textContent = state.error + ' Check Sync Status for details.';
+                errorPanel.hidden = true;
+                if (show) reveal();
+                if (pollHandle !== null) clearInterval(pollHandle);
+                pollHandle = null;
+                return;
+            }
             hide({reload: !show});
             return;
         }

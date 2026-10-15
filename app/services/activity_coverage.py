@@ -1023,6 +1023,19 @@ def get_population_status(today: date | None = None) -> dict[str, Any]:
     pending = _population_dates(populated_through, today)
     _, fiscal_end = fiscal_year_bounds(today)
     active_job = _active_population_job()
+    error = None
+    if not active_job:
+        latest_job = (
+            Job.query
+            .filter(Job.job_type.in_([_POPULATION_JOB_TYPE, 'sync:calendar-population']))
+            .order_by(Job.id.desc())
+            .first()
+        )
+        error = (
+            latest_job.last_error
+            if latest_job and latest_job.status == Job.STATUS_FAILED
+            else row.last_error if row else None
+        )
     job_dates: list[date] = []
     if active_job and active_job.payload:
         try:
@@ -1038,10 +1051,22 @@ def get_population_status(today: date | None = None) -> dict[str, Any]:
         (value for value in job_dates if populated_through is None or value > populated_through),
         None,
     )
+    if active_job and active_job.job_type == 'sync:calendar-population':
+        from app.services.sync_jobs import job_snapshot
+        live_progress = job_snapshot(active_job)['progress']
+        completed_count = live_progress.get('processed') or 0
+        total_dates = live_progress.get('total') or len(pending)
+        current_date = None
+    else:
+        live_progress = {}
+        total_dates = len(job_dates)
 
     if active_job:
         label = 'Populating'
-        detail = f'{completed_count} of {len(job_dates)} days'
+        detail = live_progress.get('message') or f'{completed_count} of {total_dates} days'
+    elif error:
+        label = 'Retry Calendar Import'
+        detail = error
     elif populated_through is None:
         label = f'Import FY{fiscal_end.year % 100:02d} Calendar'
         detail = f'{len(pending)} weekdays through today'
@@ -1063,7 +1088,7 @@ def get_population_status(today: date | None = None) -> dict[str, Any]:
         'running': bool(active_job),
         'current_date': current_date.isoformat() if current_date else None,
         'completed_count': completed_count,
-        'total_dates': len(job_dates),
+        'total_dates': total_dates,
         'attempt': active_job.attempts if active_job else 0,
         'retrying': bool(active_job and active_job.attempts > 1),
         'label': label,
@@ -1074,7 +1099,7 @@ def get_population_status(today: date | None = None) -> dict[str, Any]:
         'populated_through': populated_through.isoformat() if populated_through else None,
         'last_completed_at': row.last_completed_at.isoformat() if row and row.last_completed_at else None,
         'pending_count': len(pending),
-        'error': row.last_error if row else None,
+        'error': error,
     }
 
 
@@ -1084,7 +1109,7 @@ def _active_population_job() -> Job | None:
         Job.query
         .filter(Job.job_type.in_([_POPULATION_JOB_TYPE, 'sync:calendar-population']))
         .filter(Job.status.in_([Job.STATUS_PENDING, Job.STATUS_RUNNING]))
-        .order_by(Job.id.desc())
+        .order_by((Job.status == Job.STATUS_RUNNING).desc(), Job.id.desc())
         .first()
     )
 

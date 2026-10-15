@@ -276,6 +276,8 @@ def get_enrichment_status() -> dict[str, Any]:
         for status in (STATUS_QUEUED, STATUS_RUNNING, STATUS_COMPLETE, STATUS_FAILED)
     }
     active = _active_job()
+    from app.services.sync_jobs import operation_runs
+    latest, _ = operation_runs('meeting-preparation')
     prepared = counts[STATUS_COMPLETE]
     phase = 'idle'
     if active:
@@ -295,6 +297,7 @@ def get_enrichment_status() -> dict[str, Any]:
         'running_job': bool(active),
         'job_id': active.id if active else None,
         'phase': phase,
+        'error': latest.last_error if latest and latest.status == Job.STATUS_FAILED else None,
     }
 
 

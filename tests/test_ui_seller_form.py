@@ -1,6 +1,7 @@
 """Native seller editor contract, writes and failure retention in the isolated DB."""
 import json
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 import pytest
 from bs4 import BeautifulSoup
@@ -54,7 +55,10 @@ def test_inventory(client, sample_data, editing):
     for surface in [form, soup.select_one('#newTerritoryModal')]:
         assert not surface.select('.card, .btn, .form-control, .form-select, [data-bs-toggle]')
     assert soup.select_one('footer.sb-page-status')
-    assert len(soup.select('script[src$="ui-milestone-form.js"]')) == 1
+    assert sum(urlsplit(script['src']).path.endswith('/ui-milestone-form.js')
+               for script in soup.select('script[src]')) == 1
+    assert sum(urlsplit(script['src']).path.endswith('/ui-save-wait.js')
+               for script in soup.select('script[src]')) == 1
 
 
 @pytest.mark.parametrize('editing', [False, True])

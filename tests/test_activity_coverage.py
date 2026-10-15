@@ -1595,7 +1595,7 @@ def test_start_population_enqueues_one_durable_job(app):
             ).all()
             assert len(jobs) == 1
             assert jobs[0].status == Job.STATUS_PENDING
-            assert jobs[0].active_key == 'sync:meetings'
+            assert jobs[0].active_key.startswith('sync:calendar-population:')
             assert get_handler('sync:calendar-population') is not None
         finally:
             Job.query.filter_by(job_type='sync:calendar-population').delete()

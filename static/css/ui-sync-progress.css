@@ -1,0 +1,10 @@
+.sb-sync-progress-band { padding: 8px 24px; border-bottom: 1px solid var(--sb-ui-line); position: relative; }
+.sb-sync-progress-band [hidden] { display: none !important; }
+.sb-sync-progress-band [data-sync-last] { margin: 0; color: var(--sb-ui-muted); font-size: 12px; }
+.sb-sync-progress-band progress { display: block; width: min(600px, 100%); height: 8px; margin: 10px 0 6px; accent-color: var(--sb-ui-accent); }
+.sb-sync-progress-band [data-sync-message] { margin: 0; font-size: 12px; }
+.sb-sync-progress-band [data-sync-result] { padding-top: 8px; font-size: 12px; }
+.sb-sync-progress-band [data-sync-result] p { margin: 0 0 4px; }
+.sb-sync-progress-band [data-tone="danger"] { color: var(--sb-ui-danger); }
+.sb-sync-progress-band [data-tone="positive"] { color: var(--sb-ui-milestone-rail); }
+.sb-sync-progress-band [data-tone="warning"] { color: var(--sb-ui-warning); }

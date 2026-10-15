@@ -105,6 +105,9 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
     SyncStatus.mark_started(SYNC_TYPE)
 
     def heartbeat():
+        from app.services.job_queue import CURRENT_SYNC_OWNER
+        if CURRENT_SYNC_OWNER.get() is not None:
+            return
         try:
             SyncStatus.update_heartbeat(SYNC_TYPE)
         except Exception:  # noqa: BLE001 - heartbeat is best effort
@@ -172,14 +175,14 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
                    "message": (f"Archived {len(snapshot)} review note(s); keeping "
                                f"{classified['kept_count']}, retiring {classified['dropped_count']}.")}
 
-        yield {"phase": "purge", "progress": 62, "message": "Clearing previous revenue data..."}
+        yield {"phase": "prepare", "progress": 62, "message": "Preparing revenue replacement..."}
         heartbeat()
-        purged = revenue_taxonomy.purge_revenue_data(
-            classified["keep_analysis_ids"], commit=False)
 
         # --- 6. write the new data ------------------------------------------
         yield {"phase": "write", "progress": 65, "message": "Writing revenue data..."}
-        stats = _write_rows(bucket_rows, product_rows, customers)
+        stats = _write_rows(bucket_rows, product_rows, customers,
+                            purge_keep_analysis_ids=classified["keep_analysis_ids"])
+        purged = stats.pop('purged')
         heartbeat()
         yield {"phase": "write", "progress": 85,
                "message": (f"Wrote {stats['bucket_rows']:,} bucket and "
@@ -247,7 +250,8 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
 
 
 def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
-                customers: list[tuple[int, str]]) -> dict[str, Any]:
+                customers: list[tuple[int, str]], *,
+                purge_keep_analysis_ids: set[int] | None = None) -> dict[str, Any]:
     """Aggregate pulled rows at the stored grain and link unambiguous TPIDs.
 
     MSXI groups by TPID and untrimmed labels, while the tables require unique
@@ -265,9 +269,6 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
         filename=f"MSXI API sync {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC",
         record_count=len(bucket_rows),
     )
-    db.session.add(import_record)
-    db.session.flush()
-
     months: set = set()
     seen_customers: set[int] = set()
 
@@ -346,6 +347,13 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
 
     bucket_objs = list(bucket_by_key.values())
     product_objs = list(product_by_key.values())
+    purged = None
+    if purge_keep_analysis_ids is not None:
+        purged = revenue_taxonomy.purge_revenue_data(purge_keep_analysis_ids, commit=False)
+    db.session.add(import_record)
+    db.session.flush()
+    for row in bucket_objs + product_objs:
+        row.last_import_id = import_record.id
     if len(bucket_objs) != len(bucket_rows) or len(product_objs) != len(product_rows):
         logger.info(
             "Revenue rows normalized to stored grain: %s bucket / %s product input rows, "
@@ -364,6 +372,7 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
 
     linked = sum(obj.customer_id is not None for obj in bucket_objs)
     return {
+        **({'purged': purged} if purge_keep_analysis_ids is not None else {}),
         "bucket_rows": len(bucket_objs),
         "product_rows": len(product_objs),
         "months": len(months),

@@ -13,6 +13,7 @@ import json
 import logging
 import threading
 import time as _time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, date, timezone
 from typing import Any
 
@@ -26,6 +27,7 @@ SYNC_HOUR = 7
 # Default forward window for the morning aura, counted in BUSINESS DAYS
 # beyond the start date. So today + 4 = 5 business days total.
 DEFAULT_AURA_DAYS_AHEAD = 4
+MEETING_FETCH_WORKERS = 5
 
 # Prevent concurrent syncs. Held for the full duration of an aura run.
 _sync_lock = threading.Lock()
@@ -44,23 +46,22 @@ _sync_state_lock = threading.Lock()
 
 def get_sync_state_snapshot() -> dict[str, Any]:
     """Return a copy of the current sync state. Cheap, never blocks aura."""
-    from app.models import Job
-    from app.services.sync_jobs import ACTIVE_STATES, job_snapshot
+    from app.services.sync_jobs import ACTIVE_STATES, job_snapshot, operation_runs
 
-    job = Job.query.filter_by(job_type='sync:meeting-aura').order_by(Job.id.desc()).first()
+    job, _ = operation_runs('meeting-aura')
     if job:
         snapshot = job_snapshot(job)
         return {
             'running': job.status in ACTIVE_STATES, 'job_id': job.id,
             'started_at': snapshot['started_at'], 'current_date': snapshot['progress'].get(
                 'current_date'), 'aura_dates': snapshot['progress'].get('aura_dates', []),
-            'error': snapshot['error'],
+            'error': snapshot['error'], 'job': snapshot,
         }
     with _sync_state_lock:
         return dict(_sync_state)
 
 
-def _set_sync_state(**kwargs) -> None:
+def _set_sync_state(progress: dict[str, Any] | None = None, **kwargs) -> None:
     from app.services.sync_jobs import publish_progress
 
     with _sync_state_lock:
@@ -75,6 +76,7 @@ def _set_sync_state(**kwargs) -> None:
         'message': f'Refreshing {current} ({completed + 1}/{len(dates)}).'
         if current else 'Refreshing meeting calendar.',
         **state,
+        **(progress or {}),
     })
 
 
@@ -204,11 +206,71 @@ def sync_meetings_for_date(
     return picker_meetings, None
 
 
+def _sync_aura_dates(aura_strs: list[str]) -> tuple[dict[str, int], dict[str, str]]:
+    """Fetch five dates concurrently, then store each result on the owning worker thread."""
+    from flask import current_app
+    from app.services.meeting_prefetch import fetch_meetings_for_date
+
+    app = current_app._get_current_object()
+    payloads: dict[str, list[dict[str, Any]]] = {}
+    counts: dict[str, int] = {}
+    errors: dict[str, str] = {}
+    total = len(aura_strs)
+
+    def fetch(day_str: str) -> tuple[list[dict[str, Any]] | None, str | None]:
+        """Isolate source context/session from the owning worker's write transaction."""
+        with app.app_context():
+            return fetch_meetings_for_date(day_str)
+
+    def report(phase: str, current: int, day_str: str, message: str) -> None:
+        """Measure completed fetch/save units without estimating external query time."""
+        _set_sync_state(current_date=day_str, progress={
+            'phase': phase, 'current': current, 'total': total * 2,
+            'progress': 100 * current / (total * 2), 'message': message,
+            'fetched_dates': len(payloads), 'failed_dates': len(errors),
+            'total_dates': total,
+        })
+
+    with ThreadPoolExecutor(max_workers=MEETING_FETCH_WORKERS) as executor:
+        futures = {executor.submit(fetch, day_str): day_str for day_str in aura_strs}
+        for completed, future in enumerate(as_completed(futures), 1):
+            day_str = futures[future]
+            try:
+                meetings, error = future.result()
+                if error or meetings is None:
+                    raise RuntimeError(error or 'Meeting source returned no data.')
+                payloads[day_str] = meetings
+            except Exception as exc:
+                logger.exception('Meeting fetch failed for %s', day_str)
+                errors[day_str] = str(exc)
+                counts[day_str] = 0
+            report('fetching', completed, day_str,
+                   f'Received {completed}/{total} date results ({len(errors)} failed).')
+
+    for index, day_str in enumerate(aura_strs):
+        if day_str in payloads:
+            try:
+                meetings, error = sync_meetings_for_date(
+                    day_str, prefetched_meetings=payloads[day_str])
+                counts[day_str] = len(meetings)
+                if error:
+                    errors[day_str] = error
+            except Exception as exc:
+                logger.exception('Meeting save failed for %s', day_str)
+                db.session.rollback()
+                errors[day_str] = str(exc)
+                counts[day_str] = 0
+        saved = index + 1 - sum(day in errors for day in aura_strs[:index + 1])
+        report('calendar', total + index + 1, day_str,
+               f'Saved {saved}/{total} meeting dates ({len(errors)} failed).')
+    return counts, errors
+
+
 def ensure_meeting_aura(
     start: date | None = None,
     days_ahead: int = DEFAULT_AURA_DAYS_AHEAD,
 ) -> tuple[dict[str, int], dict[str, str]]:
-    """Sync today + the next ``days_ahead`` weekdays (Mon-Fri only).
+    """Fetch today and the next weekdays in parallel, then save their caches serially.
 
     The full aura runs under ``_sync_lock``. If the lock is already held
     by another caller, this returns immediately without blocking; callers
@@ -230,8 +292,6 @@ def ensure_meeting_aura(
         already held, ``errors`` will contain a single ``'_status'``
         marker and ``counts`` will be empty.
     """
-    from datetime import timedelta
-
     if start is None:
         start = date.today()
 
@@ -286,30 +346,16 @@ def ensure_meeting_aura(
             current_date=aura_strs[0] if aura_strs else None,
             started_at=datetime.now(timezone.utc).isoformat(),
             aura_dates=list(aura_strs),
+            progress={'phase': 'fetching', 'current': 0, 'total': len(aura_strs) * 2,
+                      'progress': 0,
+                      'message': f'Fetching {len(aura_strs)} meeting dates in parallel.'},
         )
         logger.info(
             "ensure_meeting_aura: starting aura for %d weekday(s): %s",
             len(aura_strs), aura_strs,
         )
 
-        for index, day_str in enumerate(aura_strs):
-            _set_sync_state(current_date=day_str)
-            try:
-                meetings, err = sync_meetings_for_date(day_str)
-            except Exception as exc:  # noqa: BLE001
-                logger.exception("Aura: %s failed", day_str)
-                errors[day_str] = str(exc)
-                counts[day_str] = 0
-                continue
-            counts[day_str] = len(meetings)
-            if err:
-                errors[day_str] = err
-            from app.services.sync_jobs import publish_progress
-            publish_progress({'phase': 'calendar', 'current': index + 1,
-                              'total': len(aura_strs),
-                              'progress': 100 * (index + 1) / len(aura_strs),
-                              'current_date': day_str, 'aura_dates': aura_strs,
-                              'message': f'Calendar: {index + 1}/{len(aura_strs)} days stored.'})
+        counts, errors = _sync_aura_dates(aura_strs)
 
         logger.info(
             "ensure_meeting_aura complete: %d meetings across %d days, %d errors",
@@ -368,7 +414,7 @@ def _run_sync(app) -> None:
             from app.services.sync_jobs import admit_sync
             admit_sync('meeting-aura', initiator='scheduled')
     except Exception:
-        logger.exception("Error in daily meeting aura sync")
+        logger.exception("Error in daily meeting sync")
 
 
 def _run_prefetch_only(app) -> None:
@@ -491,7 +537,7 @@ def _aura_needs_run(app) -> bool:
 
 
 def start_meeting_sync_background(app) -> None:
-    """Catch up on missed meeting aura at startup.
+    """Catch up on missed meeting sync at startup.
 
     If any weekday in the aura window (today + next 7 calendar days) is
     missing a fresh cache, fire a background aura sync. This covers both

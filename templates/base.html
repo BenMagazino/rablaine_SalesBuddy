@@ -27,6 +27,8 @@
     <script src="{{ url_for('static', filename='js/ui-theme.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-tokens.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-save-wait.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-sync-progress.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-table-sort.css') }}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon.png') }}">
@@ -245,7 +247,6 @@
                         </button>
                         <ul class="sb-nav-menu" id="settingsMenu" popover="manual" role="menu" aria-labelledby="gearMenuDropdown">
                             <li><a class="sb-nav-link" href="{{ url_for('main.preferences') }}"><i class="bi bi-sliders"></i> Settings</a></li>
-                            <li><a class="sb-nav-link" href="{{ url_for('jobs.sync_console') }}"><i class="bi bi-arrow-repeat"></i> Sync Test Console</a></li>
                             <li>
                                 <a class="sb-nav-link" href="{{ url_for('admin.admin_panel') }}">
                                     <i class="bi bi-shield-lock"></i> Admin Panel
@@ -664,6 +665,8 @@
 
     <!-- Driver.js for guided product tour -->
     <script src="{{ url_for('static', filename='js/ui-jobs.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui-sync-progress.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui-save-wait.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js" defer></script>
     <!-- Socket.IO sharing client -->
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js" defer></script>

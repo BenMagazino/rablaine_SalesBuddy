@@ -163,6 +163,7 @@ body:not(.sb-page-frame):has(> .sb-app-bar) > #main-content {
     box-shadow: 5px 8px 18px oklch(10% .015 250 / .28);
 }
 .sb-nav-menu::backdrop { background: transparent; }
+#settingsMenu { min-width: 0; }
 .sb-nav-menu > li { list-style: none; }
 .sb-nav-link {
     display: flex;

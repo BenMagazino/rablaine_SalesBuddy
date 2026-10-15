@@ -1,6 +1,6 @@
 # Sales Buddy - Background worker (dev)
 #
-# Runs the heavy background schedulers (MSX / WorkIQ / meeting aura) and the
+# Runs the heavy background schedulers (MSX / WorkIQ / meeting sync) and the
 # durable job-queue consumer in a process separate from the web server, so a
 # slow or hung background job can never wedge the UI.
 #

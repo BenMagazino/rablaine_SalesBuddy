@@ -7,9 +7,7 @@
         <span id="caipRefreshLabel">{% if reconciliation.running %}Refreshing MSX{% else %}Refresh MSX{% endif %}</span>
     </button>
 </div>
-<div class="coverage-caption-text {% if reconciliation.error %}is-danger{% else %}coverage-muted{% endif %}{% if not reconciliation.running and not reconciliation.error %} is-hidden{% endif %}" id="caipRefreshStatus" data-sb-page-band>
-    {% if reconciliation.error %}{{ reconciliation.error }}{% elif reconciliation.running %}Syncing CAIP evidence from MSX...{% endif %}
-</div>
+{{ sync_progress('activity-reconciliation', '#caipRefreshButton', 'reconcile-', true) }}
 
 <div id="activityCoverageReading" class="coverage-reading" data-sb-page-body
      role="region" aria-label="CAIP milestone audit" tabindex="0">
@@ -61,14 +59,12 @@
 
 </div>
 <script>
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
     'use strict';
     var button = document.getElementById('caipRefreshButton');
     var spinner = document.getElementById('caipRefreshSpinner');
     var icon = document.getElementById('caipRefreshIcon');
     var label = document.getElementById('caipRefreshLabel');
-    var status = document.getElementById('caipRefreshStatus');
-    var timer = null;
     var collapseStorageKey = 'salesbuddy_caip_collapsed_fiscal_years';
 
     function loadCollapsedYears() {
@@ -108,55 +104,18 @@
         });
     });
 
-    function showError(message) {
-        button.disabled = false;
-        spinner.classList.add('is-hidden');
-        icon.classList.remove('is-hidden');
-        label.textContent = 'Retry MSX Refresh';
-        status.classList.remove('is-hidden', 'coverage-muted');
-        status.classList.add('is-danger');
-        status.textContent = message;
-    }
-
-    function poll() {
-        fetch('/api/reports/activity-coverage/reconcile-status')
-            .then(function(response) { return response.json(); })
-            .then(function(data) {
-                if (data.running) {
-                    status.classList.remove('is-hidden');
-                    status.textContent = 'Syncing CAIP evidence from MSX...';
-                    return;
-                }
-                window.clearInterval(timer);
-                if (data.error) {
-                    showError(data.error);
-                } else {
-                    window.location.reload();
-                }
-            })
-            .catch(function(error) { window.clearInterval(timer); showError(error.message); });
-    }
-
+    var sync = window.SBSyncProgress.create(
+        document.querySelector('[data-sb-sync-progress="activity-reconciliation"]'), {
+            onChange: function(job) {
+                var busy = job && ['pending', 'running'].includes(job.status);
+                spinner.classList.toggle('is-hidden', !busy);
+                icon.classList.toggle('is-hidden', Boolean(busy));
+                label.textContent = busy ? 'Refreshing MSX' : 'Refresh MSX';
+            },
+            onComplete: function() { window.location.reload(); },
+        });
     button.addEventListener('click', function() {
-        button.disabled = true;
-        spinner.classList.remove('is-hidden');
-        icon.classList.add('is-hidden');
-        label.textContent = 'Refreshing MSX';
-        status.classList.remove('is-hidden');
-        status.textContent = 'Syncing CAIP evidence from MSX...';
-        fetch('/api/reports/activity-coverage/reconcile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        }).then(function(response) {
-            if (!response.ok) { throw new Error('Could not start MSX refresh'); }
-            timer = window.setInterval(poll, 1200);
-            poll();
-        }).catch(function(error) { showError(error.message); });
+        sync.start().catch(function() {});
     });
-
-    {% if reconciliation.running %}
-    timer = window.setInterval(poll, 1200);
-    poll();
-    {% endif %}
-})();
+});
 </script>

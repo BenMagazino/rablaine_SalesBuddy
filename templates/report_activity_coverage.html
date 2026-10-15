@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'partials/_sync_progress.html' import sync_progress %}
 {% block title %}Activity Coverage - Sales Buddy{% endblock %}
 {% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
 {% block extra_css %}
@@ -188,16 +189,9 @@
             </button>
         </div>
     </div>
-    <div id="matchMilestonesProgress" class="coverage-caption-text coverage-caption {% if enrichment.failed %}is-danger{% else %}coverage-muted{% endif %}{% if not enrichment.running_job and not enrichment.prepared and not enrichment.failed %} is-hidden{% endif %}">
-        {% if enrichment.phase == 'syncing_accounts' %}Running improved account sync to prime milestone matching...{% elif enrichment.phase == 'refreshing_msx' %}Refreshing local opportunities and milestones before matching...{% elif enrichment.phase == 'queued' %}Waiting for background worker...{% elif enrichment.running_job %}Preparing {{ enrichment.prepared }} of {{ enrichment.total }} meetings · {{ enrichment.running }} running · {{ enrichment.queued }} queued{% elif enrichment.failed %}{{ enrichment.prepared }} prepared · {{ enrichment.failed }} failed{% elif enrichment.prepared %}{{ enrichment.prepared }} meetings prepared for audit{% endif %}
-    </div>
-    <div id="importProgress" class="coverage-subsection {% if not population.running and not population.error %}is-hidden{% endif %}">
-        <div class="coverage-progress" role="progressbar" aria-label="Fiscal year population progress" style="height: 6px;">
-            <div class="coverage-progress-fill" id="populationProgressBar" style="width: 0"></div>
-        </div>
-        <div class="coverage-caption-text {% if population.error and not population.running %}is-danger{% else %}coverage-muted{% endif %} coverage-caption" id="importProgressText">{{ population.detail }}</div>
-    </div>
 </div>
+{{ sync_progress('meeting-preparation', '#matchMilestonesButton', 'match-', true) }}
+{{ sync_progress('calendar-population', '#populationButton', 'population-', true) }}
 
 <div id="activityCoverageReading" class="coverage-reading" data-sb-page-body
      role="region" aria-label="Meeting audit" tabindex="0">
@@ -391,7 +385,7 @@
 </div>
 
 <script>
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
     'use strict';
 
     function requestJson(url, options) {
@@ -1149,145 +1143,43 @@
         syncExpandAllControl();
     });
 
-    var importButton = document.getElementById('populationButton');
-    var matchMilestonesButton = document.getElementById('matchMilestonesButton');
-    var matchMilestonesSpinner = document.getElementById('matchMilestonesSpinner');
-    var matchMilestonesIcon = document.getElementById('matchMilestonesIcon');
-    var matchMilestonesLabel = document.getElementById('matchMilestonesLabel');
-    var matchMilestonesProgress = document.getElementById('matchMilestonesProgress');
-    var progress = document.getElementById('importProgress');
-    var progressBar = document.getElementById('populationProgressBar');
-    var progressText = document.getElementById('importProgressText');
-    var populationSpinner = document.getElementById('populationSpinner');
-    var populationIcon = document.getElementById('populationIcon');
-    var populationButtonLabel = document.getElementById('populationButtonLabel');
-    var pollTimer = null;
-    var pollFailures = 0;
-    var matchMilestonesTimer = null;
-
-    function showMatchMilestonesRunning(label) {
-        matchMilestonesButton.disabled = true;
-        matchMilestonesSpinner.classList.remove('is-hidden');
-        matchMilestonesIcon.classList.add('is-hidden');
-        matchMilestonesLabel.textContent = label;
-        matchMilestonesProgress.classList.remove('is-hidden', 'is-danger');
-        matchMilestonesProgress.classList.add('coverage-muted');
+    var matchButton = document.getElementById('matchMilestonesButton');
+    matchButton.dataset.syncUnavailable = '{{ 'true' if enrichment.total == 0 else 'false' }}';
+    var populationButton = document.getElementById('populationButton');
+    populationButton.dataset.syncUnavailable = '{{ 'true' if not population.can_start and not population.running else 'false' }}';
+    function bindSync(operation, button, prefix, idleLabel) {
+        return window.SBSyncProgress.create(
+            document.querySelector('[data-sb-sync-progress="' + operation + '"]'), {
+                onChange: function(job) {
+                    var busy = job && ['pending', 'running'].includes(job.status);
+                    document.getElementById(prefix + 'Spinner').classList.toggle('is-hidden', !busy);
+                    document.getElementById(prefix + 'Icon').classList.toggle('is-hidden', Boolean(busy));
+                    button.querySelector('[id$="Label"]').textContent = busy ?
+                        'Syncing...' : idleLabel;
+                },
+                onComplete: function() { window.location.reload(); },
+            });
     }
-
-    function pollMatchMilestones() {
-        requestJson('/api/reports/activity-coverage/match-status').then(function(state) {
-            if (state.phase === 'syncing_accounts') {
-                showMatchMilestonesRunning('Syncing Accounts...');
-                matchMilestonesProgress.textContent = 'Running improved account sync to prime milestone matching...';
-            } else if (state.phase === 'refreshing_msx') {
-                showMatchMilestonesRunning('Refreshing MSX...');
-                matchMilestonesProgress.textContent = 'Refreshing local opportunities and milestones before matching...';
-            } else if (state.phase === 'queued') {
-                showMatchMilestonesRunning('Queued...');
-                matchMilestonesProgress.textContent = 'Waiting for background worker...';
-            } else {
-                showMatchMilestonesRunning('Preparing ' + state.prepared + '/' + state.total);
-                matchMilestonesProgress.textContent = state.prepared + ' of ' + state.total
-                    + ' prepared · ' + state.running + ' running · ' + state.queued + ' queued';
-            }
-            if (!state.running_job) {
-                clearTimeout(matchMilestonesTimer);
-                window.location.reload();
-            } else {
-                matchMilestonesTimer = setTimeout(pollMatchMilestones, 2000);
-            }
-        }).catch(function() {
-            showMatchMilestonesRunning('Reconnecting...');
-            matchMilestonesProgress.textContent = 'Connection interrupted. Preparation continues; reconnecting...';
-            matchMilestonesTimer = setTimeout(pollMatchMilestones, 4000);
-        });
-    }
-
-    matchMilestonesButton.addEventListener('click', function() {
-        var rerun = matchMilestonesButton.dataset.rerun === 'true';
+    var matching = bindSync('meeting-preparation', matchButton, 'matchMilestones',
+        matchButton.dataset.rerun === 'true' ? 'Re-run Matching' : 'Match Milestones');
+    var population = bindSync('calendar-population', populationButton, 'population', 'Import Calendar');
+    matchButton.addEventListener('click', function() {
+        var rerun = matchButton.dataset.rerun === 'true';
         if (rerun && !window.confirm(
             'Re-run matching for all unlogged meetings?\n\n'
             + 'This replaces prior WorkIQ summaries, activity drafts, activity types, '
             + 'and milestone suggestions. Customer matches, dismissed meetings, and '
             + 'linked MSX activities stay unchanged.'
         )) return;
-        showMatchMilestonesRunning('Starting...');
-        matchMilestonesProgress.textContent = rerun
-            ? 'Clearing prior preparation and queueing unlogged meetings...'
-            : 'Queueing open meetings for preparation...';
-        requestJson('/api/reports/activity-coverage/match-milestones', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ force: rerun }),
-        }).then(pollMatchMilestones).catch(function() {
-            matchMilestonesTimer = setTimeout(pollMatchMilestones, 1000);
-        });
+        matching.start({force: rerun}).catch(function() {});
     });
-
-    function showPopulationRunning(label) {
-        importButton.disabled = true;
-        populationSpinner.classList.remove('is-hidden');
-        populationIcon.classList.add('is-hidden');
-        populationButtonLabel.textContent = label;
-        progress.classList.remove('is-hidden');
-    }
-
-    function schedulePoll(delay) {
-        clearTimeout(pollTimer);
-        pollTimer = setTimeout(pollImport, delay);
-    }
-
-    function pollImport() {
-        requestJson('/api/reports/activity-coverage/import-status').then(function(state) {
-            pollFailures = 0;
-            var percent = state.total_dates ? Math.round((state.completed_count / state.total_dates) * 100) : 0;
-            progressBar.style.width = percent + '%';
-            progressBar.parentElement.setAttribute('aria-valuenow', percent);
-            showPopulationRunning('Populating ' + state.completed_count + '/' + state.total_dates);
-            progressText.textContent = state.current_date
-                ? (state.retrying ? 'Retry ' + state.attempt + '/3 for ' : 'Importing ')
-                    + state.current_date + ' · ' + state.completed_count + ' of ' + state.total_dates + ' days'
-                : state.detail;
-            if (!state.running) {
-                clearTimeout(pollTimer);
-                window.location.reload();
-            } else {
-                schedulePoll(1500);
-            }
-        }).catch(function(error) {
-            pollFailures += 1;
-            showPopulationRunning('Reconnecting...');
-            progressText.textContent = 'Connection interrupted. Import continues; reconnecting...';
-            schedulePoll(Math.min(1000 * Math.pow(2, pollFailures - 1), 10000));
-        });
-    }
-
-    importButton.addEventListener('click', function() {
-        showPopulationRunning('Starting...');
-        progressBar.style.width = '0%';
-        progressText.textContent = 'Starting fiscal year population...';
-        requestJson('/api/reports/activity-coverage/populate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        }).then(function() {
-            pollImport();
-        }).catch(function(error) {
-            progressText.textContent = 'Could not confirm start. Checking import status...';
-            schedulePoll(1000);
-        });
+    populationButton.addEventListener('click', function() {
+        population.start().catch(function() {});
     });
-
-    {% if population.running %}
-    importButton.disabled = true;
-    pollImport();
-    {% endif %}
-    {% if enrichment.running_job %}
-    pollMatchMilestones();
-    {% endif %}
     window.addEventListener('pageshow', function(event) {
         if (event.persisted) window.location.reload();
     });
-})();
+});
 </script>
 {% endif %}
 </section>

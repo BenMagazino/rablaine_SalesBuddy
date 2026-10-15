@@ -1,0 +1,16 @@
+.sb-save-wait {
+    position: fixed;
+    inset-inline-end: 24px;
+    inset-block-end: 36px;
+    z-index: 2000;
+    width: min(480px, calc(100vw - 48px));
+    padding: 16px 20px;
+    border: 1px solid var(--sb-ui-line);
+    background: var(--sb-ui-surface);
+    color: var(--sb-ui-ink);
+    box-shadow: 0 4px 20px rgb(0 0 0 / 15%);
+}
+.sb-save-wait[hidden] { display: none; }
+.sb-save-wait strong { display: block; margin-block-end: 8px; }
+.sb-save-wait p { margin: 0; }
+.sb-save-wait p + p { margin-block-start: 12px; color: var(--sb-ui-muted); }

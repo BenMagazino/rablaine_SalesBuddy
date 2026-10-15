@@ -168,9 +168,9 @@ Inventory date: October 2, 2026. Baseline product SHA:
   New note/edit forms remain TODO.
   No live customer records were changed;
   existing user drafts are preserved. No push, merge or deployment is authorized.
-- Deferred follow-up: [detached data jobs](PLAN_DETACHED_DATA_JOBS.md) captures
+- Follow-up: [detached data syncs](../README.md#features) now support
   navigation-independent imports/syncs and an in-place freshness-bar launcher.
-  This is a separate future feature, not implemented in checkpoint 13.
+  This was deferred in checkpoint 13 and delivered later as a separate feature.
 - Separate defect: WorkIQ day lookups return `calendar_lookup_failed` for multiple
   dates. Visible failure feedback is fixed, but lookup investigation is deferred;
   a failed attempt does not make today's cache fresh.
