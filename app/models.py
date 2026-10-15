@@ -1286,6 +1286,8 @@ class Opportunity(db.Model):
     status_reason = db.Column(db.String(100), nullable=True)  # Detailed status: "In Progress", etc.
     estimated_value = db.Column(db.Float, nullable=True)  # Dollar value
     estimated_close_date = db.Column(db.String(30), nullable=True)  # ISO date string from MSX
+    msx_created_on = db.Column(db.DateTime, nullable=True)
+    msx_closed_on = db.Column(db.DateTime, nullable=True)
     owner_name = db.Column(db.String(200), nullable=True)  # Opportunity owner display name
     compete_threat = db.Column(db.String(100), nullable=True)  # Compete threat level
     customer_need = db.Column(db.Text, nullable=True)  # Customer need description
@@ -1314,6 +1316,23 @@ class Opportunity(db.Model):
     
     def __repr__(self) -> str:
         return f'<Opportunity {self.id}: {self.name[:50]}>'
+
+    def cache_msx_dates(self, created_on: str | None, closed_on: str | None) -> None:
+        """Preserve source dates as UTC, never substituting local import timestamps."""
+        import logging
+
+        for field, value in [('msx_created_on', created_on), ('msx_closed_on', closed_on)]:
+            if not value:
+                continue
+            try:
+                parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                setattr(self, field, parsed.astimezone(timezone.utc).replace(tzinfo=None))
+            except (TypeError, ValueError, AttributeError):
+                logging.getLogger(__name__).warning(
+                    "Invalid %s for opportunity %s: %r", field, self.msx_opportunity_id, value,
+                )
 
 
 class Milestone(db.Model):

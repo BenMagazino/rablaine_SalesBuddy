@@ -21,6 +21,16 @@ The MSI installer handles everything: prerequisites (Git, Python, Azure CLI, Nod
 
 ## Features
 
+On customer pages, desktop windows at least 1712px wide add a 320px History rail
+without shrinking the existing 1344px dossier. It follows window width automatically;
+compact windows retain the original layout. Hover or focus an event for a preview,
+then select it to open its record. History includes call notes, engagement creation,
+opportunity creation/closure, and creation/commitment/completion dates for milestones
+where you are on the team. Gaps reflect elapsed time, with long gaps compressed.
+This is recorded activity, not a complete audit trail. Opportunity source dates
+populate through the existing MSX sync or detail refresh, never from local import
+timestamps. Older events load on demand. A compact-window flyout is not included yet.
+
 Press **Ctrl+Space** anywhere to open the Quick Launcher. Type any part of a page
 or report title, then press Enter to open the first match, or use Tab and arrow
 keys to choose another. Escape closes it and returns you to your work.

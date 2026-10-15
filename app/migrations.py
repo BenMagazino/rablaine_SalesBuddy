@@ -1756,6 +1756,8 @@ def _migrate_opportunity_details_columns(db, inspector):
         ('status_reason', 'VARCHAR(100)'),
         ('estimated_value', 'FLOAT'),
         ('estimated_close_date', 'VARCHAR(30)'),
+        ('msx_created_on', 'DATETIME'),
+        ('msx_closed_on', 'DATETIME'),
         ('owner_name', 'VARCHAR(200)'),
         ('compete_threat', 'VARCHAR(100)'),
         ('customer_need', 'TEXT'),

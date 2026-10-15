@@ -818,7 +818,7 @@ def get_milestones_by_account(
             f"msp_forecastcommentsjsonfield,createdon,modifiedon"
             f"&$expand=msp_OpportunityId($select=opportunityid,name,"
             f"msp_opportunitynumber,statecode,statuscode,estimatedvalue,"
-            f"estimatedclosedate,_ownerid_value,customerneed,description,"
+            f"estimatedclosedate,createdon,actualclosedate,_ownerid_value,customerneed,description,"
             f"msp_competethreatlevel)"
             f"&$orderby=msp_name"
         )
@@ -902,6 +902,8 @@ def get_milestones_by_account(
                     "opportunity_status_reason": opp_status_reason,
                     "opportunity_estimated_value": raw_opp.get("estimatedvalue"),
                     "opportunity_estimated_close_date": raw_opp.get("estimatedclosedate"),
+                    "opportunity_created_on": raw_opp.get("createdon"),
+                    "opportunity_closed_on": raw_opp.get("actualclosedate"),
                     "opportunity_owner": opp_owner,
                     "opportunity_customer_need": raw_opp.get("customerneed", ""),
                     "opportunity_description": raw_opp.get("description", ""),
@@ -1053,7 +1055,7 @@ def get_opportunities_by_account(
             f"{CRM_BASE_URL}/opportunities"
             f"?$filter={filter_str}"
             f"&$select=opportunityid,name,msp_opportunitynumber,"
-            f"statecode,statuscode,estimatedvalue,estimatedclosedate,"
+            f"statecode,statuscode,estimatedvalue,estimatedclosedate,createdon,actualclosedate,"
             f"_ownerid_value"
             f"&$orderby=name"
             f"&$top=200"
@@ -1088,6 +1090,8 @@ def get_opportunities_by_account(
                     "status_reason": status_reason,
                     "estimated_value": raw.get("estimatedvalue"),
                     "estimated_close_date": raw.get("estimatedclosedate"),
+                    "created_on": raw.get("createdon"),
+                    "closed_on": raw.get("actualclosedate"),
                     "owner": owner,
                     "url": build_opportunity_url(opp_id),
                 })
@@ -1179,7 +1183,7 @@ def batch_get_opportunities(
                 select=[
                     "opportunityid", "name", "msp_opportunitynumber",
                     "statecode", "statuscode", "estimatedvalue",
-                    "estimatedclosedate", "_ownerid_value",
+                    "estimatedclosedate", "createdon", "actualclosedate", "_ownerid_value",
                     "_parentaccountid_value",
                     "customerneed", "description",
                     "msp_competethreatlevel",
@@ -1219,6 +1223,8 @@ def batch_get_opportunities(
                     "status_reason": status_reason,
                     "estimated_value": raw.get("estimatedvalue"),
                     "estimated_close_date": raw.get("estimatedclosedate"),
+                    "created_on": raw.get("createdon"),
+                    "closed_on": raw.get("actualclosedate"),
                     "owner": owner,
                     "url": build_opportunity_url(opp_id),
                     "customer_need": raw.get("customerneed", ""),
@@ -1528,7 +1534,7 @@ def get_opportunity(opportunity_id: str) -> Dict[str, Any]:
         url = (
             f"{CRM_BASE_URL}/opportunities({opportunity_id})"
             f"?$select=name,msp_opportunitynumber,statecode,statuscode,"
-            f"estimatedvalue,estimatedclosedate,customerneed,description,"
+            f"estimatedvalue,estimatedclosedate,createdon,actualclosedate,customerneed,description,"
             f"msp_forecastcomments,msp_forecastcommentsjsonfield,"
             f"msp_forecastcomments_lastmodifiedon,msp_competethreatlevel,"
             f"_parentaccountid_value,_ownerid_value"
@@ -1603,6 +1609,8 @@ def get_opportunity(opportunity_id: str) -> Dict[str, Any]:
                 "statecode": raw.get("statecode"),
                 "estimated_value": raw.get("estimatedvalue"),
                 "estimated_close_date": raw.get("estimatedclosedate"),
+                "created_on": raw.get("createdon"),
+                "closed_on": raw.get("actualclosedate"),
                 "customer_need": raw.get("customerneed", ""),
                 "description": raw.get("description", ""),
                 "owner": owner,

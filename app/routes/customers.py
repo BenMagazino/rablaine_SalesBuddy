@@ -285,7 +285,25 @@ def customer_view(id):
                           opportunity_count=opportunity_count,
                           favorited_opp_ids=favorited_opp_ids,
                           sorted_opps=sorted_opps,
-                          show_customer_fabric=is_data_se())
+                          show_customer_fabric=is_data_se(),
+                          show_customer_timeline=True)
+
+
+@customers_bp.route('/api/customer/<int:id>/timeline')
+def customer_timeline(id: int):
+    """Read a page of source-dated history without contacting MSX or changing records."""
+    from app.services.customer_timeline import get_customer_timeline
+
+    db.get_or_404(Customer, id)
+    try:
+        limit = int(request.args.get('limit', '100'))
+        offset = int(request.args.get('offset', '0'))
+        return jsonify(get_customer_timeline(id, limit=limit, offset=offset))
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+    except SQLAlchemyError:
+        logger.exception("Could not load timeline for customer %s", id)
+        return jsonify(error='Customer history could not be loaded. Please try again.'), 500
 
 
 @customers_bp.route('/customer/<int:id>/edit', methods=['GET', 'POST'])

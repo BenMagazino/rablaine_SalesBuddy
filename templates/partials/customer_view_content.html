@@ -1,6 +1,9 @@
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-customer-detail.css') }}">
+{% if show_customer_timeline %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-customer-timeline.css') }}">
+{% endif %}
 <section class="sb-customer-view sb-directory-frame sb-directory-frame-wide" data-sb-customer-detail="{{ customer.id }}" data-sb-page-surface>
 
 <!-- Header -->
@@ -466,7 +469,13 @@
         </section>
         </div>
     </div>
+    {% if show_customer_timeline %}
+    {% include 'partials/customer_timeline.html' %}
+    {% endif %}
 </div>
+{% if show_customer_timeline %}
+<script src="{{ url_for('static', filename='js/ui-customer-timeline.js') }}"></script>
+{% endif %}
 <script src="{{ url_for('static', filename='js/ui-customer-detail.js') }}"></script>
 <script>
 (function() {

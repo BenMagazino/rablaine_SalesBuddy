@@ -289,6 +289,30 @@ def search_customers(
 
 
 @tool(
+    'get_customer_timeline',
+    'Read customer history: call notes, engagement creation, opportunity creation/closure, '
+    'and created/committed/completed milestones where I am on the team.',
+    {
+        'type': 'object',
+        'properties': {
+            'customer_id': {'type': 'integer'},
+            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
+            'offset': {'type': 'integer', 'minimum': 0, 'maximum': 100000},
+        },
+        'required': ['customer_id'],
+    },
+)
+def get_customer_timeline(customer_id: int, limit: int = 100, offset: int = 0) -> dict:
+    """Read the same paged event feed used by the customer history rail."""
+    from app.models import Customer, db
+    from app.services.customer_timeline import get_customer_timeline as read_timeline
+
+    if db.session.get(Customer, customer_id) is None:
+        return {'error': f'Customer {customer_id} not found.'}
+    return read_timeline(customer_id, limit=limit, offset=offset)
+
+
+@tool(
     'get_customer_summary',
     'Get an activity summary for a customer including engagements, '
     'milestones, recent notes, and contacts.',

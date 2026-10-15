@@ -2,6 +2,7 @@
 import json
 from datetime import datetime, timezone
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 import pytest
@@ -82,7 +83,8 @@ def test_complete_native_opportunity_body(client, opportunity_id: int, fragment:
     assert len(root.select('a[href^="/milestone/"]')) == 3
     if not fragment:
         assert "sb-page-frame" in soup.body["class"]
-        assert len(soup.select('script[src="/static/js/ui-opportunity-workflow.js"]')) == 1
+        assert sum(urlsplit(script['src']).path == '/static/js/ui-opportunity-workflow.js'
+                   for script in soup.select('script[src]')) == 1
         assert soup.select_one("#opportunityPageState")
 
 
