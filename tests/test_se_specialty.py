@@ -43,7 +43,7 @@ def test_settings_save_and_render_each_specialty(client, specialty_preference, s
     picker = soup.select_one('#settingsSeSpecialty')
     assert picker.select_one('option[selected]')['value'] == specialty
     assert [option.text for option in picker.select('option')] == [
-        'Data SE', 'Core / Infra SE', 'Apps and AI SE', 'Other',
+        'Data SE', 'Infra SE', 'Apps and AI SE', 'Other',
     ]
     assert soup.select_one('label[for="settingsSeSpecialty"]')
     assert soup.select_one('#settingsSeSpecialtyResult')['aria-live'] == 'polite'

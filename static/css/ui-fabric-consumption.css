@@ -57,6 +57,8 @@
 .sb-fabric-customer[aria-current="true"] { background: var(--sb-ui-context);
     box-shadow: inset 3px 0 var(--sb-ui-accent); }
 .sb-fabric-detail { min-width: 0; overflow: auto; padding: 20px; }
+.sb-fabric[data-fabric-customer-id] .sb-fabric-detail { overflow: visible; padding-inline: 0; }
+.sb-fabric[data-fabric-customer-id] .sb-fabric-import-band { padding-inline: 0; }
 .sb-fabric-detail-header { display: flex; align-items: center; justify-content: space-between;
     gap: 12px; margin-bottom: 20px; }
 .sb-fabric-profile-link { color: inherit; text-decoration: none; }

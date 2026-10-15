@@ -12,13 +12,16 @@
         value > 0 && value < 0.01 ? '<0.01%' : `${number(value)}%`;
     const capacityKey = capacity => `${capacity.tenant_id ?? ''}|${capacity.capacity_id}`;
     let report = null;
-    let customerId = new URL(location.href).searchParams.get('customer_id');
-    let restoreCustomer = customerId === null;
+    const embedded = Boolean(root.dataset.fabricCustomerId);
+    let customerId = root.dataset.fabricCustomerId ??
+        new URL(location.href).searchParams.get('customer_id');
+    let restoreCustomer = !embedded && customerId === null;
     const customerPreferenceNotice = textElement('p', '', 'sb-fabric-error');
     customerPreferenceNotice.hidden = true;
     customerPreferenceNotice.setAttribute('role', 'alert');
-    find('customers').before(customerPreferenceNotice);
-    const customerPreference = window.SBFabricPreferences.customerSelection(customerPreferenceNotice);
+    if (!embedded) find('customers').before(customerPreferenceNotice);
+    const customerPreference = embedded ? null :
+        window.SBFabricPreferences.customerSelection(customerPreferenceNotice);
     let selectedCapacity = new URL(location.href).searchParams.get('capacity') ?? '';
     let requestVersion = 0;
     let seriesPage = 0;
@@ -85,7 +88,7 @@
     }
 
     function renderDirectory() {
-        if (!report) return;
+        if (!report || embedded) return;
         const query = find('search').value.trim().toLocaleLowerCase();
         const dataOnly = find('data-only').checked;
         const customers = report.customers.filter(customer =>
@@ -112,7 +115,7 @@
                 const url = new URL(location.href);
                 url.searchParams.set('customer_id', customerId);
                 url.searchParams.delete('capacity');
-                history.replaceState(null, '', url);
+                history.replaceState(history.state, '', url);
                 loadReport();
             });
             list.append(button);
@@ -367,7 +370,9 @@
         find('detail-state').hidden = customer?.status === 'available';
         find('detail-state').textContent = !customer ? 'Choose a customer to inspect its saved snapshot.' :
             customer.status === 'missing_tpid' ? 'This customer needs a valid TPID before it can be imported.' :
-            !report.snapshot ? 'No saved Fabric snapshot yet. Use Import from MSXi to load your customers.' :
+            !report.snapshot ? (embedded ?
+                'No saved Fabric snapshot yet. Use Refresh all customers, or wait for the weekly refresh.' :
+                'No saved Fabric snapshot yet. Use Import from MSXi to load your customers.') :
             'No Fabric measurements returned for this TPID. This does not prove zero usage; source coverage and access may differ.';
         if (!customer || customer.status !== 'available') return;
         find('workload-context').textContent = report.snapshot?.workload_window ?? 'Source workload window';
@@ -460,11 +465,13 @@
             }
             report = payload;
             importController.setImportedAt(report.snapshot?.imported_at);
-            if (report.customer) customerPreference.save(report.customer.id);
+            if (report.customer) customerPreference?.save(report.customer.id);
             find('freshness').textContent = report.snapshot ?
                 `Imported ${new Date(report.snapshot.imported_at).toLocaleString()}` : 'No Fabric snapshot yet';
             renderDirectory();
             renderCustomer();
+            if (embedded) root.closest('[data-sb-customer-detail]')?._customerDetail
+                ?.contentReady('cdFabric');
             const missingCapacity = selectedCapacity && !report.customer?.capacities.some(
                 capacity => capacityKey(capacity) === selectedCapacity);
             showError(missingCapacity ?
@@ -476,15 +483,17 @@
         }
     }
 
-    find('search').addEventListener('input', renderDirectory);
-    window.SBFabricPreferences.bindCheckbox(
-        find('data-only'), 'salesbuddy_fabric_only_imported_customers');
-    find('data-only').addEventListener('change', renderDirectory);
+    if (!embedded) {
+        find('search').addEventListener('input', renderDirectory);
+        window.SBFabricPreferences.bindCheckbox(
+            find('data-only'), 'salesbuddy_fabric_only_imported_customers');
+        find('data-only').addEventListener('change', renderDirectory);
+    }
     find('capacity-select').addEventListener('change', () => {
         selectedCapacity = find('capacity-select').value;
         const url = new URL(location.href);
         url.searchParams.set('capacity', selectedCapacity);
-        history.replaceState(null, '', url);
+        history.replaceState(history.state, '', url);
         showError('');
         seriesPage = 0;
         renderCapacity();
@@ -505,6 +514,16 @@
         operationsPage++;
         renderOperations();
     });
-    const importController = window.SBFabricImport.create(root, loadReport);
-    loadReport();
+    let importController = null;
+    function start() {
+        importController ??= window.SBFabricImport.create(root, loadReport);
+        loadReport();
+    }
+    const panel = embedded ? root.closest('.cd-panel') : null;
+    if (panel) {
+        new MutationObserver(() => {
+            if (!panel.hidden) start();
+        }).observe(panel, {attributes: true, attributeFilter: ['hidden']});
+    }
+    if (!panel?.hidden) start();
 })();

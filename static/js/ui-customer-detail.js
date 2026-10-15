@@ -14,7 +14,7 @@
             || value.newContacts.some(contact => !Array.isArray(contact)
                 || contact.length !== 3 || contact.some(part => typeof part !== 'string'))
             || (value.scrolls && Object.entries(value.scrolls).some(([key, scroll]) =>
-                !['cdWorkstreams', 'cdNotes', 'cdPipeline', 'cdRevenue'].includes(key)
+                !['cdWorkstreams', 'cdNotes', 'cdPipeline', 'cdRevenue', 'cdFabric'].includes(key)
                 || !Number.isFinite(scroll) || scroll < 0))
             || ['context', 'work'].some(key => !Number.isFinite(value[key]) || value[key] < 0)) {
             throw new Error('Invalid customer reading history.');
@@ -35,6 +35,8 @@
         }
         const tabs = [...root.querySelectorAll('[role="tab"]')];
         const panels = [...reading.querySelectorAll('.cd-panel')];
+        const lazyPanels = new Set(panels.filter(panel => panel.hasAttribute('data-cd-lazy'))
+            .map(panel => panel.id));
         const notice = document.createElement('p');
         notice.className = 'cd-notice';
         notice.setAttribute('role', 'alert');
@@ -105,6 +107,13 @@
                 root.querySelector('#contactsNewRows').replaceChildren();
                 save();
             },
+            contentReady(id) {
+                if (!lazyPanels.delete(id)) return;
+                if (tab === id) {
+                    reading.scrollTop = scrolls[id] || 0;
+                    save();
+                }
+            },
         };
         instances.set(root, api);
         root._customerDetail = api;
@@ -112,7 +121,7 @@
         function select(id, remember = true) {
             const button = tabs.find(button => button.getAttribute('aria-controls') === id);
             if (!button) return;
-            scrolls[tab] = reading.scrollTop;
+            if (!lazyPanels.has(tab)) scrolls[tab] = reading.scrollTop;
             tab = id;
             tabs.forEach(button => {
                 const selected = button.getAttribute('aria-controls') === id;
@@ -130,9 +139,10 @@
             });
         }
         function snapshot() {
+            const work = lazyPanels.has(tab) ? scrolls[tab] || 0 : reading.scrollTop;
             return {id: Number(root.dataset.sbCustomerDetail), tab,
-                context: context.scrollTop, work: reading.scrollTop,
-                scrolls: {...scrolls, [tab]: reading.scrollTop},
+                context: context.scrollTop, work,
+                scrolls: {...scrolls, [tab]: work},
                 search: search?.value || '', contextOpen:
                     root.querySelector('#contextForm').style.display !== 'none',
                 contactsOpen: root.querySelector('#contactsEditMode').style.display !== 'none',
@@ -192,7 +202,9 @@
         search?.addEventListener('input', () => { filter(); save(); });
         root.addEventListener('input', save);
         context.addEventListener('scroll', save, {passive: true});
-        reading.addEventListener('scroll', save, {passive: true});
+        reading.addEventListener('scroll', () => {
+            if (!lazyPanels.has(tab)) save();
+        }, {passive: true});
         for (const kind of ['click', 'change']) {
             root.addEventListener(kind, event => {
                 const element = event.target.closest('[on' + kind + ']');

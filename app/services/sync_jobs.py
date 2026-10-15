@@ -579,9 +579,10 @@ def operation_schedules() -> dict[str, dict[str, Any]]:
     from app.services.copilot_actions import SYNC_HOUR as copilot_hour
     from app.services.meeting_sync import SYNC_HOUR as meeting_hour
     from app.services.scheduled_sync import (
-        REVENUE_SYNC_INTERVAL_DAYS,
+        FABRIC_SYNC_INTERVAL_DAYS, REVENUE_SYNC_INTERVAL_DAYS,
         SYNC_DAYS, U2C_IMPORT_INTERVAL_HOURS, U2C_RETRY_INTERVAL_HOURS,
     )
+    from app.services.se_specialty import is_data_se
 
     schedules = {key: {'label': 'On demand', 'detail': 'No recurring schedule.'}
                  for key in OPERATIONS}
@@ -611,6 +612,11 @@ def operation_schedules() -> dict[str, dict[str, Any]]:
         'label': f'Every {U2C_IMPORT_INTERVAL_HOURS} hours',
         'detail': f'Checked at startup and every five minutes, and after milestone syncs. '
                   f'Failed imports are eligible again after {U2C_RETRY_INTERVAL_HOURS} hour.',
+    }
+    schedules['fabric'] = {
+        'label': f'Every {FABRIC_SYNC_INTERVAL_DAYS} days' if is_data_se() else 'On demand',
+        'detail': 'Automatic refresh is for Data SEs only. Checked at startup and every '
+                  'five minutes; requires customer TPIDs. Failed attempts wait one hour.',
     }
     for key, hour, detail in (
         ('meeting-aura', meeting_hour, 'Catches up at startup when cached meetings are stale '

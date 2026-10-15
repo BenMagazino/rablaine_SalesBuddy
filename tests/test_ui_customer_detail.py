@@ -3,6 +3,7 @@ import subprocess
 from datetime import date, datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 import pytest
 from bs4 import BeautifulSoup
@@ -164,8 +165,10 @@ def test_exact_provider_populations_and_original_links(client, app, dossier, rol
     old = BeautifulSoup(baseline[0], 'html.parser')
     root = soup.select_one('[data-sb-customer-detail]')
     assert 'sb-directory-frame' in root['class']
-    assert sorted(a['href'] for a in root.select('a[href]')) == sorted(
-        a['href'] for a in old.select('main a[href]'))
+    expected_links = [a['href'] for a in old.select('main a[href]')]
+    if role != 'dss':
+        expected_links.append(f"/reports/fabric-consumption?customer_id={dossier['customer']}")
+    assert sorted(a['href'] for a in root.select('a[href]')) == sorted(expected_links)
     assert [int(row['data-note-id']) for row in root.select('.cd-note')] == [
         note.id for note in captured['notes']]
     assert [row['data-created'] for row in root.select('.eng-card-col')] == [
@@ -185,8 +188,10 @@ def test_exact_provider_populations_and_original_links(client, app, dossier, rol
     assert [field['name'] for field in root.select('#contextForm [name]')] == ['account_context']
     assert root.select_one('#contextTextarea').get_text() == 'Original\naccount context'
     assert not root.select('.card, .btn, .form-control, .form-select, [data-bs-dismiss]')
-    assert len(root.select('script[src$="ui-customer-detail.js"]')) == 1
-    assert len(soup.select('script[src$="ui-table-sort.js"]')) == 1
+    assert sum(urlsplit(script['src']).path.endswith('/ui-customer-detail.js')
+               for script in root.select('script[src]')) == 1
+    assert sum(urlsplit(script['src']).path.endswith('/ui-table-sort.js')
+               for script in soup.select('script[src]')) == 1
     assert len(root.select('dialog.sb-dialog')) == 3
     assert len(root.select('.cd-table thead th[data-sb-sort-type][data-export-label]')) == 6
     assert [td.get('data-sb-sort-value') for td in root.select('.cd-table tbody td')[1:4]] == [

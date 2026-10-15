@@ -33,7 +33,7 @@ def test_page_is_read_only_and_accessible(client, monkeypatch):
     assert 'Import from MSXi' in html
     assert 'data-fabric-report' in html
     assert 'Share of consumed CU hours, not SKU utilization' in html
-    assert 'Manual import only; no scheduled refresh' in html
+    assert 'Refreshes weekly, with catch-up when Sales Buddy starts' in html
     assert 'Reload saved data' not in html
     assert 'aria-label="Capacity utilization history"' in html
     assert 'data-fabric-capacity-context' not in html
@@ -112,7 +112,7 @@ def test_fabric_views_share_header_navigation_and_manual_import(client, view):
     assert markup.select_one('.sb-fabric-import-status') is None
     assert markup.select_one('[data-fabric-import-error][role="alert"]')
     assert markup.select_one('script[src*="ui-fabric-import.js"]')
-    assert 'Manual import only; no scheduled refresh' in markup.select_one('.sb-page-status').text
+    assert 'Refreshes weekly' in markup.select_one('.sb-page-status').text
     if view == 'detail':
         assert markup.select_one('h2 [data-fabric-customer-title]').name == 'a'
         assert markup.select_one('[data-fabric-customer-context]') is None

@@ -1,5 +1,5 @@
 """
-Scheduled milestone sync for Sales Buddy.
+Scheduled milestone, U2C and Fabric sync for Sales Buddy.
 
 Runs milestone import on Mon/Wed/Fri using a background daemon thread.
 The sync time is randomly assigned per-user (stored in UserPreference) in
@@ -7,6 +7,7 @@ The sync time is randomly assigned per-user (stored in UserPreference) in
 Sales Buddy instances. If missed (server was off), catches up on startup.
 
 No environment variables needed - everything is stored in the database.
+Data SEs also receive independent weekly Fabric refreshes with startup catch-up.
 """                                                                          
 import random
 import time
@@ -16,6 +17,7 @@ import errno
 import os
 from contextlib import contextmanager
 from datetime import datetime, date, timedelta, timezone
+from flask import Flask
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +161,68 @@ def _run_sync(app):
 # Revenue is refreshed at most this often, regardless of how often the
 # milestone sync it rides along with runs.
 REVENUE_SYNC_INTERVAL_DAYS = 7
+FABRIC_SYNC_INTERVAL_DAYS = 7
+FABRIC_RETRY_INTERVAL_HOURS = 1
+
+
+def _fabric_sync_due(now: datetime | None = None) -> bool:
+    """Refresh full Fabric snapshots weekly for Data SEs, with bounded failure retries."""
+    from app.models import Customer, FabricConsumptionImport, SyncStatus
+    from app.services.fabric_consumption import SYNC_TYPE
+    from app.services.se_specialty import is_data_se
+
+    if not is_data_se():
+        return False
+    if Customer.query.filter(Customer.tpid > 0).first() is None:
+        logger.debug("Skipping automatic Fabric sync: no customers with valid TPIDs")
+        return False
+    status = SyncStatus.get_status(SYNC_TYPE)
+    if status['state'] == 'in_progress':
+        return False
+    now = now or datetime.now(timezone.utc)
+    last_attempt = status['completed_at'] or status['started_at']
+    if status['state'] in ('failed', 'incomplete') and last_attempt:
+        if last_attempt.tzinfo is None:
+            last_attempt = last_attempt.replace(tzinfo=timezone.utc)
+        if now - last_attempt < timedelta(hours=FABRIC_RETRY_INTERVAL_HOURS):
+            return False
+    snapshot = FabricConsumptionImport.query.order_by(
+        FabricConsumptionImport.imported_at.desc(), FabricConsumptionImport.id.desc(),
+    ).first()
+    if snapshot is None:
+        return True
+    imported_at = snapshot.imported_at
+    if imported_at.tzinfo is None:
+        imported_at = imported_at.replace(tzinfo=timezone.utc)
+    return now - imported_at >= timedelta(days=FABRIC_SYNC_INTERVAL_DAYS)
+
+
+def run_fabric_sync_if_due(app: Flask) -> dict | None:
+    """Run a due import using the same atomic claim and heartbeat as manual imports."""
+    from app.services.sync_jobs import admit_sync
+
+    with app.app_context():
+        if not _fabric_sync_due():
+            return None
+        logger.info("Starting weekly Fabric 360 sync")
+        job = admit_sync('fabric', initiator='scheduled')
+        return {'success': True, 'accepted': True, 'job_id': job.id}
+
+
+def start_fabric_sync_scheduler(app: Flask) -> threading.Thread:
+    """Catch up at boot and check weekly freshness independently of milestone settings."""
+    def scheduler() -> None:
+        """Recheck the current specialty and saved snapshot every five minutes."""
+        while True:
+            try:
+                run_fabric_sync_if_due(app)
+            except Exception:
+                logger.exception("Error in Fabric 360 sync scheduler")
+            time.sleep(300)
+
+    thread = threading.Thread(target=scheduler, name='fabric-sync', daemon=True)
+    thread.start()
+    return thread
 
 
 def _revenue_sync_due() -> bool:
