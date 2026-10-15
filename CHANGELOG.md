@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/15/2026
+## 10/15/2026 - 950018ce
 
 - Keep the note editor, scrollbar, and status footer inside the desktop window.
 
