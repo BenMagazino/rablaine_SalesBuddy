@@ -36,6 +36,7 @@
 .cd-tabs button:hover { background: var(--sb-ui-raised); }
 .cd-section { padding: 18px 0; border-bottom: 1px solid var(--sb-ui-grid-line); }
 .cd-section.cd-panel { border-bottom: 0; }
+#cdFabric { padding-top: 16px; }
 .cd-section-header {
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px; padding-bottom: 12px;

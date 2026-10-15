@@ -133,6 +133,14 @@ standalone UI iterations using entirely fictional data. See the
   snapshot. Other specialties and DSS Mode do not sync automatically. Data SEs also
   have a Fabric tab on each customer with the same workload, capacity and revenue
   details, loaded from saved data only when the tab is opened.
+- **P to F** - Reports > P to F imports Power BI Premium renewal details and the
+  published Fabric migration assessments, with customer names matched by TPID and
+  full expiration dates. Matching rows also appear above Fabric 360 on a customer's
+  Fabric tab, even when that customer has no consumption snapshot. The report has
+  a shared Fabric 360 refresh and progress indicator. One job updates workloads,
+  capacities, revenue and renewals. Startup and weekly catch-up refresh both if
+  either snapshot is stale or missing, only in SE Mode with the Data SE specialty. Source statuses,
+  blank amounts and percentages above 100% are preserved. See [P to F](docs/p_to_f.md).
 - **Milestone Tracker** - native desktop queue and calendar with MSX sync, task management, and AI matching from call notes. Search all saved milestone fields (including cached forecast comments) and use the searchable customer dropdown alongside the existing filters. Data headings sort both ways with raw values; CSV, Clipboard and Email preserve the filtered list. Back restores filters, view, calendar month, sorting and reading position.
 - **Milestones directory** - browse customer-linked records in the native desktop frame, preserving newest-added order, source URLs and linked-call counts. Sort each data heading both ways; Back restores sorting and reading position. Open the existing details, New Milestone or Milestone Tracker without changing the cached data.
 - **Internal project forms** - create or edit internal work with the original title, plain-text description, type, due date, edit-only status and eligible general notes. Native Save/Cancel commands stay visible; guarded entry-local drafts and failed-save input retention protect unsubmitted work without autosaving.

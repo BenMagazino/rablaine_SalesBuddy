@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}P to F - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+{% endblock %}
+{% block content %}
+{% with ptof_embedded=false %}
+{% include 'partials/ptof_content.html' %}
+{% endwith %}
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="P to F refresh schedule">
+    <span>Fabric 360 refreshes workloads, capacities, revenue and P to F renewals together.</span>
+    <span>{% if ptof_auto_sync %}Refreshes weekly for Data SEs, with catch-up at startup{% else %}Automatic refresh requires SE Mode and the Data SE specialty{% endif %}</span>
+</footer>
+{% endblock %}

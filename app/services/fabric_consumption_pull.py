@@ -504,13 +504,15 @@ def build_capacity_query(tpids: list[int], trend: bool = False) -> dict:
 class FabricQueryClient:
     """Report-isolated Power BI credentials, transport, and complete pagination."""
 
-    def __init__(self, session: requests.Session | None = None) -> None:
+    def __init__(self, session: requests.Session | None = None, *,
+                 dataset_id: str = DATASET_ID, model_id: int = MODEL_ID) -> None:
         """Create a client without authenticating until the first query."""
         self.session = session or requests.Session()
         self.mwc: str | None = None
         self.expiry = 0.0
         self.url: str | None = None
-        self.model_id = MODEL_ID
+        self.dataset_id = dataset_id
+        self.model_id = model_id
 
     def _mint(self, report_id: str) -> str:
         """Mint a dedicated-capacity token for the Fabric model."""
@@ -545,7 +547,7 @@ class FabricQueryClient:
         if not mwc:
             raise FabricPullError("Fabric report returned no dedicated-capacity token.")
         models = response.json().get("models") or []
-        model = next((m for m in models if m.get("dbName") == DATASET_ID), None)
+        model = next((m for m in models if m.get("dbName") == self.dataset_id), None)
         if not model or not model.get("id"):
             raise FabricPullError("Fabric report did not resolve the expected dataset.")
         self.model_id = int(model["id"])
@@ -599,7 +601,7 @@ class FabricQueryClient:
                 "queries": [{
                     "Query": {"Commands": [{"SemanticQueryDataShapeCommand": command}]},
                     "QueryId": "", "ApplicationContext": {
-                        "DatasetId": DATASET_ID, "Sources": [{"ReportId": report_id}],
+                        "DatasetId": self.dataset_id, "Sources": [{"ReportId": report_id}],
                     },
                 }],
                 "cancelQueries": [], "userPreferredLocale": "en-US",
@@ -610,7 +612,7 @@ class FabricQueryClient:
                     "authorization": f"MWCToken {mwc}",
                     "content-type": "application/json;charset=UTF-8",
                     "activityid": str(uuid.uuid4()), "requestid": str(uuid.uuid4()),
-                    "x-ms-workload-resource-moniker": DATASET_ID,
+                    "x-ms-workload-resource-moniker": self.dataset_id,
                     "origin": "https://msit.powerbi.com",
                 }, data=json.dumps(body), timeout=(20, 300))
                 if response.status_code == 401 and attempt < 2:

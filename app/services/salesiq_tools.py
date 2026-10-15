@@ -127,6 +127,25 @@ def execute_tool(name: str, params: dict) -> Any:
 # -- 1:1 workspaces ----------------------------------------------------------
 
 @tool(
+    'report_ptof',
+    'Read saved Power BI Premium to Fabric renewal assessments and subscription details. '
+    'Includes local customer names, TPIDs, full expiration dates, source renewal status, '
+    'SA expiration and P-SKU renewal amounts, and F-SKU annualized RI and PAYG ACR. '
+    'Account assessments and subscription details are separate grains; do not add them together. '
+    'Does not import or refresh data.',
+    {'type': 'object', 'properties': {
+        'customer_id': {'type': 'integer', 'minimum': 1,
+                        'description': 'Optional Sales Buddy customer ID.'},
+    }},
+)
+def report_ptof(customer_id: int | None = None) -> dict:
+    """Reuse the renewal report and customer Fabric-tab read service."""
+    from app.services.ptof import get_ptof_report
+
+    return get_ptof_report(customer_id)
+
+
+@tool(
     'report_fabric_consumption',
     'Read the saved Fabric workload mix and capacity utilization snapshot. '
     'Includes all customer coverage and optional customer capacity detail. '

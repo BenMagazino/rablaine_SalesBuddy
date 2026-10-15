@@ -26,12 +26,16 @@ def test_page_is_read_only_and_accessible(client, monkeypatch):
     from app.services import fabric_consumption
 
     sync = Mock(side_effect=AssertionError('Page must not import data'))
-    monkeypatch.setattr(fabric_consumption, 'sync_fabric_consumption', sync)
+    monkeypatch.setattr(fabric_consumption, 'sync_fabric_360', sync)
     response = client.get('/reports/fabric-consumption')
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert 'Import from MSXi' in html
     assert 'data-fabric-report' in html
+    assert 'data-fabric-workload-context' in html
+    assert 'data-fabric-overview' in html
+    assert 'Workload CU hours and shares' in html
+    assert 'Workload operations by tenant and capacity' in html
     assert 'Share of consumed CU hours, not SKU utilization' in html
     assert 'Refreshes weekly, with catch-up when Sales Buddy starts' in html
     assert 'Reload saved data' not in html
@@ -156,7 +160,7 @@ def test_capacity_overview_is_saved_data_only(client, app, monkeypatch):
     read = Mock(return_value=payload)
     monkeypatch.setattr(fabric_consumption, 'get_fabric_capacity_overview', read)
     sync = Mock(side_effect=AssertionError('Overview must not import'))
-    monkeypatch.setattr(fabric_consumption, 'sync_fabric_consumption', sync)
+    monkeypatch.setattr(fabric_consumption, 'sync_fabric_360', sync)
     page = client.get('/reports/fabric-consumption?view=overview')
     assert page.status_code == 200
     assert 'Reload saved data' not in page.get_data(as_text=True)
@@ -302,7 +306,7 @@ def test_import_starts_background_job_with_claim(client, monkeypatch):
     monkeypatch.setattr(revenue_pull, 'get_customer_tpids', lambda: [(456789, 'Customer')])
     monkeypatch.setattr(SyncStatus, 'try_mark_started', lambda key: True)
     sync = Mock(return_value={'success': True, 'trend_row_count': 1})
-    monkeypatch.setattr(fabric_consumption, 'sync_fabric_consumption', sync)
+    monkeypatch.setattr(fabric_consumption, 'sync_fabric_360', sync)
 
     response = client.post('/api/reports/fabric-consumption/import')
     assert response.status_code == 202

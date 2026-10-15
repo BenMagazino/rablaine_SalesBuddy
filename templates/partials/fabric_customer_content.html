@@ -2,23 +2,18 @@
 {% from 'partials/_sync_progress.html' import sync_progress %}
 <section class="sb-fabric" {% if not fabric_embedded %}data-sb-page-surface{% endif %}
          data-fabric-report aria-label="Fabric 360"
-         {% if fabric_embedded %}data-fabric-customer-id="{{ customer.id }}"{% endif %}
+         {% if fabric_embedded %}data-fabric-customer-id="{{ customer.id }}" hidden{% endif %}
          data-report-url="{{ url_for('reports.fabric_consumption_data') }}"
          data-import-url="{{ url_for('reports.fabric_consumption_import') }}"
          data-status-url="{{ url_for('reports.fabric_consumption_status') }}">
     {% if fabric_embedded %}
-    <header class="sb-fabric-import-band">
-        <span data-fabric-freshness hidden>No Fabric snapshot loaded</span>
-        <a href="{{ url_for('reports.report_fabric_consumption', customer_id=customer.id) }}">Open Fabric report</a>
-        <button type="button" class="sb-dialog-button" data-fabric-import>Refresh all customers</button>
-        <p data-fabric-progress role="status" aria-live="polite">Checking import status...</p>
-    </header>
-    <p class="sb-fabric-error sb-fabric-error-band" data-fabric-import-error role="alert" hidden></p>
     <p class="sb-fabric-error sb-fabric-error-band" data-fabric-error role="alert" hidden></p>
     {% else %}
     {% include 'partials/_fabric_report_header.html' %}
     {% endif %}
+    {% if not fabric_embedded %}
     {{ sync_progress('fabric', '[data-fabric-import]', 'fabric-') }}
+    {% endif %}
     <div {% if not fabric_embedded %}class="sb-fabric-workarea" data-sb-page-body{% endif %}>
         {% if not fabric_embedded %}
         <aside class="sb-fabric-directory" aria-labelledby="fabricAccountsTitle">
@@ -44,9 +39,12 @@
                 <section class="sb-fabric-section" aria-labelledby="fabricMixTitle">
                     <header><h3 id="fabricMixTitle">Workload mix</h3>
                         <span>Share of consumed CU hours, not SKU utilization</span></header>
+                    {% if not fabric_embedded %}
                     <p data-fabric-workload-context></p>
                     <dl data-fabric-overview class="sb-fabric-summary"></dl>
+                    {% endif %}
                     <div data-fabric-workload-chart class="sb-fabric-mix"></div>
+                    {% if not fabric_embedded %}
                     <details><summary>Workload CU hours and shares</summary>
                     <div class="sb-fabric-table-region" tabindex="0" role="region" aria-label="Fabric workload usage">
                         <table class="sb-fabric-table" data-fabric-workloads data-sb-sortable
@@ -74,6 +72,7 @@
                             </table>
                         </div>
                     </details>
+                    {% endif %}
                 </section>
                 <section class="sb-fabric-section" aria-labelledby="fabricCapacityTitle">
                     <header><h3 id="fabricCapacityTitle">Capacity utilization</h3>
@@ -166,8 +165,10 @@
         </section>
     </div>
 </section>
+{% if not fabric_embedded %}
 <script src="{{ url_for('static', filename='js/ui-fabric-preferences.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/ui-fabric-capacity-label.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-fabric-import.js') }}" defer></script>
+{% endif %}
+<script src="{{ url_for('static', filename='js/ui-fabric-capacity-label.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-fabric-revenue.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-fabric-consumption.js') }}" defer></script>

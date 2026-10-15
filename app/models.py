@@ -2987,3 +2987,33 @@ class FabricConsumptionRecord(db.Model):
     metrics_json = db.Column(db.JSON, nullable=False, default=dict)
     snapshot = db.relationship('FabricConsumptionImport', back_populates='records')
     customer = db.relationship('Customer')
+
+
+class PToFImport(db.Model):
+    """One complete Power BI Premium to Fabric renewal snapshot."""
+
+    __tablename__ = 'ptof_imports'
+
+    id = db.Column(db.Integer, primary_key=True)
+    imported_at = db.Column(db.DateTime, default=utc_now, nullable=False, index=True)
+    customer_count = db.Column(db.Integer, nullable=False)
+    summary_count = db.Column(db.Integer, nullable=False)
+    detail_count = db.Column(db.Integer, nullable=False)
+    metadata_json = db.Column(db.JSON, nullable=False, default=dict)
+    records = db.relationship(
+        'PToFRecord', back_populates='snapshot', cascade='all, delete-orphan',
+    )
+
+
+class PToFRecord(db.Model):
+    """Source renewal assessment or subscription detail, joined to customers by TPID."""
+
+    __tablename__ = 'ptof_records'
+    __table_args__ = (db.Index('ix_ptof_import_tpid_kind', 'import_id', 'tpid', 'kind'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    import_id = db.Column(db.Integer, db.ForeignKey('ptof_imports.id'), nullable=False)
+    tpid = db.Column(db.BigInteger, nullable=False, index=True)
+    kind = db.Column(db.String(12), nullable=False)
+    data_json = db.Column(db.JSON, nullable=False)
+    snapshot = db.relationship('PToFImport', back_populates='records')

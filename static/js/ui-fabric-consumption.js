@@ -36,6 +36,7 @@
     }
 
     function showError(message) {
+        if (message) root.hidden = false;
         find('error').textContent = message;
         find('error').hidden = !message;
     }
@@ -362,31 +363,38 @@
         window.SBFabricCapacityLabel.close();
         const customer = report.customer;
         window.SBFabricRevenue.render(find('revenue'), customer);
+        if (embedded) {
+            const revenueState = customer?.revenue?.state;
+            const noRevenue = !revenueState || ['not_imported', 'no_data'].includes(revenueState);
+            if (noRevenue) find('revenue').hidden = true;
+            root.hidden = customer?.status !== 'available' && noRevenue;
+        }
         find('detail-body').hidden = !customer || customer.status !== 'available';
         find('customer-title').textContent = customer ?
             `${customer.name} (${customer.tpid ?? 'TPID unavailable'})` : 'Choose a customer';
         if (customer) find('customer-title').href = `/customer/${customer.id}`;
         else find('customer-title').removeAttribute('href');
-        find('detail-state').hidden = customer?.status === 'available';
+        find('detail-state').hidden = embedded || customer?.status === 'available';
         find('detail-state').textContent = !customer ? 'Choose a customer to inspect its saved snapshot.' :
             customer.status === 'missing_tpid' ? 'This customer needs a valid TPID before it can be imported.' :
-            !report.snapshot ? (embedded ?
-                'No saved Fabric snapshot yet. Use Refresh all customers, or wait for the weekly refresh.' :
-                'No saved Fabric snapshot yet. Use Import from MSXi to load your customers.') :
+            !report.snapshot ?
+                'No saved Fabric snapshot yet. Use Import from MSXi to load your customers.' :
             'No Fabric measurements returned for this TPID. This does not prove zero usage; source coverage and access may differ.';
         if (!customer || customer.status !== 'available') return;
-        find('workload-context').textContent = report.snapshot?.workload_window ?? 'Source workload window';
-        renderSummary(find('overview'), [
-            ['Total CU hours', number(customer.total_cu_hours)],
-            ['Direct Lake / subset', `${number(customer.direct_lake_cu_hours)} CU hours (${percent(customer.direct_lake_pct)})`],
-            ['Core MAU', number(customer.fabric_core_mau)],
-            ['Month over month', percent(customer.mom_change_pct)],
-        ]);
-        fillTable(find('workloads'), customer.workloads, [
-            { value: row => row.workload },
-            { value: row => row.cu_hours, format: number },
-            { value: row => row.share_pct, format: percent }
-        ]);
+        if (!embedded) {
+            find('workload-context').textContent = report.snapshot?.workload_window ?? 'Source workload window';
+            renderSummary(find('overview'), [
+                ['Total CU hours', number(customer.total_cu_hours)],
+                ['Direct Lake / subset', `${number(customer.direct_lake_cu_hours)} CU hours (${percent(customer.direct_lake_pct)})`],
+                ['Core MAU', number(customer.fabric_core_mau)],
+                ['Month over month', percent(customer.mom_change_pct)],
+            ]);
+            fillTable(find('workloads'), customer.workloads, [
+                { value: row => row.workload },
+                { value: row => row.cu_hours, format: number },
+                { value: row => row.share_pct, format: percent }
+            ]);
+        }
         find('workload-chart').replaceChildren();
         for (const workload of customer.workloads) {
             const row = document.createElement('div');
@@ -431,7 +439,7 @@
             select.value = selectedCapacity;
         }
         renderCapacity();
-        renderOperations();
+        if (!embedded) renderOperations();
     }
 
     function renderSummary(container, values) {
@@ -464,9 +472,9 @@
                 }
             }
             report = payload;
-            importController.setImportedAt(report.snapshot?.imported_at);
+            importController?.setImportedAt(report.snapshot?.imported_at);
             if (report.customer) customerPreference?.save(report.customer.id);
-            find('freshness').textContent = report.snapshot ?
+            if (find('freshness')) find('freshness').textContent = report.snapshot ?
                 `Imported ${new Date(report.snapshot.imported_at).toLocaleString()}` : 'No Fabric snapshot yet';
             renderDirectory();
             renderCustomer();
@@ -506,17 +514,19 @@
         seriesPage++;
         renderCapacity();
     });
-    find('operations-prev').addEventListener('click', () => {
-        operationsPage--;
-        renderOperations();
-    });
-    find('operations-next').addEventListener('click', () => {
-        operationsPage++;
-        renderOperations();
-    });
+    if (!embedded) {
+        find('operations-prev').addEventListener('click', () => {
+            operationsPage--;
+            renderOperations();
+        });
+        find('operations-next').addEventListener('click', () => {
+            operationsPage++;
+            renderOperations();
+        });
+    }
     let importController = null;
     function start() {
-        importController ??= window.SBFabricImport.create(root, loadReport);
+        if (!embedded) importController ??= window.SBFabricImport.create(root, loadReport);
         loadReport();
     }
     const panel = embedded ? root.closest('.cd-panel') : null;

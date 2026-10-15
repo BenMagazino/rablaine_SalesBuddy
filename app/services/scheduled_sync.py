@@ -166,8 +166,8 @@ FABRIC_RETRY_INTERVAL_HOURS = 1
 
 
 def _fabric_sync_due(now: datetime | None = None) -> bool:
-    """Refresh full Fabric snapshots weekly for Data SEs, with bounded failure retries."""
-    from app.models import Customer, FabricConsumptionImport, SyncStatus
+    """Refresh Fabric 360 when either source is missing or a week old, for Data SEs."""
+    from app.models import Customer, FabricConsumptionImport, PToFImport, SyncStatus
     from app.services.fabric_consumption import SYNC_TYPE
     from app.services.se_specialty import is_data_se
 
@@ -186,15 +186,18 @@ def _fabric_sync_due(now: datetime | None = None) -> bool:
             last_attempt = last_attempt.replace(tzinfo=timezone.utc)
         if now - last_attempt < timedelta(hours=FABRIC_RETRY_INTERVAL_HOURS):
             return False
-    snapshot = FabricConsumptionImport.query.order_by(
-        FabricConsumptionImport.imported_at.desc(), FabricConsumptionImport.id.desc(),
-    ).first()
-    if snapshot is None:
-        return True
-    imported_at = snapshot.imported_at
-    if imported_at.tzinfo is None:
-        imported_at = imported_at.replace(tzinfo=timezone.utc)
-    return now - imported_at >= timedelta(days=FABRIC_SYNC_INTERVAL_DAYS)
+    for snapshot_model in (FabricConsumptionImport, PToFImport):
+        snapshot = snapshot_model.query.order_by(
+            snapshot_model.imported_at.desc(), snapshot_model.id.desc(),
+        ).first()
+        if snapshot is None:
+            return True
+        imported_at = snapshot.imported_at
+        if imported_at.tzinfo is None:
+            imported_at = imported_at.replace(tzinfo=timezone.utc)
+        if now - imported_at >= timedelta(days=FABRIC_SYNC_INTERVAL_DAYS):
+            return True
+    return False
 
 
 def run_fabric_sync_if_due(app: Flask) -> dict | None:
@@ -217,7 +220,7 @@ def start_fabric_sync_scheduler(app: Flask) -> threading.Thread:
             try:
                 run_fabric_sync_if_due(app)
             except Exception:
-                logger.exception("Error in Fabric 360 sync scheduler")
+                logger.exception("Error in Fabric 360 scheduler")
             time.sleep(300)
 
     thread = threading.Thread(target=scheduler, name='fabric-sync', daemon=True)
