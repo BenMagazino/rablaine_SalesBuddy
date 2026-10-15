@@ -30,7 +30,7 @@ def test_complete_home_has_native_content_and_embedded_engagement_reading(app: F
     assert soup.select_one("body.sb-page-frame.sb-home-page")
     root = soup.select_one("[data-sb-home]")
     assert root.has_attr("data-sb-page-surface")
-    assert soup.select_one('link[href="/static/css/ui-page-frame.css"]')
+    assert soup.select_one('link[href^="/static/css/ui-page-frame.css"]')
     assert not root.select(
         ".btn,.badge,.card,.row,.form-control,.form-select,.list-group,"
         "[data-bs-toggle],[data-bs-dismiss],[data-bs-target]"
@@ -41,8 +41,8 @@ def test_complete_home_has_native_content_and_embedded_engagement_reading(app: F
     assert panel.select_one("#engagementsListBody_sortSelect")
     assert panel.select_one("#engagementsListBody_groupToggle")
     assert panel.select_one("#engagementsListBody_favoritesBtn")
-    assert soup.select_one('link[href="/static/css/ui-home-native.css"]')
-    assert soup.select_one('link[href="/static/css/ui-engagements-directory.css"]')
+    assert soup.select_one('link[href^="/static/css/ui-home-native.css"]')
+    assert soup.select_one('link[href^="/static/css/ui-engagements-directory.css"]')
     assert "Open the full page to edit this note." in soup.select_one(
         "#homeNoteDetailModal [data-sb-record-status]"
     ).get_text()
@@ -90,7 +90,7 @@ def test_action_item_preview_retains_native_fields_and_commands(app: Flask) -> N
         assert dialog.find("button", id=button_id)
     assert dialog.select_one('button[form="aiDetailEditMode"][type="submit"]')
     assert soup.find("dialog", id="aiDiscardDialog")
-    assert soup.select_one('script[src="/static/js/ui-action-item-dialog.js"]')
+    assert soup.select_one('script[src^="/static/js/ui-action-item-dialog.js"]')
 
 
 @pytest.mark.parametrize("engagements,projects,tasks", list(product([False, True], repeat=3)))
@@ -120,14 +120,14 @@ def test_home_frame_and_tabs_exist_in_every_conditional_branch(
         assert tab["aria-selected"] == str(selected).lower()
         assert tab["tabindex"] == ("0" if selected else "-1")
         assert panel.has_attr("hidden") is not selected
-    scripts = soup.select('script[src="/static/js/ui-home.js"]')
+    scripts = soup.select('script[src^="/static/js/ui-home.js"]')
     assert len(scripts) == 1
     assert scripts[0].parent["id"] == "main-content"
-    assert len(soup.select('script[src="/static/js/ui-home-summary.js"]')) == 1
-    assert len(soup.select('script[src="/static/js/ui-home-calendar.js"]')) == 1
-    assert soup.select_one('link[href="/static/css/ui-home-calendar.css"]')
-    assert soup.select_one('link[href="/static/css/ui-home.css"]')
-    assert not soup.find("script", src="/static/js/ui-home.js").find_parent(role="tabpanel")
+    assert len(soup.select('script[src^="/static/js/ui-home-summary.js"]')) == 1
+    assert len(soup.select('script[src^="/static/js/ui-home-calendar.js"]')) == 1
+    assert soup.select_one('link[href^="/static/css/ui-home-calendar.css"]')
+    assert soup.select_one('link[href^="/static/css/ui-home.css"]')
+    assert not scripts[0].find_parent(role="tabpanel")
     toolbar = root.select_one(".sb-home-activity-header")
     for element_id in ("calendarTitle", "todayBtn", "prevMonthBtn", "nextMonthBtn", "noteViewTabs"):
         assert toolbar.find(id=element_id)
@@ -153,7 +153,7 @@ def test_home_live_route_keeps_calendar_and_empty_destinations(client: FlaskClie
     assert [field["data-preference"] for field in settings.select("[data-preference]")] == [
         "copilot_actions_enabled", "show_stale_milestones", "show_hygiene_tasks",
     ]
-    assert soup.select_one('script[src="/static/js/ui-dashboard-settings.js"][defer]')
+    assert soup.select_one('script[src^="/static/js/ui-dashboard-settings.js"][defer]')
     assert soup.find(id="quickCreateModal")
     assert soup.find(id="homeNoteDetailModal")
     assert b"new bootstrap.Tab" not in response.data
@@ -206,7 +206,7 @@ def test_home_live_route_keeps_calendar_and_empty_destinations(client: FlaskClie
             "reports.report_u2c",
         )
     assert root.find(id="homeFreshnessRefresh")["type"] == "button"
-    assert soup.select_one('script[src="/static/js/ui-home-freshness.js"][defer]')
+    assert soup.select_one('script[src^="/static/js/ui-home-freshness.js"][defer]')
     assert root.select_one(".sb-home-activity-header")
     assert root.select_one("#calendarTable thead tr")
     legend = root.select_one('footer[aria-label="Calendar indicator legend"]')
