@@ -858,8 +858,16 @@
                 row.className = 'sb-home-draft-row';
                 const link = document.createElement('a');
                 link.className = 'sb-home-draft-link';
-                link.href = '{{ url_for("notes.note_create") }}?customer_id=' +
-                    encodeURIComponent(draft.customerId);
+                const noteId = Number(draft.data.note_id ||
+                    (draft.customerId.startsWith('note_') ? draft.customerId.slice(5) : null));
+                if (Number.isSafeInteger(noteId) && noteId > 0) {
+                    link.href = '{{ url_for("notes.note_edit", id=0) }}'
+                        .replace('/0/edit', `/${noteId}/edit`);
+                } else {
+                    link.href = '{{ url_for("notes.note_create") }}' +
+                        (draft.customerId === 'general' ? '' :
+                            '?customer_id=' + encodeURIComponent(draft.customerId));
+                }
                 const title = document.createElement('strong');
                 title.textContent = draft.customerName;
                 const metadata = document.createElement('small');
@@ -924,6 +932,9 @@
         // dots in the calendar already signal that a sync is running;
         // the user can click a dot to bring the card up if they want
         // detailed progress.
+    });
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) loadDrafts();
     });
 
     // Build a YYYY-MM-DD string in the user's LOCAL timezone. We can't
@@ -1226,7 +1237,7 @@
     
     // Reload drafts when storage changes (multi-tab support)
     window.addEventListener('storage', function(e) {
-        if (e.key && e.key.startsWith(DRAFT_KEY_PREFIX)) {
+        if (e.key === null || (e.key && e.key.startsWith(DRAFT_KEY_PREFIX))) {
             loadDrafts();
         }
     });
