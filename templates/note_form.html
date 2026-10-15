@@ -235,7 +235,7 @@
                         <div class="sb-nf-col-md-6">
                             <input type="text" class="sb-nf-form-control" id="partner_search"
                                    placeholder="Search and add partners..." autocomplete="off">
-                            <div id="partner_dropdown" class="sb-nf-list-group sb-nf-mt-1" style="display: none; position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+                            <div id="partner_dropdown" class="sb-nf-list-group sb-nf-suggestions sb-nf-mt-1" style="display: none; position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
                             
                             <div id="selected_partners" class="sb-nf-mt-2 sb-nf-d-flex sb-nf-flex-wrap sb-nf-gap-2">
                                 {% if note %}
@@ -263,7 +263,7 @@
                                     <i class="bi bi-people"></i> <span id="importAttendeesBtnText">Import Attendees</span>
                                 </button>
                             </div>
-                            <div id="attendee_dropdown" class="sb-nf-list-group sb-nf-mt-1" style="display: none; position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto; width: calc(50% - 2rem);"></div>
+                            <div id="attendee_dropdown" class="sb-nf-list-group sb-nf-suggestions sb-nf-mt-1" style="display: none; position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto; width: calc(50% - 2rem);"></div>
                             <div id="selected_attendees" class="sb-nf-mt-2 sb-nf-d-flex sb-nf-flex-wrap sb-nf-gap-2">
                                 {% if note and note.attendees %}
                                     {% for att in note.attendees %}
@@ -286,7 +286,7 @@
                                     <i class="bi bi-stars"></i> <span id="aiSuggestBtnText">Auto-tag with AI</span>
                                 </button>
                             </div>
-                            <div id="topic_dropdown" class="sb-nf-list-group sb-nf-mt-1" style="display: none; position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
+                            <div id="topic_dropdown" class="sb-nf-list-group sb-nf-suggestions sb-nf-mt-1" style="display: none; position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
                             <div id="selected_topics" class="sb-nf-mt-2 sb-nf-d-flex sb-nf-flex-wrap sb-nf-gap-2">
                                 {% if note %}
                                     {% for topic in note.topics %}
@@ -3448,11 +3448,11 @@ topicSearch.addEventListener('keydown', function(e) {
     if (e.key === 'ArrowDown' && totalItems > 0) {
         e.preventDefault();
         selectedIndex = (selectedIndex + 1) % totalItems;
-        renderDropdown(rawTerm);
+        handleTopicHover(selectedIndex, true);
     } else if (e.key === 'ArrowUp' && totalItems > 0) {
         e.preventDefault();
         selectedIndex = selectedIndex <= 0 ? totalItems - 1 : selectedIndex - 1;
-        renderDropdown(rawTerm);
+        handleTopicHover(selectedIndex, true);
     } else if (e.key === 'Tab') {
         // Empty input - let default Tab behavior move to next field
         if (rawTerm.length === 0) return;
@@ -3465,7 +3465,7 @@ topicSearch.addEventListener('keydown', function(e) {
             } else {
                 selectedIndex = (selectedIndex + 1) % totalItems;
             }
-            renderDropdown(rawTerm);
+            handleTopicHover(selectedIndex, true);
         }
     } else if (e.key === 'Enter') {
         e.preventDefault();
@@ -3495,7 +3495,7 @@ function renderDropdown(rawSearchTerm) {
             data-topic-id="${topic.id}" 
             data-topic-name="${topic.name.replace(/"/g, '&quot;')}"
             data-topic-index="${index}"
-            onmouseenter="handleTopicHover(${index})"
+            onmousemove="handleTopicHover(${index})"
             onclick="handleTopicClick(${topic.id}, '${topic.name.replace(/'/g, "\\'")}')">
             <i class="bi bi-tag"></i> ${topic.name}
             ${topic.description ? '<br><small class="sb-nf-text-muted">' + topic.description + '</small>' : ''}
@@ -3508,7 +3508,7 @@ function renderDropdown(rawSearchTerm) {
         html += `<button type="button" class="sb-nf-list-group-item sb-nf-list-group-item-action sb-nf-text-success ${createIndex === selectedIndex ? 'active' : ''}"
             data-topic-index="${createIndex}"
             data-create-new="true"
-            onmouseenter="handleTopicHover(${createIndex})"
+            onmousemove="handleTopicHover(${createIndex})"
             onclick="handleCreateTopicClick()">
             <i class="bi bi-plus-circle"></i> <strong>${escaped}</strong>
         </button>`;
@@ -3516,7 +3516,7 @@ function renderDropdown(rawSearchTerm) {
     topicDropdown.innerHTML = html;
 }
 
-function handleTopicHover(index) {
+function handleTopicHover(index, scrollToSelection = false) {
     selectedIndex = index;
     // Update active class
     topicDropdown.querySelectorAll('button').forEach((btn, i) => {
@@ -3526,6 +3526,9 @@ function handleTopicHover(index) {
             btn.classList.remove('active');
         }
     });
+    if (scrollToSelection) {
+        topicDropdown.querySelector('.active')?.scrollIntoView({block: 'nearest'});
+    }
 }
 
 function handleTopicClick(topicId, topicName) {

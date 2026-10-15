@@ -33,6 +33,25 @@ def test_note_editor_fits_available_shell_space_without_clipping_status() -> Non
             assert "100dvh" not in rule.group(1)
 
 
+def test_autocomplete_rows_reset_native_button_borders_and_show_keyboard_selection() -> None:
+    """Result rows must be full-width quiet options with a visible active match."""
+    styles = Path(__file__).parents[1] / "static" / "css"
+    native = (styles / "ui-note-form-native.css").read_text("utf-8")
+    css = (styles / "ui-note-form.css").read_text("utf-8")
+    row = re.search(r"\.sb-nf-list-group-item\s*\{([^}]+)\}", native)
+    assert row
+    for declaration in ["display:block", "width:100%", "border:0", "text-align:left", "font:inherit"]:
+        assert declaration in row.group(1)
+    selection = re.search(
+        r"([^{}]*\.sb-nf-list-group-item-action\.active[^{}]*)\{([^}]+)\}", css,
+    )
+    assert selection
+    assert ".enter-target" in selection.group(1)
+    assert ":not(:focus-within)" in selection.group(1)
+    assert ":focus-visible" in selection.group(1)
+    assert "background:var(--sb-ui-selection)" in selection.group(2)
+
+
 @pytest.mark.parametrize("kind", ["customer", "general", "edit"])
 def test_note_form_retains_fields_commands_and_native_dialogs(
     client: FlaskClient, sample_data: dict[str, int], kind: str,
