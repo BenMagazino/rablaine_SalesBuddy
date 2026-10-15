@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/15/2026
+## 10/15/2026 - dbde4949
 
 - Sort engagement and project action items by due date, or save your own manual order.
 
