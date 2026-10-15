@@ -847,14 +847,15 @@ const PageHelp = (function () {
     { pattern: /^\/reports\/whitespace/, title: 'Whitespace Analysis', content: `
       <p>Three views answer different adoption questions. They intentionally use different time scopes.</p>
       <ul>
-        <li>Whitespace Grid averages stored revenue rows within 62 days of the latest imported month. Missing months are not filled with zero. Select buckets, then Show Whitespace; changing a checkbox alone does not change the loaded grid.</li>
-        <li>Multiple buckets show customers with some, but not all, selected buckets. Include fully covered customers adds the remaining spenders. A single bucket shows its spenders. Customers with no spend in any selected bucket are not part of the grid.</li>
-        <li>Initial selection uses the saved Revenue bucket filter, or compensated buckets when that filter is absent or empty. This report does not change the saved Revenue filter.</li>
-        <li>Reverse Lookup searches name, nickname or TPID after two characters. Arrow keys and Enter select a match. Missing buckets and products use positive spend at any time in imported history, not the grid's recent window.</li>
-        <li>Bucket Penetration counts historical positive spend. Its denominator includes every customer with imported revenue, including zero-only customers. Click a bucket for the with-spend and without-spend lists.</li>
+        <li>Whitespace uses the source's SuperStrategicPillars: AI, Analytics, Apps, Databases, Developer, Infra and Security. Pillar/product data refreshes with the regular ACR import, independently of Revenue Analyzer service buckets.</li>
+        <li>Whitespace Grid averages monthly pillar totals within 62 days of the latest imported month. Missing months are not filled with zero. Changing the pillar checkboxes automatically updates the grid.</li>
+        <li>Multiple pillars show customers with some, but not all, selected pillars. Include fully covered customers adds the remaining spenders. A single pillar shows its spenders. Customers with no spend in any selected pillar are not part of the grid.</li>
+        <li>Initial selection includes all seven pillars. This report does not change the saved Revenue filter.</li>
+        <li>Reverse Lookup searches name, nickname or TPID after two characters. Arrow keys and Enter select a match. Missing pillars and products use positive spend at any time in imported history, not the grid's recent window.</li>
+        <li>Pillar Penetration counts historical positive spend. Its denominator includes every customer with imported pillar revenue, including zero-only customers. Click a pillar for the with-spend and without-spend lists.</li>
         <li>Data headings sort both directions using raw values. Missing amounts stay last. Click a grid amount for existing product details and full history without losing this report.</li>
       </ul>
-      <p>CSV, Clipboard and Email export only the loaded grid, in its current order and coverage scope, even when another analysis tab is selected. Back restores the analysis view, confirmed bucket scope, draft selection, sorting and reading positions. Failed reads offer Retry.</p>
+      <p>CSV, Clipboard and Email export only the loaded grid, in its current order and coverage scope, even when another analysis tab is selected. Back restores the analysis view, selected pillars, sorting and reading positions. Failed reads offer Retry.</p>
     `},
     { pattern: /^\/reports\/connect-impact/, title: 'Connect Impact', content: `
       <p>Customers rank by total estimated monthly ACR from committed milestones you are on the team for. Committed since uses the commitment date, inclusively, not the due date. All execution statuses qualify, including Completed and Cancelled.</p>

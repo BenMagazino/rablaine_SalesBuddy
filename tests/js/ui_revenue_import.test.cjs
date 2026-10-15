@@ -184,6 +184,10 @@ test('invalid completion metrics cannot render success or silently manufacture z
         }
     }
     assert.throws(() => h.api.validateResult({...result, months: 1.5}), /Invalid sync/);
+    for (const value of [null, '2', -1, NaN, Infinity, 1.5]) {
+        assert.throws(() => h.api.validateResult({...result, pillar_rows: value}), /pillar_rows/);
+    }
+    h.api.validateResult({...result, pillar_rows: 0});
     assert.throws(() => h.api.validateResult({...result, linked_pct: 101}), /coverage/);
     assert.throws(() => h.api.validateResult({...result, customers_with_data: 26}), /coverage/);
     assert.throws(() => h.api.validateResult({...result, review_kept: '3'}), /review/);
@@ -207,7 +211,7 @@ test('shared admission uses an empty payload and completion renders all revenue 
     assert.equal(request.init.body, '{}');
     resolve({id: 42, status: 'running', progress: {message: 'Pulling revenue'}});
     await sync;
-    await h.complete();
+    await h.complete({...result, pillar_rows: 260399});
     assert.equal(h.elements['#syncBtn'].disabled, false);
     assert.equal(h.elements['#syncProgress'].hidden, true);
     assert.equal(h.elements['#syncResults'].dataset.tone, 'positive');
@@ -215,7 +219,8 @@ test('shared admission uses an empty payload and completion renders all revenue 
     assert.equal(h.elements['#bucketPickerCard'].hidden, false);
     assert.equal(h.elements['#bucketNotice'].hidden, true);
     const text = h.elements['#syncResults'].children[1].children.map(child => child.textContent).join(' ');
-    for (const value of ['32,851', '285,747', '27 months', '20 of 25', '96.5%', '14.8s',
+    for (const value of ['32,851', '285,747', '260,399 strategic pillar rows',
+        '27 months', '20 of 25', '96.5%', '14.8s',
         '3 review notes kept; 2 retired']) assert.ok(text.includes(value), text);
     assert.doesNotMatch(source, /innerHTML|bootstrap|data-bs-/);
 });

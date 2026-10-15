@@ -5,14 +5,14 @@ const {displayName, formatRevenue, visibleCustomers, matchingCustomers, createLa
 
 const customers = [
     {id: 1, name: 'Beta', nickname: 'Nickname', tpid: 123456, buckets: {Databases: 1234.56}},
-    {id: 2, name: 'Alpha', nickname: null, buckets: {Databases: 3.25, Fabric: 5}},
-    {id: 3, name: 'Gamma', buckets: {Fabric: 0}},
+    {id: 2, name: 'Alpha', nickname: null, buckets: {Databases: 3.25, Analytics: 5}},
+    {id: 3, name: 'Gamma', buckets: {Analytics: 0}},
 ];
 
-test('grid retains partial coverage, single-bucket and fully-covered behavior', () => {
-    assert.deepEqual(visibleCustomers(customers, ['Databases', 'Fabric'], false)
+test('grid retains partial coverage, single-pillar and fully-covered behavior', () => {
+    assert.deepEqual(visibleCustomers(customers, ['Databases', 'Analytics'], false)
         .map(customer => customer.id), [1, 3]);
-    assert.deepEqual(visibleCustomers(customers, ['Databases', 'Fabric'], true)
+    assert.deepEqual(visibleCustomers(customers, ['Databases', 'Analytics'], true)
         .map(customer => customer.id), [1, 3, 2]);
     assert.deepEqual(visibleCustomers(customers.slice(0, 1), ['Databases'], false), [customers[0]]);
     assert.deepEqual(visibleCustomers([], ['Databases'], true), []);
@@ -26,7 +26,7 @@ test('display rounding does not mutate raw revenue or rounded-zero coverage', ()
     assert.equal(customers[0].buckets.Databases, 1234.56);
     assert.equal(displayName(customers[0]), 'Beta (Nickname)');
     assert.equal(displayName(customers[1]), 'Alpha');
-    assert.equal(visibleCustomers([customers[2]], ['Databases', 'Fabric'], false).length, 1);
+    assert.equal(visibleCustomers([customers[2]], ['Databases', 'Analytics'], false).length, 1);
 });
 
 test('reverse search matches name, nickname and numeric TPID with bounded results', () => {
@@ -39,9 +39,9 @@ test('reverse search matches name, nickname and numeric TPID with bounded result
         ({id: index + 1, name: 'Customer ' + index})), 'customer').length, 15);
 });
 
-test('confirmed grid buckets cannot silently use draft checkbox selections', () => {
-    const response = {customers, buckets: ['Databases', 'Fabric']};
-    assert.equal(requireGrid(response, ['Databases', 'Fabric']), response);
+test('grid responses must match the requested pillar selection', () => {
+    const response = {customers, buckets: ['Databases', 'Analytics']};
+    assert.equal(requireGrid(response, ['Databases', 'Analytics']), response);
     assert.throws(() => requireGrid(response, ['Databases']), /Invalid whitespace/);
     assert.throws(() => requireGrid({...response, customers: [{...customers[0],
         buckets: {Databases: '1.2K'}}]}, response.buckets), /Invalid whitespace/);
@@ -75,6 +75,21 @@ test('independent panes do not cancel each other; explicit close cancels detail'
     assert.deepEqual(await grid, {data: []});
     assert.deepEqual(await detail, {stale: true});
 });
+
+test('clearing pillars cancels pending reads and reselecting only accepts the latest scope',
+    async () => {
+        const pending = [];
+        const reader = createLatestReader((url, options) => new Promise(resolve =>
+            pending.push({url, options, resolve})));
+        const first = reader.read('grid', '/AI');
+        const second = reader.read('grid', '/Analytics');
+        reader.cancel('grid');
+        const latest = reader.read('grid', '/Security');
+        pending.forEach(request => request.resolve({ok: true, json: async () => request.url}));
+        assert.deepEqual(await first, {stale: true});
+        assert.deepEqual(await second, {stale: true});
+        assert.deepEqual(await latest, {data: '/Security'});
+    });
 
 test('HTTP, transport and malformed JSON failures propagate for explicit Retry', async () => {
     const http = createLatestReader(async () => ({ok: false, status: 503}));

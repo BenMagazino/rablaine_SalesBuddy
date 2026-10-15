@@ -60,7 +60,7 @@
 
     function requireStrings(data) {
         if (!Array.isArray(data) || data.some(value => typeof value !== 'string')) {
-            throw new Error('Invalid bucket or product response');
+            throw new Error('Invalid pillar or product response');
         }
         return data;
     }
@@ -108,7 +108,8 @@
     let searchVersion = 0;
     let frameTimer = null;
     let defaultsVersion = 0;
-    const saved = history.state?.sbWhitespace || {};
+    const saved = history.state?.sbWhitespace?.dimension === 'SuperStrategicPillar'
+        ? history.state.sbWhitespace : {};
 
     function element(tag, text, className) {
         const node = document.createElement(tag);
@@ -137,14 +138,14 @@
         console.error('Whitespace ' + key + ' failed:', error);
         const notice = find('[data-error="' + key + '"]');
         notice.querySelector('[role="alert"]').textContent =
-            'Could not load ' + (key === 'defaults' ? 'bucket defaults' : key) + '. '
-            + (key === 'defaults' ? 'Retry or choose buckets manually.' : 'Please retry.');
+            'Could not load ' + (key === 'defaults' ? 'strategic pillars' : key) + '. '
+            + (key === 'defaults' ? 'Retry loading the pillars.' : 'Please retry.');
         notice.hidden = false;
         if (key === mode) updateStatus('Could not load ' + key + ' | Retry available');
         if (key === 'grid') find('#gridSummary').textContent =
             'Grid unavailable | ' + gridRequest.join(', ');
         if (key === 'defaults' && !availableBuckets.length) {
-            find('#bucketCheckboxes').textContent = 'Buckets unavailable.';
+            find('#bucketCheckboxes').textContent = 'Pillars unavailable.';
         }
     }
 
@@ -171,7 +172,8 @@
                 scrolls[panel.id] = panel.querySelector('.sb-whitespace-reading').scrollTop;
             });
             history.replaceState({...history.state, sbWhitespace: {
-                mode, buckets: selectedBuckets(), gridBuckets: grid?.buckets ?? gridRequest,
+                dimension: 'SuperStrategicPillar',
+                mode, buckets: selectedBuckets(),
                 showAll: find('#showAllCustomers').checked,
                 customer: selectedCustomer, query: search.value, scrolls,
                 sorts: Object.fromEntries(Object.entries(sorts).map(([key, sort]) =>
@@ -262,7 +264,7 @@
         table.dataset.exportVisible = String(rows.length > 0);
         host.hidden = rows.length === 0;
         find('#gridEmpty').hidden = rows.length > 0;
-        find('#gridEmpty').textContent = 'No customers match this bucket scope.';
+        find('#gridEmpty').textContent = 'No customers match this pillar scope.';
         const scope = rows.length + ' customers | ' + grid.buckets.join(', ')
             + ' | Recent average spend';
         find('#gridSummary').textContent = scope;
@@ -278,11 +280,11 @@
             find('#gridResults').replaceChildren();
             find('#gridResults').hidden = true;
             find('#gridEmpty').hidden = false;
-            find('#gridEmpty').textContent = 'Choose at least one bucket, then Show Whitespace.';
-            find('#gridSummary').textContent = 'No bucket scope loaded.';
+            find('#gridEmpty').textContent = 'Choose at least one pillar to see whitespace.';
+            find('#gridSummary').textContent = 'No pillar scope loaded.';
             find('[data-error="grid"]').hidden = true;
             setLoading('grid', false);
-            updateStatus('Choose buckets to begin');
+            updateStatus('Choose pillars to begin');
             return;
         }
         gridRequest = [...buckets];
@@ -302,7 +304,7 @@
 
     async function loadDefaults() {
         const version = ++defaultsVersion;
-        const loaded = await read('defaults', '/api/revenue/buckets', data => {
+        const loaded = await read('defaults', '/api/reports/whitespace/pillars', data => {
             availableBuckets = requireStrings(data);
             const host = find('#bucketCheckboxes');
             host.replaceChildren();
@@ -314,34 +316,21 @@
                 label.append(input, document.createTextNode(bucket));
                 host.append(label);
             });
-            find('#btnLoadGrid').disabled = false;
             if (!availableBuckets.length) {
                 loadGrid([]);
-                host.append(element('span', 'No revenue buckets available.'));
-                find('#gridEmpty').textContent = 'No buckets available in imported revenue.';
-                find('#btnLoadGrid').disabled = true;
+                host.append(element('span', 'No strategic pillars available.'));
+                find('#gridEmpty').textContent = 'No pillars available in imported revenue.';
             }
         });
         if (!loaded || version !== defaultsVersion || !availableBuckets.length) return;
         try {
-            let defaults;
-            if (Array.isArray(saved.buckets)) {
-                defaults = requireStrings(saved.buckets);
-            } else {
-                const stored = global.localStorage.getItem('salesbuddy_revenue_bucket_filter');
-                defaults = stored ? requireStrings(JSON.parse(stored)) : [];
-                if (!defaults.length) {
-                    const result = await reader.read('defaults', '/api/revenue/compensated-buckets');
-                    if (result.stale || version !== defaultsVersion) return;
-                    defaults = requireStrings(result.data);
-                }
-            }
+            const defaults = Array.isArray(saved.buckets)
+                ? requireStrings(saved.buckets) : availableBuckets;
             find('#bucketCheckboxes').querySelectorAll('input').forEach(input => {
                 input.checked = defaults.includes(input.value);
             });
             find('#showAllCustomers').checked = Boolean(saved.showAll);
-            const buckets = Array.isArray(saved.gridBuckets) ? saved.gridBuckets : selectedBuckets();
-            await loadGrid(buckets.filter(bucket => availableBuckets.includes(bucket)));
+            await loadGrid();
         } catch (error) {
             showError('defaults', error);
         }
@@ -415,15 +404,15 @@
             context.append(element('h2', data.customer.name), customerLink(data.customer),
                 element('p', 'Coverage uses positive spend at any time in imported history.'));
             const bucketSection = element('section', undefined, 'sb-whitespace-reverse-section');
-            bucketSection.append(element('h2', 'Missing buckets (' + missingBuckets.length + ')'),
+            bucketSection.append(element('h2', 'Missing pillars (' + missingBuckets.length + ')'),
                 missingBuckets.length ? tags(missingBuckets, true)
-                    : element('p', 'Customer has used every available bucket.'));
+                    : element('p', 'Customer has used every strategic pillar.'));
             const productSection = element('section', undefined, 'sb-whitespace-reverse-section');
-            productSection.append(element('h2', 'Missing products within active buckets'));
+            productSection.append(element('h2', 'Missing products within active pillars'));
             const entries = Object.entries(data.missing_products);
             entries.forEach(([bucket, products]) => productSection.append(
                 element('h3', bucket + ' (' + products.length + ')'), tags(products, false)));
-            if (!entries.length) productSection.append(element('p', 'No product gaps in active buckets.'));
+            if (!entries.length) productSection.append(element('p', 'No product gaps in active pillars.'));
             host.replaceChildren(context, bucketSection, productSection);
             host.hidden = false;
             if (mode === 'reverse') updateStatus(data.customer.name + ' | Historical coverage');
@@ -447,7 +436,7 @@
             const host = find('#penetrationResults');
             if (!data.length) host.replaceChildren(element('p', 'No customer revenue available.',
                 'sb-whitespace-empty'));
-            else makeTable('penetrationTable', [['Bucket', 'text'], ['Customers with Spend', 'number'],
+            else makeTable('penetrationTable', [['Pillar', 'text'], ['Customers with Spend', 'number'],
                 ['Adoption Rate', 'number'], ['Gap', 'number']], host, data.map(item => {
                 const row = element('tr');
                 const button = element('button', item.bucket, 'sb-whitespace-value');
@@ -473,7 +462,7 @@
             host.hidden = false;
             penetrationLoaded = true;
             find('#penetrationSummary').textContent = data.length
-                ? data.length + ' buckets | ' + data[0].total_customers
+                ? data.length + ' pillars | ' + data[0].total_customers
                     + ' customers with imported revenue | Historical positive spend'
                 : 'No customer revenue available.';
             if (mode === 'penetration') updateStatus(find('#penetrationSummary').textContent);
@@ -495,7 +484,8 @@
 
     function openBucket(customer, bucket) {
         prepareDetail(customer.name + ' | ' + bucket);
-        const url = '/revenue/customer/' + customer.id + '/bucket/' + encodeURIComponent(bucket);
+        const url = '/reports/whitespace/customer/' + customer.id + '/pillar/'
+            + encodeURIComponent(bucket);
         detail = {kind: 'bucket', url};
         retries.detail = () => openBucket(customer, bucket);
         find('[data-bucket-full]').href = url;
@@ -505,7 +495,7 @@
         frameTimer = setTimeout(() => {
             frame.removeAttribute('src');
             setLoading('detail', false);
-            showError('detail', new Error('Bucket preview timed out'));
+            showError('detail', new Error('Pillar preview timed out'));
         }, 30000);
     }
 
@@ -514,8 +504,8 @@
         try {
             if (frame.contentWindow.location.href !== frame.src) return;
             clearTimeout(frameTimer);
-            if (!frame.contentDocument.querySelector('[data-sb-revenue-page="bucket"][data-embedded="true"]')) {
-                throw new Error('Bucket preview could not be loaded');
+            if (!frame.contentDocument.querySelector('[data-sb-pillar-products][data-embedded="true"]')) {
+                throw new Error('Pillar preview could not be loaded');
             }
             frame.contentDocument.querySelectorAll('a[href]').forEach(link => {
                 if (!link.getAttribute('href').startsWith('#')) link.target = '_top';
@@ -594,8 +584,7 @@
         ++defaultsVersion;
         reader.cancel('defaults');
     }
-    find('#bucketCheckboxes').addEventListener('change', cancelDefaults);
-    find('#btnLoadGrid').addEventListener('click', () => {
+    find('#bucketCheckboxes').addEventListener('change', () => {
         cancelDefaults();
         loadGrid();
     });

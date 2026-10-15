@@ -247,6 +247,7 @@ def test_declared_pages_have_real_get_destinations(app):
         "revenue.revenue_bucket_products", "revenue.revenue_seller_view",
         "revenue.revenue_seller_products", "revenue.revenue_seller_product_view",
         "revenue.revenue_products_list", "revenue.revenue_product_view",
+        "reports.whitespace_pillar_products",
     }
     assert HANDLED_ENDPOINTS == expected
     get_endpoints = {rule.endpoint for rule in app.url_map.iter_rules() if "GET" in rule.methods}

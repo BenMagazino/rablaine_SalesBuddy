@@ -13,10 +13,10 @@
 .sb-whitespace-workarea { display: flex; min-height: 0; }
 .sb-whitespace-panel { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
 .sb-whitespace-tools { display: flex; align-items: center; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
-.sb-whitespace-label { color: var(--sb-ui-muted); align-self: flex-start; }
+.sb-whitespace-label { color: var(--sb-ui-muted); font-size: 12px; }
 #bucketCheckboxes { display: flex; flex-wrap: wrap; gap: 6px 16px; flex: 1; font-size: 12px; }
 #bucketCheckboxes label, .sb-whitespace-scope label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
-.sb-whitespace input[type="checkbox"] { accent-color: var(--sb-ui-accent); }
+.sb-whitespace input[type="checkbox"] { margin: 0; accent-color: var(--sb-ui-accent); }
 .sb-whitespace-scope { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 10px 24px; border-bottom: 1px solid var(--sb-ui-line); color: var(--sb-ui-muted); font-size: 12px; }
 .sb-whitespace-reading { flex: 1; min-height: 0; overflow: auto; overflow-anchor: none; scrollbar-gutter: stable; }
 .sb-whitespace table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -24,6 +24,7 @@
 .sb-whitespace th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); color: var(--sb-ui-muted); font-weight: 500; white-space: nowrap; }
 .sb-whitespace td { font-variant-numeric: tabular-nums; }
 .sb-whitespace :is(th, td):not(:first-child) { text-align: right; }
+.sb-whitespace tbody tr:nth-child(even) { background: color-mix(in oklch, var(--sb-ui-context) 60%, var(--sb-ui-surface)); }
 .sb-whitespace tbody tr:hover { background: var(--sb-ui-raised); }
 .sb-whitespace a { color: var(--sb-ui-accent); text-decoration: none; }
 .sb-whitespace a:hover { text-decoration: underline; }

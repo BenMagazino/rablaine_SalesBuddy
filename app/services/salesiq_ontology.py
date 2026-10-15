@@ -138,7 +138,7 @@ build a solution, partners are brought in to implement.
 | Seller Mode | UI filter scoping views to one seller's customers. Does not change DB contents. |
 | Stale Customer | Customer whose TPID disappeared from latest MSX sync. |
 | Hygiene | Data quality gaps - engagements without milestones, etc. |
-| Whitespace | Revenue coverage gaps - tech buckets with no customer revenue. |
+| Whitespace | Revenue coverage gaps by SuperStrategicPillar: AI, Analytics, Apps, Databases, Developer, Infra, Security. Imported with ACR, separate from service buckets. |
 """,
     },
     {

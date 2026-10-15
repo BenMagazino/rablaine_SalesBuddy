@@ -1,5 +1,26 @@
 # RPT-WHITE: Whitespace Analysis
 
+## Strategic pillar follow-up, October 15, 2026
+
+- Whitespace now uses source-defined SuperStrategicPillars: AI, Analytics, Apps,
+  Databases, Developer, Infra and Security. The ACR sync also imports this grain;
+  Revenue Analyzer's service buckets remain unchanged.
+- Initial selection is all seven pillars, independent of compensated revenue
+  buckets. Back navigation preserves pillar selections without reusing old
+  bucket-based history state.
+- Grid averages use monthly pillar totals in the same 62-day window. Reverse
+  lookup and penetration retain historical positive spend and zero-only customers.
+- Product previews share the native product/history template but query pillar
+  source data. Existing installations show import guidance until their first
+  successful pillar-aware revenue sync.
+- Standalone reports now use the shared 1344px-wide centered frame with canvas
+  gutters. Alternating table rows use theme-aware shading, preserving gap fills
+  and hover feedback. Embedded reports retain their host width.
+- Pillar checkbox changes update the grid immediately. The label and checkbox
+  row share vertical alignment; Back restores the selected scope directly.
+
+The checkpoint evidence below describes the earlier bucket-based implementation.
+
 ## Content consistency review
 
 Latest evidence: `consistency-report-whitespace-{before,after,light-after}.png`.
@@ -28,7 +49,7 @@ Complete measurements and source audit: private `consistency-reports-results.jso
 
 | Surface | Expected outcome | Evidence |
 | --- | --- | --- |
-| Grid | Stored-row averages in the existing 62-day window; confirmed buckets, partial/all and single-bucket behavior | Python query fixtures; JS filtering; live 78 / 140 rows |
+| Grid | Stored-row averages in the existing 62-day window; selected pillars, partial/all and single-pillar behavior | Python query fixtures; JS filtering; live 78 / 140 rows |
 | Defaults | Saved Revenue filter, then compensated defaults; no preference writes | Original Databases/Fabric filter unchanged |
 | Reverse | Name/nickname/TPID; historical bucket/product gaps | Python fixtures; JS matching; all three live searches |
 | Penetration | Historical positive spend; zero-only denominator; with/without lists | Python fixtures; live 19 buckets / 180 customers, 2 / 178 breakdown |
@@ -52,7 +73,7 @@ Complete measurements and source audit: private `consistency-reports-results.jso
 
 ## Coupled corrections and limits
 
-- New bucket choices do not relabel old results; Show Whitespace confirms the scope.
+- Pillar choices immediately reload the grid; late responses cannot replace newer selections.
 - Sort keys identify their column set, avoiding invalid/shifted sorts after bucket changes.
 - Export labels retain amounts inside native buttons; shared export code is unchanged.
 - Failed reads hide stale results/exports and offer Retry; no analytical API changes.

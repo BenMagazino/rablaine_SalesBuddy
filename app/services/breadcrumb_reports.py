@@ -28,6 +28,7 @@ REPORT_ENDPOINTS = {
 
 HANDLED_ENDPOINTS = REPORT_ENDPOINTS | {
     "reports.reports_hub",
+    "reports.whitespace_pillar_products",
     "revenue.revenue_dashboard",
     "revenue.revenue_import",
     "revenue.revenue_config",
@@ -77,6 +78,9 @@ def get_report_breadcrumbs(
         return None
     if endpoint == "reports.reports_hub":
         return [home(), current("Reports")]
+    if endpoint == "reports.whitespace_pillar_products":
+        return [*_report_path(), link("Whitespace Analysis", "reports.report_whitespace"),
+                current(f"{context['bucket']} Products")]
     if endpoint in REPORT_ENDPOINTS:
         return [*_report_path(), current(page_label(context))]
     if endpoint == "revenue.revenue_dashboard":

@@ -1812,6 +1812,33 @@ class CustomerRevenueData(db.Model):
         return f'<CustomerRevenueData {self.customer_name} {self.bucket} {self.fiscal_month}: ${self.revenue:,.0f}>'
 
 
+class StrategicPillarRevenueData(db.Model):
+    """Source-defined pillar ACR at TPID/product/month grain, independent of buckets."""
+
+    __tablename__ = 'strategic_pillar_revenue_data'
+
+    id = db.Column(db.Integer, primary_key=True)
+    tpid = db.Column(db.Integer, nullable=False, index=True)
+    customer_name = db.Column(db.String(500), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), index=True)
+    pillar = db.Column(db.String(50), nullable=False)
+    product = db.Column(db.String(200), nullable=False)
+    fiscal_month = db.Column(db.String(20), nullable=False)
+    month_date = db.Column(db.Date, nullable=False, index=True)
+    revenue = db.Column(db.Float, nullable=False)
+    last_import_id = db.Column(db.Integer, db.ForeignKey('revenue_imports.id'), nullable=False)
+    imported_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+
+    customer = db.relationship('Customer', backref='strategic_pillar_revenue')
+    last_import = db.relationship('RevenueImport', backref='strategic_pillar_data_points')
+
+    __table_args__ = (
+        db.UniqueConstraint('tpid', 'pillar', 'product', 'month_date',
+                            name='uq_pillar_tpid_product_month'),
+        db.Index('ix_pillar_customer_month', 'customer_id', 'pillar', 'month_date'),
+    )
+
+
 class ProductRevenueData(db.Model):
     """Monthly revenue data for a specific product within a customer/bucket.
     

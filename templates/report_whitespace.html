@@ -8,17 +8,17 @@
 {% block footer %}
 {% if not request.args.get('embed') %}
 <footer class="sb-page-status" aria-label="Whitespace analysis status">
-    <span data-sb-whitespace-status>{{ 'Choose buckets to begin' if has_revenue_data else 'No revenue data' }}</span>
+    <span data-sb-whitespace-status>{{ 'Choose pillars to begin' if has_revenue_data else 'No strategic pillar data' }}</span>
     <span>Exports include the loaded whitespace grid</span>
 </footer>
 {% endif %}
 {% endblock %}
 {% block content %}
-<section class="sb-whitespace" data-sb-whitespace data-sb-page-surface
+<section class="sb-whitespace{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-whitespace data-sb-page-surface
          data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          aria-labelledby="whitespaceTitle">
     <header class="sb-whitespace-header" data-sb-page-band>
-        <div><h1 id="whitespaceTitle">Whitespace Analysis</h1><p>Find gaps in customer technology adoption.</p></div>
+        <div><h1 id="whitespaceTitle">Whitespace Analysis</h1><p>Find customer adoption gaps across strategic pillars.</p></div>
         {% set export_table_id = '#gridTable[data-export-visible=true]' %}
         {% set export_filename = 'whitespace-analysis' %}
         {% set export_title = 'Whitespace Analysis' %}
@@ -26,12 +26,12 @@
     </header>
     {% if not has_revenue_data %}
     <div class="sb-whitespace-empty" data-sb-page-body>
-        <h2>No revenue data yet</h2><p>Import revenue data to use whitespace analysis.</p>
+        <h2>No strategic pillar data yet</h2><p>Run the revenue import to load strategic pillar data for whitespace analysis. Existing service bucket data is not used as a substitute.</p>
         <a class="sb-dialog-button" href="{{ url_for('revenue.revenue_import') }}">Import Data</a>
     </div>
     {% else %}
     <nav class="sb-whitespace-tabs" data-sb-page-band role="tablist" aria-label="Analysis views">
-        {% for key, label in [('grid', 'Whitespace Grid'), ('reverse', 'Reverse Lookup'), ('penetration', 'Bucket Penetration')] %}
+        {% for key, label in [('grid', 'Whitespace Grid'), ('reverse', 'Reverse Lookup'), ('penetration', 'Pillar Penetration')] %}
         <button type="button" id="{{ key }}-tab" role="tab" data-mode="{{ key }}"
                 aria-controls="{{ key }}Panel" aria-selected="{{ 'true' if key == 'grid' else 'false' }}"
                 tabindex="{{ 0 if key == 'grid' else -1 }}">{{ label }}</button>
@@ -40,19 +40,18 @@
     <div class="sb-whitespace-workarea" data-sb-page-body>
         <section id="gridPanel" role="tabpanel" aria-labelledby="grid-tab" class="sb-whitespace-panel">
             <div class="sb-whitespace-tools">
-                <span class="sb-whitespace-label">Buckets</span><div id="bucketCheckboxes" role="group" aria-label="Selected buckets"><span>Loading buckets...</span></div>
-                <button type="button" class="sb-dialog-button primary" id="btnLoadGrid" disabled>Show Whitespace</button>
+                <span class="sb-whitespace-label">Pillars</span><div id="bucketCheckboxes" role="group" aria-label="Selected strategic pillars"><span>Loading pillars...</span></div>
             </div>
-            <div class="sb-whitespace-notice" data-error="defaults" hidden><span role="alert"></span><button type="button" data-retry="defaults">Retry defaults</button></div>
+            <div class="sb-whitespace-notice" data-error="defaults" hidden><span role="alert"></span><button type="button" data-retry="defaults">Retry pillars</button></div>
             <div class="sb-whitespace-scope">
-                <span id="gridSummary">Select buckets to compare customer spend.</span>
+                <span id="gridSummary">Select pillars to compare customer spend.</span>
                 <label><input type="checkbox" id="showAllCustomers"> Include fully covered customers</label>
             </div>
             <div class="sb-whitespace-notice" data-error="grid" hidden><span role="alert"></span><button type="button" data-retry="grid">Retry grid</button></div>
             <div class="sb-whitespace-reading" tabindex="0" role="region" aria-label="Customer whitespace grid">
                 <p data-loading="grid" role="status" hidden>Analyzing customer spend...</p>
                 <div id="gridResults" hidden></div>
-                <p id="gridEmpty" class="sb-whitespace-empty">Choose at least one bucket, then Show Whitespace.</p>
+                <p id="gridEmpty" class="sb-whitespace-empty">Choose at least one pillar to see whitespace.</p>
             </div>
         </section>
         <section id="reversePanel" role="tabpanel" aria-labelledby="reverse-tab" class="sb-whitespace-panel" hidden>
@@ -69,26 +68,26 @@
             <div class="sb-whitespace-notice" data-error="reverse" hidden><span role="alert"></span><button type="button" data-retry="reverse">Retry analysis</button></div>
             <div class="sb-whitespace-reading" tabindex="0" role="region" aria-label="Customer gap analysis">
                 <p data-loading="reverse" role="status" hidden>Analyzing customer gaps...</p>
-                <div id="reverseResults"><p class="sb-whitespace-empty">Select a customer to inspect historical bucket and product gaps.</p></div>
+                <div id="reverseResults"><p class="sb-whitespace-empty">Select a customer to inspect historical pillar and product gaps.</p></div>
             </div>
         </section>
         <section id="penetrationPanel" role="tabpanel" aria-labelledby="penetration-tab" class="sb-whitespace-panel" hidden>
             <div class="sb-whitespace-scope"><span id="penetrationSummary">Customers with positive spend at any time in imported history.</span></div>
             <div class="sb-whitespace-notice" data-error="penetration" hidden><span role="alert"></span><button type="button" data-retry="penetration">Retry penetration</button></div>
-            <div class="sb-whitespace-reading" tabindex="0" role="region" aria-label="Bucket adoption">
+            <div class="sb-whitespace-reading" tabindex="0" role="region" aria-label="Strategic pillar adoption">
                 <p data-loading="penetration" role="status" hidden>Loading penetration stats...</p>
                 <div id="penetrationResults"></div>
             </div>
         </section>
     </div>
     <dialog class="sb-dialog sb-whitespace-dialog" id="bucketDetailModal" aria-labelledby="bucketDetailTitle">
-        <header class="sb-dialog-header"><h2 id="bucketDetailTitle">Bucket Details</h2>
+        <header class="sb-dialog-header"><h2 id="bucketDetailTitle">Pillar Details</h2>
             <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
         <div class="sb-dialog-body">
             <p data-loading="detail" role="status" hidden>Loading details...</p>
             <div class="sb-whitespace-notice" data-error="detail" hidden><span role="alert"></span><button type="button" data-retry="detail">Retry details</button></div>
             <div id="bucketDetailBody"></div>
-            <iframe title="Customer bucket product breakdown" data-bucket-frame hidden></iframe>
+            <iframe title="Customer strategic pillar product breakdown" data-bucket-frame hidden></iframe>
         </div>
         <footer class="sb-dialog-footer"><a class="sb-dialog-button" data-bucket-full hidden>Open full view</a>
             <button type="button" class="sb-dialog-button" data-sb-dialog-close>Close</button></footer>

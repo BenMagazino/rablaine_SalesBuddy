@@ -95,6 +95,10 @@
         if (data.linked_pct > 100 || data.customers_with_data > data.customers) {
             throw new Error('Invalid sync result coverage.');
         }
+        if (data.pillar_rows !== undefined &&
+            (!Number.isInteger(data.pillar_rows) || data.pillar_rows < 0)) {
+            throw new Error('Invalid sync result field: pillar_rows');
+        }
         for (const key of ['review_kept', 'review_retired']) {
             if (data[key] !== undefined && (!Number.isInteger(data[key]) || data[key] < 0)) {
                 throw new Error('Invalid sync review result.');
@@ -227,9 +231,13 @@
             results.replaceChildren(node('p', 'Revenue synced'));
             const lines = node('ul');
             const number = value => value.toLocaleString();
+            const rows = [number(data.bucket_rows) + ' bucket rows',
+                number(data.product_rows) + ' product rows'];
+            if (data.pillar_rows !== undefined) {
+                rows.push(number(data.pillar_rows) + ' strategic pillar rows');
+            }
             for (const message of [
-                number(data.bucket_rows) + ' bucket rows, ' + number(data.product_rows) +
-                    ' product rows across ' + data.months + ' months',
+                rows.join(', ') + ' across ' + data.months + ' months',
                 data.customers_with_data + ' of ' + data.customers + ' accounts returned revenue',
                 data.linked_pct + '% of rows linked to a customer record',
                 'Completed in ' + data.duration_s + 's',

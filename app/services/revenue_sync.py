@@ -29,6 +29,7 @@ import requests
 
 from app.models import (
     db, Customer, CustomerRevenueData, ProductRevenueData, RevenueImport, SyncStatus,
+    StrategicPillarRevenueData,
 )
 from app.services import revenue_pull, revenue_taxonomy
 from app.services.revenue_import import fiscal_month_to_date
@@ -142,10 +143,20 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
                "message": "Pulling revenue by product..."}
         product_rows = yield from _pull_with_progress(
             revenue_pull.pull_products_for_customers, tpids, fys,
-            "pull_products", 32, 55, "Pulling revenue by product", heartbeat)
+            "pull_products", 32, 45, "Pulling revenue by product", heartbeat)
         heartbeat()
-        yield {"phase": "pull_products", "progress": 55,
+        yield {"phase": "pull_products", "progress": 45,
                "message": f"Retrieved {len(product_rows):,} product rows."}
+
+        pillar_rows = yield from _pull_with_progress(
+            revenue_pull.pull_pillars_for_customers, tpids, fys,
+            "pull_pillars", 46, 57, "Pulling strategic pillar revenue", heartbeat)
+        if not pillar_rows:
+            raise revenue_pull.RevenuePullError(
+                "MSXI returned no strategic pillar rows. Previous revenue was retained.")
+        heartbeat()
+        yield {"phase": "pull_pillars", "progress": 57,
+               "message": f"Retrieved {len(pillar_rows):,} strategic pillar rows."}
 
         if not bucket_rows:
             yield {"error": "MSXI returned no revenue rows. Nothing was changed."}
@@ -181,7 +192,8 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
         # --- 6. write the new data ------------------------------------------
         yield {"phase": "write", "progress": 65, "message": "Writing revenue data..."}
         stats = _write_rows(bucket_rows, product_rows, customers,
-                            purge_keep_analysis_ids=classified["keep_analysis_ids"])
+                            purge_keep_analysis_ids=classified["keep_analysis_ids"],
+                            pillar_rows=pillar_rows)
         purged = stats.pop('purged')
         heartbeat()
         yield {"phase": "write", "progress": 85,
@@ -222,6 +234,7 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
             "customers_with_data": stats["customers_with_data"],
             "bucket_rows": stats["bucket_rows"],
             "product_rows": stats["product_rows"],
+            "pillar_rows": stats["pillar_rows"],
             "months": stats["months"],
             "fiscal_years": fys,
             "linked_pct": stats["linked_pct"],
@@ -236,7 +249,7 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
         }
         SyncStatus.mark_completed(
             SYNC_TYPE, success=True,
-            items_synced=stats["bucket_rows"] + stats["product_rows"],
+            items_synced=stats["bucket_rows"] + stats["product_rows"] + stats["pillar_rows"],
             details=json.dumps({k: v for k, v in result.items() if k != "analysis"}, default=str),
         )
         yield {"complete": True, "progress": 100, "result": result}
@@ -251,7 +264,8 @@ def _sync_generator(fiscal_years: Optional[list[str]] = None,
 
 def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
                 customers: list[tuple[int, str]], *,
-                purge_keep_analysis_ids: set[int] | None = None) -> dict[str, Any]:
+                purge_keep_analysis_ids: set[int] | None = None,
+                pillar_rows: list[dict] | None = None) -> dict[str, Any]:
     """Aggregate pulled rows at the stored grain and link unambiguous TPIDs.
 
     MSXI groups by TPID and untrimmed labels, while the tables require unique
@@ -354,6 +368,12 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
     db.session.flush()
     for row in bucket_objs + product_objs:
         row.last_import_id = import_record.id
+    pillar_objs = []
+    if pillar_rows is not None:
+        from app.services.whitespace import prepare_pillar_rows
+        pillar_objs = prepare_pillar_rows(pillar_rows, tpid_to_customer, import_record.id)
+        if purge_keep_analysis_ids is None:
+            StrategicPillarRevenueData.query.delete(synchronize_session=False)
     if len(bucket_objs) != len(bucket_rows) or len(product_objs) != len(product_rows):
         logger.info(
             "Revenue rows normalized to stored grain: %s bucket / %s product input rows, "
@@ -362,8 +382,9 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
         )
     db.session.bulk_save_objects(bucket_objs)
     db.session.bulk_save_objects(product_objs)
+    db.session.bulk_save_objects(pillar_objs)
 
-    import_record.records_created = len(bucket_objs) + len(product_objs)
+    import_record.records_created = len(bucket_objs) + len(product_objs) + len(pillar_objs)
     import_record.new_months_added = len(months)
     if months:
         import_record.earliest_month = min(months)
@@ -375,6 +396,7 @@ def _write_rows(bucket_rows: list[dict], product_rows: list[dict],
         **({'purged': purged} if purge_keep_analysis_ids is not None else {}),
         "bucket_rows": len(bucket_objs),
         "product_rows": len(product_objs),
+        **({"pillar_rows": len(pillar_objs)} if pillar_rows is not None else {}),
         "months": len(months),
         "customers_with_data": len(seen_customers),
         "linked_pct": round(100 * linked / len(bucket_objs), 1) if bucket_objs else 0.0,

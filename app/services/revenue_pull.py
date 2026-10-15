@@ -438,6 +438,27 @@ def pull_acr_for_customers(tpids: list[int], fiscal_years: Optional[list[str]] =
     return _pull(_acr_query, tpids, fiscal_years, chunk, max_workers, progress)
 
 
+def _pillar_query(tpids: list[int], fiscal_years: list[str]) -> dict:
+    """Pull official pillar/product ACR without inferring classification from buckets."""
+    return {
+        'Version': 2,
+        'From': _acr_from(),
+        'Select': [
+            _col('d1', 'TPID', 'tpid'), _col('d1', 'TPAccountName', 'name'),
+            _col('d', 'FiscalMonth', 'fm'), _col('f', 'SuperStrategicPillar', 'pillar'),
+            _col('f', 'ServiceLevel4', 'product'), _mea('m', '$ ACR', 'acr'),
+        ],
+        'Where': _acr_where(tpids, fiscal_years, 'SuperStrategicPillar'),
+    }
+
+
+def pull_pillars_for_customers(tpids: list[int], fiscal_years: Optional[list[str]] = None,
+                               chunk: int = 25, max_workers: int = 4,
+                               progress=None) -> list[dict]:
+    """Pull TPID/pillar/product/month ACR through the existing authenticated, paged API."""
+    return _pull(_pillar_query, tpids, fiscal_years, chunk, max_workers, progress)
+
+
 def pull_products_for_customers(tpids: list[int], fiscal_years: Optional[list[str]] = None,
                                 chunk: int = 25, max_workers: int = 4,
                                 progress=None) -> list[dict]:

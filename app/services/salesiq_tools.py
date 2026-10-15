@@ -1310,7 +1310,7 @@ def report_revenue_alerts(
 @tool(
     'report_whitespace',
     'Get whitespace analysis - which customers are missing coverage in which '
-    'technology buckets.',
+    'SuperStrategicPillars: AI, Analytics, Apps, Databases, Developer, Infra, Security.',
     {
         'type': 'object',
         'properties': {
@@ -1318,45 +1318,37 @@ def report_revenue_alerts(
                 'type': 'integer',
                 'description': 'Check whitespace for a specific customer.',
             },
-            'bucket': {
+            'pillar': {
                 'type': 'string',
-                'description': 'Check which customers lack coverage in this bucket.',
+                'description': 'Check how many customers have historical spend in this pillar.',
+                'enum': ['AI', 'Analytics', 'Apps', 'Databases', 'Developer', 'Infra', 'Security'],
             },
         },
     },
 )
 def report_whitespace(
     customer_id: int | None = None,
-    bucket: str | None = None,
+    pillar: str | None = None,
 ) -> dict:
-    """Return whitespace gaps."""
-    from app.models import CustomerRevenueData
+    """Return source-defined pillar coverage, using the report's shared monthly rollup."""
+    from app.services.whitespace import pillar_coverage
+    return pillar_coverage(customer_id, pillar)
 
-    if customer_id:
-        rows = (
-            CustomerRevenueData.query
-            .filter_by(customer_id=customer_id)
-            .all()
-        )
-        buckets_with_spend = {r.bucket for r in rows if r.latest_month and r.latest_month > 0}
-        return {
-            'customer_id': customer_id,
-            'buckets_with_spend': sorted(buckets_with_spend),
-        }
 
-    if bucket:
-        customers_with = (
-            CustomerRevenueData.query
-            .filter_by(bucket=bucket)
-            .filter(CustomerRevenueData.latest_month > 0)
-            .all()
-        )
-        return {
-            'bucket': bucket,
-            'customers_with_spend': len(customers_with),
-        }
-
-    return {'error': 'Provide customer_id or bucket to query whitespace.'}
+@tool(
+    'get_strategic_pillar_revenue',
+    'Read monthly ACR by SuperStrategicPillar for a customer, independent of service buckets.',
+    {'type': 'object', 'properties': {
+        'customer_id': {'type': 'integer', 'description': 'Sales Buddy customer ID.'},
+        'pillar': {'type': 'string', 'enum': [
+            'AI', 'Analytics', 'Apps', 'Databases', 'Developer', 'Infra', 'Security',
+        ]},
+    }, 'required': ['customer_id']},
+)
+def get_strategic_pillar_revenue(customer_id: int, pillar: str | None = None) -> dict:
+    """Read the same monthly pillar totals used by whitespace analysis."""
+    from app.services.whitespace import pillar_history
+    return pillar_history(customer_id, pillar)
 
 
 # ============================================================================

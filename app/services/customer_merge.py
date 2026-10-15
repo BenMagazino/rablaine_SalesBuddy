@@ -12,7 +12,7 @@ from sqlalchemy import text
 
 from app.models import (
     db, Customer, CustomerContact, Note, Engagement, Milestone, Opportunity,
-    CustomerRevenueData, ProductRevenueData, RevenueAnalysis,
+    CustomerRevenueData, ProductRevenueData, RevenueAnalysis, StrategicPillarRevenueData,
     MarketingSummary, MarketingInteraction, MarketingContact, U2CSnapshotItem,
     customers_verticals, customers_csams,
 )
@@ -62,6 +62,7 @@ def _count_linked_records(customer_id: int) -> dict:
         "contacts": CustomerContact.query.filter_by(customer_id=customer_id).count(),
         "revenue_data": CustomerRevenueData.query.filter_by(customer_id=customer_id).count(),
         "product_revenue": ProductRevenueData.query.filter_by(customer_id=customer_id).count(),
+        "pillar_revenue": StrategicPillarRevenueData.query.filter_by(customer_id=customer_id).count(),
         "revenue_analyses": RevenueAnalysis.query.filter_by(customer_id=customer_id).count(),
         "marketing_summary": MarketingSummary.query.filter_by(customer_id=customer_id).count(),
         "marketing_interactions": MarketingInteraction.query.filter_by(customer_id=customer_id).count(),
@@ -117,6 +118,8 @@ def merge_customer(source_id: int, dest_id: int) -> dict:
     migrated["revenue_data"] = CustomerRevenueData.query.filter_by(
         customer_id=source_id).update({"customer_id": dest_id})
     migrated["product_revenue"] = ProductRevenueData.query.filter_by(
+        customer_id=source_id).update({"customer_id": dest_id})
+    migrated["pillar_revenue"] = StrategicPillarRevenueData.query.filter_by(
         customer_id=source_id).update({"customer_id": dest_id})
     migrated["revenue_analyses"] = RevenueAnalysis.query.filter_by(
         customer_id=source_id).update({"customer_id": dest_id})
