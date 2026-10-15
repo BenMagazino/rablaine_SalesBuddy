@@ -506,6 +506,9 @@ class TestRevenueReplacement:
 
         monkeypatch.setattr(revenue_pull, "pull_acr_for_customers", pull_buckets)
         monkeypatch.setattr(revenue_pull, "pull_products_for_customers", pull_products)
+        monkeypatch.setattr(revenue_pull, "pull_pillars_for_customers",
+                            lambda *args, **kwargs: [
+                                {**base, "pillar": "Apps", "product": "Logic Apps"}])
         if fail_write:
             save_objects = db.session.bulk_save_objects
 
@@ -532,7 +535,7 @@ class TestRevenueReplacement:
         assert status.success is not fail_write
         if not fail_write:
             assert result["bucket_rows"] == result["product_rows"] == 1
-            assert status.items_synced == 2
+            assert status.items_synced == 3
 
 
 # ---------------------------------------------------------------------------

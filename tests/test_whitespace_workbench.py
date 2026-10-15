@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 import pytest
 
 from app.models import (
-    Customer, CustomerRevenueData, ProductRevenueData, RevenueImport, db,
+    Customer, StrategicPillarRevenueData, RevenueImport, db,
 )
 
 
@@ -28,23 +28,24 @@ def whitespace_data(app):
             (0, "Databases", date(2026, 1, 1), 5000),
             (0, "Databases", date(2026, 8, 1), 100.12),
             (0, "Databases", date(2026, 9, 1), 300.12),
-            (0, "Fabric", date(2026, 1, 1), 50),
+            (0, "Analytics", date(2026, 1, 1), 50),
             (1, "Databases", date(2026, 10, 1), 1200.01),
-            (1, "Fabric", date(2026, 10, 1), 400),
-            (2, "Fabric", date(2026, 10, 1), 0),
+            (1, "Analytics", date(2026, 10, 1), 400),
+            (2, "Analytics", date(2026, 10, 1), 0),
         ]
         for index, bucket, month, revenue in records:
             customer = customers[index]
-            db.session.add(CustomerRevenueData(
-                customer_name=customer.name, tpid=str(customer.tpid),
-                customer_id=customer.id, bucket=bucket, month_date=month,
+            db.session.add(StrategicPillarRevenueData(
+                customer_name=customer.name, tpid=customer.tpid,
+                customer_id=customer.id, pillar=bucket, product='', month_date=month,
                 fiscal_month=month.strftime("%Y-%m"), revenue=revenue,
                 last_import_id=imported.id,
             ))
         for index, product in [(0, "SQL"), (1, "SQL"), (1, "PostgreSQL")]:
             customer = customers[index]
-            db.session.add(ProductRevenueData(
-                customer_name=customer.name, customer_id=customer.id, bucket="Databases",
+            db.session.add(StrategicPillarRevenueData(
+                customer_name=customer.name, customer_id=customer.id, pillar="Databases",
+                tpid=customer.tpid,
                 product=product, month_date=date(2026, 1, 1), fiscal_month="2026-01",
                 revenue=100, last_import_id=imported.id,
             ))
@@ -55,16 +56,19 @@ def whitespace_data(app):
 @pytest.mark.parametrize("embedded", [False, True])
 def test_native_structure(client, embedded):
     """Render three modes without legacy cards, tabs or injected page scraping."""
-    with patch("app.services.revenue_sync.has_revenue_data", return_value=True):
+    with patch("app.services.whitespace.has_pillar_data", return_value=True):
         response = client.get("/reports/whitespace" + ("?embed=1" if embedded else ""))
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     root = soup.select_one("[data-sb-whitespace]")
     assert root["data-embedded"] == str(embedded).lower()
+    assert ("sb-directory-frame" in root["class"]) is not embedded
+    assert ("sb-directory-frame-wide" in root["class"]) is not embedded
     assert len(root.select('[role="tab"]')) == 3
     assert len(root.select('[role="tabpanel"]')) == 3
     assert root.select_one("dialog.sb-dialog [data-bucket-frame]")
     assert root.select_one("#bucketCheckboxes")
+    assert not root.select(".sb-whitespace-tools button")
     assert root.select_one('#reverseCustomerSearch[role="combobox"]')
     assert not root.select(".card, .nav-tabs, .modal, [data-bs-toggle]")
     assert bool(soup.select_one("body.sb-page-frame")) is not embedded
@@ -75,12 +79,12 @@ def test_native_structure(client, embedded):
 
 def test_empty_native_surface(client):
     """Keep import guidance usable when there is no revenue data."""
-    with patch("app.services.revenue_sync.has_revenue_data", return_value=False):
+    with patch("app.services.whitespace.has_pillar_data", return_value=False):
         response = client.get("/reports/whitespace")
     soup = BeautifulSoup(response.data, "html.parser")
     assert response.status_code == 200
     root = soup.select_one("[data-sb-whitespace]")
-    assert "No revenue data yet" in root.get_text()
+    assert "No strategic pillar data yet" in root.get_text()
     assert root.select_one('a[href="/revenue/import"]')
     assert not root.select('[role="tab"], dialog')
     assert "ui-whitespace.js" not in response.text
@@ -92,22 +96,23 @@ def test_whitespace_help_explains_distinct_scope(client):
     start = source.index("title: 'Whitespace Analysis'")
     help_text = source[start:source.index("title: 'Revenue Reports'", start)]
     for phrase in ["62 days", "zero-only", "does not change the saved Revenue filter",
-                   "export only the loaded grid", "nickname or TPID"]:
+                   "export only the loaded grid", "nickname or TPID",
+                   "checkboxes automatically updates the grid"]:
         assert phrase in help_text
 
 
 def test_recent_average_and_grid_scope(client, whitespace_data):
     """Average stored rows, not missing months; exclude old positive history."""
-    response = client.get("/api/reports/whitespace?buckets=Databases,Fabric&show_all=1")
+    response = client.get("/api/reports/whitespace?buckets=Databases,Analytics&show_all=1")
     data = response.get_json()
     assert response.status_code == 200
-    assert data["buckets"] == ["Databases", "Fabric"]
+    assert data["buckets"] == ["Databases", "Analytics"]
     rows = {row["id"]: row for row in data["customers"]}
     assert set(rows) == set(whitespace_data[:2])
     assert rows[whitespace_data[0]]["buckets"] == {"Databases": 200.12}
     assert rows[whitespace_data[0]]["nickname"] == "Partial"
-    assert rows[whitespace_data[1]]["buckets"] == {"Databases": 1200.01, "Fabric": 400}
-    partial = client.get("/api/reports/whitespace?buckets=Databases,Fabric").get_json()
+    assert rows[whitespace_data[1]]["buckets"] == {"Databases": 1200.01, "Analytics": 400}
+    partial = client.get("/api/reports/whitespace?buckets=Databases,Analytics").get_json()
     assert [row["id"] for row in partial["customers"]] == [whitespace_data[0]]
     assert client.get("/api/reports/whitespace").get_json() == {
         "customers": [], "buckets": [],
@@ -120,7 +125,7 @@ def test_reverse_keeps_historical_bucket_and_product_meaning(client, whitespace_
     data = response.get_json()
     assert response.status_code == 200
     assert data["customer"] == {"id": whitespace_data[0], "name": "Partial Customer"}
-    assert data["missing_buckets"] == []
+    assert data["missing_buckets"] == ["AI", "Apps", "Developer", "Infra", "Security"]
     assert data["missing_products"] == {"Databases": ["PostgreSQL"]}
     assert client.get("/api/reports/whitespace/reverse/999999").status_code == 404
 
@@ -129,13 +134,15 @@ def test_penetration_includes_zero_only_denominator(client, whitespace_data):
     """Historical spend numerator differs intentionally from recent grid coverage."""
     response = client.get("/api/reports/whitespace/penetration")
     assert response.status_code == 200
+    from app.services.whitespace import STRATEGIC_PILLARS
     assert response.get_json() == [
-        {"bucket": bucket, "customers_with_spend": 2,
-         "total_customers": 3, "penetration_pct": 66.7}
-        for bucket in ["Databases", "Fabric"]
+        {"bucket": bucket, "customers_with_spend": 2 if bucket in ("Databases", "Analytics") else 0,
+         "total_customers": 3,
+         "penetration_pct": 66.7 if bucket in ("Databases", "Analytics") else 0}
+        for bucket in STRATEGIC_PILLARS
     ]
     details = client.get(
-        "/api/reports/whitespace/penetration/customers?bucket=Fabric"
+        "/api/reports/whitespace/penetration/customers?bucket=Analytics"
     ).get_json()
     assert {customer["id"] for customer in details["with_spend"]} == set(whitespace_data[:2])
     assert [customer["id"] for customer in details["without_spend"]] == [whitespace_data[2]]

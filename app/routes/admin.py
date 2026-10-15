@@ -102,6 +102,8 @@ def api_clear_revenue_data():
         deleted['review_notes'] = RevenueReviewNote.query.delete()
         deleted['analyses'] = RevenueAnalysis.query.delete()
         deleted['product_records'] = ProductRevenueData.query.delete()
+        from app.models import StrategicPillarRevenueData
+        deleted['pillar_records'] = StrategicPillarRevenueData.query.delete()
         deleted['bucket_records'] = CustomerRevenueData.query.delete()
         deleted['imports'] = RevenueImport.query.delete()
         deleted['configs'] = RevenueConfig.query.delete()

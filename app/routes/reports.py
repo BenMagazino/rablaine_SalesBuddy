@@ -398,7 +398,7 @@ def reports_hub():
                     'name': 'Whitespace Analysis',
                     'description': (
                         'Find gaps in customer technology adoption. See which '
-                        'customers are missing spend in key buckets and identify '
+                        'customers are missing spend across strategic pillars and identify '
                         'outreach opportunities.'
                     ),
                     'icon': 'bi-grid-3x3-gap',
@@ -1425,32 +1425,56 @@ def report_whats_new():
 @bp.route('/reports/whitespace')
 def report_whitespace():
     """Whitespace report: find gaps in customer technology adoption."""
-    from app.services.revenue_sync import has_revenue_data
-    has_revenue_data_flag = has_revenue_data()
+    from app.services.whitespace import has_pillar_data
+    has_revenue_data_flag = has_pillar_data()
     return render_template('report_whitespace.html', has_revenue_data=has_revenue_data_flag)
+
+
+@bp.route('/api/reports/whitespace/pillars')
+def api_whitespace_pillars():
+    """Return management's source-defined strategic pillar categories."""
+    from app.services.whitespace import STRATEGIC_PILLARS
+    return jsonify(list(STRATEGIC_PILLARS))
+
+
+@bp.route('/reports/whitespace/customer/<int:customer_id>/pillar/<pillar>')
+def whitespace_pillar_products(customer_id: int, pillar: str):
+    """Inspect pillar-specific products with the shared native product/history view."""
+    from flask import abort
+    from app.services.whitespace import STRATEGIC_PILLARS, product_details
+
+    if pillar not in STRATEGIC_PILLARS:
+        abort(404)
+    customer = Customer.query.get_or_404(customer_id)
+    return render_template(
+        'revenue_bucket_products.html', customer=customer, customer_name=customer.name,
+        bucket=pillar, pillar_view=True, analysis=None, **product_details(customer_id, pillar),
+    )
 
 
 @bp.route('/api/reports/whitespace')
 def api_whitespace_grid():
-    """Return whitespace grid data for selected buckets.
+    """Return source-defined pillar whitespace, retaining the existing grid API shape.
 
     Query params:
-        buckets: comma-separated bucket names
-        min_revenue: minimum total revenue to count as "has spend" (default 0)
+        buckets: comma-separated strategic pillar names (existing parameter name)
+        min_revenue: minimum recent average monthly revenue to count as spend (default 0)
 
     Returns JSON with:
-        customers: list of {id, name, nickname, buckets: {bucket: latest_revenue}}
-        buckets: list of selected bucket names
+        customers: list of {id, name, nickname, buckets: {pillar: average_revenue}}
+        buckets: list of selected strategic pillar names
     """
     bucket_param = request.args.get('buckets', '')
     if not bucket_param:
         return jsonify(customers=[], buckets=[])
     selected_buckets = [b.strip() for b in bucket_param.split(',') if b.strip()]
     min_revenue = float(request.args.get('min_revenue', 0))
+    from app.services.whitespace import monthly_revenue
+    monthly = monthly_revenue().c
 
     # Find the latest month in the data
     latest_month = db.session.query(
-        func.max(CustomerRevenueData.month_date)
+        func.max(monthly.month_date)
     ).scalar()
     if not latest_month:
         return jsonify(customers=[], buckets=selected_buckets)
@@ -1461,16 +1485,16 @@ def api_whitespace_grid():
     # Average revenue per customer per bucket over the trailing 3 months
     spend_query = (
         db.session.query(
-            CustomerRevenueData.customer_id,
-            CustomerRevenueData.bucket,
-            func.avg(CustomerRevenueData.revenue).label('avg_revenue')
+            monthly.customer_id,
+            monthly.bucket,
+            func.avg(monthly.revenue).label('avg_revenue')
         )
         .filter(
-            CustomerRevenueData.customer_id.isnot(None),
-            CustomerRevenueData.bucket.in_(selected_buckets),
-            CustomerRevenueData.month_date >= trailing_start,
+            monthly.customer_id.isnot(None),
+            monthly.bucket.in_(selected_buckets),
+            monthly.month_date >= trailing_start,
         )
-        .group_by(CustomerRevenueData.customer_id, CustomerRevenueData.bucket)
+        .group_by(monthly.customer_id, monthly.bucket)
         .all()
     )
 
@@ -1517,27 +1541,25 @@ def api_whitespace_grid():
 
 @bp.route('/api/reports/whitespace/reverse/<int:customer_id>')
 def api_whitespace_reverse(customer_id: int):
-    """Return buckets and products a customer does NOT have spend in.
+    """Return strategic pillars and products without historical positive spend.
 
     Returns JSON with:
         customer: {id, name}
-        missing_buckets: list of bucket names with zero spend
-        missing_products: {bucket: [product_names]} for buckets they DO use
+        missing_buckets: strategic pillars without historical positive monthly spend
+        missing_products: {pillar: [product_names]} for pillars they DO use
     """
     customer = db.session.get(Customer, customer_id)
     if not customer:
         return jsonify(error='Customer not found'), 404
 
-    # All distinct buckets in the database
-    all_buckets = {
-        r[0] for r in
-        db.session.query(CustomerRevenueData.bucket).distinct().all()
-        if r[0]
-    }
+    from app.models import StrategicPillarRevenueData
+    from app.services.whitespace import STRATEGIC_PILLARS, monthly_revenue
+    monthly = monthly_revenue().c
+    all_buckets = set(STRATEGIC_PILLARS)
 
     # All distinct products per bucket
     all_products_rows = (
-        db.session.query(ProductRevenueData.bucket, ProductRevenueData.product)
+        db.session.query(StrategicPillarRevenueData.pillar, StrategicPillarRevenueData.product)
         .distinct()
         .all()
     )
@@ -1549,10 +1571,10 @@ def api_whitespace_reverse(customer_id: int):
     # This customer's buckets (any non-zero spend ever)
     customer_buckets = {
         r[0] for r in
-        db.session.query(CustomerRevenueData.bucket)
+        db.session.query(monthly.bucket)
         .filter(
-            CustomerRevenueData.customer_id == customer_id,
-            CustomerRevenueData.revenue > 0,
+            monthly.customer_id == customer_id,
+            monthly.revenue > 0,
         )
         .distinct()
         .all()
@@ -1561,10 +1583,10 @@ def api_whitespace_reverse(customer_id: int):
 
     # This customer's products per bucket
     customer_products_rows = (
-        db.session.query(ProductRevenueData.bucket, ProductRevenueData.product)
+        db.session.query(StrategicPillarRevenueData.pillar, StrategicPillarRevenueData.product)
         .filter(
-            ProductRevenueData.customer_id == customer_id,
-            ProductRevenueData.revenue > 0,
+            StrategicPillarRevenueData.customer_id == customer_id,
+            StrategicPillarRevenueData.revenue > 0,
         )
         .distinct()
         .all()
@@ -1595,7 +1617,7 @@ def api_whitespace_reverse(customer_id: int):
 
 @bp.route('/api/reports/whitespace/penetration')
 def api_whitespace_penetration():
-    """Return bucket penetration stats.
+    """Return pillar penetration with the existing historical, zero-inclusive scope.
 
     Query params:
         buckets: comma-separated bucket names (optional, defaults to all)
@@ -1608,11 +1630,14 @@ def api_whitespace_penetration():
         [b.strip() for b in bucket_param.split(',') if b.strip()]
         if bucket_param else None
     )
+    from app.models import StrategicPillarRevenueData
+    from app.services.whitespace import STRATEGIC_PILLARS, monthly_revenue
+    monthly = monthly_revenue().c
 
     # Total customers with any revenue data
     total_customers = (
-        db.session.query(func.count(func.distinct(CustomerRevenueData.customer_id)))
-        .filter(CustomerRevenueData.customer_id.isnot(None))
+        db.session.query(func.count(func.distinct(StrategicPillarRevenueData.customer_id)))
+        .filter(StrategicPillarRevenueData.customer_id.isnot(None))
         .scalar()
     ) or 0
 
@@ -1622,20 +1647,21 @@ def api_whitespace_penetration():
     # Customers with spend per bucket
     query = (
         db.session.query(
-            CustomerRevenueData.bucket,
-            func.count(func.distinct(CustomerRevenueData.customer_id))
+            monthly.bucket,
+            func.count(func.distinct(monthly.customer_id))
         )
         .filter(
-            CustomerRevenueData.customer_id.isnot(None),
-            CustomerRevenueData.revenue > 0,
+            monthly.customer_id.isnot(None),
+            monthly.revenue > 0,
         )
     )
     if selected_buckets:
-        query = query.filter(CustomerRevenueData.bucket.in_(selected_buckets))
-    bucket_counts = query.group_by(CustomerRevenueData.bucket).all()
+        query = query.filter(monthly.bucket.in_(selected_buckets))
+    bucket_counts = dict(query.group_by(monthly.bucket).all())
 
     result = []
-    for bucket, count in sorted(bucket_counts, key=lambda x: x[0]):
+    for bucket in sorted(selected_buckets or STRATEGIC_PILLARS):
+        count = bucket_counts.get(bucket, 0)
         pct = round(count / total_customers * 100, 1) if total_customers else 0
         result.append({
             'bucket': bucket,
@@ -1649,7 +1675,7 @@ def api_whitespace_penetration():
 
 @bp.route('/api/reports/whitespace/penetration/customers')
 def api_whitespace_penetration_customers():
-    """Return customers with and without spend in a specific bucket.
+    """Return customers with and without historical positive spend in a pillar.
 
     Query params:
         bucket: bucket name (required)
@@ -1659,24 +1685,27 @@ def api_whitespace_penetration_customers():
     """
     bucket = request.args.get('bucket', '').strip()
     if not bucket:
-        return jsonify(error='Bucket name is required'), 400
+        return jsonify(error='Strategic pillar name is required'), 400
+    from app.models import StrategicPillarRevenueData
+    from app.services.whitespace import monthly_revenue
+    monthly = monthly_revenue().c
 
     # All customer IDs with any revenue data
     all_customer_ids = {
         r[0] for r in
-        db.session.query(func.distinct(CustomerRevenueData.customer_id))
-        .filter(CustomerRevenueData.customer_id.isnot(None))
+        db.session.query(func.distinct(StrategicPillarRevenueData.customer_id))
+        .filter(StrategicPillarRevenueData.customer_id.isnot(None))
         .all()
     }
 
     # Customer IDs with spend > 0 in this bucket
     with_spend_ids = {
         r[0] for r in
-        db.session.query(func.distinct(CustomerRevenueData.customer_id))
+        db.session.query(func.distinct(monthly.customer_id))
         .filter(
-            CustomerRevenueData.customer_id.isnot(None),
-            CustomerRevenueData.bucket == bucket,
-            CustomerRevenueData.revenue > 0,
+            monthly.customer_id.isnot(None),
+            monthly.bucket == bucket,
+            monthly.revenue > 0,
         )
         .all()
     }

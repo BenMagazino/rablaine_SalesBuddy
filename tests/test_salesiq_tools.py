@@ -191,6 +191,10 @@ class TestToolCoverage:
             'No tool covers the whitespace report. Add one to salesiq_tools.py.'
         )
 
+    def test_strategic_pillar_revenue_tool_exists(self):
+        """Source-defined pillar revenue must be readable without using service buckets."""
+        assert 'get_strategic_pillar_revenue' in self._tool_names()
+
     # -- Phase 4 entities/reports -------------------------------------------
 
     def test_territory_tool_exists(self):

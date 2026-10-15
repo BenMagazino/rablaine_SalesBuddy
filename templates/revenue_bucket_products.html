@@ -24,15 +24,16 @@
     {% endfor %}
 {% endfor %}
 <div class="sb-revenue-workspace sb-revenue-bucket" data-sb-revenue-page="bucket"
+     {% if pillar_view %}data-sb-pillar-products{% endif %}
      data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}">
     <header class="sb-revenue-page-header" data-sb-page-band>
         <h1><i class="bi bi-boxes" aria-hidden="true"></i> {{ bucket }} Products</h1>
-        <a href="{{ url_for('revenue.revenue_customer_view', customer_id=customer.id) }}"
-           class="sb-revenue-command"><i class="bi bi-arrow-left" aria-hidden="true"></i> Customer Revenue</a>
+        <a href="{{ url_for('reports.report_whitespace') if pillar_view else url_for('revenue.revenue_customer_view', customer_id=customer.id) }}"
+           class="sb-revenue-command"><i class="bi bi-arrow-left" aria-hidden="true"></i> {{ 'Whitespace Analysis' if pillar_view else 'Customer Revenue' }}</a>
     </header>
     <div class="sb-revenue-bucket-workarea" data-sb-page-body>
         <aside class="sb-revenue-bucket-context sb-revenue-detail" tabindex="0"
-               aria-label="Bucket analysis and history scope">
+               aria-label="{{ 'Pillar' if pillar_view else 'Bucket' }} analysis and history scope">
             <section class="sb-revenue-bucket-scope" aria-label="History scope">
                 <a href="{{ url_for('customers.customer_view', id=customer.id) }}">{{ customer_name }}</a>
                 <dl class="sb-revenue-metrics">
@@ -51,7 +52,7 @@
                 {% include 'partials/_revenue_analysis_summary.html' %}
             </section>
             {% else %}
-            <p class="sb-revenue-empty">No analysis available for this bucket.</p>
+            <p class="sb-revenue-empty">{{ 'Revenue grouped by SuperStrategicPillar.' if pillar_view else 'No analysis available for this bucket.' }}</p>
             {% endif %}
         </aside>
         <div class="sb-revenue-bucket-reading sb-revenue-detail" tabindex="0"
@@ -67,7 +68,7 @@
                 {% set show_bucket_total = false %}
                 {% include 'partials/_revenue_product_table.html' %}
                 {% else %}
-                <p class="sb-revenue-empty">No product data available for this bucket.</p>
+                <p class="sb-revenue-empty">No product data available for this {{ 'pillar' if pillar_view else 'bucket' }}.</p>
                 {% endif %}
             </section>
             <details class="sb-revenue-history-disclosure" id="fullHistory">
@@ -79,7 +80,7 @@
                 {% for product, history in product_history.items() %}
                 <section class="sb-revenue-history-product" aria-label="{{ product }} full history">
                     <header class="sb-revenue-products-header">
-                        <h3><a href="{{ url_for('revenue.revenue_product_view', product=product) }}">{{ product }}</a></h3>
+                        <h3>{% if product %}<a href="{{ url_for('revenue.revenue_product_view', product=product) }}">{{ product }}</a>{% else %}Unspecified product{% endif %}</h3>
                         <span class="sb-revenue-review-meta">{{ history|length }} months</span>
                     </header>
                     {% set history_label = product %}
@@ -87,7 +88,7 @@
                     {% include 'partials/_revenue_monthly_history.html' %}
                 </section>
                 {% else %}
-                <p class="sb-revenue-empty">No product history available for this bucket.</p>
+                <p class="sb-revenue-empty">No product history available for this {{ 'pillar' if pillar_view else 'bucket' }}.</p>
                 {% endfor %}
             </details>
         </div>

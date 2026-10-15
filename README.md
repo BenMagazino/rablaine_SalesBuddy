@@ -109,6 +109,14 @@ standalone UI iterations using entirely fictional data. See the
     key, preserving their total revenue. Groups spanning different TPIDs remain
     unlinked rather than being assigned to the wrong customer.
   - Failed revenue writes retain the previous imported snapshot.
+- **Strategic pillar whitespace** - compare customer adoption across AI, Analytics,
+  Apps, Databases, Developer, Infra and Security using MSXI's `SuperStrategicPillar`,
+  not an inferred service-bucket mapping. The regular ACR import also saves
+  pillar/product/month revenue, without changing Revenue Analyzer's bucket data.
+  Existing installations need one revenue import to populate this data. Grid
+  averages retain the latest three imported months; reverse lookup and penetration
+  retain historical positive-spend coverage. Product previews use the same official
+  pillar classifications, with recent revenue and full monthly history.
 - **Fabric Consumption** - import customer-scoped Fabric workload CU-hour
   shares and capacity/SKU utilization from MSXi. Reports > Fabric Consumption
   includes capacities, throttling, utilization history, and customer-wide reserved-instance

@@ -25,7 +25,7 @@ from typing import Any, Optional
 
 from app.models import (
     db, Customer, CustomerRevenueData, ProductRevenueData, RevenueAnalysis,
-    RevenueReviewNote, UserPreference,
+    RevenueReviewNote, UserPreference, StrategicPillarRevenueData,
 )
 
 logger = logging.getLogger(__name__)
@@ -280,6 +280,7 @@ def purge_revenue_data(
         "analyses": analysis_q.delete(synchronize_session=False),
         "product_rows": ProductRevenueData.query.delete(synchronize_session=False),
         "customer_rows": CustomerRevenueData.query.delete(synchronize_session=False),
+        "pillar_rows": StrategicPillarRevenueData.query.delete(synchronize_session=False),
         "analyses_kept": len(keep),
     }
     if commit:

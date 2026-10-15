@@ -656,14 +656,15 @@ class TestWhitespacePenetrationCustomers:
         Must be called inside an app context.
         """
         from datetime import date
+        from app.models import StrategicPillarRevenueData
         imp = RevenueImport(filename='test.csv', record_count=len(customers_buckets))
         db.session.add(imp)
         db.session.flush()
         for cid, bucket, revenue in customers_buckets:
-            db.session.add(CustomerRevenueData(
+            db.session.add(StrategicPillarRevenueData(
                 customer_name=f'Customer {cid}',
-                tpid=str(cid),
-                bucket=bucket,
+                tpid=cid,
+                pillar=bucket, product='',
                 customer_id=cid,
                 fiscal_month='FY26-Jan',
                 month_date=date(2026, 1, 1),
@@ -687,15 +688,15 @@ class TestWhitespacePenetrationCustomers:
             db.session.flush()
 
             self._seed_revenue([
-                (sample_data['customer1_id'], 'SAP', 5000.0),
+                (sample_data['customer1_id'], 'Infra', 5000.0),
                 (c2.id, 'Analytics', 3000.0),
             ])
 
-            resp = client.get('/api/reports/whitespace/penetration/customers?bucket=SAP')
+            resp = client.get('/api/reports/whitespace/penetration/customers?bucket=Infra')
             assert resp.status_code == 200
             data = json.loads(resp.data)
 
-            assert data['bucket'] == 'SAP'
+            assert data['bucket'] == 'Infra'
             with_ids = {c['id'] for c in data['with_spend']}
             without_ids = {c['id'] for c in data['without_spend']}
 
@@ -710,7 +711,7 @@ class TestWhitespacePenetrationCustomers:
                 (sample_data['customer1_id'], 'Analytics', 1000.0),
             ])
 
-            resp = client.get('/api/reports/whitespace/penetration/customers?bucket=SAP')
+            resp = client.get('/api/reports/whitespace/penetration/customers?bucket=Infra')
             data = json.loads(resp.data)
 
             assert len(data['with_spend']) == 0

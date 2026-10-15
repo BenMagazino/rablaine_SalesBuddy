@@ -30,7 +30,7 @@
             {% endif %}
             {% for p in product_summary %}
             <tr>
-                <th scope="row"><a href="{{ url_for('revenue.revenue_product_view', product=p.product) }}">{{ p.product }}</a></th>
+                <th scope="row">{% if p.product %}<a href="{{ url_for('revenue.revenue_product_view', product=p.product) }}">{{ p.product }}</a>{% else %}Unspecified product{% endif %}</th>
                 {% for month in recent_months %}
                 {% set prev_month = recent_months[loop.index0 - 1] if loop.index0 > 0 else None %}
                 <td data-sb-sort-value="{{ p.month_revenues.get(month, '') }}">{{ revenue_cell(p.month_revenues.get(month, 0), p.month_revenues.get(prev_month, 0) if prev_month else 0) }}</td>

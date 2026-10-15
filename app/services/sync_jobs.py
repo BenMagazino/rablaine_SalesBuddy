@@ -54,7 +54,7 @@ OPERATIONS = {
                                      'milestones', {'customer_id': None}, True),
     'customer-data': Operation('Customer MSX data', 'Opportunities, milestones and comments.',
                                'milestones', {'customer_id': None}, True),
-    'revenue': Operation('ACR', 'MSXI revenue, bucket reconciliation and trend analysis.',
+    'revenue': Operation('ACR', 'MSXI revenue, strategic pillar whitespace and trend analysis.',
                          'revenue', {'fiscal_years': None, 'run_analysis': True}, True,
                          True, 'revenue_sync'),
     'revenue-analysis': Operation('Revenue analysis', 'Recalculate saved revenue trends.',
