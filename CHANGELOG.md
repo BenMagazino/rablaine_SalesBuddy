@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/15/2026
+## 10/15/2026 - 12d780df
 
 - Add P to F renewal reporting with customer names, full expiration dates, and details on customer Fabric tabs. Renewals refresh with Fabric 360 in one sync, with weekly and startup catch-up for Data SEs.
 - Keep customer Fabric tabs focused on renewal status, workload charts, capacities and revenue, without report headers, sync controls or extra workload details.
