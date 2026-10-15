@@ -36,7 +36,7 @@
 </section>
 {% endblock %}
 {% block footer %}
-<footer class="sb-page-status" aria-label="Fabric import status"><span data-overview-freshness>No snapshot loaded</span><span>Manual import only; no scheduled refresh</span></footer>
+<footer class="sb-page-status" aria-label="Fabric import status"><span data-overview-freshness>No snapshot loaded</span>{% include 'partials/_fabric_sync_schedule.html' %}</footer>
 {% endblock %}
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/ui-fabric-preferences.js') }}"></script>

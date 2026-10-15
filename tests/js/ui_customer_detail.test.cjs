@@ -10,7 +10,7 @@ const saved = () => ({id: 12, tab: 'cdNotes', context: 27, work: 180,
     scrolls: {cdNotes: 180}, search: 'fabric', fields: [['contextTextarea', 'draft']],
     removed: [], newContacts: [], contextOpen: true, contactsOpen: false});
 
-function harness(history) {
+function harness(history, fabric = false) {
     function element(extra = {}) {
         return {events: {}, attrs: {}, style: {}, scrollTop: 0, hidden: false,
             value: '', defaultValue: '', dataset: {}, isConnected: true,
@@ -21,6 +21,7 @@ function harness(history) {
                 return Promise.all((this.events[type] || []).map(callback => callback(event)));
             },
             setAttribute(key, value) { this.attrs[key] = value; },
+            hasAttribute(key) { return Object.hasOwn(this.attrs, key); },
             getAttribute(key) { return this.attrs[key]; },
             removeAttribute(key) { delete this.attrs[key]; },
             querySelector() { return null; }, querySelectorAll() { return []; },
@@ -28,8 +29,9 @@ function harness(history) {
             ...extra};
     }
     const context = element(), reading = element(), input = element({id: 'contextTextarea'});
-    const panels = ['cdWorkstreams', 'cdNotes', 'cdPipeline', 'cdRevenue']
-        .map(id => element({id}));
+    const panels = ['cdWorkstreams', 'cdNotes', 'cdPipeline', 'cdRevenue',
+        ...(fabric ? ['cdFabric'] : [])]
+        .map(id => element({id, attrs: id === 'cdFabric' ? {'data-cd-lazy': ''} : {}}));
     const tabs = panels.map(panel => element({attrs: {'aria-controls': panel.id}}));
     const form = element({style: {display: 'none'}, action: '/customer/12/overview'});
     const submit = element();
@@ -81,11 +83,30 @@ function harness(history) {
 
 test('history rejects invalid raw coordinates and draft/output shapes', () => {
     assert.equal(validateHistory(saved(), 12).tab, 'cdNotes');
+    assert.equal(validateHistory({...saved(), tab: 'cdFabric',
+        scrolls: {cdFabric: 240}}, 12).scrolls.cdFabric, 240);
     for (const change of [
         {id: 99}, {fields: [['missing']]}, {removed: ['7']},
         {newContacts: [['name']]}, {work: NaN}, {context: -1},
         {scrolls: {cdNotes: Infinity}}, {scrolls: {other: 10}},
     ]) assert.throws(() => validateHistory({...saved(), ...change}, 12));
+});
+test('lazy Fabric content restores scroll after loading without moving an inactive tab', async () => {
+    const h = harness({...saved(), tab: 'cdFabric', work: 240,
+        scrolls: {cdFabric: 240}}, true);
+    h.reading.scrollTop = 0;
+    await h.reading.emit('scroll');
+    assert.equal(h.window.history.state.sbCustomerDetail.work, 240);
+    h.api.contentReady('cdFabric');
+    assert.equal(h.reading.scrollTop, 240);
+    h.reading.scrollTop = 360;
+    await h.reading.emit('scroll');
+    h.api.contentReady('cdFabric');
+    assert.equal(h.reading.scrollTop, 360);
+    await h.tabs[1].emit('click');
+    h.reading.scrollTop = 80;
+    h.api.contentReady('cdFabric');
+    assert.equal(h.reading.scrollTop, 80);
 });
 test('tabs own one visible region and retain independent reading positions', async () => {
     const h = harness();

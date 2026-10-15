@@ -22,10 +22,12 @@ bp = Blueprint('reports', __name__)
 
 @bp.route('/reports/fabric-consumption')
 def report_fabric_consumption():
-    """Show manually imported Fabric workload mix and capacity utilization."""
+    """Show saved Fabric workload mix and capacity utilization."""
+    from app.services.se_specialty import is_data_se
+
     if request.args.get('view') == 'overview':
-        return render_template('report_fabric_capacity_overview.html')
-    return render_template('report_fabric_consumption.html')
+        return render_template('report_fabric_capacity_overview.html', fabric_auto_sync=is_data_se())
+    return render_template('report_fabric_consumption.html', fabric_auto_sync=is_data_se())
 
 
 @bp.route('/api/reports/fabric-consumption/overview')
@@ -57,7 +59,7 @@ def fabric_consumption_data():
 
 @bp.route('/api/reports/fabric-consumption/status')
 def fabric_consumption_status():
-    """Read progress of the manually requested Fabric import."""
+    """Read progress of the current manual or scheduled Fabric import."""
     from app.services.fabric_consumption import SYNC_TYPE
 
     return jsonify(success=True, status=SyncStatus.get_status(SYNC_TYPE))

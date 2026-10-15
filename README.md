@@ -70,7 +70,7 @@ standalone UI iterations using entirely fictional data. See the
 [archive guide](design-studies/README.md) for validation and capture instructions.
 
 - **Native desktop workbench** - application-owned layouts, browser defaults, controls and Graphite, Midnight, Harbor and Carbon dark/light themes replace the Bootstrap UI framework. Choose your theme in Settings > Appearance; the palette saves independently of the Light/Dark switch and follows you across pages and restarts. Independent Bootstrap Icons remain. Shared shortcuts respect guarded editors and dialogs, and closed overlays do not consume the reading area. Ctrl+Enter saves notes from the rich-text editor through the normal Save button, including validation and pending-save guards.
-- **SE specialty preference** - Settings > SE Mode lets you choose Data SE, Core / Infra SE, Apps and AI SE, or Other. The choice saves immediately, defaults to Data SE, and survives backups and switching modes. It is stored for future features and does not currently change the app's behavior.
+- **SE specialty preference** - Settings > SE Mode lets you choose Data SE, Infra SE, Apps and AI SE, or Other. The choice saves immediately, defaults to Data SE, and survives backups and switching modes. Data SE enables the customer Fabric tab and weekly Fabric 360 refreshes.
 - **Customer dossier** - native Engagements, Notes, Opportunities and Revenue tabs keep full account identity, ownership, contacts, relationships and rich notes. Commands and counts stay visible, data headings sort raw values both ways, and Back restores the selected tab, pipeline search and reading context. Account context and contact edits remain manual with protected drafts; original photo paste and Auto-fill saves remain explicit.
 - **Opportunity detail** - native standalone and MSX Workspace previews share complete cached/fresh details, linked milestones and original forecast editors. Read-only opening updates the local MSX-detail cache, not remote team or business records. Milestone headings sort raw values; Back retains reading and sorting. Comment/team/favorite writes remain explicit, with protected drafts, pending guards and honest failures.
 - **Notes directory** - a native chronological stream keeps original customer identity, local call dates, excerpts and every relationship link. All/Customer/General filters retain seller scope; page size is remembered locally and pagination preserves scope. Commands, displayed range and total stay visible, and Back restores reading position. Shared previews retain the canonical rich note body.
@@ -109,12 +109,17 @@ standalone UI iterations using entirely fictional data. See the
     key, preserving their total revenue. Groups spanning different TPIDs remain
     unlinked rather than being assigned to the wrong customer.
   - Failed revenue writes retain the previous imported snapshot.
-- **Fabric Consumption** - manually import customer-scoped Fabric workload CU-hour
+- **Fabric Consumption** - import customer-scoped Fabric workload CU-hour
   shares and capacity/SKU utilization from MSXi. Reports > Fabric Consumption
   includes capacities, throttling, utilization history, and customer-wide reserved-instance
   versus PAYG revenue with fiscal YTD totals and monthly splits. Revenue share is not
   per-capacity reservation coverage. Import uses customer
-  TPIDs and your corporate Azure sign-in; it is never scheduled automatically.
+  TPIDs and your corporate Azure sign-in. In SE Mode with Data SE selected, a full
+  refresh runs weekly with on-boot catch-up, independently of milestone auto-sync.
+  Failed or interrupted overdue imports retry after an hour, retaining the last good
+  snapshot. Other specialties and DSS Mode do not sync automatically. Data SEs also
+  have a Fabric tab on each customer with the same workload, capacity and revenue
+  details, loaded from saved data only when the tab is opened.
 - **Milestone Tracker** - native desktop queue and calendar with MSX sync, task management, and AI matching from call notes. Search all saved milestone fields (including cached forecast comments) and use the searchable customer dropdown alongside the existing filters. Data headings sort both ways with raw values; CSV, Clipboard and Email preserve the filtered list. Back restores filters, view, calendar month, sorting and reading position.
 - **Milestones directory** - browse customer-linked records in the native desktop frame, preserving newest-added order, source URLs and linked-call counts. Sort each data heading both ways; Back restores sorting and reading position. Open the existing details, New Milestone or Milestone Tracker without changing the cached data.
 - **Internal project forms** - create or edit internal work with the original title, plain-text description, type, due date, edit-only status and eligible general notes. Native Save/Cancel commands stay visible; guarded entry-local drafts and failed-save input retention protect unsubmitted work without autosaving.

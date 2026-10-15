@@ -219,6 +219,8 @@ def customer_create():
 @customers_bp.route('/customer/<int:id>')
 def customer_view(id):
     """View customer details with engagement dashboard (FR008)."""
+    from app.services.se_specialty import is_data_se
+
     customer = Customer.query.filter_by(id=id).first_or_404()
     # Sort notes by date (descending) - customer.notes is already loaded as a list
     notes = sorted(customer.notes, key=lambda c: c.call_date, reverse=True)
@@ -282,7 +284,8 @@ def customer_view(id):
                           active_milestone_count=active_milestones,
                           opportunity_count=opportunity_count,
                           favorited_opp_ids=favorited_opp_ids,
-                          sorted_opps=sorted_opps)
+                          sorted_opps=sorted_opps,
+                          show_customer_fabric=is_data_se())
 
 
 @customers_bp.route('/customer/<int:id>/edit', methods=['GET', 'POST'])

@@ -283,7 +283,7 @@ def test_schedules_follow_user_settings(client, enabled):
         'Mon, Wed, Fri · 2:35 PM local' if enabled else 'Disabled')
     assert schedules['copilot-actions']['label'] == (
         'Daily · 6:00 AM local' if enabled else 'Disabled')
-    assert schedules['fabric']['label'] == 'On demand'
+    assert schedules['fabric']['label'] == ('Every 7 days' if enabled else 'On demand')
     assert Job.query.count() == 0
 
 

@@ -202,6 +202,7 @@
             <button type="button" id="cdNotesTab" role="tab" aria-controls="cdNotes" aria-selected="false" tabindex="-1">Notes ({{ notes|length }})</button>
             {% if customer.opportunities.count() > 0 %}<button type="button" id="cdPipelineTab" role="tab" aria-controls="cdPipeline" aria-selected="false" tabindex="-1">Opportunities ({{ opportunity_count }})</button>{% endif %}
             {% if revenue_analyses %}<button type="button" id="cdRevenueTab" role="tab" aria-controls="cdRevenue" aria-selected="false" tabindex="-1">Revenue ({{ revenue_analyses|length }})</button>{% endif %}
+            {% if show_customer_fabric %}<button type="button" id="cdFabricTab" role="tab" aria-controls="cdFabric" aria-selected="false" tabindex="-1">Fabric</button>{% endif %}
         </nav>
         <div class="cd-reading" data-cd-reading="work">
         <!-- Essentials panel (Azure portal style) -->
@@ -390,6 +391,14 @@
                     <i class="bi bi-plus-circle"></i> Create First Engagement
                 </a>
             </div>
+        </section>
+        {% endif %}
+
+        {% if show_customer_fabric %}
+        <section class="cd-panel" id="cdFabric" aria-labelledby="cdFabricTab" data-cd-lazy hidden>
+            {% with fabric_embedded=true %}
+            {% include 'partials/fabric_customer_content.html' %}
+            {% endwith %}
         </section>
         {% endif %}
 
