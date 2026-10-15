@@ -21,6 +21,11 @@ The MSI installer handles everything: prerequisites (Git, Python, Azure CLI, Nod
 
 ## Features
 
+Press **Ctrl+Space** anywhere to open the Quick Launcher. Type any part of a page
+or report title, then press Enter to open the first match, or use Tab and arrow
+keys to choose another. Escape closes it and returns you to your work.
+The launcher follows the current navigation menu and includes Home and Sync Status.
+
 Regular data syncs share a durable SQLite job queue and a separate local worker.
 Open **Admin Panel > Sync Status** to start a sync, inspect measured progress,
 see worker availability, or start a new run after a failure. Closing the browser or leaving
