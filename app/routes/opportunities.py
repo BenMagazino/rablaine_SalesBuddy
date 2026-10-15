@@ -113,6 +113,7 @@ def api_opportunity_msx_details(id: int):
             opportunity.status_reason = opp_data.get("status")
             opportunity.estimated_value = opp_data.get("estimated_value")
             opportunity.estimated_close_date = opp_data.get("estimated_close_date")
+            opportunity.cache_msx_dates(opp_data.get("created_on"), opp_data.get("closed_on"))
             opportunity.owner_name = opp_data.get("owner")
             opportunity.compete_threat = opp_data.get("compete_threat")
             opportunity.customer_need = opp_data.get("customer_need")

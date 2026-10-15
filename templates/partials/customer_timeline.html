@@ -1,0 +1,39 @@
+<aside class="ct-rail" aria-labelledby="customerHistoryHeading"
+       data-customer-timeline="{{ url_for('customers.customer_timeline', id=customer.id) }}">
+    <header class="ct-header">
+        <div>
+            <h2 id="customerHistoryHeading">History</h2>
+            <p>Customer activity</p>
+        </div>
+        <details class="ct-help">
+            <summary aria-label="About customer history"><i class="bi bi-question-circle"></i></summary>
+            <div>
+                <strong>Reading the timeline</strong>
+                <p>Newest first. Spacing shows elapsed time, with long gaps compressed.
+                   Hover or focus an event for a preview; select it to open the record.</p>
+                <ul>
+                    <li data-kind="note">Call notes</li>
+                    <li data-kind="engagement">Engagements created</li>
+                    <li data-kind="opportunity">Opportunities created or closed</li>
+                    <li data-kind="milestone">Team milestones created</li>
+                    <li data-kind="committed">Team milestones committed</li>
+                    <li data-kind="completed">Team milestones completed</li>
+                </ul>
+                <p>Only recorded dates are shown, not a complete audit trail.
+                   Milestone commitment and completion dates are those retained by sync.</p>
+            </div>
+        </details>
+    </header>
+    <div class="ct-scroll" tabindex="0" aria-label="Customer history events">
+        <ol class="ct-events"></ol>
+        <p class="ct-message" role="status">Loading customer history...</p>
+        <p class="ct-source-note" hidden></p>
+        <button class="sb-dialog-button ct-more" type="button" hidden>Show older events</button>
+    </div>
+    <div class="ct-preview" popover="manual" role="tooltip">
+        <span class="ct-preview-label"></span>
+        <strong></strong>
+        <p></p>
+        <time></time>
+    </div>
+</aside>

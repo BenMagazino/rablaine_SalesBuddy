@@ -71,8 +71,8 @@ def test_legacy_failure_status_write_cannot_hide_job_failure(client, app, sample
 
 @pytest.mark.skipif(shutil.which('node') is None, reason='Node.js is required for JS tests')
 def test_sync_error_ui():
-    """Run the actual streaming UI against success, explicit error, and early EOF."""
-    test_file = Path(__file__).parent / 'js' / 'milestone_sync_errors.test.cjs'
+    """Run the shared durable sync UI against completion, failure and reconnect paths."""
+    test_file = Path(__file__).parent / 'js' / 'ui_sync_progress.test.cjs'
     result = subprocess.run(
         ['node', '--test', str(test_file)], capture_output=True, text=True, check=False,
     )

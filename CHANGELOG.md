@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/15/2026
+
+- Wide customer pages now show a dated activity timeline with note, engagement, opportunity and team milestone history.
+
 ## 10/15/2026 - 1eef8705
 
 - Restore visible keyboard selection in note attendee, topic and partner suggestions, with quieter result styling.

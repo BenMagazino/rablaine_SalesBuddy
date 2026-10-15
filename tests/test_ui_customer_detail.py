@@ -166,8 +166,6 @@ def test_exact_provider_populations_and_original_links(client, app, dossier, rol
     root = soup.select_one('[data-sb-customer-detail]')
     assert 'sb-directory-frame' in root['class']
     expected_links = [a['href'] for a in old.select('main a[href]')]
-    if role != 'dss':
-        expected_links.append(f"/reports/fabric-consumption?customer_id={dossier['customer']}")
     assert sorted(a['href'] for a in root.select('a[href]')) == sorted(expected_links)
     assert [int(row['data-note-id']) for row in root.select('.cd-note')] == [
         note.id for note in captured['notes']]

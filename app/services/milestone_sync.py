@@ -509,6 +509,8 @@ def sync_all_customer_milestones_stream(
                             ms["opportunity_estimated_close_date"] = (
                                 opp_data.get("estimated_close_date")
                             )
+                            ms["opportunity_created_on"] = opp_data.get("created_on")
+                            ms["opportunity_closed_on"] = opp_data.get("closed_on")
                             ms["opportunity_owner"] = opp_data.get(
                                 "owner", ""
                             )
@@ -676,6 +678,10 @@ def sync_all_customer_milestones_stream(
                 db.session.add(opp)
                 existing_map[opp_id] = opp
                 total_opps_synced += 1
+
+            (existing if existing is not None else opp).cache_msx_dates(
+                opp_data.get("created_on"), opp_data.get("closed_on"),
+            )
 
         try:
             db.session.commit()
@@ -1658,6 +1664,10 @@ def sync_customer_opportunities(customer: Customer) -> Dict[str, Any]:
             existing_map[opp_id] = opp
             result["created"] += 1
 
+        (existing if existing is not None else opp).cache_msx_dates(
+            msx_opp.get("created_on"), msx_opp.get("closed_on"),
+        )
+
     try:
         db.session.commit()
         result["success"] = True
@@ -1960,6 +1970,9 @@ def _upsert_opportunity(
         if opp_compete:
             opportunity.compete_threat = opp_compete
         opportunity.msx_url = opp_url
+        opportunity.cache_msx_dates(
+            msx_data.get("opportunity_created_on"), msx_data.get("opportunity_closed_on"),
+        )
         return opportunity, False
     else:
         opportunity = Opportunity(
@@ -1979,6 +1992,9 @@ def _upsert_opportunity(
             msx_url=opp_url,
         )
         db.session.add(opportunity)
+        opportunity.cache_msx_dates(
+            msx_data.get("opportunity_created_on"), msx_data.get("opportunity_closed_on"),
+        )
         # Track in map so later milestones sharing this opportunity find it
         if existing_opps_map is not None:
             existing_opps_map[msx_opp_id] = opportunity
