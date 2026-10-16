@@ -3457,7 +3457,7 @@ function loadMilestoneSyncStatus() {
                 label += ` - Mon/Wed/Fri at ${h12}:${String(m).padStart(2, '0')} ${ampm}`;
             }
             if (data.last_sync) {
-                const lastDate = new Date(data.last_sync + 'Z');
+                const lastDate = new Date(data.last_sync);
                 label += ` (last: ${lastDate.toLocaleDateString()} ${lastDate.toLocaleTimeString()})`;
             }
             statusEl.innerHTML = `<span class="sb-admin-tag ${badgeClass}">${label}</span>`;

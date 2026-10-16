@@ -1659,7 +1659,6 @@ class UserPreference(db.Model):
     milestone_auto_sync = db.Column(db.Boolean, default=True, nullable=False, server_default='1')  # Auto-sync milestones from MSX
     milestone_sync_hour = db.Column(db.Integer, nullable=True)  # Random hour (5-8) for daily milestone sync
     milestone_sync_minute = db.Column(db.Integer, nullable=True)  # Random minute (0-59) for sync time
-    last_milestone_sync = db.Column(db.DateTime, nullable=True)  # Last time milestone sync ran (UTC)
     compensated_buckets = db.Column(db.Text, nullable=True)  # JSON array of selected ServiceCompGrouping buckets (fallback for localStorage)
     compensated_buckets_fiscal_year = db.Column(db.String(10), nullable=True)  # FY when compensated buckets were last confirmed
     compensated_buckets_confirmed_taxonomy_version = db.Column(db.Integer, nullable=True)  # Taxonomy version confirmed by the user
@@ -2125,6 +2124,17 @@ class SyncStatus(db.Model):
         """Delete sync status for the given type, returning it to 'never_run' state."""
         cls.query.filter_by(sync_type=sync_type).delete()
         db.session.flush()
+
+    @classmethod
+    def last_completed_utc(cls, sync_type: str) -> datetime | None:
+        """Return the latest finished attempt in UTC, including failed attempts."""
+        status = cls.get_status(sync_type)
+        completed = status['completed_at']
+        if status['state'] not in ('complete', 'failed') or completed is None:
+            return None
+        if completed.tzinfo is None:
+            return completed.replace(tzinfo=timezone.utc)
+        return completed.astimezone(timezone.utc)
 
     @classmethod
     def mark_started(cls, sync_type: str) -> 'SyncStatus':

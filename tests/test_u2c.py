@@ -1079,7 +1079,7 @@ class TestScheduledU2CImport:
             pref.milestone_auto_sync = False
             db.session.commit()
 
-        scheduled._run_daily_scheduler_cycle(app, None)
+        scheduled._run_daily_scheduler_cycle(app)
         assert calls == [app]
 
 

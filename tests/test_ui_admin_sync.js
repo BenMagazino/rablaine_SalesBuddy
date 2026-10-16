@@ -16,6 +16,8 @@ const importHandler = panel.slice(panel.indexOf('const accountsSync ='),
     panel.indexOf('// Setup Wizard chevron rotation'));
 const favicon = panel.slice(panel.indexOf('async function _faviconAction('),
     panel.indexOf("document.getElementById('fetchFaviconsBtn').addEventListener"));
+const milestoneStatus = panel.slice(panel.indexOf('function loadMilestoneSyncStatus()'),
+    panel.indexOf('function toggleMilestoneSync()'));
 
 function stream(text, chunkSize = 7) {
     const bytes = new TextEncoder().encode(text);
@@ -78,6 +80,19 @@ function harness(source = helper, fetch = async () => stream('')) {
 test('admin script remains valid JavaScript after rendering template URLs', () => {
     const script = panel.match(/<script>([\s\S]*?)<\/script>/)[1];
     new vm.Script(script.replace(/\{\{.*?\}\}/g, '/customers'));
+});
+
+test('milestone last-run badge correctly parses explicit UTC offsets', async () => {
+    const completed = '2026-03-23T15:05:00+00:00';
+    const {context, get} = harness(milestoneStatus, async () => ({
+        json: async () => ({enabled: true, sync_time: '15:00', last_sync: completed}),
+    }));
+    context.loadMilestoneSyncStatus();
+    await new Promise(setImmediate);
+    const label = get('milestoneSyncStatus').innerHTML;
+    assert.ok(!label.includes('Invalid Date'));
+    assert.ok(label.includes(new Date(completed).toLocaleTimeString()));
+    assert.equal(get('milestoneSyncToggle').checked, true);
 });
 
 test('admin observer reads split CRLF, accepted and unterminated account terminal frames', async () => {
