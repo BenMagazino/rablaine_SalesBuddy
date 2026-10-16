@@ -1557,6 +1557,45 @@ def se_specialty_preference() -> tuple[Response, int]:
         return jsonify({'error': 'Could not load or save your specialty. Please try again.'}), 500
 
 
+@main_bp.route('/api/preferences/loading-indicator', methods=['GET', 'POST'])
+def loading_indicator_preference() -> tuple[Response, int]:
+    """Get or save loading feedback visibility and brightness independently."""
+    data = None
+    if request.method == 'POST':
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or not {
+            'loading_indicator_enabled', 'loading_indicator_brightness',
+        }.intersection(data):
+            return jsonify({'error': 'Choose whether to show loading feedback or its brightness.'}), 400
+        if 'loading_indicator_enabled' in data and not isinstance(
+            data['loading_indicator_enabled'], bool,
+        ):
+            return jsonify({'error': 'Choose whether to show the loading indicator.'}), 400
+        if 'loading_indicator_brightness' in data:
+            brightness = data['loading_indicator_brightness']
+            if type(brightness) is not int or not 10 <= brightness <= 100:
+                return jsonify({'error': 'Choose a whole-number brightness from 10% to 100%.'}), 400
+    try:
+        pref = UserPreference.query.first()
+        if request.method == 'POST':
+            if pref is None:
+                pref = UserPreference()
+                db.session.add(pref)
+            if 'loading_indicator_enabled' in data:
+                pref.loading_indicator_enabled = data['loading_indicator_enabled']
+            if 'loading_indicator_brightness' in data:
+                pref.loading_indicator_brightness = data['loading_indicator_brightness']
+            db.session.commit()
+        return jsonify({
+            'loading_indicator_enabled': pref.loading_indicator_enabled if pref else True,
+            'loading_indicator_brightness': pref.loading_indicator_brightness if pref else 100,
+        }), 200
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Could not %s loading indicator preference', request.method)
+        return jsonify({'error': 'Could not load or save loading feedback. Please try again.'}), 500
+
+
 @main_bp.route('/api/preferences/dark-mode', methods=['GET', 'POST'])
 def dark_mode_preference():
     """Get or set dark mode preference."""
@@ -2145,6 +2184,8 @@ def inject_preferences():
     return dict(
         dark_mode=dark_mode,
         theme_family=pref.theme_family if pref else 'graphite',
+        loading_indicator_enabled=pref.loading_indicator_enabled if pref else True,
+        loading_indicator_brightness=pref.loading_indicator_brightness if pref else 100,
         dark_mode_unset=dark_mode_unset,
         customer_view_grouped=customer_view_grouped, 
         topic_sort_by_calls=topic_sort_by_calls,

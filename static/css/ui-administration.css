@@ -67,6 +67,16 @@
 .sb-admin-settings .sb-admin-section-heading { align-items: start; padding: 8px 0; }
 .sb-admin-settings .sb-admin-section-content { padding: 8px 0; }
 .sb-settings-theme select, .sb-settings-specialty select { max-width: 280px; }
+.sb-settings-activity-controls {
+    display: flex; align-items: center; gap: 12px;
+}
+.sb-settings-activity-controls input {
+    width: 240px; max-width: 100%; accent-color: var(--sb-ui-accent);
+}
+.sb-settings-activity-controls input:focus-visible {
+    outline: 2px solid var(--sb-ui-accent); outline-offset: 2px;
+}
+.sb-settings-activity-controls output { min-width: 4ch; text-align: right; }
 .sb-admin-settings .sb-dashboard-setting {
     display: flex; align-items: start; justify-content: space-between; gap: 16px;
     padding: 12px 0; border-bottom: 1px solid var(--sb-ui-grid-line);

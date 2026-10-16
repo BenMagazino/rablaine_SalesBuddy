@@ -61,6 +61,8 @@
     }
     for (const [id, key, url] of [
         ['settingsDarkModeSwitch', 'dark_mode', '/api/preferences/dark-mode'],
+        ['settingsLoadingIndicatorSwitch', 'loading_indicator_enabled',
+            '/api/preferences/loading-indicator'],
         ['connectImpactSwitch', 'workiq_connect_impact', '/api/preferences/workiq-connect-impact'],
         ['msxAutoWritebackSwitch', 'msx_auto_writeback', '/api/preferences/msx-auto-writeback'],
     ]) {
@@ -74,6 +76,7 @@
         input.closest('.sb-admin-check')?.append(result);
         input.setAttribute('aria-label', {
             settingsDarkModeSwitch: 'Dark appearance',
+            settingsLoadingIndicatorSwitch: 'Page loading indicator',
             connectImpactSwitch: 'Extract Connect and Engagement Signals',
             msxAutoWritebackSwitch: 'Automatically sync to MSX milestones and opportunities',
         }[id]);
@@ -90,6 +93,10 @@
                     document.documentElement.dataset.bsTheme = value ? 'dark' : 'light';
                     document.documentElement.dataset.sbMode = value ? 'dark' : 'light';
                 }
+                if (key === 'loading_indicator_enabled') {
+                    document.documentElement.dataset.sbActivityEnabled = String(value);
+                    window.dispatchEvent(new Event('sb:activity-preference-changed'));
+                }
                 show(result, 'Saved.');
             } catch (error) {
                 input.checked = confirmed;
@@ -99,6 +106,56 @@
             }
         });
     }
+    const brightness = root.querySelector('#settingsLoadingBrightness');
+    const brightnessValue = root.querySelector('#settingsLoadingBrightnessValue');
+    const brightnessResult = root.querySelector('#settingsLoadingBrightnessResult');
+    const preview = root.querySelector('#settingsLoadingPreview');
+    let confirmedBrightness = Number(brightness.value);
+    function applyBrightness(value) {
+        document.documentElement.style.setProperty('--sb-activity-opacity', String(value / 100));
+        brightnessValue.textContent = value + '%';
+        brightness.setAttribute('aria-valuetext', value + '% brightness');
+    }
+    applyBrightness(confirmedBrightness);
+    brightness.addEventListener('input', () => {
+        applyBrightness(Number(brightness.value));
+        show(brightnessResult, 'Release the slider to save.');
+    });
+    brightness.addEventListener('change', async () => {
+        if (brightness.disabled) return;
+        const value = Number(brightness.value);
+        if (value === confirmedBrightness) {
+            show(brightnessResult, '');
+            return;
+        }
+        brightness.disabled = true;
+        show(brightnessResult, 'Saving...');
+        try {
+            const data = await request('/api/preferences/loading-indicator',
+                {loading_indicator_brightness: value});
+            if (data.loading_indicator_brightness !== value) {
+                throw new Error('The selected brightness was not confirmed.');
+            }
+            confirmedBrightness = value;
+            show(brightnessResult, 'Saved.');
+        } catch (error) {
+            brightness.value = String(confirmedBrightness);
+            applyBrightness(confirmedBrightness);
+            show(brightnessResult, `Could not save brightness. Try again. ${error.message}`, true);
+        } finally {
+            brightness.disabled = false;
+        }
+    });
+    function setPreview(enabled) {
+        if (enabled) document.documentElement.dataset.sbActivityPreview = 'true';
+        else delete document.documentElement.dataset.sbActivityPreview;
+        preview.setAttribute('aria-pressed', String(enabled));
+        preview.textContent = enabled ? 'Stop preview' : 'Preview comet';
+        window.dispatchEvent(new Event('sb:activity-preview-changed'));
+    }
+    preview.addEventListener('click', () =>
+        setPreview(document.documentElement.dataset.sbActivityPreview !== 'true'));
+    window.addEventListener('pagehide', () => setPreview(false));
     async function savePrompt(clear) {
         if (save.disabled) return;
         if (clear && !confirm('Reset to the default prompt?')) return;

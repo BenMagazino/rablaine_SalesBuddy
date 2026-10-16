@@ -878,6 +878,15 @@ function ensureWindow() {
 // the close-to-tray-on-last-window rule.
 function configureWindow(win) {
   const wc = win.webContents;
+  function notifyLoading(loading) {
+    if (win.isDestroyed() || wc.isDestroyed()) return;
+    try {
+      wc.send('shell:loading', loading);
+    } catch (error) {
+      log(`Could not update page loading feedback: ${error.message}`);
+    }
+  }
+  wc.on('did-stop-loading', () => notifyLoading(false));
   if (IS_WIN) attachShellMenu(win, PORT, () => Menu.getApplicationMenu(), log,
     () => screen.getCursorScreenPoint());
   if (IS_WIN) attachShellTheme(win, PORT, log, (theme) => {
@@ -906,8 +915,11 @@ function configureWindow(win) {
     cancelRecovery = null;
   };
   win.on('closed', stopRecovery);
-  wc.on('did-start-navigation', (_event, url, _inPlace, isMainFrame) => {
-    if (isMainFrame && /^https?:/.test(url)) stopRecovery();
+  wc.on('did-start-navigation', (_event, url, inPlace, isMainFrame) => {
+    if (isMainFrame && /^https?:/.test(url)) {
+      stopRecovery();
+      if (!inPlace) notifyLoading(true);
+    }
   });
   wc.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
     if (!isMainFrame || code === -3 || isQuitting || isUpdating) return;

@@ -20,12 +20,15 @@ function fixture({seMode = true} = {}) {
             }};
     }
     const fields = Object.fromEntries([
-        'settingsDarkModeSwitch', 'connectImpactSwitch', 'msxAutoWritebackSwitch',
+        'settingsDarkModeSwitch', 'settingsLoadingIndicatorSwitch',
+        'connectImpactSwitch', 'msxAutoWritebackSwitch',
         'workiqPrompt', 'savePromptBtn', 'resetPromptBtn', 'promptStatus', 'templateSelect',
         'viewEditBtn', 'deleteBtn', 'defaultCustomer', 'defaultNoncustomer', 'defaultTemplatesForm',
         'deleteTemplateName', 'deleteTemplateForm',
         'settingsThemeFamily', 'settingsThemeResult',
         'settingsSeSpecialty', 'settingsSeSpecialtyResult',
+        'settingsLoadingBrightness', 'settingsLoadingBrightnessValue',
+        'settingsLoadingBrightnessResult', 'settingsLoadingPreview',
     ].map(id => [id, element(id)]));
     fields.workiqPrompt.value = 'Saved prompt';
     fields.settingsThemeFamily.value = 'graphite';
@@ -35,17 +38,22 @@ function fixture({seMode = true} = {}) {
         delete fields.settingsSeSpecialtyResult;
     }
     fields.settingsDarkModeSwitch.checked = true;
+    fields.settingsLoadingIndicatorSwitch.checked = true;
+    fields.settingsLoadingBrightness.value = '100';
     fields.connectImpactSwitch.checked = true;
     fields.templateSelect.options = [{text: 'First template'}];
     fields.templateSelect.selectedIndex = 0;
     const defaultsButton = element('defaultsButton');
     fields.defaultTemplatesForm.querySelector = () => defaultsButton;
     const windowHandlers = {};
-    const requests = [], dialogs = [];
+    const requests = [], dialogs = [], events = [];
     let reply = {ok: true, json: async () => ({success: true})};
     let confirmation = true;
     const history = {state: {}, replaceState(value) { this.state = value; }};
-    const documentElement = {dataset: {bsTheme: 'dark', sbMode: 'dark', sbFamily: 'graphite'}};
+    const documentElement = {
+        dataset: {bsTheme: 'dark', sbMode: 'dark', sbFamily: 'graphite'},
+        style: {setProperty(key, value) { this[key] = value; }},
+    };
     vm.runInNewContext(source, {
         document: {
             querySelector: () => ({querySelector: selector => fields[selector.slice(1)]}),
@@ -54,7 +62,10 @@ function fixture({seMode = true} = {}) {
             createElement: () => element('status'),
             documentElement,
         },
-        history, window: {addEventListener: (name, handler) => { windowHandlers[name] = handler; }},
+        history, Event, window: {
+            addEventListener: (name, handler) => { windowHandlers[name] = handler; },
+            dispatchEvent: event => events.push(event.type),
+        },
         confirm: () => confirmation, SBDialog: {open: id => dialogs.push(id)},
         fetch: async (url, options) => {
             requests.push({url, options});
@@ -62,13 +73,14 @@ function fixture({seMode = true} = {}) {
             return typeof reply === 'function' ? reply() : reply;
         },
     });
-    return {fields, requests, dialogs, history, documentElement, defaultsButton, windowHandlers,
+    return {fields, requests, dialogs, events, history, documentElement, defaultsButton, windowHandlers,
         setReply(value) { reply = value; }, confirm(value) { confirmation = value; }};
 }
 
 for (const [id, key] of [
     ['settingsDarkModeSwitch', 'dark_mode'], ['connectImpactSwitch', 'workiq_connect_impact'],
     ['msxAutoWritebackSwitch', 'msx_auto_writeback'],
+    ['settingsLoadingIndicatorSwitch', 'loading_indicator_enabled'],
 ]) {
     test(`${id} saves its original payload only after confirmation`, async () => {
         const h = fixture(), input = h.fields[id];
@@ -81,6 +93,113 @@ for (const [id, key] of [
         assert.equal(input.disabled, false);
         assert.equal(input.checked, false);
         assert.equal(input.children[0].textContent, 'Saved.');
+    });
+}
+
+test('loading feedback changes only after a confirmed save and notifies the active page', async () => {
+    const h = fixture();
+    const input = h.fields.settingsLoadingIndicatorSwitch;
+    input.checked = false;
+    let finish;
+    h.setReply(() => new Promise(resolve => { finish = resolve; }));
+    const pending = input.fire('change');
+    assert.equal(h.documentElement.dataset.sbActivityEnabled, undefined);
+    assert.deepEqual(h.events, []);
+    assert.equal(h.requests[0].url, '/api/preferences/loading-indicator');
+    await input.fire('change');
+    assert.equal(h.requests.length, 1);
+    finish({ok: true, json: async () => ({loading_indicator_enabled: false})});
+    await pending;
+    assert.equal(h.documentElement.dataset.sbActivityEnabled, 'false');
+    assert.deepEqual(h.events, ['sb:activity-preference-changed']);
+});
+
+for (const reply of [
+    new Error('Offline'),
+    {ok: false, status: 500, json: async () => ({error: 'Unavailable'})},
+    {ok: true, json: async () => ({loading_indicator_enabled: true})},
+]) {
+    test('failed loading preference saves preserve the confirmed display and allow retry', async () => {
+        const h = fixture();
+        const input = h.fields.settingsLoadingIndicatorSwitch;
+        input.checked = false;
+        h.setReply(reply);
+        await input.fire('change');
+        assert.equal(input.checked, true);
+        assert.equal(input.disabled, false);
+        assert.equal(h.documentElement.dataset.sbActivityEnabled, undefined);
+        assert.deepEqual(h.events, []);
+        assert.match(input.children[0].textContent, /Could not save/);
+        assert.equal(input.children[0].attributes.role, 'alert');
+    });
+}
+
+test('preview toggles only the current document and is stopped before leaving Settings', async () => {
+    const h = fixture();
+    const preview = h.fields.settingsLoadingPreview;
+    h.documentElement.dataset.sbActivityEnabled = 'false';
+    await preview.fire('click');
+    assert.equal(h.documentElement.dataset.sbActivityPreview, 'true');
+    assert.equal(h.documentElement.dataset.sbActivityEnabled, 'false');
+    assert.equal(preview.attributes['aria-pressed'], 'true');
+    assert.equal(preview.textContent, 'Stop preview');
+    await preview.fire('click');
+    assert.equal(h.documentElement.dataset.sbActivityPreview, undefined);
+    assert.equal(preview.attributes['aria-pressed'], 'false');
+    await preview.fire('click');
+    h.windowHandlers.pagehide();
+    assert.equal(h.documentElement.dataset.sbActivityPreview, undefined);
+    assert.equal(preview.textContent, 'Preview comet');
+    assert.equal(preview.attributes['aria-pressed'], 'false');
+    assert.equal(h.requests.length, 0);
+    assert.ok(h.events.every(type => type === 'sb:activity-preview-changed'));
+});
+
+test('brightness previews each input but saves only once on release and confirmation', async () => {
+    const h = fixture();
+    const input = h.fields.settingsLoadingBrightness;
+    for (const value of ['80', '20', '35']) {
+        input.value = value;
+        await input.fire('input');
+        assert.equal(h.documentElement.style['--sb-activity-opacity'], String(Number(value) / 100));
+        assert.equal(h.fields.settingsLoadingBrightnessValue.textContent, value + '%');
+    }
+    assert.equal(h.requests.length, 0);
+    assert.equal(input.attributes['aria-valuetext'], '35% brightness');
+    let finish;
+    h.setReply(() => new Promise(resolve => { finish = resolve; }));
+    const pending = input.fire('change');
+    await input.fire('change');
+    assert.equal(input.disabled, true);
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.requests[0].url, '/api/preferences/loading-indicator');
+    assert.deepEqual(JSON.parse(h.requests[0].options.body), {loading_indicator_brightness: 35});
+    finish({ok: true, json: async () => ({loading_indicator_brightness: 35})});
+    await pending;
+    assert.equal(input.disabled, false);
+    assert.equal(h.fields.settingsLoadingBrightnessResult.textContent, 'Saved.');
+    await input.fire('change');
+    assert.equal(h.requests.length, 1);
+});
+
+for (const reply of [
+    new Error('Offline'),
+    {ok: false, status: 500, json: async () => ({error: 'Unavailable'})},
+    {ok: true, json: async () => ({loading_indicator_brightness: 100})},
+]) {
+    test('brightness save failures restore the confirmed slider, label and CSS', async () => {
+        const h = fixture();
+        const input = h.fields.settingsLoadingBrightness;
+        input.value = '40';
+        await input.fire('input');
+        h.setReply(reply);
+        await input.fire('change');
+        assert.equal(input.value, '100');
+        assert.equal(input.disabled, false);
+        assert.equal(h.documentElement.style['--sb-activity-opacity'], '1');
+        assert.equal(h.fields.settingsLoadingBrightnessValue.textContent, '100%');
+        assert.equal(h.fields.settingsLoadingBrightnessResult.attributes.role, 'alert');
+        assert.match(h.fields.settingsLoadingBrightnessResult.textContent, /Could not save brightness/);
     });
 }
 

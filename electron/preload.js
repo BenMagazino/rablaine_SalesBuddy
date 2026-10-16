@@ -14,6 +14,12 @@
 
 const { ipcRenderer } = require('electron');
 
+ipcRenderer.on('shell:loading', (_event, loading) => {
+  if (!document.documentElement) return;
+  document.documentElement.dataset.sbShellLoading = String(loading === true);
+  window.dispatchEvent(new Event('sb:shell-loading'));
+});
+
 const FIND_BAR_ID = 'salesbuddy-find-bar';
 const HL_ALL = 'sb-find-all';
 const HL_ACTIVE = 'sb-find-active';

@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.migrations import _migrate_theme_family
+from app.migrations import _migrate_loading_indicator, _migrate_theme_family
 from app.models import UserPreference, db
 
 
@@ -18,9 +18,15 @@ def preference(app):
     """Restore appearance preferences after each isolated test."""
     with app.app_context():
         pref = UserPreference.query.first()
-        original = (pref.theme_family, pref.dark_mode)
+        original = (
+            pref.theme_family, pref.dark_mode, pref.loading_indicator_enabled,
+            pref.loading_indicator_brightness,
+        )
         yield pref
-        pref.theme_family, pref.dark_mode = original
+        (
+            pref.theme_family, pref.dark_mode, pref.loading_indicator_enabled,
+            pref.loading_indicator_brightness,
+        ) = original
         db.session.commit()
 
 
@@ -135,3 +141,174 @@ def test_theme_backup_round_trip_and_legacy_preservation(preference):
     restore_global_data({'user_preferences': {'dark_mode': True}})
     db.session.refresh(preference)
     assert preference.theme_family == 'harbor'
+
+
+@pytest.mark.parametrize('enabled', [False, True])
+def test_loading_indicator_persists_and_renders(client, preference, enabled):
+    """The Appearance control and page shell use the confirmed saved preference."""
+    assert client.get('/api/preferences/loading-indicator').json == {
+        'loading_indicator_enabled': True,
+        'loading_indicator_brightness': 100,
+    }
+    response = client.post('/api/preferences/loading-indicator', json={
+        'loading_indicator_enabled': enabled,
+    })
+    assert response.status_code == 200
+    assert response.json == {
+        'loading_indicator_enabled': enabled, 'loading_indicator_brightness': 100,
+    }
+    db.session.refresh(preference)
+    assert preference.loading_indicator_enabled is enabled
+    assert client.get('/api/preferences/loading-indicator').json == response.json
+    for route in ('/preferences', '/customers'):
+        document = BeautifulSoup(client.get(route).data, 'html.parser')
+        assert document.html['data-sb-activity-enabled'] == str(enabled).lower()
+        if route == '/preferences':
+            toggle = document.select_one('#settingsLoadingIndicatorSwitch')
+            assert toggle.has_attr('checked') is enabled
+            assert toggle.find_parent('section').find('h5').get_text(strip=True) == 'Appearance'
+            assert document.select_one('label[for="settingsLoadingIndicatorSwitch"]')
+
+
+@pytest.mark.parametrize('payload', [
+    None, [], {}, {'loading_indicator_enabled': None},
+    {'loading_indicator_enabled': 0}, {'loading_indicator_enabled': 1},
+    {'loading_indicator_enabled': 'false'},
+])
+def test_invalid_loading_preference_preserves_saved_value(client, preference, payload):
+    """Only JSON booleans are accepted, with explicit validation errors."""
+    response = client.post('/api/preferences/loading-indicator', json=payload)
+    assert response.status_code == 400
+    assert 'Choose whether' in response.json['error']
+    db.session.refresh(preference)
+    assert preference.loading_indicator_enabled is True
+
+
+def test_failed_loading_preference_save_rolls_back(client, preference, caplog):
+    """A failed save reports the error and retains the enabled default."""
+    with patch.object(db.session, 'commit', side_effect=SQLAlchemyError('test failure')):
+        response = client.post('/api/preferences/loading-indicator', json={
+            'loading_indicator_enabled': False,
+        })
+    assert response.status_code == 500
+    assert 'Please try again' in response.json['error']
+    assert 'Could not POST loading indicator preference' in caplog.text
+    db.session.refresh(preference)
+    assert preference.loading_indicator_enabled is True
+
+
+@pytest.mark.parametrize('existing,with_brightness', [(False, False), (True, False), (True, True)])
+def test_loading_preference_migration_defaults_and_preserves_disabled(existing, with_brightness):
+    """Old rows and future inserts default on; repeat migrations preserve explicit off."""
+    engine = create_engine('sqlite://')
+    with engine.begin() as connection:
+        extra = ', loading_indicator_enabled BOOLEAN DEFAULT 1 NOT NULL' if existing else ''
+        if with_brightness:
+            extra += ', loading_indicator_brightness INTEGER DEFAULT 100 NOT NULL'
+        connection.execute(text(f'CREATE TABLE user_preferences (id INTEGER PRIMARY KEY{extra})'))
+        if with_brightness:
+            connection.execute(text('INSERT INTO user_preferences VALUES (1, 0, 35)'))
+        elif existing:
+            connection.execute(text('INSERT INTO user_preferences VALUES (1, 0)'))
+        else:
+            connection.execute(text('INSERT INTO user_preferences VALUES (1)'))
+    with Session(engine) as session:
+        database = SimpleNamespace(engine=engine, session=session)
+        inspector = inspect(engine)
+        _migrate_loading_indicator(database, inspector)
+        _migrate_loading_indicator(database, inspector)
+        with engine.begin() as connection:
+            assert connection.execute(text(
+                'SELECT loading_indicator_enabled FROM user_preferences WHERE id = 1'
+            )).scalar_one() == (0 if existing else 1)
+            connection.execute(text('INSERT INTO user_preferences (id) VALUES (2)'))
+            assert connection.execute(text(
+                'SELECT loading_indicator_enabled FROM user_preferences WHERE id = 2'
+            )).scalar_one() == 1
+            assert connection.execute(text(
+                'SELECT loading_indicator_brightness FROM user_preferences WHERE id = 1'
+            )).scalar_one() == (35 if with_brightness else 100)
+            assert connection.execute(text(
+                'SELECT loading_indicator_brightness FROM user_preferences WHERE id = 2'
+            )).scalar_one() == 100
+    engine.dispose()
+
+
+def test_loading_preference_backup_round_trip_and_legacy_preservation(preference):
+    """Backups retain off and legacy backups do not reset an explicit choice."""
+    from app.services.backup import _global_data_to_dict, restore_global_data
+
+    preference.loading_indicator_enabled = False
+    preference.loading_indicator_brightness = 35
+    db.session.commit()
+    backup = _global_data_to_dict()
+    assert backup['user_preferences']['loading_indicator_enabled'] is False
+    assert backup['user_preferences']['loading_indicator_brightness'] == 35
+    preference.loading_indicator_enabled = True
+    preference.loading_indicator_brightness = 100
+    db.session.commit()
+    restore_global_data({'user_preferences': backup['user_preferences']})
+    db.session.refresh(preference)
+    assert preference.loading_indicator_enabled is False
+    assert preference.loading_indicator_brightness == 35
+    restore_global_data({'user_preferences': {'dark_mode': True}})
+    db.session.refresh(preference)
+    assert preference.loading_indicator_enabled is False
+    assert preference.loading_indicator_brightness == 35
+
+
+@pytest.mark.parametrize('brightness', [10, 55, 100])
+def test_loading_brightness_persists_and_renders_without_enabling(client, preference, brightness):
+    """A saved brightness is global CSS while preview and visibility remain independent."""
+    preference.loading_indicator_enabled = False
+    db.session.commit()
+    response = client.post('/api/preferences/loading-indicator', json={
+        'loading_indicator_brightness': brightness,
+    })
+    assert response.status_code == 200
+    assert response.json == {
+        'loading_indicator_enabled': False, 'loading_indicator_brightness': brightness,
+    }
+    db.session.refresh(preference)
+    assert preference.loading_indicator_brightness == brightness
+    assert preference.loading_indicator_enabled is False
+    assert client.get('/api/preferences/loading-indicator').json == response.json
+    for route in ('/preferences', '/customers'):
+        document = BeautifulSoup(client.get(route).data, 'html.parser')
+        assert document.html['style'] == f'--sb-activity-opacity: {brightness / 100};'
+        assert not document.html.has_attr('data-sb-activity-preview')
+        if route == '/preferences':
+            slider = document.select_one('#settingsLoadingBrightness')
+            assert slider['value'] == str(brightness)
+            assert slider['min'] == '10'
+            assert slider['max'] == '100'
+            assert document.select_one('#settingsLoadingPreview')['aria-pressed'] == 'false'
+    client.post('/api/preferences/loading-indicator', json={'loading_indicator_enabled': True})
+    db.session.refresh(preference)
+    assert preference.loading_indicator_brightness == brightness
+
+
+@pytest.mark.parametrize('brightness', [None, False, True, '50', 9, 101, 50.5, [], {}])
+def test_invalid_loading_brightness_is_atomic(client, preference, brightness):
+    """Invalid brightness never saves either part of a combined preference update."""
+    response = client.post('/api/preferences/loading-indicator', json={
+        'loading_indicator_enabled': False,
+        'loading_indicator_brightness': brightness,
+    })
+    assert response.status_code == 400
+    assert '10% to 100%' in response.json['error']
+    db.session.refresh(preference)
+    assert preference.loading_indicator_enabled is True
+    assert preference.loading_indicator_brightness == 100
+
+
+def test_loading_brightness_save_failure_rolls_back(client, preference, caplog):
+    """A failed brightness save is logged and does not replace the confirmed value."""
+    with patch.object(db.session, 'commit', side_effect=SQLAlchemyError('test failure')):
+        response = client.post('/api/preferences/loading-indicator', json={
+            'loading_indicator_brightness': 40,
+        })
+    assert response.status_code == 500
+    assert 'Could not POST loading indicator preference' in caplog.text
+    db.session.refresh(preference)
+    assert preference.loading_indicator_brightness == 100
