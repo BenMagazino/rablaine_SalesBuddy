@@ -1557,6 +1557,32 @@ def se_specialty_preference() -> tuple[Response, int]:
         return jsonify({'error': 'Could not load or save your specialty. Please try again.'}), 500
 
 
+@main_bp.route('/api/preferences/loading-indicator', methods=['GET', 'POST'])
+def loading_indicator_preference() -> tuple[Response, int]:
+    """Get or save the default-enabled page loading feedback preference."""
+    enabled = None
+    if request.method == 'POST':
+        data = request.get_json(silent=True)
+        enabled = data.get('loading_indicator_enabled') if isinstance(data, dict) else None
+        if not isinstance(enabled, bool):
+            return jsonify({'error': 'Choose whether to show the loading indicator.'}), 400
+    try:
+        pref = UserPreference.query.first()
+        if request.method == 'POST':
+            if pref is None:
+                pref = UserPreference()
+                db.session.add(pref)
+            pref.loading_indicator_enabled = enabled
+            db.session.commit()
+        return jsonify({
+            'loading_indicator_enabled': pref.loading_indicator_enabled if pref else True,
+        }), 200
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Could not %s loading indicator preference', request.method)
+        return jsonify({'error': 'Could not load or save loading feedback. Please try again.'}), 500
+
+
 @main_bp.route('/api/preferences/dark-mode', methods=['GET', 'POST'])
 def dark_mode_preference():
     """Get or set dark mode preference."""
@@ -2145,6 +2171,7 @@ def inject_preferences():
     return dict(
         dark_mode=dark_mode,
         theme_family=pref.theme_family if pref else 'graphite',
+        loading_indicator_enabled=pref.loading_indicator_enabled if pref else True,
         dark_mode_unset=dark_mode_unset,
         customer_view_grouped=customer_view_grouped, 
         topic_sort_by_calls=topic_sort_by_calls,

@@ -289,6 +289,26 @@ function fakeWindow() {
   return win;
 }
 
+test('native navigation publishes activity for main-frame pages and clears on stop', () => {
+  const h = shellHarness();
+  const win = fakeWindow();
+  const sent = [];
+  win.webContents.send = (channel, value) => sent.push({channel, value});
+  h.api.configureWindow(win);
+  for (const [inPlace, mainFrame] of [[false, false], [true, true]]) {
+    win.webContents.emit('did-start-navigation', {}, 'http://localhost:5151/customers',
+      inPlace, mainFrame);
+  }
+  assert.equal(sent.length, 0);
+  win.webContents.emit('did-start-navigation', {}, 'http://localhost:5151/customers', false, true);
+  assert.deepEqual(sent, [{channel: 'shell:loading', value: true}]);
+  win.webContents.emit('did-stop-loading');
+  assert.deepEqual(sent.at(-1), {channel: 'shell:loading', value: false});
+  win.destroyed = true;
+  win.webContents.emit('did-stop-loading');
+  assert.equal(sent.length, 2);
+});
+
 test('startup exceeds 60 seconds without loading an unavailable backend', () => {
   const harness = shellHarness();
   let ready = 0;

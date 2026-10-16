@@ -61,6 +61,8 @@
     }
     for (const [id, key, url] of [
         ['settingsDarkModeSwitch', 'dark_mode', '/api/preferences/dark-mode'],
+        ['settingsLoadingIndicatorSwitch', 'loading_indicator_enabled',
+            '/api/preferences/loading-indicator'],
         ['connectImpactSwitch', 'workiq_connect_impact', '/api/preferences/workiq-connect-impact'],
         ['msxAutoWritebackSwitch', 'msx_auto_writeback', '/api/preferences/msx-auto-writeback'],
     ]) {
@@ -74,6 +76,7 @@
         input.closest('.sb-admin-check')?.append(result);
         input.setAttribute('aria-label', {
             settingsDarkModeSwitch: 'Dark appearance',
+            settingsLoadingIndicatorSwitch: 'Page loading indicator',
             connectImpactSwitch: 'Extract Connect and Engagement Signals',
             msxAutoWritebackSwitch: 'Automatically sync to MSX milestones and opportunities',
         }[id]);
@@ -89,6 +92,10 @@
                 if (key === 'dark_mode') {
                     document.documentElement.dataset.bsTheme = value ? 'dark' : 'light';
                     document.documentElement.dataset.sbMode = value ? 'dark' : 'light';
+                }
+                if (key === 'loading_indicator_enabled') {
+                    document.documentElement.dataset.sbActivityEnabled = String(value);
+                    window.dispatchEvent(new Event('sb:activity-preference-changed'));
                 }
                 show(result, 'Saved.');
             } catch (error) {

@@ -48,6 +48,15 @@ or report title, then press Enter to open the first match, or use Tab and arrow
 keys to choose another. Escape closes it and returns you to your work.
 The launcher follows the current navigation menu and includes Home and Sync Status.
 
+A logo-green light with a fading trail travels along the menu/toolbar divider
+to acknowledge page navigation and foreground action requests without blocking
+the current page. It stops when the destination page appears rather than replaying
+during that page's initialization. Its glow straddles the divider; routine background
+polling stays quiet. Light mode adjusts the green for contrast, and reduced motion uses
+a stationary line instead.
+The indicator is enabled by default. Turn **Settings > Appearance > Page loading
+indicator** off or on to change it immediately; the choice persists across restarts.
+
 Regular data syncs share a durable SQLite job queue and a separate local worker.
 Open **Admin Panel > Sync Status** to start a sync, inspect measured progress,
 see worker availability, or start a new run after a failure. Closing the browser or leaving

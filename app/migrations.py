@@ -124,6 +124,7 @@ def run_migrations(db):
     _migrate_workiq_summary_prompt(db, inspector)
     _migrate_se_specialty(db, inspector)
     _migrate_theme_family(db, inspector)
+    _migrate_loading_indicator(db, inspector)
     
     # Migration: Add guided_tour_completed to user_preferences
     _migrate_guided_tour_completed(db, inspector)
@@ -658,6 +659,16 @@ def _migrate_theme_family(db, inspector) -> None:
         _add_column_if_not_exists(
             db, inspector, 'user_preferences', 'theme_family',
             "VARCHAR(20) DEFAULT 'graphite' NOT NULL",
+        )
+
+
+def _migrate_loading_indicator(db, inspector) -> None:
+    """Enable loading feedback by default without overwriting an existing choice."""
+    inspector.clear_cache()
+    if _table_exists(inspector, 'user_preferences'):
+        _add_column_if_not_exists(
+            db, inspector, 'user_preferences', 'loading_indicator_enabled',
+            'BOOLEAN DEFAULT 1 NOT NULL',
         )
 
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-sb-family="{{ theme_family|default('graphite') }}" {% if dark_mode is not none %}data-bs-theme="{{ 'dark' if dark_mode else 'light' }}"{% endif %}>
+<html lang="en" data-sb-family="{{ theme_family|default('graphite') }}" data-sb-activity-enabled="{{ 'true' if loading_indicator_enabled|default(true) else 'false' }}" {% if dark_mode is not none %}data-bs-theme="{{ 'dark' if dark_mode else 'light' }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -79,6 +79,7 @@
     </style>
     
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-navigation.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-activity.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-dialog.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-share.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-detail.css') }}">
@@ -96,6 +97,36 @@
     <!-- Navigation -->
     {% if not request.args.get('embed') %}
     <nav class="sb-app-bar" aria-label="Main navigation">
+        <div class="sb-activity" id="sbActivity" role="progressbar"
+             aria-label="Loading page or action" hidden>
+            <span class="sb-activity-runner" aria-hidden="true">
+                <svg viewBox="0 0 336 20" xmlns="http://www.w3.org/2000/svg"
+                     aria-hidden="true" focusable="false">
+                    <defs>
+                        <linearGradient id="sbActivityTrail">
+                            <stop offset="0" stop-color="currentColor" stop-opacity="0"/>
+                            <stop offset=".45" stop-color="currentColor" stop-opacity=".12"/>
+                            <stop offset="1" stop-color="currentColor" stop-opacity=".95"/>
+                        </linearGradient>
+                        <radialGradient id="sbActivityHalo">
+                            <stop offset="0" stop-color="currentColor" stop-opacity=".8"/>
+                            <stop offset=".35" stop-color="currentColor" stop-opacity=".4"/>
+                            <stop offset="1" stop-color="currentColor" stop-opacity="0"/>
+                        </radialGradient>
+                    </defs>
+                    <rect x="0" y="9" width="310" height="2"
+                          fill="url(#sbActivityTrail)" opacity=".2"/>
+                    <rect x="0" y="9.5" width="310" height="1"
+                          fill="url(#sbActivityTrail)"/>
+                    <ellipse cx="310" cy="10" rx="24" ry="9" fill="url(#sbActivityHalo)"/>
+                    <ellipse cx="310" cy="10" rx="10" ry="4" fill="url(#sbActivityHalo)"/>
+                    <path d="M302 10 Q308 9 310 7.7 Q312 9 318 10 Q312 11 310 12.3 Q308 11 302 10"
+                          fill="var(--sb-activity-core)"/>
+                    <ellipse cx="310" cy="10" rx="3.4" ry="1.25"
+                             fill="var(--sb-activity-core)"/>
+                </svg>
+            </span>
+        </div>
         <div class="sb-bar-grid">
             <div class="sb-bar-leading">
             <a class="sb-home" href="{{ url_for('main.index') }}" aria-label="Sales Buddy home">
@@ -673,6 +704,7 @@
     {% endif %}
 
     <!-- Driver.js for guided product tour -->
+    <script src="{{ url_for('static', filename='js/ui-activity.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui-jobs.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui-sync-progress.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui-save-wait.js') }}"></script>

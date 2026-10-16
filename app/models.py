@@ -1624,6 +1624,9 @@ class UserPreference(db.Model):
     theme_family = db.Column(
         db.String(20), default='graphite', server_default='graphite', nullable=False,
     )
+    loading_indicator_enabled = db.Column(
+        db.Boolean, default=True, server_default='1', nullable=False,
+    )
     se_specialty = db.Column(db.String(40), default='data', server_default='data', nullable=False)
     customer_view_grouped = db.Column(db.Boolean, default=False, nullable=False)
     customer_sort_by = db.Column(db.String(20), default='alphabetical', nullable=False)  # 'alphabetical', 'grouped', or 'by_calls'

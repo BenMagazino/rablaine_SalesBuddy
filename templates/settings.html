@@ -55,6 +55,15 @@
                         <span><i class="bi bi-moon-fill" aria-hidden="true"></i> Dark</span>
                     </label>
                 </div>
+                <div class="sb-admin-check sb-admin-switch sb-admin-mt-3">
+                    <input class="sb-admin-checkbox" type="checkbox"
+                           id="settingsLoadingIndicatorSwitch"
+                           {{ 'checked' if loading_indicator_enabled else '' }}>
+                    <label class="sb-admin-check-label" for="settingsLoadingIndicatorSwitch">
+                        <strong>Page loading indicator</strong>
+                    </label>
+                    <div><small class="sb-admin-text-muted">Show the glowing green line while pages and actions load. Saves immediately.</small></div>
+                </div>
             </div>
         </section>
 

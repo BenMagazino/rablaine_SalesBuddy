@@ -985,6 +985,7 @@ def _global_data_to_dict() -> Dict[str, Any]:
         prefs_data = {
             "dark_mode": pref.dark_mode,
             "theme_family": pref.theme_family,
+            "loading_indicator_enabled": pref.loading_indicator_enabled,
             "se_specialty": pref.se_specialty,
             "customer_view_grouped": pref.customer_view_grouped,
             "customer_sort_by": pref.customer_sort_by,
@@ -1561,6 +1562,7 @@ def restore_global_data(data: Dict[str, Any]) -> Dict[str, Any]:
         pref_fields = [
             "dark_mode",
             "theme_family",
+            "loading_indicator_enabled",
             "se_specialty",
             "customer_view_grouped",
             "customer_sort_by",
