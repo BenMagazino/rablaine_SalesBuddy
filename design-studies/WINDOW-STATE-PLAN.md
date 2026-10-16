@@ -1,4 +1,4 @@
-# Sales Buddy redesign: Electron window sizing and restoration
+# Plan: Electron window sizing and restoration
 
 Status: planning only, October 1, 2026. No application code has changed.
 

@@ -9,6 +9,7 @@ Lifecycle:
 - New items from the WorkIQ response replace them
 - Sync runs at 6 AM local time daily, or on first startup after 6 AM
 """
+import json
 import logging
 import re
 import threading
@@ -47,7 +48,16 @@ _COPILOT_PROMPT_BASE = (
     "Return ONLY a JSON array with objects containing: "
     '"title", "description", "source_url" (a Teams or Outlook link if available), '
     '"last_activity_date" (YYYY-MM-DD of the most recent email/chat/meeting about this). '
-    "No markdown, no explanation, just the JSON array."
+    "No markdown, no explanation, just the JSON array. "
+    "Start with '[' and end with ']'. Use [] if nothing remains. "
+    "Do not use numbered lists."
+)
+
+_NUMBERED_ITEM = re.compile(
+    r'^(?P<indent>[ \t]*)\d+[.)][ \t]+(?P<title>\S[^\r\n]*)', re.MULTILINE,
+)
+_SOURCE_URL = re.compile(
+    r'https?://[^\s<>()\[\]]+(?:\([^\s<>()\[\]]*\)[^\s<>()\[\]]*)*',
 )
 
 # Hour (local time) when the daily sync fires
@@ -114,69 +124,108 @@ def _build_prompt() -> str:
 
 
 def parse_action_items(response: str) -> list[dict]:
-    """Parse WorkIQ response into structured action items.
-
-    Expects a JSON array from the prompt. Falls back to extracting
-    JSON from markdown code blocks if WorkIQ wraps it.
-
-    Args:
-        response: Raw string from WorkIQ (should be JSON).
-
-    Returns:
-        List of dicts with keys: title, description, source_url.
-    """
+    """Parse JSON first, then recover numbered markdown without another WorkIQ call."""
     if not response or not response.strip():
+        logger.warning("WorkIQ action-items response is empty")
         return []
 
+    text = response.strip('\r\n')
+    items = _parse_json_items(text)
+    if items is not None:
+        return items
+
+    from app.services.telemetry_shipper import queue_workiq_call
+
+    items = _parse_markdown_items(text)
+    if items:
+        logger.info("Recovered %d Copilot action items from numbered markdown", len(items))
+        queue_workiq_call(
+            'copilot_actions', 'parse_recovered',
+            failure_type='parse_fell_back_to_markdown',
+        )
+    else:
+        logger.warning("Could not parse Copilot action items as JSON or numbered markdown")
+        queue_workiq_call(
+            'copilot_actions', 'parse_failed', failure_type='parse_copilot_actions_json',
+        )
+    return items
+
+
+def _parse_json_items(text: str) -> list[dict] | None:
+    """Return validated JSON items, or None when the format is not usable."""
     from app.services.workiq_service import repair_json_control_chars
 
-    text = response.strip()
-
-    # Try to extract JSON from markdown code block if wrapped
     code_match = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', text, re.DOTALL)
     if code_match:
         text = code_match.group(1)
 
-    # Find the JSON array in the response
     arr_start = text.find('[')
     arr_end = text.rfind(']')
     if arr_start == -1 or arr_end == -1 or arr_end <= arr_start:
-        try:
-            from app.services.telemetry_shipper import queue_workiq_call
-            queue_workiq_call('copilot_actions', 'parse_failed',
-                              failure_type='parse_copilot_actions_json')
-        except Exception:
-            pass
-        return []
+        return None
 
     try:
-        import json
         items = json.loads(repair_json_control_chars(text[arr_start:arr_end + 1]))
     except (json.JSONDecodeError, ValueError):
-        try:
-            from app.services.telemetry_shipper import queue_workiq_call
-            queue_workiq_call('copilot_actions', 'parse_failed',
-                              failure_type='parse_copilot_actions_json')
-        except Exception:
-            pass
-        return []
+        return None
 
     if not isinstance(items, list):
+        return None
+    if not items:
         return []
 
     result = []
     for item in items:
         if not isinstance(item, dict):
+            logger.warning("Skipping non-object Copilot action item")
             continue
-        title = (item.get('title') or '').strip()
-        if not title:
+        title = item.get('title')
+        optional_fields = [item.get('description'), item.get('source_url')]
+        if (not isinstance(title, str) or not title.strip()
+                or any(value is not None and not isinstance(value, str)
+                       for value in optional_fields)):
+            logger.warning("Skipping Copilot action item with invalid fields")
             continue
         result.append({
-            'title': title[:300],
+            'title': title.strip()[:300],
             'description': (item.get('description') or '').strip() or None,
             'source_url': (item.get('source_url') or '').strip() or None,
         })
 
+    return result or None
+
+
+def _parse_markdown_items(text: str) -> list[dict]:
+    """Read top-level numbered titles and their indented or bulleted context."""
+    matches = list(_NUMBERED_ITEM.finditer(text))
+    if not matches:
+        return []
+    indent = min(len(match['indent'].expandtabs(4)) for match in matches)
+    matches = [match for match in matches if len(match['indent'].expandtabs(4)) == indent]
+    result = []
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        title = re.sub(r'\[([^\]]+)\]\(https?://[^\s]+\)', r'\1', match['title'])
+        title = re.sub(r'\*\*|__|`', '', title).strip()
+        if not title:
+            continue
+        description = []
+        for line in text[match.end():end].splitlines():
+            stripped = line.strip()
+            if not stripped:
+                description.append('')
+                continue
+            depth = len(line) - len(line.lstrip(' \t'))
+            depth = len(line[:depth].expandtabs(4))
+            if depth <= indent and not re.match(r'[-*+][ \t]+', stripped):
+                break
+            description.append(stripped)
+        source = _SOURCE_URL.search('\n'.join([match['title'], *description]))
+        result.append({
+            'title': title[:300],
+            'description': '\n'.join(description).strip() or None,
+            'source_url': source.group().rstrip('.,;:!?') if source else None,
+        })
     return result
 
 

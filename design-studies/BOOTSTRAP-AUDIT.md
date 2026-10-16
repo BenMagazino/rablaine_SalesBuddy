@@ -9,8 +9,9 @@ Checkpoints91-105 remove the framework CSS, bundle, widget APIs and `--bs-*`
 runtime dependencies. Application-owned browser normalization and native controls
 replace them; the independent Bootstrap Icons library remains intentionally.
 The historical inventory below describes the October1 baseline, not current runtime.
-See [final reconciliation](../docs/redesign-pages/FINAL-RECONCILIATION.md) for passing
-scoped regressions, native-shell limits and the unresolved validation draft incident.
+The first-pass redesign was completed and approved on October 9, 2026.
+Its temporary checkpoint evidence has been retired. The separate window-state
+restoration plan remains unfinished.
 
 ## Decision summary
 

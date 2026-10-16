@@ -272,8 +272,8 @@ def _q_workiq_uptime_timeline(days: int) -> str:
 
     Mirrors the MSX probe timeline: one cell per hour, color by status.
     Powered by SalesBuddy.WorkIQCall events that workiq_service emits at
-    every call site (status='ok' or 'server_down'). parse_failed events
-    are excluded - parser drift is a separate concern from uptime.
+    every call site (status='ok' or 'server_down'). Parser failure and recovery
+    events are excluded - parser drift is a separate concern from uptime.
     """
     return f"""
 customEvents

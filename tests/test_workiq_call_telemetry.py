@@ -20,6 +20,20 @@ import pytest
 class TestQueueWorkiqCall:
     """Unit tests for the telemetry shipper helper."""
 
+    def test_markdown_recovery_keeps_its_fixed_taxonomy(self):
+        """Recovered parses are distinct from service success and parse failure."""
+        from app.services import telemetry_shipper
+
+        with patch.object(telemetry_shipper, 'is_telemetry_enabled', return_value=True), \
+             patch.object(telemetry_shipper, '_buffer', []) as buf:
+            telemetry_shipper.queue_workiq_call(
+                'copilot_actions', 'parse_recovered',
+                failure_type='parse_fell_back_to_markdown',
+            )
+            properties = buf[0]['data']['baseData']['properties']
+            assert properties['status'] == 'parse_recovered'
+            assert properties['failure_type'] == 'parse_fell_back_to_markdown'
+
     def test_emits_envelope_when_enabled(self):
         from app.services import telemetry_shipper
 
@@ -308,8 +322,8 @@ class TestPartnerScrapeParseFailure:
         from app.services import partner_scrape
 
         with patch('app.services.telemetry_shipper.queue_workiq_call') as q:
-            result = partner_scrape._parse_response('still no json')
-            assert result['contacts'] == []
+            with pytest.raises(ValueError, match='WorkIQ returned unreadable results'):
+                partner_scrape._parse_response('still no json')
             q.assert_called_once_with(
                 'partner_scrape', 'parse_failed',
                 failure_type='parse_partner_json',

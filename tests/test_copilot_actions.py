@@ -33,6 +33,20 @@ EMPTY_RESPONSE = ""
 
 NO_ITEMS_RESPONSE = """I looked through your emails, chats and meetings but couldn't find any clear action items for you today."""
 
+MARKDOWN_WORKIQ_RESPONSE = """I found three unresolved follow-ups:
+
+1. **Send the demo**
+   - Share the recording and setup instructions.
+   - Source: [Meeting](https://teams.microsoft.com/l/meeting/demo)
+2. **Review the estimate**
+   Confirm the revised costs with the account team.
+   https://outlook.office365.com/owa/?ItemID=estimate
+3. Schedule the next session
+   Offer two times next week.
+
+Let me know if you would like help drafting a reply.
+"""
+
 
 class TestParseActionItems:
     """Tests for the markdown response parser."""
@@ -110,6 +124,121 @@ class TestParseActionItems:
         assert 'Purview' in items[0]['title']
 
 
+class TestMarkdownActionItems:
+    """Regression tests for prose responses that contain numbered follow-ups."""
+
+    def test_extracts_numbered_items_and_sources(self):
+        """Preserve titles, context and links without absorbing closing prose."""
+        from app.services.copilot_actions import parse_action_items
+
+        with patch('app.services.telemetry_shipper.queue_workiq_call') as telemetry:
+            items = parse_action_items(MARKDOWN_WORKIQ_RESPONSE)
+
+        assert [item['title'] for item in items] == [
+            'Send the demo', 'Review the estimate', 'Schedule the next session',
+        ]
+        assert 'Share the recording' in items[0]['description']
+        assert items[0]['source_url'] == 'https://teams.microsoft.com/l/meeting/demo'
+        assert items[1]['source_url'] == 'https://outlook.office365.com/owa/?ItemID=estimate'
+        assert items[2]['source_url'] is None
+        assert items[2]['description'] == 'Offer two times next week.'
+        telemetry.assert_called_once_with(
+            'copilot_actions', 'parse_recovered',
+            failure_type='parse_fell_back_to_markdown',
+        )
+
+    def test_nested_numbered_steps_are_not_new_actions(self):
+        """Only top-level list entries become action items."""
+        from app.services.copilot_actions import parse_action_items
+
+        items = parse_action_items(
+            '1. Send the demo\n'
+            '   1. Record the walkthrough.\n'
+            '   2. Upload the recording.\n'
+            '2. Confirm the estimate'
+        )
+        assert len(items) == 2
+        assert 'Upload the recording.' in items[0]['description']
+        assert items[1]['description'] is None
+
+    @pytest.mark.parametrize('marker', ['1.', '1)'])
+    def test_indented_lists_and_link_titles(self, marker):
+        """Accept common list markers and strip presentation-only title markup."""
+        from app.services.copilot_actions import parse_action_items
+
+        items = parse_action_items(
+            f'  {marker} **[Review estimate](https://example.com/estimate)**\n'
+            '     - Confirm scope.'
+        )
+        assert items == [{
+            'title': 'Review estimate',
+            'description': '- Confirm scope.',
+            'source_url': 'https://example.com/estimate',
+        }]
+
+    def test_leading_indentation_is_consistent_across_items(self):
+        """Trimming the response must not promote just the first indented item."""
+        from app.services.copilot_actions import parse_action_items
+
+        items = parse_action_items('  1. Send the demo\n  2. Confirm scope')
+        assert [item['title'] for item in items] == ['Send the demo', 'Confirm scope']
+
+    def test_markdown_titles_are_bounded(self):
+        """Apply the same 300-character title limit to both formats."""
+        from app.services.copilot_actions import parse_action_items
+
+        assert parse_action_items('1. ' + 'A' * 500)[0]['title'] == 'A' * 300
+
+    def test_url_punctuation_does_not_break_source_links(self):
+        """Preserve balanced URL parentheses without sentence punctuation."""
+        from app.services.copilot_actions import parse_action_items
+
+        items = parse_action_items(
+            '1. Review scope\n'
+            '   See https://example.com/review(v2).'
+        )
+        assert items[0]['source_url'] == 'https://example.com/review(v2)'
+
+    @pytest.mark.parametrize('json_text', ['[]', '[{"title": "JSON task"}]'])
+    def test_valid_json_takes_precedence(self, json_text):
+        """Do not turn numbered explanatory text into extra tasks after valid JSON."""
+        from app.services.copilot_actions import parse_action_items
+
+        with patch('app.services.telemetry_shipper.queue_workiq_call') as telemetry:
+            items = parse_action_items(json_text + '\n1. Not another task')
+        assert len(items) == (0 if json_text == '[]' else 1)
+        telemetry.assert_not_called()
+
+    def test_malformed_json_can_recover_from_numbered_list(self):
+        """Attempt markdown only after JSON parsing fails."""
+        from app.services.copilot_actions import parse_action_items
+
+        items = parse_action_items('[not JSON]\n1. Send the recording')
+        assert items[0]['title'] == 'Send the recording'
+
+    def test_invalid_json_fields_do_not_crash_or_discard_valid_items(self):
+        """Skip malformed items without losing valid JSON suggestions."""
+        from app.services.copilot_actions import parse_action_items
+
+        items = parse_action_items(json.dumps([
+            {'title': 7}, {'title': 'Bad description', 'description': []},
+            {'title': 'Bad URL', 'source_url': {}}, None, {'title': 'Valid task'},
+        ]))
+        assert items == [{'title': 'Valid task', 'description': None, 'source_url': None}]
+
+    def test_total_failure_logs_without_sending_response_content(self, caplog):
+        """Only a fixed failure taxonomy reaches telemetry."""
+        from app.services.copilot_actions import parse_action_items
+
+        with patch('app.services.telemetry_shipper.queue_workiq_call') as telemetry:
+            assert parse_action_items('Private prose, no actionable list.') == []
+        assert 'Could not parse Copilot action items' in caplog.text
+        assert 'Private prose' not in caplog.text
+        telemetry.assert_called_once_with(
+            'copilot_actions', 'parse_failed', failure_type='parse_copilot_actions_json',
+        )
+
+
 class TestShouldSync:
     """Tests for the sync-needed check."""
 
@@ -162,6 +291,38 @@ class TestShouldSync:
 
 class TestSyncCopilotActionItems:
     """Tests for the full sync function."""
+
+    @patch('app.services.workiq_service.query_workiq')
+    def test_sync_accepts_numbered_followups(self, mock_workiq, app):
+        """The normal sync persists recovered tasks without another WorkIQ call."""
+        from app.models import ActionItem
+        from app.services.copilot_actions import sync_copilot_action_items
+
+        mock_workiq.return_value = MARKDOWN_WORKIQ_RESPONSE
+        with app.app_context():
+            result = sync_copilot_action_items()
+            assert result == {'success': True, 'items_created': 3}
+            assert ActionItem.query.filter_by(source='copilot', status='open').count() == 3
+            assert ActionItem.query.filter_by(title='Send the demo').one().source_url == (
+                'https://teams.microsoft.com/l/meeting/demo'
+            )
+        assert mock_workiq.call_count == 1
+
+    @patch('app.services.workiq_service.query_workiq')
+    def test_unparseable_response_preserves_saved_items(self, mock_workiq, app):
+        """A failed parse must not clear existing suggestions or advance freshness."""
+        from app.models import ActionItem, UserPreference, db
+        from app.services.copilot_actions import sync_copilot_action_items
+
+        mock_workiq.return_value = NO_ITEMS_RESPONSE
+        with app.app_context():
+            db.session.add(ActionItem(title='Keep this task', source='copilot', status='open'))
+            db.session.commit()
+            previous_sync = UserPreference.query.first().last_copilot_sync
+            result = sync_copilot_action_items()
+            assert result['success'] is False
+            assert ActionItem.query.filter_by(title='Keep this task').count() == 1
+            assert UserPreference.query.first().last_copilot_sync == previous_sync
 
     @patch('app.services.workiq_service.query_workiq')
     def test_sync_creates_items(self, mock_workiq, app):
