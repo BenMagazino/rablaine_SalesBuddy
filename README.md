@@ -72,6 +72,13 @@ execution, not the saved job history. Destructive FY/restore, uploads, backups,
 interactive record edits and continuous sharing subscriptions are outside this
 Sync Status page.
 
+Calendar day refreshes and the automatic morning meeting sync share durable
+per-date progress. Reloading Home or navigating between months restores queued
+and running indicators without starting another sync. Each saved day redraws
+after its cache is committed; failed dates retain their cached meetings and show
+an explicit error. Morning sync fetches up to five dates in parallel, saves them
+serially, and remains the only refresh path that purges expired meetings.
+
 The Windows desktop title bar follows the saved theme and Light/Dark appearance,
 including changes made in Settings without a reload. The theme-matched menu strip
 opens the existing Windows-native File/Edit/View/Window/Help dropdowns and keeps

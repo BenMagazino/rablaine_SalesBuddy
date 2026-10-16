@@ -1080,10 +1080,17 @@ def api_sync_aura():
 
 @notes_bp.route('/api/meetings/sync-status', methods=['GET'])
 def api_sync_status():
-    """Return the current background sync state. Cheap, never blocks."""
+    """Read aura status and recover manual or automatic calendar refresh jobs."""
     from flask import jsonify
-    from app.services.meeting_sync import get_sync_state_snapshot
-    return jsonify(get_sync_state_snapshot())
+    from app.services.meeting_sync import get_meeting_refresh_jobs, get_sync_state_snapshot
+    try:
+        watched_ids = [int(value) for value in request.args.getlist('job_id')]
+        if any(value <= 0 for value in watched_ids):
+            raise ValueError('Job identities must be positive.')
+    except ValueError:
+        logger.info('Rejected invalid meeting refresh job identities')
+        return jsonify(error='Meeting refresh job identities must be positive integers.'), 400
+    return jsonify(**get_sync_state_snapshot(), jobs=get_meeting_refresh_jobs(watched_ids))
 
 
 @notes_bp.route('/api/meetings/today-status', methods=['GET'])

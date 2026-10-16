@@ -402,9 +402,7 @@
     }
     .cal-day-num-wrap:hover .cal-day-sync-overlay { display: flex; }
     .cal-day-num-wrap:hover .cal-day-num { visibility: hidden; }
-    /* If the aura sync is already syncing/queueing this day, don't
-       advertise the manual refresh affordance -- the morning sync owns
-       it. We block the click in JS too (see triggerDaySync). */
+    /* Busy dates share a disabled refresh control and a separate details button. */
     td:has(.cal-aura-dots) .cal-day-num-wrap {
         cursor: default;
     }
@@ -708,6 +706,7 @@
 </div>
 <script src="{{ url_for('static', filename='js/ui-home.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ui-home-calendar.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-meeting-refresh.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ui-home-summary.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/ui-home-freshness.js') }}"></script>
 
@@ -948,33 +947,8 @@
         return `${y}-${m}-${day}`;
     }
 
-    // Triggered by clicking the day-number in a calendar cell. Pulls
-    // WorkIQ for that specific date (past or future, even outside the
-    // aura window) and re-renders that cell's ghosts. Rows for past
-    // dates beyond the normal retention window will be cleaned up by
-    // the next morning sync's purge pass; that's expected and fine for
-    // ad-hoc lookups.
-    //
-    // Two cross-render concerns this function handles:
-    //   1. The user can navigate to another month and back while the
-    //      WorkIQ pull is in flight (POST /api/meetings/refresh can take
-    //      30s+). The original wrapEl is detached by loadCalendar's
-    //      innerHTML wipe, so we never reuse it after the fetch returns.
-    //      Instead we track in-flight dates in _inFlightDayRefreshes and
-    //      restore the spinner via _restoreInFlightSpinners() after every
-    //      render, and we look up the current wrap by dateStr when we
-    //      need to clear it.
-    //   2. If the fetch completes while the user is on a DIFFERENT month
-    //      than the one the refresh was launched from, refreshDaysInPlace
-    //      would be a no-op (it queries cells in the current view).
-    //      Stash the date in _pendingRedrawDates so the next loadCalendar
-    //      render of that date's month repaints the cell.
-    //
-    // NOTE: in-flight state does NOT persist across page reloads. If the
-    // user hits F5 mid-refresh, the spinner won't come back; the server's
-    // WorkIQ pull keeps running and the next aura sync (or a fresh manual
-    // click) will surface the result.
-    const _inFlightDayRefreshes = new Set();
+    // Both automatic and manual refreshes are rediscovered from durable jobs.
+    // Keep off-screen completed dates for the next render of their month.
     const _pendingRedrawDates = new Set();
 
     function _findCurrentDayWrap(dateStr) {
@@ -985,7 +959,7 @@
     function _setSpinnerOnDate(dateStr, on) {
         const wrap = _findCurrentDayWrap(dateStr);
         if (!wrap) return;
-        wrap.disabled = on || !!wrap.closest('td').querySelector('.cal-aura-dots');
+        wrap.disabled = on;
         wrap.setAttribute('aria-busy', String(on));
         if (on) {
             wrap.classList.add('cal-day-syncing');
@@ -996,19 +970,36 @@
         }
     }
 
-    // Re-apply the spinning state and drain any pending redraws for the
-    // current view. Called after every loadCalendar render so navigating
-    // away and back doesn't lose the in-flight visual state.
+    const meetingRefresh = window.SBMeetingRefresh.create({
+        start: date => window.SBJobs.start('meetings', {date}),
+        read: async jobIds => {
+            const query = new URLSearchParams();
+            jobIds.forEach(id => query.append('job_id', id));
+            const response = await fetch('/api/meetings/sync-status?' + query, {cache: 'no-store'});
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Could not read meeting refreshes.');
+            return data;
+        },
+        paint: states => applyMeetingIndicators(states),
+        showError: (date, message) => {
+            console.error('Meeting refresh:', date, message);
+            window.SBHomeCalendar.showRefreshError(date, message);
+        },
+        clearError: date => window.SBHomeCalendar.clearRefreshError(date),
+        complete: dates => {
+            window.dispatchEvent(new CustomEvent('sb:meetings-cache-updated'));
+            const prefix = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-`;
+            const visible = dates.filter(date => date.startsWith(prefix));
+            dates.filter(date => !date.startsWith(prefix)).forEach(
+                date => _pendingRedrawDates.add(date));
+            if (visible.length) refreshDaysInPlace(visible);
+        },
+    });
+    window.addEventListener('pagehide', () => meetingRefresh.stop());
+
     function _restoreInFlightSpinners() {
-        if (_inFlightDayRefreshes.size === 0 && _pendingRedrawDates.size === 0) return;
+        meetingRefresh.render();
         const monthPrefix = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-`;
-
-        _inFlightDayRefreshes.forEach(dateStr => {
-            if (!dateStr.startsWith(monthPrefix)) return;
-            _setSpinnerOnDate(dateStr, true);
-        });
-
-        // Drain pending redraws whose month is now in view.
         const toRedraw = [];
         _pendingRedrawDates.forEach(dateStr => {
             if (dateStr.startsWith(monthPrefix)) toRedraw.push(dateStr);
@@ -1021,64 +1012,9 @@
         }
     }
 
-    function triggerDaySync(dateStr, wrapEl) {
+    function triggerDaySync(dateStr) {
         if (!dateStr) return;
-        // If the morning aura sync already has this date queued or
-        // in-flight, don't fire a duplicate WorkIQ pull. The aura dots
-        // (rendered by applyAuraIndicators) live in the same cell, so
-        // their presence is the source of truth.
-        if (wrapEl) {
-            const cell = wrapEl.closest('td[data-cal-date]');
-            if (cell && cell.querySelector('.cal-aura-dots')) {
-                return;
-            }
-        }
-        // Already refreshing this date - don't double-fire.
-        if (_inFlightDayRefreshes.has(dateStr)) return;
-        _inFlightDayRefreshes.add(dateStr);
-        _setSpinnerOnDate(dateStr, true);
-
-        return fetch('/api/meetings/refresh', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({date: dateStr}),
-        })
-            .then(r => r.json().then(body => ({ok: r.ok, status: r.status, body})))
-            .then(({ok, status, body}) => {
-                if (!ok) {
-                    throw new Error(body?.error || `Meeting refresh HTTP ${status}.`);
-                }
-                if (typeof body?.synced_at !== 'string' ||
-                    !Number.isFinite(new Date(body.synced_at).getTime()) || body.date !== dateStr) {
-                    throw new Error('Meeting refresh did not confirm a valid cache timestamp.');
-                }
-                window.SBHomeCalendar.clearRefreshError(dateStr);
-                window.dispatchEvent(new CustomEvent('sb:meetings-cache-updated'));
-                // The cell may have been replaced (or may not currently
-                // be in view) if the user navigated months while we
-                // waited on WorkIQ. Repaint if the date is in the
-                // current view; otherwise queue it for the next render
-                // of its month.
-                const monthPrefix = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-`;
-                if (dateStr.startsWith(monthPrefix)) {
-                    if (typeof refreshDaysInPlace === 'function') {
-                        refreshDaysInPlace([dateStr]);
-                    }
-                } else {
-                    _pendingRedrawDates.add(dateStr);
-                }
-            })
-            .catch(err => {
-                console.error('Day sync error:', err);
-                window.SBHomeCalendar.showRefreshError(dateStr, err.message);
-            })
-            .finally(() => {
-                _inFlightDayRefreshes.delete(dateStr);
-                // Always look up the current wrap by date - the original
-                // wrapEl may have been detached by an intervening
-                // loadCalendar render.
-                _setSpinnerOnDate(dateStr, false);
-            });
+        return meetingRefresh.request(dateStr);
     }
 
     // ===== TODAY-CELL HEALTH INDICATOR =====
@@ -1104,28 +1040,15 @@
         });
     }
 
-    // ===== AURA SYNC CALENDAR INDICATOR =====
-    // While the morning aura sweeps today + 4 business days, paint typing
-    // dots on each cell the aura plans to (or is currently) syncing. When
-    // the sync moves past a date, redraw the calendar so freshly-prefetched
-    // ghosts appear in place of the dots.
-    let _auraPoll = null;
-    let _auraLastCurrent = null;
-    let _auraLastRunning = false;
-
-    function applyAuraIndicators(state) {
+    // ===== SHARED MEETING REFRESH INDICATORS =====
+    function applyMeetingIndicators(states) {
         // Build the desired set of (dateStr, isActive) pairs for the
         // current view. We DIFF against existing dots instead of nuking
         // them each poll - removing and re-inserting restarts the CSS
         // animation from delay:0 every 3 seconds, which is the source
         // of the visible "glitch" the user reported.
         const desired = new Map(); // dateStr -> isActive
-        if (state && state.running && Array.isArray(state.aura_dates)) {
-            state.aura_dates.forEach(dateStr => {
-                if (state.current_date && dateStr < state.current_date) return;
-                desired.set(dateStr, dateStr === state.current_date);
-            });
-        }
+        states.forEach((value, dateStr) => desired.set(dateStr, value.state !== 'queued'));
 
         // Remove dots that are no longer wanted (or whose active class
         // changed -- in that case we re-add below with the right class).
@@ -1134,39 +1057,31 @@
             const dateStr = cell ? cell.getAttribute('data-cal-date') : null;
             const wantActive = desired.get(dateStr);
             const isActive = !el.classList.contains('cal-aura-queued');
+            el.disabled = !states.get(dateStr)?.job;
             if (wantActive === undefined) {
                 el.remove();
             } else if (wantActive !== isActive) {
                 // Toggle in place -- don't remount, just swap the class.
                 el.classList.toggle('cal-aura-queued', !wantActive);
                 el.title = wantActive
-                    ? 'Syncing meetings for this day...'
-                    : 'Queued for sync';
+                    ? 'Refreshing meetings for this day...'
+                    : 'Queued for meeting refresh';
                 desired.delete(dateStr); // already handled
             } else {
                 desired.delete(dateStr); // already correct
             }
         });
 
-        // Update the day-number wrap title to reflect the current gating
-        // state for every cell in view: pending cells say "morning sync
-        // owns this", everything else gets the manual-refresh affordance.
         document.querySelectorAll('#calendarBody td[data-cal-date] .cal-day-num-wrap').forEach(wrap => {
             const cell = wrap.closest('td[data-cal-date]');
             const dateStr = cell ? cell.getAttribute('data-cal-date') : null;
-            const pending = dateStr && desired.has(dateStr);
-            // Note: by this point in the function we've removed dots that
-            // were no longer wanted and deleted matching entries from
-            // `desired`, so `desired.has(dateStr)` only tells us about
-            // newly-pending cells. Use the DOM as the source of truth
-            // instead -- aura dots present == aura owns this cell.
-            const auraOwns = !!cell.querySelector('.cal-aura-dots') || pending;
-            wrap.title = auraOwns
-                ? 'Morning sync is already refreshing this day'
+            const busy = states.has(dateStr);
+            _setSpinnerOnDate(dateStr, busy);
+            wrap.title = busy
+                ? 'Meetings are already refreshing for this day'
                 : 'Click to pull meetings for this day';
-            wrap.disabled = auraOwns || _inFlightDayRefreshes.has(dateStr);
-            wrap.setAttribute('aria-label', auraOwns
-                ? `Morning sync is already refreshing ${dateStr}`
+            wrap.setAttribute('aria-label', busy
+                ? `Meetings are already refreshing for ${dateStr}`
                 : `Refresh meetings for ${dateStr}`);
         });
 
@@ -1182,56 +1097,31 @@
 
             const dots = document.createElement('button');
             dots.type = 'button';
-            dots.setAttribute('aria-label', `Open morning sync details for ${dateStr}`);
+            dots.disabled = !states.get(dateStr)?.job;
+            dots.setAttribute('aria-label', `Open meeting refresh details for ${dateStr}`);
             dots.className = 'cal-aura-dots' + (isActive ? '' : ' cal-aura-queued');
             dots.title = (isActive
-                ? 'Syncing meetings for this day...'
-                : 'Queued for sync')
+                ? 'Refreshing meetings for this day...'
+                : 'Queued for meeting refresh')
                 + ' (click for details)';
             dots.style.cursor = 'pointer';
             dots.innerHTML = '<span></span><span></span><span></span>';
             dots.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (window.SyncStatus) window.SyncStatus.check();
+                const job = meetingRefresh.getJob(dateStr);
+                if (job && window.SyncStatus) {
+                    window.SyncStatus.forceShow({
+                        running: true, current_date: dateStr,
+                        aura_dates: job.calendar_dates, job,
+                    });
+                }
             });
             actions.insertBefore(dots, actions.firstChild);
         });
     }
 
     function checkAuraSync() {
-        fetch('/api/meetings/sync-status')
-            .then(r => r.json())
-            .then(state => {
-                const wasRunning = _auraLastRunning;
-                const lastCurrent = _auraLastCurrent;
-                _auraLastRunning = !!state.running;
-                _auraLastCurrent = state.current_date;
-
-                if (state.running) {
-                    // Day advanced - surgically swap the just-finished day's
-                    // dots for fresh ghosts (no full-table rebuild flicker).
-                    if (wasRunning && lastCurrent && lastCurrent !== state.current_date) {
-                        refreshDaysInPlace([lastCurrent]);
-                    }
-                    applyAuraIndicators(state);
-                    if (!_auraPoll) {
-                        _auraPoll = setInterval(checkAuraSync, 3000);
-                    }
-                } else {
-                    // Sync done. Stop polling, then surgically refresh the
-                    // final day so its ghosts fade in. applyAuraIndicators
-                    // clears any leftover dots after the swap.
-                    if (_auraPoll) { clearInterval(_auraPoll); _auraPoll = null; }
-                    if (wasRunning) {
-                        const finalDate = lastCurrent || state.current_date;
-                        if (finalDate) {
-                            refreshDaysInPlace([finalDate]);
-                        }
-                    }
-                    applyAuraIndicators(null);
-                }
-            })
-            .catch(() => { /* ignore - try again on next loadCalendar */ });
+        return meetingRefresh.check();
     }
 
     
@@ -1612,9 +1502,14 @@
     function refreshDaysInPlace(completedDates) {
         if (!Array.isArray(completedDates) || completedDates.length === 0) return;
         const url = `/api/notes/calendar?year=${calendarYear}&month=${calendarMonth}`;
-        fetch(url)
-            .then(r => r.json())
+        const year = calendarYear, month = calendarMonth;
+        return fetch(url)
+            .then(r => {
+                if (!r.ok) throw new Error(`Calendar refresh failed (HTTP ${r.status}).`);
+                return r.json();
+            })
             .then(data => {
+                window.SBHomeCalendar.validateMonth(data, year, month);
                 const customerColorMap = window.SBHomeCalendar.customerColors(data);
 
                 completedDates.forEach(dateStr => {
@@ -1650,8 +1545,13 @@
 
                 // Refresh today's control color in case today just finished.
                 if (typeof checkTodayStatus === 'function') checkTodayStatus();
+                meetingRefresh.render();
             })
-            .catch(err => console.error('refreshDaysInPlace failed:', err));
+            .catch(err => {
+                console.error('refreshDaysInPlace failed:', err);
+                completedDates.forEach(date => window.SBHomeCalendar.showRefreshError(
+                    date, 'Meetings refreshed, but the calendar could not redraw. ' + err.message));
+            });
     }
 
     {% if has_engagements %}

@@ -19,6 +19,7 @@
     const retry = required('syncStatusRetry');
     const dismiss = required('syncStatusDismiss');
     let pollHandle = null, pending = null, generation = 0, opener = null;
+    let observedJobId = null;
     let dragOffsetX = 0, dragOffsetY = 0;
 
     function place(left, top) {
@@ -110,6 +111,7 @@
 
     function hide({reload = false} = {}) {
         conceal();
+        observedJobId = null;
         if (pollHandle !== null) clearInterval(pollHandle);
         pollHandle = null;
         // The calendar owns per-day refresh. Never rebuild it from this card.
@@ -155,9 +157,24 @@
     async function readState() {
         if (!pending) {
             pending = (async () => {
-                const response = await fetch('/api/meetings/sync-status');
+                const jobId = observedJobId;
+                const response = await fetch(jobId === null ? '/api/meetings/sync-status' :
+                    `/api/jobs/${jobId}`);
                 if (!response.ok) throw new Error(`Meeting-sync status HTTP ${response.status}.`);
-                return validate(await response.json());
+                const data = await response.json();
+                if (jobId === null) return validate(data);
+                const job = data.job;
+                if (job?.id !== jobId ||
+                    !['pending', 'running', 'done', 'failed'].includes(job.status)) {
+                    throw new Error('Meeting refresh details returned an invalid job.');
+                }
+                return validate({
+                    running: ['pending', 'running'].includes(job.status),
+                    current_date: job.options?.date || job.progress?.current_date,
+                    aura_dates: job.progress?.aura_dates || [],
+                    error: job.status === 'failed' ? job.error || 'Meeting refresh failed.' : null,
+                    job,
+                });
             })();
         }
         const request = pending;
@@ -221,6 +238,8 @@
         check,
         forceShow(state) {
             const snapshot = validate(state ?? {}, true);
+            observedJobId = Number.isInteger(snapshot.job?.id) && snapshot.job.id > 0 ?
+                snapshot.job.id : null;
             generation++;
             pending = null;
             update(snapshot);
