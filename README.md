@@ -96,6 +96,18 @@ checkbox to switch back. Software rendering shifts rendering work to the CPU
 and may perform differently on heavier pages. This control requires the updated
 desktop shell; browser rendering is unchanged.
 
+The desktop app remembers the last-focused window's size, position, and maximized
+state across full restarts, updates, and shell rebuilds. Restoring a maximized
+window returns to its previous normal size. Additional windows open with a small
+cascade offset, and saved windows are fitted to an available monitor if your
+display setup changes. First launch targets a centered 1600 x 1000 DIP window,
+limited by the display's usable work area.
+
+Window geometry is stored in `window-state\state.json` under Electron's local
+user-data directory, outside the installation and notes database. The development
+shell uses its separate profile. Start-minimized and tray behavior are unchanged.
+This requires the updated Electron shell; a browser reload does not apply it.
+
 For desktop shell development, start the live backend with `scripts\dev.ps1 start`,
 then run `electron\node_modules\electron\dist\electron.exe electron --dev-client`.
 Client-only mode connects to port 5000 with a separate shell profile. It leaves

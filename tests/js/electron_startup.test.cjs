@@ -7,7 +7,8 @@ const vm = require('node:vm');
 
 function shellHarness({ boot = false, minimized = false, cachedTheme = null,
   devClient = false, renderingPrefs = null, renderingReadError = null,
-  renderingWriteError = null, renderingRenameError = null, restartChoice = 1 } = {}) {
+  renderingWriteError = null, renderingRenameError = null, restartChoice = 1,
+  windowState = null } = {}) {
   let now = 0;
   let nextTimer = 0;
   const timers = new Map();
@@ -16,6 +17,9 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
   const openedWindows = [];
   const renderingWrites = [];
   const renderingRenames = [];
+  const windowWrites = [];
+  const appEvents = new EventEmitter();
+  const exits = [];
   const dialogs = [];
   const errors = [];
   const relaunches = [];
@@ -30,7 +34,9 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
     app: {
       isPackaged: false, requestSingleInstanceLock: () => boot, quit() { quitCount++; },
       getPath: () => 'C:\\test-shell-profile',
-      on() {}, setAppUserModelId() {}, setPath() {},
+      on: (...args) => appEvents.on(...args),
+      exit: code => exits.push(code),
+      setAppUserModelId() {}, setPath() {},
       disableHardwareAcceleration() {
         assert.equal(ready, false, 'rendering must be configured before app readiness');
         accelerationDisabled = true;
@@ -57,6 +63,13 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
       return {};
     }, setApplicationMenu() {} },
     Tray: class extends EventEmitter { setToolTip() {} setContextMenu() {} },
+    screen: Object.assign(new EventEmitter(), {
+      getAllDisplays: () => [{bounds: {x: 0, y: 0, width: 1920, height: 1080},
+        workArea: {x: 0, y: 0, width: 1920, height: 1040}}],
+      getPrimaryDisplay() { return this.getAllDisplays()[0]; },
+      getDisplayNearestPoint() { return this.getPrimaryDisplay(); },
+      getCursorScreenPoint: () => ({x: 100, y: 100}),
+    }),
   };
   electron.BrowserWindow.getFocusedWindow = () => null;
   const context = vm.createContext({
@@ -66,8 +79,13 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
       if (name === './status-screen') return require('../../electron/status-screen');
       if (name === './shell-theme') return require('../../electron/shell-theme');
       if (name === './shell-menu') return require('../../electron/shell-menu');
+      if (name === './window-state') return require('../../electron/window-state');
       if (name === 'fs') return {
         readFileSync: file => {
+          if (file.endsWith('state.json')) {
+            if (windowState !== null) return JSON.stringify(windowState);
+            throw Object.assign(new Error('not found'), {code: 'ENOENT'});
+          }
           if (file.endsWith('rendering-preferences.json')) {
             if (renderingReadError) throw renderingReadError;
             if (renderingPrefs === null) {
@@ -79,6 +97,7 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
             ? JSON.stringify(cachedTheme) : '';
         },
         writeFileSync(file, value) {
+          if (file.endsWith('state.json.tmp')) windowWrites.push({file, value});
           if (file.endsWith('rendering-preferences.json.tmp')) {
             if (renderingWriteError) throw renderingWriteError;
             renderingWrites.push({file, value});
@@ -126,7 +145,7 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
   vm.runInContext(source + `
     globalThis.api = {
       waitForServer, configureWindow, loadWindowUrl, openNewWindow, showWindow,
-      ensureWindow, relaunchVisible, buildAppMenu, createTray, refreshTrayMenu,
+      ensureWindow, relaunchVisible, exitShell, buildAppMenu, createTray, refreshTrayMenu,
       setUpdating: (value) => { isUpdating = value; },
       setQuitting: (value) => { isQuitting = value; },
       setBooting: (value) => { isBooting = value; },
@@ -142,7 +161,7 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
   }
   return {
     api: context.api, requests, logs, timers, tick, electron, openedWindows, stdout,
-    renderingWrites, renderingRenames, dialogs, errors, relaunches,
+    renderingWrites, renderingRenames, dialogs, errors, relaunches, windowWrites, appEvents, exits,
     accelerationDisabled: () => accelerationDisabled,
     quitCount: () => quitCount,
     boot: () => { ready = true; return bootCallback(); },
@@ -259,6 +278,11 @@ function fakeWindow() {
   win.destroyed = false;
   win.isDestroyed = () => win.destroyed;
   win.isMinimized = () => false;
+  win.isMaximized = () => !!win.maximized;
+  win.isFullScreen = () => false;
+  win.getNormalBounds = () => ({x: win.options.x, y: win.options.y,
+    width: win.options.width, height: win.options.height});
+  win.maximize = () => { win.maximized = true; };
   win.show = () => { win.shown = true; };
   win.focus = () => {};
   win.loadURL = (url) => { win.loaded.push(url); return Promise.resolve(); };
@@ -511,8 +535,8 @@ test('tray restore keeps the existing minimized window and native dimensions', (
   assert.equal(restored, 1);
   assert.equal(focused, 1);
   assert.equal(harness.openedWindows.length, 1);
-  assert.equal(win.options.width, 1440);
-  assert.equal(win.options.height, 920);
+  assert.equal(win.options.width, 1600);
+  assert.equal(win.options.height, 1000);
   assert.equal(win.options.minWidth, 900);
   assert.equal(win.options.minHeight, 600);
   assert.equal(win.options.webPreferences.contextIsolation, true);
@@ -526,10 +550,14 @@ test('last window closes to tray while multiple windows close independently', ()
   first.hide = () => { first.hidden = true; };
   harness.electron.nextWindow = first;
   harness.api.openNewWindow();
+  first.emit('ready-to-show');
+  first.options.width = 1111;
+  first.emit('resize');
   let prevented = 0;
   first.emit('close', { preventDefault() { prevented++; } });
   assert.equal(prevented, 1);
   assert.equal(first.hidden, true);
+  assert.equal(JSON.parse(harness.windowWrites.at(-1).value).normalBounds.width, 1111);
   harness.electron.nextWindow = fakeWindow();
   harness.api.openNewWindow();
   first.emit('close', { preventDefault() { prevented++; } });
@@ -586,4 +614,65 @@ test('new windows opened during an update show pending source instead of a stopp
   const win = h.api.openNewWindow();
   assert.match(decodeURIComponent(win.loaded[0]), /Updating Sales Buddy/);
   assert.equal(win.loaded.some((url) => url.startsWith('http:')), false);
+});
+
+test('saved geometry is applied before show and stays separate from the backend preferences', () => {
+  const normalBounds = {x: 100, y: 90, width: 1100, height: 750};
+  const h = shellHarness({windowState: {version: 1, normalBounds, maximized: true}});
+  const win = h.api.openNewWindow();
+  assert.equal(win.options.width, normalBounds.width);
+  assert.equal(win.options.x, normalBounds.x);
+  assert.equal(win.shown, undefined);
+  win.show = () => {
+    assert.equal(win.maximized, true, 'maximize before making the restored window visible');
+    win.shown = true;
+  };
+  win.emit('ready-to-show');
+  assert.equal(win.shown, true);
+  h.api.relaunchVisible();
+  assert.equal(h.windowWrites.length, 0, 'unchanged saved geometry needs no write');
+  assert.ok(h.logs.some(line => line.includes('test-shell-profile') &&
+    line.includes('window-state')));
+});
+
+test('pending geometry is flushed before relaunch, forced exits, tray close and ordinary quit', () => {
+  for (const action of ['relaunch', 'exit', 'close', 'quit']) {
+    const h = shellHarness({boot: true, devClient: true});
+    h.boot();
+    const win = h.openedWindows[0];
+    win.emit('ready-to-show');
+    win.options.x = 123;
+    win.emit('move');
+    assert.equal(h.windowWrites.length, 0);
+    if (action === 'relaunch') {
+      h.electron.app.relaunch = () => assert.equal(h.windowWrites.length, 1);
+      h.api.relaunchVisible();
+    } else if (action === 'exit') {
+      h.electron.app.exit = code => {
+        assert.equal(h.windowWrites.length, 1);
+        assert.equal(code, 0);
+      };
+      h.api.exitShell();
+    } else if (action === 'close') {
+      win.emit('close', {preventDefault() {}});
+    } else {
+      h.appEvents.emit('before-quit');
+    }
+    assert.equal(JSON.parse(h.windowWrites[0].value).normalBounds.x, 123);
+  }
+});
+
+test('hidden startup waits to restore saved geometry until a window is requested', () => {
+  const normalBounds = {x: 150, y: 120, width: 1000, height: 700};
+  const h = shellHarness({boot: true, minimized: true,
+    windowState: {version: 1, normalBounds, maximized: true}});
+  h.boot();
+  h.requests[0].respond(200);
+  assert.equal(h.openedWindows.length, 0);
+  h.api.showWindow();
+  const win = h.openedWindows[0];
+  assert.equal(win.options.width, 1000);
+  win.emit('ready-to-show');
+  assert.equal(win.maximized, true);
+  assert.equal(win.shown, true);
 });
