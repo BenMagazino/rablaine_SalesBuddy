@@ -6,23 +6,44 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 function shellHarness({ boot = false, minimized = false, cachedTheme = null,
-  devClient = false } = {}) {
+  devClient = false, renderingPrefs = null, renderingReadError = null,
+  renderingWriteError = null, renderingRenameError = null, restartChoice = 1 } = {}) {
   let now = 0;
   let nextTimer = 0;
   const timers = new Map();
   const requests = [];
   const logs = [];
   const openedWindows = [];
+  const renderingWrites = [];
+  const renderingRenames = [];
+  const dialogs = [];
+  const errors = [];
+  const relaunches = [];
+  let accelerationDisabled = false;
+  let ready = false;
+  let quitCount = 0;
   const stdout = new EventEmitter();
   stdout.write = () => {};
   let bootCallback;
   const source = fs.readFileSync(path.join(__dirname, '..', '..', 'electron', 'main.js'), 'utf8');
   const electron = {
     app: {
-      isPackaged: false, requestSingleInstanceLock: () => boot, quit() {},
+      isPackaged: false, requestSingleInstanceLock: () => boot, quit() { quitCount++; },
       getPath: () => 'C:\\test-shell-profile',
       on() {}, setAppUserModelId() {}, setPath() {},
+      disableHardwareAcceleration() {
+        assert.equal(ready, false, 'rendering must be configured before app readiness');
+        accelerationDisabled = true;
+      },
+      relaunch: options => relaunches.push(options),
       whenReady: () => ({ then: (callback) => { bootCallback = callback; } }),
+    },
+    dialog: {
+      showMessageBox: async options => {
+        dialogs.push(options);
+        return {response: restartChoice};
+      },
+      showErrorBox: (title, message) => errors.push({title, message}),
     },
     BrowserWindow: function (options) {
       const win = electron.nextWindow || fakeWindow();
@@ -46,9 +67,28 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
       if (name === './shell-theme') return require('../../electron/shell-theme');
       if (name === './shell-menu') return require('../../electron/shell-menu');
       if (name === 'fs') return {
-        readFileSync: file => file.endsWith('shell-theme.json') && cachedTheme
-          ? JSON.stringify(cachedTheme) : '',
-        writeFileSync() {}, mkdirSync() {}, existsSync: () => true,
+        readFileSync: file => {
+          if (file.endsWith('rendering-preferences.json')) {
+            if (renderingReadError) throw renderingReadError;
+            if (renderingPrefs === null) {
+              throw Object.assign(new Error('not found'), {code: 'ENOENT'});
+            }
+            return renderingPrefs;
+          }
+          return file.endsWith('shell-theme.json') && cachedTheme
+            ? JSON.stringify(cachedTheme) : '';
+        },
+        writeFileSync(file, value) {
+          if (file.endsWith('rendering-preferences.json.tmp')) {
+            if (renderingWriteError) throw renderingWriteError;
+            renderingWrites.push({file, value});
+          }
+        },
+        renameSync(from, to) {
+          if (renderingRenameError) throw renderingRenameError;
+          renderingRenames.push({from, to});
+        },
+        mkdirSync() {}, existsSync: () => true,
         openSync: () => 1, unlinkSync() {},
         appendFileSync: (_file, line) => logs.push(line),
       };
@@ -102,9 +142,110 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
   }
   return {
     api: context.api, requests, logs, timers, tick, electron, openedWindows, stdout,
-    boot: () => bootCallback(),
+    renderingWrites, renderingRenames, dialogs, errors, relaunches,
+    accelerationDisabled: () => accelerationDisabled,
+    quitCount: () => quitCount,
+    boot: () => { ready = true; return bootCallback(); },
   };
 }
+
+function renderingItem(harness) {
+  harness.api.buildAppMenu();
+  return harness.electron.menuTemplates.at(-1).find(item => item.label === 'View')
+    .submenu.find(item => item.type === 'checkbox');
+}
+
+test('GPU rendering remains the default for new and explicitly enabled profiles', () => {
+  for (const renderingPrefs of [null, '{"use_gpu_rendering":true}']) {
+    const h = shellHarness({renderingPrefs});
+    assert.equal(h.accelerationDisabled(), false);
+    assert.equal(renderingItem(h).checked, true);
+  }
+});
+
+test('software rendering is configured before app readiness from the saved preference', () => {
+  const h = shellHarness({boot: true, devClient: true,
+    renderingPrefs: '{"use_gpu_rendering":false}'});
+  assert.equal(h.accelerationDisabled(), true);
+  h.boot();
+  assert.equal(renderingItem(h).checked, false);
+});
+
+test('invalid or unreadable rendering preferences log the problem and keep GPU rendering', () => {
+  for (const renderingPrefs of ['broken json', '{}', 'null', '{"use_gpu_rendering":"false"}']) {
+    const h = shellHarness({renderingPrefs});
+    assert.equal(h.accelerationDisabled(), false);
+    assert.ok(h.logs.some(line => line.includes('Could not read rendering preference')));
+  }
+  const h = shellHarness({renderingReadError: Object.assign(new Error('denied'), {code: 'EACCES'})});
+  assert.equal(h.accelerationDisabled(), false);
+  assert.ok(h.logs.some(line => line.includes('denied')));
+});
+
+test('rendering toggle saves atomically and Later does not restart or change the current renderer',
+  async () => {
+    const h = shellHarness({boot: true, devClient: true});
+    const item = renderingItem(h);
+    item.checked = false;
+    await item.click(item);
+    assert.deepEqual(JSON.parse(h.renderingWrites[0].value), {use_gpu_rendering: false});
+    assert.match(h.renderingRenames[0].to, /rendering-preferences\.json$/);
+    assert.match(h.renderingWrites[0].file, /test-shell-profile/);
+    assert.equal(h.accelerationDisabled(), false);
+    assert.equal(h.relaunches.length, 0);
+    assert.equal(h.quitCount(), 0);
+    assert.equal(h.dialogs[0].defaultId, 1);
+    assert.match(h.dialogs[0].message, /software rendering/);
+    assert.match(renderingItem(h).label, /restart required/);
+    assert.equal(renderingItem(h).checked, false);
+  });
+
+test('switching back to the running mode cancels the pending change without another prompt',
+  async () => {
+    const h = shellHarness();
+    let item = renderingItem(h);
+    item.checked = false;
+    await item.click(item);
+    item = renderingItem(h);
+    item.checked = true;
+    await item.click(item);
+    assert.deepEqual(JSON.parse(h.renderingWrites.at(-1).value), {use_gpu_rendering: true});
+    assert.equal(h.dialogs.length, 1);
+    assert.equal(renderingItem(h).label, 'Use GPU Rendering');
+  });
+
+test('software profiles can re-enable GPU rendering and explicitly restart visibly', async () => {
+  const h = shellHarness({boot: true, minimized: true, restartChoice: 0,
+    renderingPrefs: '{"use_gpu_rendering":false}'});
+  const item = renderingItem(h);
+  item.checked = true;
+  await item.click(item);
+  assert.deepEqual(JSON.parse(h.renderingWrites[0].value), {use_gpu_rendering: true});
+  assert.equal(h.relaunches.length, 1);
+  assert.equal(h.relaunches[0].args.includes('--minimized'), false);
+  assert.equal(h.quitCount(), 1);
+  assert.match(h.dialogs[0].message, /GPU rendering/);
+});
+
+test('rendering save failures keep the original checkbox and surface an error', async () => {
+  for (const failure of ['renderingWriteError', 'renderingRenameError']) {
+    const h = shellHarness({[failure]: new Error('disk unavailable')});
+    const item = renderingItem(h);
+    item.checked = false;
+    await item.click(item);
+    assert.equal(item.checked, true);
+    assert.equal(renderingItem(h).checked, true);
+    assert.equal(h.dialogs.length, 0);
+    assert.equal(h.errors.length, 1);
+    assert.ok(h.logs.some(line => line.includes('Could not save rendering preference')));
+  }
+});
+
+test('rendering mode cannot be changed during an app update', () => {
+  const h = shellHarness();
+  h.api.setUpdating(true);
+  assert.equal(renderingItem(h).enabled, false);
+});
 
 function fakeWindow() {
   const win = new EventEmitter();
