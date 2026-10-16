@@ -10,10 +10,40 @@ Covers:
 """
 import os
 import pytest
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
 from app import db
-from app.models import UserPreference
+from app.models import Job, SyncStatus, UserPreference
+
+
+@pytest.fixture
+def milestone_clock(monkeypatch):
+    """Freeze the local scheduler clock without replacing the datetime class."""
+    from app.services import scheduled_sync
+
+    clock = {'now': datetime(2026, 3, 23, 17, 0)}
+
+    class SchedulerDate(date):
+        """Return the scheduler's local test date."""
+
+        @classmethod
+        def today(cls):
+            """Read the date from the shared test clock."""
+            return clock['now'].date()
+
+    monkeypatch.setattr(scheduled_sync, 'date', SchedulerDate)
+    monkeypatch.setattr(scheduled_sync, '_local_now', lambda: clock['now'], raising=False)
+    return clock
+
+
+def _complete_milestones_at(local_time: datetime, success: bool = True) -> SyncStatus:
+    """Record a real domain completion at a deterministic local wall time."""
+    completed = local_time.astimezone(timezone.utc)
+    status = SyncStatus.mark_completed('milestones', success=success)
+    status.started_at = completed - timedelta(minutes=1)
+    status.completed_at = completed
+    db.session.commit()
+    return status
 
 
 # =============================================================================
@@ -236,7 +266,7 @@ class TestScheduledSync:
             assert hour == 14
             assert minute == 15
 
-    def test_should_sync_true_when_never_synced_on_sync_day(self, app):
+    def test_should_sync_true_when_never_synced_on_sync_day(self, app, milestone_clock):
         """_should_sync returns True on MWF if past sync time and never synced."""
         from app.services.scheduled_sync import _should_sync
 
@@ -244,16 +274,11 @@ class TestScheduledSync:
             pref = UserPreference.query.first()
             pref.milestone_sync_hour = 0
             pref.milestone_sync_minute = 0
-            pref.last_milestone_sync = None
             db.session.commit()
 
-            # Mock today as a Monday (weekday 0)
-            with patch('app.services.scheduled_sync.datetime') as mock_dt:
-                mock_dt.now.return_value = datetime(2026, 3, 23, 12, 0)  # Monday
-                mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-                assert _should_sync(pref) is True
+            assert _should_sync(pref) is True
 
-    def test_should_sync_false_on_non_sync_day(self, app):
+    def test_should_sync_false_on_non_sync_day(self, app, milestone_clock):
         """_should_sync returns False on Tue/Thu/Sat/Sun."""
         from app.services.scheduled_sync import _should_sync
 
@@ -261,16 +286,12 @@ class TestScheduledSync:
             pref = UserPreference.query.first()
             pref.milestone_sync_hour = 0
             pref.milestone_sync_minute = 0
-            pref.last_milestone_sync = None
             db.session.commit()
 
-            # Mock today as a Tuesday (weekday 1)
-            with patch('app.services.scheduled_sync.datetime') as mock_dt:
-                mock_dt.now.return_value = datetime(2026, 3, 24, 12, 0)  # Tuesday
-                mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-                assert _should_sync(pref) is False
+            milestone_clock['now'] = datetime(2026, 3, 24, 12, 0)
+            assert _should_sync(pref) is False
 
-    def test_should_sync_false_before_sync_time(self, app):
+    def test_should_sync_false_before_sync_time(self, app, milestone_clock):
         """_should_sync returns False when we haven't reached today's time."""
         from app.services.scheduled_sync import _should_sync
 
@@ -278,14 +299,10 @@ class TestScheduledSync:
             pref = UserPreference.query.first()
             pref.milestone_sync_hour = 16
             pref.milestone_sync_minute = 25
-            pref.last_milestone_sync = None
             db.session.commit()
 
-            # Monday at 9:00 AM, sync scheduled for 4:25 PM
-            with patch('app.services.scheduled_sync.datetime') as mock_dt:
-                mock_dt.now.return_value = datetime(2026, 3, 23, 9, 0)  # Monday 9 AM
-                mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-                assert _should_sync(pref) is False
+            milestone_clock['now'] = datetime(2026, 3, 23, 9, 0)
+            assert _should_sync(pref) is False
 
     def test_startup_catchup_skips_when_disabled(self, app):
         """start_milestone_sync_background should skip when auto_sync is off."""
@@ -301,7 +318,7 @@ class TestScheduledSync:
             start_milestone_sync_background(app)
             mock_run.assert_not_called()
 
-    def test_missed_sync_catches_up_on_non_sync_day(self, app):
+    def test_missed_sync_catches_up_on_non_sync_day(self, app, milestone_clock):
         """Startup on Tuesday should catch up Monday's missed sync."""
         from app.services.scheduled_sync import _missed_sync
 
@@ -309,16 +326,12 @@ class TestScheduledSync:
             pref = UserPreference.query.first()
             pref.milestone_sync_hour = 10
             pref.milestone_sync_minute = 0
-            pref.last_milestone_sync = None  # never synced
             db.session.commit()
 
-            # Tuesday noon - Monday's 10:00 AM sync was missed
-            with patch('app.services.scheduled_sync.datetime') as mock_dt:
-                mock_dt.now.return_value = datetime(2026, 3, 24, 12, 0)  # Tuesday
-                mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-                assert _missed_sync(pref) is True
+            milestone_clock['now'] = datetime(2026, 3, 24, 12, 0)
+            assert _missed_sync(pref) is True
 
-    def test_missed_sync_false_when_already_synced(self, app):
+    def test_missed_sync_false_when_already_synced(self, app, milestone_clock):
         """No catchup needed if last sync was after the most recent sync day."""
         from app.services.scheduled_sync import _missed_sync
 
@@ -326,16 +339,105 @@ class TestScheduledSync:
             pref = UserPreference.query.first()
             pref.milestone_sync_hour = 10
             pref.milestone_sync_minute = 0
-            # Synced Monday at 10:05 AM UTC
-            pref.last_milestone_sync = datetime(2026, 3, 23, 15, 5, 0,
-                                                tzinfo=timezone.utc)
-            db.session.commit()
+            _complete_milestones_at(datetime(2026, 3, 23, 10, 5))
 
-            # Tuesday noon - Monday sync already ran
-            with patch('app.services.scheduled_sync.datetime') as mock_dt:
-                mock_dt.now.return_value = datetime(2026, 3, 24, 12, 0)  # Tuesday
-                mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-                assert _missed_sync(pref) is False
+            milestone_clock['now'] = datetime(2026, 3, 24, 12, 0)
+            assert _missed_sync(pref) is False
+
+    @pytest.mark.parametrize('success', [True, False])
+    def test_manual_attempt_before_schedule_counts_for_the_day(
+            self, app, milestone_clock, success):
+        """A completed manual attempt prevents duplicate scheduled work and retry storms."""
+        from app.services.scheduled_sync import _missed_sync, _should_sync
+
+        with app.app_context():
+            pref = UserPreference.query.first()
+            pref.milestone_sync_hour = 15
+            pref.milestone_sync_minute = 0
+            _complete_milestones_at(datetime(2026, 3, 23, 9, 0), success=success)
+            assert _should_sync(pref) is False
+            assert _missed_sync(pref) is False
+
+    @pytest.mark.parametrize('running', [False, True])
+    def test_interrupted_runs_retry_but_live_runs_do_not(
+            self, app, milestone_clock, running):
+        """An unfinished attempt is retried only after its heartbeat is no longer live."""
+        from app.services.scheduled_sync import _missed_sync, _should_sync
+
+        with app.app_context():
+            pref = UserPreference.query.first()
+            pref.milestone_sync_hour = 10
+            pref.milestone_sync_minute = 0
+            _complete_milestones_at(datetime(2026, 3, 23, 9, 0))
+            SyncStatus.mark_started('milestones')
+            if running:
+                SyncStatus.update_heartbeat('milestones')
+            assert _should_sync(pref) is (not running)
+            assert _missed_sync(pref) is (not running)
+
+    def test_previous_day_completion_does_not_suppress_a_due_run(
+            self, app, milestone_clock):
+        """The same-day suppression ends at the next scheduled local date."""
+        from app.services.scheduled_sync import _should_sync
+
+        with app.app_context():
+            pref = UserPreference.query.first()
+            pref.milestone_sync_hour = 10
+            pref.milestone_sync_minute = 0
+            _complete_milestones_at(datetime(2026, 3, 22, 23, 59))
+            assert _should_sync(pref) is True
+
+    def test_admission_is_not_recorded_as_a_completion(self, app, milestone_clock):
+        """Queueing work must not advance either scheduler or Admin freshness."""
+        from app.services.scheduled_sync import _run_sync
+
+        with patch('app.services.sync_jobs.admit_sync') as admit:
+            _run_sync(app)
+        admit.assert_called_once_with('milestones', initiator='scheduled')
+        with app.app_context():
+            assert SyncStatus.get_status('milestones')['completed_at'] is None
+
+    def test_scheduler_retries_after_an_interrupted_admission(
+            self, app, milestone_clock):
+        """An in-memory admission-date cache must not mask an unfinished run."""
+        from app.services import scheduled_sync
+
+        with app.app_context():
+            pref = UserPreference.query.first()
+            pref.milestone_sync_hour = 10
+            pref.milestone_sync_minute = 0
+            pref.milestone_auto_sync = True
+            SyncStatus.mark_completed('accounts', success=True)
+        with patch.object(scheduled_sync, '_run_sync') as run:
+            scheduled_sync._run_daily_scheduler_cycle(app)
+            scheduled_sync._run_daily_scheduler_cycle(app)
+        assert run.call_count == 2
+
+    @pytest.mark.parametrize('job_type', ['sync:milestones', 'sync:customer-milestones'])
+    def test_queued_milestone_family_work_blocks_a_duplicate_schedule(
+            self, app, milestone_clock, job_type):
+        """Durable queued work must be honored before the domain sync even starts."""
+        from app.services.scheduled_sync import _missed_sync, _should_sync
+
+        with app.app_context():
+            pref = UserPreference.query.first()
+            pref.milestone_sync_hour = 10
+            pref.milestone_sync_minute = 0
+            db.session.add(Job(job_type=job_type, status=Job.STATUS_PENDING))
+            db.session.commit()
+            assert _should_sync(pref) is False
+            assert _missed_sync(pref) is False
+
+    def test_missed_sync_does_not_fire_before_the_scheduled_time(
+            self, app, milestone_clock):
+        """Startup catch-up retains the configured local time boundary."""
+        from app.services.scheduled_sync import _missed_sync
+
+        with app.app_context():
+            pref = UserPreference.query.first()
+            pref.milestone_sync_hour = 17
+            pref.milestone_sync_minute = 1
+            assert _missed_sync(pref) is False
 
 
 # =============================================================================

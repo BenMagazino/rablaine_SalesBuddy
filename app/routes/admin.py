@@ -1186,16 +1186,14 @@ def api_autostart_status():
 def api_milestone_sync_status():
     """Return the in-process milestone sync scheduler status."""
     pref = UserPreference.query.first()
+    completed = SyncStatus.last_completed_utc('milestones')
+    last_sync = completed.isoformat() if completed else None
     if not pref:
-        return jsonify({'enabled': False, 'sync_time': None, 'last_sync': None})
+        return jsonify({'enabled': False, 'sync_time': None, 'last_sync': last_sync})
 
     sync_time = None
     if pref.milestone_sync_hour is not None and pref.milestone_sync_minute is not None:
         sync_time = f"{pref.milestone_sync_hour:02d}:{pref.milestone_sync_minute:02d}"
-
-    last_sync = None
-    if pref.last_milestone_sync:
-        last_sync = pref.last_milestone_sync.isoformat()
 
     return jsonify({
         'enabled': pref.milestone_auto_sync,

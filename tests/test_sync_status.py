@@ -7,6 +7,44 @@ from datetime import datetime, timezone, timedelta
 class TestSyncStatusModel:
     """Tests for SyncStatus class methods and is_complete logic."""
 
+    @pytest.mark.parametrize('success', [True, False])
+    def test_last_completed_utc_normalizes_finished_attempts(self, app, success):
+        """Both successful and failed completions provide an aware UTC timestamp."""
+        from app.models import SyncStatus
+
+        with app.app_context():
+            status = SyncStatus.mark_completed('milestones', success=success)
+            completed = SyncStatus.last_completed_utc('milestones')
+            assert completed.tzinfo == timezone.utc
+            assert completed.replace(tzinfo=None) == status.completed_at.replace(tzinfo=None)
+
+    def test_last_completed_utc_does_not_invent_unfinished_completions(self, app):
+        """Never-run, interrupted and live attempts have no completion timestamp."""
+        from app.models import SyncStatus
+
+        with app.app_context():
+            assert SyncStatus.last_completed_utc('milestones') is None
+            SyncStatus.mark_started('milestones')
+            assert SyncStatus.last_completed_utc('milestones') is None
+            SyncStatus.update_heartbeat('milestones')
+            assert SyncStatus.last_completed_utc('milestones') is None
+
+    def test_last_completed_utc_prefers_durable_completion(self, app):
+        """Modern job completion overrides the older domain fallback."""
+        from app.models import Job, SyncStatus, db
+
+        with app.app_context():
+            status = SyncStatus.mark_completed('milestones', success=True)
+            finished = status.completed_at + timedelta(minutes=1)
+            db.session.add(Job(
+                job_type='sync:milestones', status=Job.STATUS_DONE,
+                created_at=status.started_at, started_at=status.started_at,
+                finished_at=finished, result='{"success": true}',
+            ))
+            db.session.commit()
+            assert SyncStatus.last_completed_utc('milestones') == finished.replace(
+                tzinfo=timezone.utc)
+
     def test_is_complete_returns_false_when_no_record(self, app):
         """is_complete should return False when no sync has ever been recorded."""
         with app.app_context():
@@ -281,6 +319,23 @@ class TestGetStatus:
 class TestSyncWarningBanners:
     """Tests for sync status warning banners on milestone tracker and revenue pages."""
 
+    def test_admin_scheduler_status_uses_actual_manual_completion(self, client, app):
+        """Admin immediately reflects a manual sync even with automatic sync disabled."""
+        from app.models import SyncStatus, UserPreference, db
+
+        with app.app_context():
+            pref = UserPreference.query.first()
+            pref.milestone_auto_sync = False
+            pref.milestone_sync_hour = 15
+            pref.milestone_sync_minute = 5
+            SyncStatus.mark_completed('milestones', success=True)
+            db.session.commit()
+            expected = SyncStatus.get_status('milestones')['completed_at']
+            expected = expected.replace(tzinfo=timezone.utc).isoformat()
+        response = client.get('/api/admin/tasks/milestone-sync/status')
+        assert response.status_code == 200
+        assert response.json == {'enabled': False, 'sync_time': '15:05', 'last_sync': expected}
+
     def test_milestone_tracker_no_warning_when_complete(self, client, app):
         """Milestone tracker should NOT show a warning when sync completed successfully."""
         with app.app_context():
@@ -292,24 +347,41 @@ class TestSyncWarningBanners:
         assert "Last milestone sync didn&#39;t finish" not in html
         assert 'Last milestone sync failed' not in html
 
-    def test_milestone_tracker_warning_when_incomplete(self, client, app):
-        """Milestone tracker should show a warning when last sync was incomplete."""
+    def test_milestone_tracker_reattaches_to_interrupted_work(self, client, app):
+        """The shared progress panel can discover an interrupted durable sync."""
         with app.app_context():
-            from app.models import SyncStatus
-            SyncStatus.mark_started('milestones')
+            from app.models import Job, db
+            stale = datetime.now(timezone.utc) - timedelta(minutes=10)
+            job = Job(
+                job_type='sync:milestones', status=Job.STATUS_RUNNING,
+                started_at=stale, heartbeat_at=stale,
+            )
+            db.session.add(job)
+            db.session.commit()
+            job_id = job.id
         response = client.get('/reports/milestone-tracker')
         html = response.data.decode('utf-8')
-        assert "Last milestone sync didn" in html
+        assert 'data-sb-sync-progress="milestones"' in html
+        observed = client.get('/api/jobs/operations/milestones').json['job']
+        assert observed['id'] == job_id
+        assert observed['state'] == 'interrupted'
 
-    def test_milestone_tracker_warning_when_failed(self, client, app):
-        """Milestone tracker should show a danger alert when last sync failed."""
+    def test_milestone_tracker_reattaches_to_failed_work(self, client, app):
+        """The shared progress panel receives the actual failed run and its error."""
         with app.app_context():
-            from app.models import SyncStatus
-            SyncStatus.mark_started('milestones')
-            SyncStatus.mark_completed('milestones', success=False, details='API timeout')
+            from app.models import Job, db
+            now = datetime.now(timezone.utc)
+            db.session.add(Job(
+                job_type='sync:milestones', status=Job.STATUS_FAILED,
+                started_at=now, finished_at=now, last_error='API timeout',
+            ))
+            db.session.commit()
         response = client.get('/reports/milestone-tracker')
         html = response.data.decode('utf-8')
-        assert 'Last milestone sync failed' in html
+        assert 'data-sb-sync-progress="milestones"' in html
+        observed = client.get('/api/jobs/operations/milestones').json['job']
+        assert observed['state'] == 'failed'
+        assert observed['error'] == 'API timeout'
 
     def test_revenue_dashboard_no_warning_when_complete(self, client, app):
         """Revenue dashboard should NOT show warnings when syncs completed."""

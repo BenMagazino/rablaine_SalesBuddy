@@ -26,6 +26,13 @@ including their context and source links. A numbered-list fallback does not
 repeat the WorkIQ call. If neither format can be parsed, existing suggestions
 remain unchanged.
 
+Milestone scheduling and Admin use the shared sync completion status. A manual
+attempt completed that day counts toward the Mon/Wed/Fri schedule, even if it
+ran before the configured time. Failed attempts do not cause repeated retries
+that day, while interrupted attempts can catch up. Queued or running milestone
+work is not duplicated, and the existing schedule and automatic-sync setting
+remain unchanged.
+
 On customer pages, desktop windows at least 1712px wide add a 320px History rail
 without shrinking the existing 1344px dossier. It follows window width automatically;
 compact windows retain the original layout. Hover or focus an event for a preview,

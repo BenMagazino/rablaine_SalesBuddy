@@ -55,17 +55,32 @@ def _ensure_sync_time(pref):
 
 def _is_sync_day() -> bool:
     """Return True if today is Mon, Wed, or Fri."""
-    return datetime.now().weekday() in SYNC_DAYS
+    return date.today().weekday() in SYNC_DAYS
 
 
 def _last_sync_day() -> date:
     """Return the most recent Mon/Wed/Fri that is <= today."""
-    today = datetime.now().date()
+    today = date.today()
     for days_back in range(7):
         candidate = today - timedelta(days=days_back)
         if candidate.weekday() in SYNC_DAYS:
             return candidate
     return today  # fallback, shouldn't happen with MWF
+
+
+def _local_now() -> datetime:
+    """Return naive local wall time for comparison with the user's schedule."""
+    return datetime.now(timezone.utc).astimezone().replace(tzinfo=None)
+
+
+def _milestone_sync_due(since: date) -> bool:
+    """Require a finished attempt on the due local date, without duplicating live work."""
+    from app.models import SyncStatus
+
+    if SyncStatus.get_status('milestones')['state'] == 'in_progress':
+        return False
+    completed = SyncStatus.last_completed_utc('milestones')
+    return completed is None or completed.astimezone().date() < since
 
 
 def _missed_sync(pref) -> bool:
@@ -82,22 +97,11 @@ def _missed_sync(pref) -> bool:
     target = datetime(last_day.year, last_day.month, last_day.day,
                       hour, minute, 0)
 
-    now = datetime.now()
+    now = _local_now()
     if now < target:
         return False
 
-    if not pref.last_milestone_sync:
-        return True
-
-    last_sync = pref.last_milestone_sync
-    if last_sync.tzinfo:
-        last_sync_local = last_sync.astimezone().replace(tzinfo=None)
-    else:
-        last_sync_local = last_sync.replace(
-            tzinfo=timezone.utc
-        ).astimezone().replace(tzinfo=None)
-
-    return last_sync_local < target
+    return _milestone_sync_due(last_day)
 
 
 def _should_sync(pref) -> bool:
@@ -106,7 +110,7 @@ def _should_sync(pref) -> bool:
     Returns True if:
     - Today is a sync day (Mon/Wed/Fri), AND
     - We're past today's scheduled time, AND
-    - Either never synced or last sync was before today's scheduled time.
+    - No attempt finished today and no milestone-family sync is queued or running.
 
     Args:
         pref: UserPreference instance (must have sync_hour/minute set).
@@ -114,43 +118,27 @@ def _should_sync(pref) -> bool:
     if not _is_sync_day():
         return False
     hour, minute = pref.milestone_sync_hour, pref.milestone_sync_minute
-    now = datetime.now()
+    now = _local_now()
     today_sync_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
     # Haven't reached today's sync time yet
     if now < today_sync_time:
         return False
 
-    if not pref.last_milestone_sync:
-        return True
-
-    # last_milestone_sync is stored as UTC - convert to local for comparison
-    last_sync = pref.last_milestone_sync
-    if last_sync.tzinfo:
-        last_sync_local = last_sync.astimezone().replace(tzinfo=None)
-    else:
-        last_sync_local = last_sync.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
-
-    return last_sync_local < today_sync_time
+    return _milestone_sync_due(date.today())
 
 
 def _run_sync(app):
-    """Execute the milestone sync within app context. Updates last_milestone_sync."""
+    """Admit scheduled milestone work without claiming it has already finished."""
     if not _sync_lock.acquire(blocking=False):
         logger.debug("Milestone sync already in progress, skipping")
         return
     try:
         with app.app_context():
-            from app import db
-            from app.models import UserPreference
             from app.services.sync_jobs import admit_sync
 
             job = admit_sync('milestones', initiator='scheduled')
             logger.info("Milestone sync admitted as job %s", job.id)
-            pref = UserPreference.query.first()
-            if pref:
-                pref.last_milestone_sync = datetime.now(timezone.utc)
-                db.session.commit()
 
     except Exception:
         logger.exception("Error during milestone sync")
@@ -492,7 +480,7 @@ def start_milestone_sync_background(app) -> threading.Thread | None:
     return thread
 
 
-def _run_daily_scheduler_cycle(app, last_sync_date: date | None) -> date | None:
+def _run_daily_scheduler_cycle(app: Flask) -> None:
     """Run one scheduler decision without coupling U2C to milestone settings."""
     should_run_milestones = False
     with app.app_context():
@@ -502,10 +490,8 @@ def _run_daily_scheduler_cycle(app, last_sync_date: date | None) -> date | None:
         accounts_ready = SyncStatus.is_complete('accounts')
         if pref and accounts_ready and pref.milestone_auto_sync:
             _ensure_sync_time(pref)
-            today = date.today()
-            if last_sync_date != today and _should_sync(pref):
+            if _should_sync(pref):
                 should_run_milestones = True
-                last_sync_date = today
 
     if should_run_milestones:
         logger.info("Daily scheduler triggering milestone sync")
@@ -518,7 +504,6 @@ def _run_daily_scheduler_cycle(app, last_sync_date: date | None) -> date | None:
             run_u2c_import_if_due(app)
         except Exception:
             logger.exception("Error running the daily U2C import")
-    return last_sync_date
 
 
 def start_daily_milestone_scheduler(
@@ -535,7 +520,6 @@ def start_daily_milestone_scheduler(
 
     def _scheduler():
         logger.info("Milestone daily scheduler started")
-        last_sync_date = None
         if startup_sync_thread is not None:
             # The catch-up path runs U2C after milestones. Waiting here keeps
             # the independent scheduler from racing ahead at startup.
@@ -543,8 +527,7 @@ def start_daily_milestone_scheduler(
 
         while True:
             try:
-                last_sync_date = _run_daily_scheduler_cycle(
-                    app, last_sync_date)
+                _run_daily_scheduler_cycle(app)
                 time.sleep(300)
             except Exception:
                 logger.exception("Error in milestone daily scheduler")
