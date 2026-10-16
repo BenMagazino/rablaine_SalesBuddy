@@ -21,6 +21,11 @@ The MSI installer handles everything: prerequisites (Git, Python, Azure CLI, Nod
 
 ## Features
 
+Daily Copilot suggestions accept either JSON or numbered WorkIQ follow-ups,
+including their context and source links. A numbered-list fallback does not
+repeat the WorkIQ call. If neither format can be parsed, existing suggestions
+remain unchanged.
+
 On customer pages, desktop windows at least 1712px wide add a 320px History rail
 without shrinking the existing 1344px dossier. It follows window width automatically;
 compact windows retain the original layout. Hover or focus an event for a preview,

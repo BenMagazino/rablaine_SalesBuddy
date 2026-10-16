@@ -258,11 +258,12 @@ def queue_event(
 
 # Allowed WorkIQ failure_type values. Anything outside this set is rejected
 # so we don't accidentally leak free-form error text into telemetry.
-# Two flavors:
+# Three flavors:
 #   - server_down failures: WorkIQ itself didn't respond properly
 #   - parse_failed failures: WorkIQ responded but our parser couldn't
 #     handle the output, identified per call site so a regression in one
 #     parser is easy to spot
+#   - parse_recovered: JSON drift recovered by a supported fallback
 _WORKIQ_FAILURE_TYPES = frozenset({
     # server_down flavors
     'npx_missing',
@@ -277,6 +278,7 @@ _WORKIQ_FAILURE_TYPES = frozenset({
     'parse_partner_json',
     'parse_meeting_list_json',
     'parse_copilot_actions_json',
+    'parse_fell_back_to_markdown',
 })
 
 # Allowed WorkIQ operation values. Mirrors the operation= argument
@@ -295,7 +297,8 @@ _WORKIQ_OPERATIONS = frozenset({
 #   ok          - WorkIQ subprocess returned and downstream parser succeeded
 #   server_down - WorkIQ subprocess failed (npx, exit code, server_error, ...)
 #   parse_failed - WorkIQ responded but our parser couldn't read it
-_WORKIQ_STATUSES = frozenset({'ok', 'server_down', 'parse_failed'})
+#   parse_recovered - parser fallback succeeded, not an uptime or parse failure
+_WORKIQ_STATUSES = frozenset({'ok', 'server_down', 'parse_failed', 'parse_recovered'})
 
 
 def queue_workiq_call(
@@ -307,7 +310,7 @@ def queue_workiq_call(
     """Record a WorkIQ call outcome as a custom telemetry event.
 
     Emits ``SalesBuddy.WorkIQCall`` with anonymous instance/app metadata
-    plus a small fixed taxonomy of operation, status, and (for failures)
+    plus a small fixed taxonomy of operation, status, and parser/failure
     failure_type. No raw error text, meeting titles, or stderr is
     included.
 
