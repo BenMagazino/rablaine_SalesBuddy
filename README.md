@@ -74,6 +74,16 @@ URLs, so pages reuse unchanged files while edits and updates refresh them automa
 This requires the theme-aware Electron shell build;
 browser usage is unchanged.
 
+GPU rendering stays enabled by default. If desktop window dragging lags on your
+machine, uncheck **View > Use GPU Rendering** to try software rendering instead.
+Save unfinished work, then choose **Restart Now**, or choose **Later** and fully
+quit and reopen Sales Buddy when convenient. Reloading a page or closing the
+window to the tray does not apply the change. The preference is saved locally
+for that desktop shell profile, not in your notes database. Re-enable the same
+checkbox to switch back. Software rendering shifts rendering work to the CPU
+and may perform differently on heavier pages. This control requires the updated
+desktop shell; browser rendering is unchanged.
+
 For desktop shell development, start the live backend with `scripts\dev.ps1 start`,
 then run `electron\node_modules\electron\dist\electron.exe electron --dev-client`.
 Client-only mode connects to port 5000 with a separate shell profile. It leaves

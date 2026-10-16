@@ -72,6 +72,7 @@ const MIGRATE_SCRIPT = path.join(REPO_ROOT, 'scripts', 'migrate-to-electron.ps1'
 const PORT = DEV_CLIENT ? 5000 : readEnvPort();
 const HEALTH_URL = `http://localhost:${PORT}/health`;
 const BASE_URL = `http://localhost:${PORT}/`;
+const RENDERING_PREFS_FILE = path.join(app.getPath('userData'), 'rendering-preferences.json');
 
 let supervisorProc = null;
 const windows = new Set();
@@ -117,6 +118,64 @@ function log(msg) {
     } catch (error) {
       handleConsoleError(error);
     }
+  }
+}
+
+function readGpuRenderingPref() {
+  try {
+    const value = JSON.parse(fs.readFileSync(RENDERING_PREFS_FILE, 'utf8'));
+    if (typeof value?.use_gpu_rendering !== 'boolean') {
+      throw new Error('use_gpu_rendering must be a boolean');
+    }
+    return value.use_gpu_rendering;
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      log(`Could not read rendering preference; using GPU rendering: ${error.message}`);
+    }
+    return true;
+  }
+}
+
+const GPU_RENDERING_AT_STARTUP = readGpuRenderingPref();
+let useGpuRendering = GPU_RENDERING_AT_STARTUP;
+if (!GPU_RENDERING_AT_STARTUP) app.disableHardwareAcceleration();
+
+async function changeGpuRendering(item) {
+  const enabled = item.checked;
+  const temporary = `${RENDERING_PREFS_FILE}.tmp`;
+  try {
+    fs.mkdirSync(path.dirname(RENDERING_PREFS_FILE), {recursive: true});
+    fs.writeFileSync(temporary, JSON.stringify({use_gpu_rendering: enabled}), 'utf8');
+    fs.renameSync(temporary, RENDERING_PREFS_FILE);
+  } catch (error) {
+    item.checked = useGpuRendering;
+    log(`Could not save rendering preference: ${error.message}`);
+    dialog.showErrorBox('Could not save rendering preference',
+      'Your rendering setting has not changed. Check Help > Open Logs Folder for details.');
+    return;
+  }
+  useGpuRendering = enabled;
+  buildAppMenu();
+  if (enabled === GPU_RENDERING_AT_STARTUP) return;
+  try {
+    const {response} = await dialog.showMessageBox({
+      type: 'question',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Rendering preference saved',
+      message: `Restart Sales Buddy to use ${enabled ? 'GPU' : 'software'} rendering.`,
+      detail: 'Save any unfinished work before restarting. Choosing Later keeps the current '
+        + 'rendering mode until you fully quit and reopen Sales Buddy.',
+    });
+    if (response === 0 && !isUpdating && !isQuitting) {
+      relaunchVisible();
+      app.quit();
+    }
+  } catch (error) {
+    log(`Could not restart after changing rendering preference: ${error.message}`);
+    dialog.showErrorBox('Rendering preference saved',
+      'Please fully quit and reopen Sales Buddy to apply it.');
   }
 }
 
@@ -1018,6 +1077,15 @@ function buildAppMenu() {
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' },
+        { type: 'separator' },
+        {
+          label: 'Use GPU Rendering'
+            + (useGpuRendering !== GPU_RENDERING_AT_STARTUP ? ' (restart required)' : ''),
+          type: 'checkbox',
+          checked: useGpuRendering,
+          enabled: !isUpdating,
+          click: changeGpuRendering,
+        },
       ],
     },
     {
