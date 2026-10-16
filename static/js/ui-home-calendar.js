@@ -112,7 +112,7 @@
     }
 
     function clearRefreshError(date) {
-        document.getElementById('homeMeetingRefreshError-' + date)
+        document.getElementById('homeMeetingRefreshError-' + (date || 'status'))
             ?.querySelector('[data-sb-notice-dismiss]').click();
     }
 
@@ -177,7 +177,7 @@
     }
 
     function showRefreshError(date, message) {
-        const id = 'homeMeetingRefreshError-' + date;
+        const id = 'homeMeetingRefreshError-' + (date || 'status');
         let notice = document.getElementById(id);
         if (!notice) {
             notice = document.createElement('div');
@@ -203,7 +203,7 @@
             document.getElementById('homeMeetingNotices').appendChild(notice);
         }
         notice.querySelector('.sb-notice-body').textContent =
-            'Meeting refresh failed for ' + date + '. ' + message;
+            (date ? 'Meeting refresh failed for ' + date + '. ' : '') + message;
     }
 
     window.SBHomeCalendar = Object.freeze({

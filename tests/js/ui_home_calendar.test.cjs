@@ -118,21 +118,42 @@ test('meeting notifications float outside layout with a bounded scrollable stack
 
 function dayRefreshFixture(reply, month = 10) {
     const f = fixture(), requests = [], events = [], spins = [], redraws = [], errors = [];
+    const busy = new Set(), painted = new Map();
+    let snapshots = [];
     f.context.window.dispatchEvent = event => events.push(event);
+    f.context.window.addEventListener = () => {};
+    f.context.window.SBJobs = {start: async (operation, options) => {
+        requests.push({operation, options: {...options}});
+        if (reply instanceof Error) throw reply;
+        if (!reply.ok) throw new Error((await reply.json()).error || 'Admission failed');
+        const result = await reply.json();
+        const job = {id: 1, operation, options, status: 'done', state: 'done',
+            calendar_dates: [options.date], progress: {}, result};
+        snapshots = [job];
+        return job;
+    }};
     Object.assign(f.context, {CustomEvent, calendarYear: 2026, calendarMonth: month,
-        _inFlightDayRefreshes: new Set(), _pendingRedrawDates: new Set(),
-        _setSpinnerOnDate: (date, state) => spins.push([date, state]),
+        URLSearchParams, setTimeout: () => 1, clearTimeout() {},
+        _pendingRedrawDates: new Set(),
+        applyMeetingIndicators: states => {
+            const dates = new Set([...painted.keys(), ...states.keys()]);
+            for (const date of dates) {
+                const on = states.has(date);
+                if (painted.get(date) !== on) spins.push([date, on]);
+                painted.set(date, on);
+                if (on) busy.add(date);
+                else busy.delete(date);
+            }
+        },
         refreshDaysInPlace: dates => redraws.push(Array.from(dates)),
         console: {error: (...args) => errors.push(args)},
-        fetch: async (url, options) => {
-            requests.push({url, options});
-            if (reply instanceof Error) throw reply;
-            return reply;
-        }});
-    const start = template.indexOf('    function triggerDaySync(');
+        fetch: async () => ({ok: true, json: async () => ({jobs: snapshots})})});
+    vm.runInNewContext(fs.readFileSync(path.join(
+        __dirname, '../../static/js/ui-meeting-refresh.js'), 'utf8'), f.context);
+    const start = template.indexOf('    const meetingRefresh = ');
     const end = template.indexOf('    // ===== TODAY-CELL HEALTH', start);
     vm.runInNewContext(template.slice(start, end), f.context);
-    return {...f, requests, events, spins, redraws, errors};
+    return {...f, requests, events, spins, redraws, errors, busy};
 }
 
 function monthData(year = 2026, month = 9) {
@@ -366,12 +387,12 @@ for (const [description, reply] of [
         assert.equal(f.errors.length, 1);
         assert.equal(f.events.length, 0);
         assert.equal(f.redraws.length, 0);
-        assert.equal(f.context._inFlightDayRefreshes.size, 0);
+        assert.equal(f.busy.size, 0);
         assert.deepEqual(f.spins, [['2026-10-03', true], ['2026-10-03', false]]);
     });
 }
 
-test('confirmed empty calendar pulls notify freshness immediately, clear their error, and retain the POST contract', async () => {
+test('confirmed empty calendar pulls notify freshness, clear their error, and use durable admission', async () => {
     const f = dayRefreshFixture({ok: true, json: async () => ({
         date: '2026-10-03', synced_at: '2026-10-03T22:00:00Z', meetings: [],
     })});
@@ -380,9 +401,7 @@ test('confirmed empty calendar pulls notify freshness immediately, clear their e
     assert.equal(f.notices.children.length, 0);
     assert.equal(f.events[0].type, 'sb:meetings-cache-updated');
     assert.deepEqual(f.redraws, [['2026-10-03']]);
-    assert.equal(f.requests[0].url, '/api/meetings/refresh');
-    assert.equal(f.requests[0].options.method, 'POST');
-    assert.deepEqual(JSON.parse(f.requests[0].options.body), {date: '2026-10-03'});
+    assert.deepEqual(f.requests[0], {operation: 'meetings', options: {date: '2026-10-03'}});
 });
 
 test('a pull completed after month navigation still notifies freshness and queues its repaint', async () => {
@@ -491,14 +510,14 @@ test('real ghost builder keeps note destinations and dismiss actions on separate
     assert.deepEqual(opened, [[data[1], '2026-10-01']]);
 });
 
-test('date spinner disables its native button, announces busy, and retains aura ownership after completion', () => {
+test('shared date spinner disables its native button and announces busy', () => {
     const {element, context, document} = fixture(), wrap = element('button'), cell = element('td');
     let aura = null;
     wrap.closest = () => cell;
     cell.querySelector = () => aura;
     document.querySelector = () => wrap;
     const start = template.indexOf('    function _findCurrentDayWrap(');
-    const end = template.indexOf('    // Re-apply the spinning state', start);
+    const end = template.indexOf('    const meetingRefresh = ', start);
     vm.runInNewContext(template.slice(start, end), context);
     context._setSpinnerOnDate('2026-10-01', true);
     assert.equal(wrap.disabled, true);
@@ -507,7 +526,7 @@ test('date spinner disables its native button, announces busy, and retains aura 
     assert.equal(wrap.disabled, false);
     aura = element('button');
     context._setSpinnerOnDate('2026-10-01', false);
-    assert.equal(wrap.disabled, true);
+    assert.equal(wrap.disabled, false);
 });
 
 test('aura dots stay stable in native day actions, gate refresh, and offer independent sync details', () => {
@@ -528,28 +547,30 @@ test('aura dots stay stable in native day actions, gate refresh, and offer indep
         [...records.values()].map(r => r.wrap);
     document.querySelector = selector => records.get(selector.match(/data-cal-date="([^"]+)"/)[1]).cell;
     let details = 0;
-    context.window.SyncStatus = {check: () => { details++; }};
-    context._inFlightDayRefreshes = new Set();
-    const start = template.indexOf('    function applyAuraIndicators(');
+    context.window.SyncStatus = {forceShow: () => { details++; }};
+    context.meetingRefresh = {getJob: date => state.get(date).job};
+    context._setSpinnerOnDate = (date, on) => { records.get(date).wrap.disabled = on; };
+    const start = template.indexOf('    function applyMeetingIndicators(');
     const end = template.indexOf('    function ', start + 20);
     vm.runInNewContext(template.slice(start, end), context);
-    const state = {running: true, current_date: '2026-10-01', aura_dates: [...records.keys()]};
-    context.applyAuraIndicators(state);
+    const state = new Map([['2026-10-01', {state: 'running', job: {id: 1}}],
+        ['2026-10-02', {state: 'queued', job: {id: 1}}]]);
+    context.applyMeetingIndicators(state);
     const first = records.get('2026-10-01'), second = records.get('2026-10-02');
     const dots = first.actions.children[0];
     assert.equal(dots.tagName, 'button');
     assert.equal(dots.type, 'button');
     assert.equal(first.wrap.disabled, true);
     assert.equal(second.actions.children[0].classList.contains('cal-aura-queued'), true);
-    context.applyAuraIndicators(state);
+    context.applyMeetingIndicators(state);
     assert.equal(first.actions.children[0], dots);
     dots.click();
     assert.equal(details, 1);
-    context.applyAuraIndicators({...state, current_date: '2026-10-02'});
+    context.applyMeetingIndicators(new Map([['2026-10-02', {state: 'running'}]]));
     assert.equal(first.actions.children.length, 0);
     assert.equal(first.wrap.disabled, false);
     assert.equal(second.actions.children[0].classList.contains('cal-aura-queued'), false);
-    context.applyAuraIndicators({running: false});
+    context.applyMeetingIndicators(new Map());
     assert.equal(second.actions.children.length, 0);
     assert.equal(second.wrap.disabled, false);
 });
@@ -560,7 +581,7 @@ test('Today health targets the new square date cell without relying on Bootstrap
         assert.equal(selector, '.sb-home-today'); return [today];
     };
     const start = template.indexOf('    function applyTodayStatus(');
-    const end = template.indexOf('    // ===== AURA SYNC', start);
+    const end = template.indexOf('    // ===== SHARED MEETING REFRESH', start);
     vm.runInNewContext(template.slice(start, end), context);
     context.applyTodayStatus({synced: false});
     assert.equal(today.classList.contains('cal-today-incomplete'), true);
@@ -591,7 +612,9 @@ test('day refresh inserts and replaces ghosts inside the shared scroll area, pre
     let ghosts = [{id: 7, customer_id: 44}];
     let healthChecks = 0;
     Object.assign(context, {calendarYear: 2026, calendarMonth: 10,
-        fetch: async () => ({json: async () => ({days: {1: [{customer_id: 44}]},
+        meetingRefresh: {render() {}},
+        fetch: async () => ({ok: true, json: async () => ({
+            ...monthData(2026, 10), days: {1: [{id: 44, customer_id: 44}]},
             ghosts: {1: ghosts}})}),
         buildGhostsContainer: (rows, colors) => {
             assert.equal(colors[44], 1);
@@ -610,6 +633,24 @@ test('day refresh inserts and replaces ghosts inside the shared scroll area, pre
         if (next.length) assert.deepEqual(entries.children[1].rows, next);
     }
     assert.equal(healthChecks, 3);
+});
+
+test('failed day repaint preserves existing entries and reports an explicit refresh error', async () => {
+    const {element, context, document} = fixture(), cell = element('td'), entries = element();
+    const ghost = element(), note = element('button');
+    entries.appendChild(note); entries.appendChild(ghost);
+    document.querySelector = () => cell;
+    cell.querySelector = selector => selector === '.sb-home-day-entries' ? entries : ghost;
+    Object.assign(context, {calendarYear: 2026, calendarMonth: 10,
+        fetch: async () => ({ok: false, status: 503}),
+        console: {error() {}}});
+    const start = template.indexOf('    function refreshDaysInPlace(');
+    const end = template.indexOf('    {% if has_engagements %}', start);
+    vm.runInNewContext(template.slice(start, end), context);
+    await context.refreshDaysInPlace(['2026-10-01']);
+    assert.deepEqual(entries.children, [note, ghost]);
+    assert.match(document.getElementById('homeMeetingRefreshError-2026-10-01')
+        .children[1].textContent, /could not redraw.*HTTP 503/);
 });
 
 test('customer highlighting spans notes and ghosts, survives mouse departure while focused, and stays scoped', () => {

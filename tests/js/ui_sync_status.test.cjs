@@ -140,6 +140,33 @@ test('durable queue and fetch messages replace misleading day-by-day progress', 
         'Fetching 5 meeting dates concurrently.');
 });
 
+test('calendar details observe the selected manual job rather than an unrelated aura', async () => {
+    const h = controller();
+    const job = {id: 42, operation: 'meetings', status: 'running', options: {date: '2026-10-02'},
+        progress: {message: 'Refreshing the selected date.'}};
+    h.api.forceShow({...active(), job});
+    h.queue.push(response({success: true, job: {...job, status: 'failed', error: 'Selected failure'}}));
+    await h.tick();
+    assert.deepEqual(h.requests, ['/api/jobs/42']);
+    assert.match(h.elements.get('syncStatusProgress').textContent, /Selected failure/);
+    assert.equal(h.timers.size, 0);
+});
+
+test('selected manual completion hides details and refreshes freshness without starting a sync', async () => {
+    const h = controller();
+    const job = {id: 43, status: 'running', options: {date: '2026-10-02'},
+        progress: {message: 'Refreshing.'}};
+    h.api.forceShow({...active(), job});
+    h.queue.push(response({success: true, job: {...job, status: 'done'}}));
+    await h.tick();
+    assert.deepEqual(h.requests, ['/api/jobs/43']);
+    assert.equal(h.elements.get('syncStatusCard').hidden, true);
+    assert.equal(h.events[0].type, 'sb:meetings-cache-updated');
+    h.queue.push(response(active()));
+    await h.api.check();
+    assert.equal(h.requests.at(-1), '/api/meetings/sync-status');
+});
+
 test('terminal job failures stay visible without an endless polling spinner', async () => {
     const h = controller();
     h.api.forceShow(active());

@@ -61,6 +61,32 @@ def get_sync_state_snapshot() -> dict[str, Any]:
         return dict(_sync_state)
 
 
+def get_meeting_refresh_jobs(watched_ids: list[int]) -> list[dict[str, Any]]:
+    """Discover active refreshes and retain observed jobs through their terminal result."""
+    from app.models import Job
+    from app.services.sync_jobs import ACTIVE_STATES, job_snapshot
+
+    types = ('sync:meetings', 'sync:meeting-aura')
+    latest = db.session.query(db.func.max(Job.id)).filter(
+        Job.job_type.in_(types)).group_by(Job.job_type)
+    jobs = Job.query.filter(
+        Job.job_type.in_(types),
+        db.or_(Job.status.in_(ACTIVE_STATES), Job.id.in_(watched_ids), Job.id.in_(latest)),
+    ).order_by(Job.id).all()
+    snapshots = []
+    for job in jobs:
+        snapshot = job_snapshot(job)
+        options = snapshot['options']
+        if snapshot['operation'] == 'meetings':
+            dates = [options['date']]
+        else:
+            dates = [day.isoformat() for day in _aura_window_dates(
+                start=date.fromisoformat(options['anchor']),
+                days_ahead=options['days_ahead'])]
+        snapshots.append({**snapshot, 'calendar_dates': dates})
+    return snapshots
+
+
 def _set_sync_state(progress: dict[str, Any] | None = None, **kwargs) -> None:
     from app.services.sync_jobs import publish_progress
 
@@ -216,6 +242,7 @@ def _sync_aura_dates(aura_strs: list[str]) -> tuple[dict[str, int], dict[str, st
     counts: dict[str, int] = {}
     errors: dict[str, str] = {}
     total = len(aura_strs)
+    date_states = dict.fromkeys(aura_strs, 'fetching')
 
     def fetch(day_str: str) -> tuple[list[dict[str, Any]] | None, str | None]:
         """Isolate source context/session from the owning worker's write transaction."""
@@ -229,6 +256,7 @@ def _sync_aura_dates(aura_strs: list[str]) -> tuple[dict[str, int], dict[str, st
             'progress': 100 * current / (total * 2), 'message': message,
             'fetched_dates': len(payloads), 'failed_dates': len(errors),
             'total_dates': total,
+            'date_states': dict(date_states), 'date_errors': dict(errors),
         })
 
     with ThreadPoolExecutor(max_workers=MEETING_FETCH_WORKERS) as executor:
@@ -240,26 +268,33 @@ def _sync_aura_dates(aura_strs: list[str]) -> tuple[dict[str, int], dict[str, st
                 if error or meetings is None:
                     raise RuntimeError(error or 'Meeting source returned no data.')
                 payloads[day_str] = meetings
+                date_states[day_str] = 'queued'
             except Exception as exc:
                 logger.exception('Meeting fetch failed for %s', day_str)
                 errors[day_str] = str(exc)
                 counts[day_str] = 0
+                date_states[day_str] = 'failed'
             report('fetching', completed, day_str,
                    f'Received {completed}/{total} date results ({len(errors)} failed).')
 
     for index, day_str in enumerate(aura_strs):
         if day_str in payloads:
+            date_states[day_str] = 'saving'
+            report('calendar', total + index, day_str,
+                   f'Saving meeting date {day_str}.')
             try:
                 meetings, error = sync_meetings_for_date(
                     day_str, prefetched_meetings=payloads[day_str])
                 counts[day_str] = len(meetings)
                 if error:
                     errors[day_str] = error
+                date_states[day_str] = 'failed' if error else 'complete'
             except Exception as exc:
                 logger.exception('Meeting save failed for %s', day_str)
                 db.session.rollback()
                 errors[day_str] = str(exc)
                 counts[day_str] = 0
+                date_states[day_str] = 'failed'
         saved = index + 1 - sum(day in errors for day in aura_strs[:index + 1])
         report('calendar', total + index + 1, day_str,
                f'Saved {saved}/{total} meeting dates ({len(errors)} failed).')

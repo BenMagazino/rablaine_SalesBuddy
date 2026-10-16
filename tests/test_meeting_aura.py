@@ -203,11 +203,54 @@ class TestEnsureMeetingAura:
         assert errors == {}
         assert len(counts) == 5
         assert saved == sorted(fetched)
-        assert [event['current'] for event in published] == list(range(11))
+        assert [event['current'] for event in published] == (
+            list(range(6)) + [value for n in range(5, 10) for value in (n, n + 1)])
         assert all(event['total'] == 10 for event in published)
         assert published[0]['message'] == 'Fetching 5 meeting dates in parallel.'
         assert published[5]['progress'] == 50
         assert published[-1]['message'] == 'Saved 5/5 meeting dates (0 failed).'
+        assert published[-1]['date_states'] == dict.fromkeys(sorted(fetched), 'complete')
+        assert all('complete' not in event.get('date_states', {}).values()
+                   for event in published if event['phase'] == 'fetching')
+
+    def test_out_of_order_fetch_does_not_finish_unsaved_dates(
+        self, app, clean_meeting_tables, reset_sync_state, monkeypatch,
+    ):
+        """A later calendar date finishing its fetch cannot mark earlier dates complete."""
+        from app.services import meeting_sync
+
+        release_first = threading.Event()
+        published = []
+
+        def fetch(day_str):
+            """Finish Tuesday first, holding Monday until its progress is observed."""
+            if day_str == '2026-04-20':
+                assert release_first.wait(timeout=5)
+            return [], None
+
+        def progress(event):
+            """Inspect the actual saved cache at each per-date completion transition."""
+            published.append(event)
+            if event['phase'] == 'fetching' and event['current'] == 1:
+                assert event['current_date'] == '2026-04-21'
+                assert event['date_states'] == {
+                    '2026-04-20': 'fetching', '2026-04-21': 'queued'}
+                assert DailyMeetingCache.query.count() == 0
+                release_first.set()
+            for day_str, state in event.get('date_states', {}).items():
+                if state == 'complete':
+                    assert DailyMeetingCache.query.filter_by(
+                        meeting_date=date.fromisoformat(day_str)).one()
+
+        monkeypatch.setattr('app.services.meeting_prefetch.fetch_meetings_for_date', fetch)
+        monkeypatch.setattr('app.services.sync_jobs.publish_progress', progress)
+        with app.app_context():
+            counts, errors = meeting_sync.ensure_meeting_aura(
+                start=date(2026, 4, 20), days_ahead=1)
+        assert errors == {}
+        assert counts == {'2026-04-20': 0, '2026-04-21': 0}
+        assert published[-1]['date_states'] == {
+            '2026-04-20': 'complete', '2026-04-21': 'complete'}
 
     def test_parallel_fetch_failure_preserves_cache_and_saves_other_dates(
         self, app, clean_meeting_tables, reset_sync_state, monkeypatch,
@@ -555,3 +598,53 @@ class TestSyncStatusEndpoint:
         assert body['running'] is False
         assert body['current_date'] is None
         assert body['aura_dates'] == []
+        assert body['jobs'] == []
+
+    def test_discovers_all_queued_manual_and_automatic_dates(self, app, client):
+        """A fresh page discovers every pending date without starting another sync."""
+        from app.models import Job
+        from app.services.sync_jobs import admit_sync
+
+        with app.app_context():
+            first = admit_sync('meetings', {'date': '2026-04-20'})
+            second = admit_sync('meetings', {'date': '2026-04-21'})
+            aura = admit_sync('meeting-aura', {'anchor': '2026-04-24', 'days_ahead': 4})
+            ids = [first.id, second.id, aura.id]
+        response = client.get('/api/meetings/sync-status')
+        assert response.status_code == 200
+        jobs = response.json['jobs']
+        assert [job['id'] for job in jobs] == ids
+        assert jobs[0]['calendar_dates'] == ['2026-04-20']
+        assert jobs[1]['calendar_dates'] == ['2026-04-21']
+        assert jobs[2]['calendar_dates'] == [
+            '2026-04-24', '2026-04-27', '2026-04-28', '2026-04-29', '2026-04-30']
+        with app.app_context():
+            assert Job.query.count() == 3
+
+    def test_observed_job_remains_readable_when_newer_dates_have_been_admitted(self, app, client):
+        """A completion cannot vanish between polls just because another date was started."""
+        from app.models import Job
+        from app.services.sync_jobs import admit_sync
+
+        with app.app_context():
+            first = admit_sync('meetings', {'date': '2026-04-20'})
+            first_id = first.id
+            first.status = Job.STATUS_DONE
+            first.finished_at = datetime.now(timezone.utc)
+            first.result = json.dumps({
+                'date': '2026-04-20', 'synced_at': first.finished_at.isoformat(),
+                'meetings': [], 'success': True})
+            db.session.commit()
+            second = admit_sync('meetings', {'date': '2026-04-21'})
+            second_id = second.id
+        jobs = client.get(f'/api/meetings/sync-status?job_id={first_id}').json['jobs']
+        assert [job['id'] for job in jobs] == [first_id, second_id]
+        assert jobs[0]['status'] == 'done'
+        assert jobs[0]['result']['date'] == '2026-04-20'
+
+    @pytest.mark.parametrize('identity', ['invalid', '0', '-1', '1.5'])
+    def test_rejects_invalid_observed_identity(self, client, identity):
+        """Malformed observation requests fail explicitly rather than dropping identities."""
+        response = client.get('/api/meetings/sync-status?job_id=' + identity)
+        assert response.status_code == 400
+        assert 'positive integers' in response.json['error']
