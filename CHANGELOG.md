@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/16/2026
+## 10/16/2026 - 8c02b02e
 
 - *Electron Shell Update* - Choose GPU or software rendering from the View menu to improve window dragging on machines that struggle under graphics load. GPU rendering remains the default; changes apply after restarting the app.
 
