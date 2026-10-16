@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/16/2026
+## 10/16/2026 - 25f586d3
 
 - Keep calendar meeting-refresh progress through reloads and month navigation, with shared automatic/manual tracking and accurate per-day results.
 
