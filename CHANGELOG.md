@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/16/2026
+## 10/16/2026 - 691276f6
 
 - *Electron Shell Update* - Show a glowing loading line while opening pages or processing actions, enabled by default with Appearance controls to turn it off, preview it, and adjust its brightness.
 
