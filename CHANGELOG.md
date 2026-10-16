@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/16/2026
+## 10/16/2026 - a76e3b53
 
 - Keep U2C history within the selected quarter and save clearly labeled daily observations when MSXi does not provide a matching publication date.
 - Retry unfinished quarter close-out while preserving the previous quarter's saved data.
