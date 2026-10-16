@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/16/2026
+## 10/16/2026 - 3a8d66cc
 
 - Count manual milestone syncs toward the scheduled run and show actual completion times in Admin. Interrupted runs can catch up without changing your sync settings.
 
