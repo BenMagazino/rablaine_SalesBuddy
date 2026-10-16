@@ -663,12 +663,16 @@ def _migrate_theme_family(db, inspector) -> None:
 
 
 def _migrate_loading_indicator(db, inspector) -> None:
-    """Enable loading feedback by default without overwriting an existing choice."""
+    """Add loading feedback defaults without overwriting existing appearance choices."""
     inspector.clear_cache()
     if _table_exists(inspector, 'user_preferences'):
         _add_column_if_not_exists(
             db, inspector, 'user_preferences', 'loading_indicator_enabled',
             'BOOLEAN DEFAULT 1 NOT NULL',
+        )
+        _add_column_if_not_exists(
+            db, inspector, 'user_preferences', 'loading_indicator_brightness',
+            'INTEGER DEFAULT 100 NOT NULL',
         )
 
 

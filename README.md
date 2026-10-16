@@ -54,6 +54,11 @@ the current page. It stops when the destination page appears rather than replayi
 during that page's initialization. Its glow straddles the divider; routine background
 polling stays quiet. Light mode adjusts the green for contrast, and reduced motion uses
 a stationary line instead.
+
+Settings > Appearance also provides a page-local comet preview and a 10%-100%
+brightness slider. Preview does not change the global on/off preference and ends
+when you leave Settings. Brightness updates live while dragging and saves on
+release for use throughout the app, including after a restart.
 The indicator is enabled by default. Turn **Settings > Appearance > Page loading
 indicator** off or on to change it immediately; the choice persists across restarts.
 

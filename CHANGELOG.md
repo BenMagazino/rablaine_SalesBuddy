@@ -10,7 +10,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/16/2026
 
-- *Electron Shell Update* - Show a glowing loading line while opening pages or processing actions, enabled by default with an Appearance setting to turn it off.
+- *Electron Shell Update* - Show a glowing loading line while opening pages or processing actions, enabled by default with Appearance controls to turn it off, preview it, and adjust its brightness.
 
 ## 10/16/2026 - 25f586d3
 

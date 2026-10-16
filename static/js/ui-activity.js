@@ -10,15 +10,17 @@
     let requests = 0;
     let generation = 0;
     function render() {
-        indicator.hidden = document.documentElement.dataset.sbActivityEnabled === 'false' ||
+        indicator.hidden = document.documentElement.dataset.sbActivityPreview !== 'true' &&
+            (document.documentElement.dataset.sbActivityEnabled === 'false' ||
             !(navigating || requests > 0 ||
-                document.documentElement.dataset.sbShellLoading === 'true');
+                document.documentElement.dataset.sbShellLoading === 'true'));
     }
     function reset() {
         generation++;
         navigating = gesture = false;
         requests = 0;
         delete document.documentElement.dataset.sbShellLoading;
+        delete document.documentElement.dataset.sbActivityPreview;
         clearTimeout(gestureTimer);
         render();
     }
@@ -73,6 +75,7 @@
     window.addEventListener('pagehide', reset);
     window.addEventListener('sb:shell-loading', render);
     window.addEventListener('sb:activity-preference-changed', render);
+    window.addEventListener('sb:activity-preview-changed', render);
     window.addEventListener('pageshow', event => {
         if (event.persisted) reset();
     });

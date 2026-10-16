@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-sb-family="{{ theme_family|default('graphite') }}" data-sb-activity-enabled="{{ 'true' if loading_indicator_enabled|default(true) else 'false' }}" {% if dark_mode is not none %}data-bs-theme="{{ 'dark' if dark_mode else 'light' }}"{% endif %}>
+<html lang="en" data-sb-family="{{ theme_family|default('graphite') }}" data-sb-activity-enabled="{{ 'true' if loading_indicator_enabled|default(true) else 'false' }}" style="--sb-activity-opacity: {{ (loading_indicator_brightness|default(100)|int) / 100 }};" {% if dark_mode is not none %}data-bs-theme="{{ 'dark' if dark_mode else 'light' }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

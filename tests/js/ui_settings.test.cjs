@@ -27,6 +27,8 @@ function fixture({seMode = true} = {}) {
         'deleteTemplateName', 'deleteTemplateForm',
         'settingsThemeFamily', 'settingsThemeResult',
         'settingsSeSpecialty', 'settingsSeSpecialtyResult',
+        'settingsLoadingBrightness', 'settingsLoadingBrightnessValue',
+        'settingsLoadingBrightnessResult', 'settingsLoadingPreview',
     ].map(id => [id, element(id)]));
     fields.workiqPrompt.value = 'Saved prompt';
     fields.settingsThemeFamily.value = 'graphite';
@@ -37,6 +39,7 @@ function fixture({seMode = true} = {}) {
     }
     fields.settingsDarkModeSwitch.checked = true;
     fields.settingsLoadingIndicatorSwitch.checked = true;
+    fields.settingsLoadingBrightness.value = '100';
     fields.connectImpactSwitch.checked = true;
     fields.templateSelect.options = [{text: 'First template'}];
     fields.templateSelect.selectedIndex = 0;
@@ -47,7 +50,10 @@ function fixture({seMode = true} = {}) {
     let reply = {ok: true, json: async () => ({success: true})};
     let confirmation = true;
     const history = {state: {}, replaceState(value) { this.state = value; }};
-    const documentElement = {dataset: {bsTheme: 'dark', sbMode: 'dark', sbFamily: 'graphite'}};
+    const documentElement = {
+        dataset: {bsTheme: 'dark', sbMode: 'dark', sbFamily: 'graphite'},
+        style: {setProperty(key, value) { this[key] = value; }},
+    };
     vm.runInNewContext(source, {
         document: {
             querySelector: () => ({querySelector: selector => fields[selector.slice(1)]}),
@@ -125,6 +131,75 @@ for (const reply of [
         assert.deepEqual(h.events, []);
         assert.match(input.children[0].textContent, /Could not save/);
         assert.equal(input.children[0].attributes.role, 'alert');
+    });
+}
+
+test('preview toggles only the current document and is stopped before leaving Settings', async () => {
+    const h = fixture();
+    const preview = h.fields.settingsLoadingPreview;
+    h.documentElement.dataset.sbActivityEnabled = 'false';
+    await preview.fire('click');
+    assert.equal(h.documentElement.dataset.sbActivityPreview, 'true');
+    assert.equal(h.documentElement.dataset.sbActivityEnabled, 'false');
+    assert.equal(preview.attributes['aria-pressed'], 'true');
+    assert.equal(preview.textContent, 'Stop preview');
+    await preview.fire('click');
+    assert.equal(h.documentElement.dataset.sbActivityPreview, undefined);
+    assert.equal(preview.attributes['aria-pressed'], 'false');
+    await preview.fire('click');
+    h.windowHandlers.pagehide();
+    assert.equal(h.documentElement.dataset.sbActivityPreview, undefined);
+    assert.equal(preview.textContent, 'Preview comet');
+    assert.equal(preview.attributes['aria-pressed'], 'false');
+    assert.equal(h.requests.length, 0);
+    assert.ok(h.events.every(type => type === 'sb:activity-preview-changed'));
+});
+
+test('brightness previews each input but saves only once on release and confirmation', async () => {
+    const h = fixture();
+    const input = h.fields.settingsLoadingBrightness;
+    for (const value of ['80', '20', '35']) {
+        input.value = value;
+        await input.fire('input');
+        assert.equal(h.documentElement.style['--sb-activity-opacity'], String(Number(value) / 100));
+        assert.equal(h.fields.settingsLoadingBrightnessValue.textContent, value + '%');
+    }
+    assert.equal(h.requests.length, 0);
+    assert.equal(input.attributes['aria-valuetext'], '35% brightness');
+    let finish;
+    h.setReply(() => new Promise(resolve => { finish = resolve; }));
+    const pending = input.fire('change');
+    await input.fire('change');
+    assert.equal(input.disabled, true);
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.requests[0].url, '/api/preferences/loading-indicator');
+    assert.deepEqual(JSON.parse(h.requests[0].options.body), {loading_indicator_brightness: 35});
+    finish({ok: true, json: async () => ({loading_indicator_brightness: 35})});
+    await pending;
+    assert.equal(input.disabled, false);
+    assert.equal(h.fields.settingsLoadingBrightnessResult.textContent, 'Saved.');
+    await input.fire('change');
+    assert.equal(h.requests.length, 1);
+});
+
+for (const reply of [
+    new Error('Offline'),
+    {ok: false, status: 500, json: async () => ({error: 'Unavailable'})},
+    {ok: true, json: async () => ({loading_indicator_brightness: 100})},
+]) {
+    test('brightness save failures restore the confirmed slider, label and CSS', async () => {
+        const h = fixture();
+        const input = h.fields.settingsLoadingBrightness;
+        input.value = '40';
+        await input.fire('input');
+        h.setReply(reply);
+        await input.fire('change');
+        assert.equal(input.value, '100');
+        assert.equal(input.disabled, false);
+        assert.equal(h.documentElement.style['--sb-activity-opacity'], '1');
+        assert.equal(h.fields.settingsLoadingBrightnessValue.textContent, '100%');
+        assert.equal(h.fields.settingsLoadingBrightnessResult.attributes.role, 'alert');
+        assert.match(h.fields.settingsLoadingBrightnessResult.textContent, /Could not save brightness/);
     });
 }
 

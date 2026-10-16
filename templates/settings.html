@@ -64,6 +64,19 @@
                     </label>
                     <div><small class="sb-admin-text-muted">Show the glowing green line while pages and actions load. Saves immediately.</small></div>
                 </div>
+                <div class="sb-admin-mt-3 sb-settings-activity">
+                    <label class="sb-admin-label" for="settingsLoadingBrightness">Loading indicator brightness</label>
+                    <div class="sb-settings-activity-controls">
+                        <input type="range" id="settingsLoadingBrightness" min="10" max="100"
+                               step="1" value="{{ loading_indicator_brightness|default(100) }}"
+                               aria-describedby="settingsLoadingBrightnessHelp settingsLoadingBrightnessResult">
+                        <output id="settingsLoadingBrightnessValue" for="settingsLoadingBrightness" aria-hidden="true">{{ loading_indicator_brightness|default(100) }}%</output>
+                        <button type="button" class="sb-admin-command" id="settingsLoadingPreview"
+                                aria-pressed="false" aria-controls="sbActivity">Preview comet</button>
+                    </div>
+                    <p class="sb-admin-help" id="settingsLoadingBrightnessHelp">Preview runs only on this Settings page, even if loading feedback is off. Brightness applies across the app and saves when you release the slider.</p>
+                    <p class="sb-admin-help" id="settingsLoadingBrightnessResult" role="status" aria-live="polite"></p>
+                </div>
             </div>
         </section>
 

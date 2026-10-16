@@ -6,6 +6,7 @@
     height: 20px;
     overflow: clip;
     pointer-events: none;
+    opacity: var(--sb-activity-opacity, 1);
 }
 
 [data-sb-mode="light"] .sb-activity {

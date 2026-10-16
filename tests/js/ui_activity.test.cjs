@@ -218,6 +218,36 @@ test('native menu navigation stays busy until the Electron loading lifecycle sto
     assert.equal(f.indicator.hidden, true);
 });
 
+test('page-local preview can run with loading feedback disabled and resets on page handoff', () => {
+    const f = fixture({enabled: false});
+    f.document.documentElement.dataset.sbActivityPreview = 'true';
+    f.windowEvents.get('sb:activity-preview-changed')();
+    assert.equal(f.indicator.hidden, false);
+    assert.equal(f.document.documentElement.dataset.sbActivityEnabled, 'false');
+    delete f.document.documentElement.dataset.sbActivityPreview;
+    f.windowEvents.get('sb:activity-preview-changed')();
+    assert.equal(f.indicator.hidden, true);
+    f.document.documentElement.dataset.sbActivityPreview = 'true';
+    f.windowEvents.get('sb:activity-preview-changed')();
+    f.windowEvents.get('pagehide')();
+    assert.equal(f.indicator.hidden, true);
+    assert.equal(f.document.documentElement.dataset.sbActivityPreview, undefined);
+    f.windowEvents.get('pageshow')({persisted: true});
+    assert.equal(f.indicator.hidden, true);
+});
+
+test('stopping preview leaves real navigation feedback intact', () => {
+    const f = fixture();
+    f.navigate();
+    f.document.documentElement.dataset.sbActivityPreview = 'true';
+    f.windowEvents.get('sb:activity-preview-changed')();
+    delete f.document.documentElement.dataset.sbActivityPreview;
+    f.windowEvents.get('sb:activity-preview-changed')();
+    assert.equal(f.indicator.hidden, false);
+    f.navigationEvents.get('navigatesuccess')();
+    assert.equal(f.indicator.hidden, true);
+});
+
 test('preload relays only a primitive loading flag without exposing Electron APIs', () => {
     const source = fs.readFileSync(path.join(__dirname, '../../electron/preload.js'), 'utf8')
         .split('const FIND_BAR_ID')[0];
@@ -243,6 +273,7 @@ test('shared shell loads the observer before job/save wrappers and supports redu
     assert.match(base, /id="sbActivity" role="progressbar"/);
     const css = fs.readFileSync(path.join(__dirname, '../../static/css/ui-activity.css'), 'utf8');
     assert.match(css, /pointer-events: none/);
+    assert.match(css, /opacity: var\(--sb-activity-opacity, 1\)/);
     assert.match(css, /prefers-reduced-motion: reduce[\s\S]*animation: none/);
 });
 
