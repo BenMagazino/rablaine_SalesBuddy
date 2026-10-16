@@ -190,14 +190,18 @@ standalone UI iterations using entirely fictional data. See the
   and coverage, pipeline health, and account insights. Connect Goals' action reports
   stay together, separate from planning and review pages. All Reports uses the same
   groups and report order.
-- **U2C Trends** - U2C Attainment and Connect Goals preserve weekly MSXi history
+- **U2C Trends** - U2C Attainment and Connect Goals preserve quarter-specific MSXi history
   and add a separate **Today (live)** marker for the current, non-final quarter.
   Today uses current synced commitment status and the milestone dollar amounts
   from the latest imported snapshot, not current milestone ACR. Published points
   remain unchanged, including a snapshot published on the same date as Today.
   The U2C Attainment graph distinguishes total pipeline from the 40% goal,
   and its U2C percentage turns green at that goal. Historical and finalized
-  quarters keep their stored weekly points.
+  quarters keep their stored history. When the current payload has no matching
+  publication date, it is saved as an **observed** point for the day, updated on
+  repeat refreshes that day. Quarter rollover retries unfinished close-out and
+  preserves the previous quarter's last saved data if MSXi no longer serves it.
+  If the new quarter is not available yet, the previous quarter stays visible.
 - **1:1 Preparation** - review recent activity and all open engagements in the native
   report frame. Sort highlight columns, scroll long milestone tables independently,
   and open existing records without losing your view or reading position on Back.
