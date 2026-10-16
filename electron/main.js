@@ -15,6 +15,7 @@ const { app, BrowserWindow, Tray, Menu, shell, dialog, nativeTheme, screen } = r
 const { statusScreenUrl: renderStatusScreen } = require('./status-screen');
 const { TITLE_BAR_HEIGHT, attachShellTheme, readShellTheme } = require('./shell-theme');
 const { menuSnapshot, attachShellMenu } = require('./shell-menu');
+const { createWindowState } = require('./window-state');
 const { spawn, execFile, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -136,6 +137,16 @@ function readGpuRenderingPref() {
   }
 }
 
+const windowState = createWindowState({
+  file: path.join(app.getPath('userData'), 'window-state', 'state.json'),
+  fs, screen, log, schedule: setTimeout, cancel: clearTimeout,
+});
+
+function exitShell() {
+  windowState.shutdown();
+  app.exit(0);
+}
+
 const GPU_RENDERING_AT_STARTUP = readGpuRenderingPref();
 let useGpuRendering = GPU_RENDERING_AT_STARTUP;
 if (!GPU_RENDERING_AT_STARTUP) app.disableHardwareAcceleration();
@@ -217,6 +228,7 @@ function shouldBootHidden() {
 // this shell originally started at login. Electron otherwise preserves the
 // original --startup/--minimized args and boots the replacement into the tray.
 function relaunchVisible() {
+  windowState.flush();
   const args = process.argv.slice(1).filter(
     (arg) => arg !== '--startup' && arg !== '--minimized'
   );
@@ -548,7 +560,7 @@ async function runUpdate(trigger, rebuildAfter = false) {
     showUpdatingScreen('Restarting Sales Buddy', 'The update is ready. Opening your workspace again.');
     isQuitting = true;
     relaunchVisible();
-    app.exit(0);
+    exitShell();
   } catch (e) {
     const msg = (e && e.message) || String(e);
     log(`Update failed: ${msg}`);
@@ -589,7 +601,7 @@ async function runRebuild(trigger) {
     log('Rebuild aborted: build.ps1 or migrate-to-electron.ps1 missing; relaunching');
     isQuitting = true;
     relaunchVisible();
-    app.exit(0);
+    exitShell();
     return;
   }
 
@@ -615,7 +627,7 @@ async function runRebuild(trigger) {
     );
     isQuitting = true;
     relaunchVisible();
-    app.exit(0);
+    exitShell();
     return;
   }
 
@@ -643,7 +655,7 @@ async function runRebuild(trigger) {
       `powershell.exe -ExecutionPolicy Bypass -NoProfile -File "${MIGRATE_SCRIPT}" ` +
       `-SkipPull > "${rebuildLog}" 2>&1\r\n`
     );
-    const finishExit = () => { isQuitting = true; app.exit(0); };
+    const finishExit = () => { isQuitting = true; exitShell(); };
     // `start "" /min "<helper>"` breaks the helper out of Electron's job object.
     // Wait for the short-lived cmd launcher to exit (meaning `start` has fired
     // and the helper is now independent) before we quit; a safety timeout covers
@@ -657,7 +669,7 @@ async function runRebuild(trigger) {
       log(`Restage launcher error: ${(e && e.message) || e}; relaunching current shell`);
       isQuitting = true;
       relaunchVisible();
-      app.exit(0);
+      exitShell();
     });
     setTimeout(finishExit, 5000);
   } catch (e) {
@@ -670,7 +682,7 @@ async function runRebuild(trigger) {
     );
     isQuitting = true;
     relaunchVisible();
-    app.exit(0);
+    exitShell();
   }
 }
 
@@ -800,10 +812,6 @@ function isInternalUrl(target, fromUrl) {
 
 // Shared options for every app window.
 const WINDOW_OPTS = {
-  width: 1440,
-  height: 920,
-  minWidth: 900,
-  minHeight: 600,
   show: false,
   title: 'Sales Buddy',
   icon: ICON,
@@ -825,14 +833,16 @@ const WINDOW_OPTS = {
 // free. Used by File > New Window, the tray, and internal-link "open in new
 // window" (middle-click / Ctrl+click / right-click).
 function openNewWindow(url) {
+  const {maximized, ...placement} = windowState.placement(windows.size > 0);
   const theme = IS_WIN ? storedShellTheme() : null;
   const win = new BrowserWindow(theme ? {
     ...WINDOW_OPTS,
+    ...placement,
     backgroundColor: theme.backgroundColor,
     titleBarOverlay: {
       color: theme.color, symbolColor: theme.symbolColor, height: TITLE_BAR_HEIGHT,
     },
-  } : WINDOW_OPTS);
+  } : {...WINDOW_OPTS, ...placement});
   windows.add(win);
   configureWindow(win);
   loadWindowUrl(win, isUpdating ? statusScreenUrl(
@@ -840,7 +850,11 @@ function openNewWindow(url) {
   ) : isBooting ? statusScreenUrl(
     'Starting Sales Buddy', 'Waiting for the local backend. This window will open automatically.'
   ) : (url || BASE_URL));
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => {
+    if (maximized) win.maximize();
+    windowState.track(win);
+    win.show();
+  });
   return win;
 }
 
@@ -1195,6 +1209,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     log(`Electron ready (v${APP_VERSION}, packaged=${app.isPackaged}, repo=${REPO_ROOT})`);
+    windowState.watchDisplays();
     // Group under one taskbar icon and identify our notifications on Windows.
     if (IS_WIN) app.setAppUserModelId('com.salesbuddy.desktop');
     buildAppMenu();
@@ -1235,6 +1250,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('before-quit', () => {
+    windowState.shutdown();
     isQuitting = true;
     if (!DEV_CLIENT) stopStack();
   });

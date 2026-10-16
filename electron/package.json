@@ -28,6 +28,7 @@
       "preload.js",
       "shell-theme.js",
       "shell-menu.js",
+      "window-state.js",
       "status-screen.js",
       "status.html",
       "status.css",

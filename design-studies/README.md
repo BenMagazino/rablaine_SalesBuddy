@@ -80,9 +80,8 @@ template partials that work on both their full pages and homepage modals. The
 offline modal examples illustrate the presentation, not the production rendering
 architecture.
 
-The [window-state plan](WINDOW-STATE-PLAN.md) records the Electron window-sizing root
-cause, proposed first-launch dimensions, and last-used window-state restoration.
-It is planning only; the desktop shell remains unchanged.
+The desktop shell now restores last-used window size, position, and maximization.
+See the [application guide](../README.md) for persistence and shell-rebuild details.
 
 The [Bootstrap removal audit](BOOTSTRAP-AUDIT.md) inventories styling and behavior
 dependencies for an informed framework-removal decision. No runtime changes are
