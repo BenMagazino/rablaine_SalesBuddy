@@ -4,11 +4,10 @@ U2C (Uncommitted to Committed) snapshot service.
 Mirrors the official MSX Insights "Uncommitted to Committed" report so
 attainment is measured against the same baseline the field is measured on.
 
-MSXi only ever serves whichever fiscal quarter is current to it, publishing a
-new snapshot version weekly and retaining roughly seven weeks of them.  A daily
-refresh keeps the current quarter live, stores each weekly version's totals
-permanently for the attainment trend, and closes out a quarter once MSXi rolls
-over to the next one.
+MSXi exposes dated publications and a current payload that can differ from those
+publications. Daily refreshes preserve published history and explicitly dated
+observations when the publication date is unknown. Historical source access is
+not guaranteed, so rollover preserves the last saved quarter when necessary.
 """
 import logging
 from datetime import date, datetime, timedelta, timezone
@@ -22,6 +21,7 @@ from app.models import (
 
 logger = logging.getLogger(__name__)
 U2C_TARGET = 40.0
+OBSERVED_VERSION_PREFIX = 'observed:'
 
 
 def current_fiscal_quarter(ref_date: date | None = None) -> str:
@@ -215,8 +215,7 @@ def import_official_snapshot(fq_label: str | None = None,
 
     matched, total_acr = _write_snapshot_items(snapshot, rows)
     _stamp_snapshot_pull(snapshot, rows, resolved)
-    if resolved:
-        record_version_totals(snapshot, resolved, rows)
+    _record_snapshot_history(snapshot, rows, resolved)
     db.session.commit()
 
     logger.info(
@@ -243,8 +242,8 @@ def _resolve_version_label(fq: str, rows: list[dict], pull_version: str,
                            territories: list[str] | None) -> str | None:
     """Turn the version we asked for into the dated member we actually got.
 
-    ``'current'`` is an alias, so it has to be resolved by probing before it can
-    be stored. Failing to resolve is not fatal - we just don't know the date.
+    Only an identical dated publication establishes a publication date.
+    An unmatched current payload is saved as a dated observation instead.
     """
     from app.services.u2c_pull import (
         CURRENT_VERSION, U2CPullError, resolve_current_version,
@@ -325,29 +324,39 @@ def _stamp_snapshot_pull(snapshot: U2CSnapshot, rows: list[dict],
 
     snapshot.content_fingerprint = fingerprint_rows(rows)
     snapshot.last_refreshed_at = datetime.now(timezone.utc)
-    if version:
-        snapshot.msxi_version = version
+    snapshot.msxi_version = version
+
+
+def _record_snapshot_history(snapshot: U2CSnapshot, rows: list[dict],
+                             version: str | None) -> None:
+    """Preserve an unmatched payload under its observation date, not a guessed publish date."""
+    key = version or f'{OBSERVED_VERSION_PREFIX}{date.today():%Y%m%d}'
+    record_version_totals(snapshot, key, rows)
 
 
 def record_version_totals(snapshot: U2CSnapshot, version: str,
                           rows: list[dict]) -> U2CSnapshotVersion | None:
-    """Store one weekly version's aggregates for the attainment trend.
+    """Store a publication or update the latest observation for one local day.
 
-    Dated MSXi versions are immutable, so an already-stored version is left
-    alone. Returns the new row, or None if it already existed or the version
-    isn't a parseable date (e.g. the ``'current'`` alias, which we only store
-    once resolved to a real date).
+    Published history stays unchanged once complete. Observation keys carry
+    an explicit prefix and never claim to be a source publication identifier.
     """
     from app.services.u2c_pull import version_to_date
 
-    version_date = version_to_date(version)
+    observed = version.startswith(OBSERVED_VERSION_PREFIX)
+    version_date = version_to_date(version.removeprefix(OBSERVED_VERSION_PREFIX))
     if version_date is None:
+        logger.warning("Skipping invalid U2C history version %r", version)
+        return None
+    start, end = fiscal_quarter_date_range(snapshot.fiscal_quarter)
+    if not start <= version_date <= end:
+        logger.info("Skipping U2C history %s outside %s", version, snapshot.fiscal_quarter)
         return None
 
     entry = U2CSnapshotVersion.query.filter_by(
         snapshot_id=snapshot.id, msxi_version=version,
     ).first()
-    if entry is not None and _version_is_complete(entry):
+    if entry is not None and not observed and _version_is_complete(entry):
         return None  # fully stored; dated MSXi versions never change
 
     if entry is None:
@@ -363,6 +372,8 @@ def record_version_totals(snapshot: U2CSnapshot, version: str,
         U2CSnapshotVersionItem.query.filter_by(version_id=entry.id).delete()
         db.session.flush()
 
+    if observed:
+        entry.captured_at = datetime.now(timezone.utc)
     entry.total_items = len(rows)
     entry.total_starting_acr = round(
         sum(float(r.get('starting_acr') or 0.0) for r in rows), 2)
@@ -502,13 +513,14 @@ def refresh_official_snapshot(territories: list[str] | None = None) -> dict:
         return _refresh_previous_quarter(fq, territories)
 
     existing = U2CSnapshot.query.filter_by(fiscal_quarter=fq).first()
-    is_new_quarter = existing is None
 
     if existing and existing.content_fingerprint == fingerprint_rows(rows):
         # Same weekly load. Note that we looked, but don't churn the items.
-        existing.last_refreshed_at = datetime.now(timezone.utc)
+        resolved = _resolve_version_label(fq, rows, CURRENT_VERSION, territories)
+        _stamp_snapshot_pull(existing, rows, resolved)
+        _record_snapshot_history(existing, rows, resolved)
         db.session.commit()
-        return {
+        result = {
             'success': True,
             'outcome': OUTCOME_UNCHANGED,
             'fiscal_quarter': fq,
@@ -516,6 +528,10 @@ def refresh_official_snapshot(territories: list[str] | None = None) -> dict:
             'msxi_version': existing.msxi_version,
             'total_items': existing.total_items,
         }
+        closed_out = _close_previous_quarter(fq, territories)
+        if closed_out is not None:
+            result['closed_out'] = closed_out
+        return result
 
     result = import_official_snapshot(
         fq, territories=territories, replace=True, version=CURRENT_VERSION,
@@ -537,12 +553,21 @@ def refresh_official_snapshot(territories: list[str] | None = None) -> dict:
         result['versions_backfilled'] = backfill_version_history(
             snapshot, territories=territories)
 
-    if is_new_quarter and snapshot:
-        # First sight of this quarter means the previous one has rolled over.
-        result['closed_out'] = close_out_quarter(
-            previous_fiscal_quarter(fq), territories=territories)
+    if snapshot:
+        closed_out = _close_previous_quarter(fq, territories)
+        if closed_out is not None:
+            result['closed_out'] = closed_out
 
     return result
+
+
+def _close_previous_quarter(fq: str, territories: list[str] | None) -> dict | None:
+    """Retry unfinished finalization even if the new quarter was already imported."""
+    previous = previous_fiscal_quarter(fq)
+    snapshot = U2CSnapshot.query.filter_by(fiscal_quarter=previous).first()
+    if snapshot is None or snapshot.is_final:
+        return None
+    return close_out_quarter(previous, territories=territories)
 
 
 def _refresh_previous_quarter(fq: str, territories: list[str] | None) -> dict:
@@ -649,24 +674,19 @@ def close_out_quarter(fq_label: str,
                       territories: list[str] | None = None) -> dict:
     """Capture a rolled-over quarter's final numbers, then freeze it.
 
-    MSXi stops serving a quarter once the next one becomes current, but retained
-    weekly versions from *before* the rollover still hold that quarter's data
-    for roughly seven weeks. Walking those versions newest-first finds the last
-    load published while the quarter was live - its true final state - even if
-    the machine was switched off when the rollover happened.
-
-    Best-effort by design: if no retained version still resolves, whatever the
-    daily refresh last captured stands, which is at most a day stale.
+    Try retained publications within that quarter, newest first. If the source
+    no longer serves them, preserve the last locally saved snapshot. Its age
+    depends on the last successful refresh; offline machines can have older data.
 
     Args:
         fq_label: The quarter that just ended, e.g. 'FY26 Q4'.
         territories: Territory codes, defaulting to the configured ones.
 
     Returns:
-        Dict describing what happened. Never raises.
+        Dict describing the source used. Storage failures propagate for retry.
     """
     from app.services.u2c_pull import (
-        DEFAULT_HISTORY_WEEKS, U2CPullError, candidate_versions,
+        DEFAULT_HISTORY_WEEKS, U2CPullError, quarter_versions,
         pull_u2c_milestones,
     )
 
@@ -676,7 +696,7 @@ def close_out_quarter(fq_label: str,
     if snapshot.is_final:
         return {'success': True, 'reason': 'already_final', 'fiscal_quarter': fq_label}
 
-    for version in candidate_versions(DEFAULT_HISTORY_WEEKS):
+    for version in quarter_versions(fq_label, DEFAULT_HISTORY_WEEKS):
         try:
             rows = pull_u2c_milestones(fq_label, territories=territories,
                                        version=version)
@@ -922,6 +942,10 @@ def get_attainment_trend(snapshot_id: int,
         .order_by(U2CSnapshotVersion.version_date)
         .all()
     )
+    snapshot = db.session.get(U2CSnapshot, snapshot_id)
+    if snapshot is None:
+        return []
+    start, end = fiscal_quarter_date_range(snapshot.fiscal_quarter)
 
     committed_sum = db.func.sum(
         db.case(
@@ -934,6 +958,8 @@ def get_attainment_trend(snapshot_id: int,
 
     points = []
     for version in versions:
+        if not start <= version.version_date <= end:
+            continue
         if workload_prefix:
             if not version.items.count():
                 continue  # totals-only week: can't answer a filtered question
@@ -959,9 +985,12 @@ def get_attainment_trend(snapshot_id: int,
             converted = version.total_converted_acr
 
         pct = round((committed / starting) * 100, 1) if starting else 0.0
+        observed = version.msxi_version.startswith(OBSERVED_VERSION_PREFIX)
+        label = version.version_date.strftime('%b %d')
         points.append({
             'date': version.version_date.isoformat(),
-            'label': version.version_date.strftime('%b %d'),
+            'label': f'{label} (observed)' if observed else label,
+            'source': 'observed' if observed else 'published',
             'items': count,
             'starting_acr': round(starting, 2),
             'committed_acr': round(committed, 2),

@@ -1,7 +1,8 @@
 # Plan: Connect Goals Action Center and Future Custom Reports
 
-**Status:** Proposed
-**Last updated:** 2026-09-23
+**Status:** V1 implemented and shipped. Retained for Phase 2 observation, future
+custom report pages, deferred widget concepts, and outstanding manager confirmations.
+**Last updated:** 2026-10-16
 **Reference:** `Connect.html` in the repository root
 
 ## Goal

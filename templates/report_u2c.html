@@ -75,7 +75,7 @@
             {% endif %}
             <div class="u2c-refresh u2c-inline is-loose">
                 {% if snapshot %}
-                <span class="u2c-caption u2c-muted" title="MSXi publishes a new snapshot version weekly; Sales Buddy checks daily.">
+                <span class="u2c-caption u2c-muted" title="Sales Buddy checks MSXi daily. If no publication date matches, history is labeled observed.">
                     <i class="bi bi-clock-history"></i>
                     {% if snapshot.msxi_version_date %}
                     MSXi data as of {{ snapshot.msxi_version_date.strftime('%b %d, %Y') }}
@@ -168,7 +168,7 @@
             <span id="trendScope" class="u2c-tag u2c-muted is-hidden"></span>
         </h2>
         <small class="u2c-muted">
-            Published MSXi snapshots{% if trend.get('', []) and trend[''][-1].get('source') == 'live' %} + Today (live commitment status, snapshot ACR){% endif %}
+            Saved MSXi history{% if trend.get('', []) and trend[''][-1].get('source') == 'live' %} + Today (live commitment status, snapshot ACR){% endif %}
         </small>
     </div>
     <div class="u2c-section-body">
@@ -176,7 +176,7 @@
             <canvas id="u2cTrendChart"></canvas>
         </div>
         <div id="trendEmpty" class="u2c-muted u2c-caption is-hidden">
-            No published snapshots or Today point are available for this workload.
+            No saved history or Today point is available for this workload.
         </div>
     </div>
 </div>
@@ -503,7 +503,7 @@ function renderU2cTrend(prefix) {
     if (!canvas) return;
 
     const points = TREND_SERIES[prefix || ''] || [];
-    const published = points.filter(p => p.source !== 'live');
+    const history = points.filter(p => p.source !== 'live');
     const live = points.filter(p => p.source === 'live');
     const empty = document.getElementById('trendEmpty');
     const scope = document.getElementById('trendScope');
@@ -525,7 +525,7 @@ function renderU2cTrend(prefix) {
 
     if (u2cTrendChart) {
         u2cTrendChart.data.datasets[0].data = u2cTrendPoints(
-            published, 'committed_acr');
+            history, 'committed_acr');
         u2cTrendChart.data.datasets[1].data = u2cTrendPoints(
             points, 'starting_acr');
         u2cTrendChart.data.datasets[2].data = u2cGoalPoints(points);
@@ -540,7 +540,7 @@ function renderU2cTrend(prefix) {
             datasets: [
                 {
                     label: 'Snapshot committed ACR',
-                    data: u2cTrendPoints(published, 'committed_acr'),
+                    data: u2cTrendPoints(history, 'committed_acr'),
                     borderColor: colors.committed,
                     pointBackgroundColor: colors.committed,
                     pointBorderColor: colors.committed,

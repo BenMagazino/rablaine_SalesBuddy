@@ -677,15 +677,27 @@ def version_to_date(version: str) -> Optional[date]:
         return None
 
 
+def quarter_versions(fq_label: str, weeks: int = DEFAULT_HISTORY_WEEKS) -> list[str]:
+    """Return candidate publication dates within the requested fiscal quarter."""
+    from app.services.u2c_snapshot import fiscal_quarter_date_range
+
+    start, end = fiscal_quarter_date_range(fq_label)
+    return [
+        version for version in candidate_versions(weeks)
+        if (published := version_to_date(version)) is not None and start <= published <= end
+    ]
+
+
 def resolve_current_version(fq_label: str,
                             territories: Optional[list[str]] = None,
                             current_rows: Optional[list[dict]] = None,
                             weeks: int = DEFAULT_HISTORY_WEEKS) -> Optional[str]:
-    """Work out which dated version ``'current'`` is currently aliasing.
+    """Find a dated publication whose complete payload matches ``'current'``.
 
     MSXi exposes no column carrying the load date - ``SnapshotDateID`` projects
     the literal string ``'current'`` when that's what you filtered on - so we
-    identify it by matching payloads against dated members, newest first.
+    try matching payloads against dated members, newest first. A current
+    payload can differ from every publication; never infer a date in that case.
 
     Normally costs a single extra query: the most recent Tuesday is usually the
     one ``'current'`` points at.
@@ -708,7 +720,7 @@ def resolve_current_version(fq_label: str,
         return None
 
     target = fingerprint_rows(rows)
-    for version in candidate_versions(weeks):
+    for version in quarter_versions(fq_label, weeks):
         try:
             dated = pull_u2c_milestones(fq_label, territories=territories,
                                         version=version)
@@ -719,7 +731,7 @@ def resolve_current_version(fq_label: str,
             continue  # gap week or expired
         if fingerprint_rows(dated) == target:
             return version
-    logger.info("Could not resolve which dated version 'current' aliases for %s",
+    logger.info("No matching dated publication for the current U2C payload for %s",
                 fq_label)
     return None
 
@@ -748,7 +760,7 @@ def pull_version_series(fq_label: str,
     """
     skip = skip or set()
     found: list[tuple[str, list[dict]]] = []
-    for version in candidate_versions(weeks):
+    for version in quarter_versions(fq_label, weeks):
         if version in skip:
             continue
         try:

@@ -2644,15 +2644,16 @@ class U2CSnapshotItem(db.Model):
 
 
 class U2CSnapshotVersion(db.Model):
-    """One MSXi weekly snapshot version's totals for a fiscal quarter.
+    """One MSXi publication or dated observation for a fiscal quarter.
 
     MSXi's "Snapshot Version" slicer exposes roughly seven weeks of Tuesday
     loads before older ones expire.  We copy each version's aggregates here the
     first time we see it, so the quarter's attainment trend survives long after
     MSXi has dropped the underlying version.
 
-    Rows are write-once: a dated MSXi version is immutable, so a version we have
-    already stored never needs re-fetching.
+    Complete published versions are preserved as captured. An ``observed:YYYYMMDD``
+    key stores the latest current payload seen on that local day when its source
+    publication date cannot be resolved.
 
     Note that ``total_converted_acr`` is **not** monotonic - MSXi restates
     conversions downward between loads - so this is a true time series, not a

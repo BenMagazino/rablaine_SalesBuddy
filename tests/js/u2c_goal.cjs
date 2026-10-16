@@ -20,6 +20,7 @@ let chart;
 const context = vm.createContext({
     document: {
         body: {},
+        querySelector: () => null,
         getElementById: id => elements[id] || null,
         addEventListener() {},
         querySelectorAll: selector => {
@@ -28,6 +29,7 @@ const context = vm.createContext({
             return [];
         },
     },
+    window: {SBSyncProgress: {create: () => null}},
     localStorage: {setItem() {}, removeItem() {}},
     SBU2c: {...native, writePreference() {}, chartColors: () => ({
         muted: 'rgb(150, 150, 150)', grid: 'rgb(70, 70, 70)', text: 'rgb(220, 220, 220)',
@@ -53,6 +55,8 @@ assert.equal(chart.data.datasets[2].label, '40% goal');
 assert.equal(chart.data.datasets[2].data.at(-1).y, 6151.2);
 assert.ok(chart.data.datasets[3].data.at(-1).y > chart.data.datasets[2].data.at(-1).y);
 assert.ok(chart.data.datasets[0].data.every(point => point.source !== 'live'));
+assert.ok(chart.data.datasets[0].data.some(point =>
+    point.source === 'observed' && point.label.includes('(observed)')));
 assert.equal(chart.data.datasets[3].data.length, 1);
 assert.equal(chart.data.datasets[3].data[0].source, 'live');
 assert.equal(chart.data.datasets[3].showLine, false);

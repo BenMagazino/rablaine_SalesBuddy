@@ -20,6 +20,28 @@ from app.services.u2c_snapshot import (
 )
 
 
+@pytest.fixture(autouse=True)
+def u2c_clock(monkeypatch):
+    """Keep the September source fixtures independent of the machine's current date."""
+    import app.services.u2c_pull as pull_module
+    import app.services.u2c_snapshot as snapshot_module
+
+    class U2CDate(date):
+        """Controllable date-only clock; server timestamps remain real UTC."""
+
+        reference = date(2026, 9, 21)
+
+        @classmethod
+        def today(cls):
+            """Return the date used by this test's fiscal-quarter logic."""
+            return cls.reference
+
+    monkeypatch.setattr(pull_module, 'date', U2CDate)
+    monkeypatch.setattr(snapshot_module, 'date', U2CDate)
+    monkeypatch.setattr(__name__ + '.date', U2CDate)
+    return U2CDate
+
+
 def make_snapshot(fq_label=None):
     """Build a snapshot from locally synced milestones. Test scaffolding only.
 
@@ -1681,6 +1703,7 @@ class TestLiveAttainmentTrend:
         with app.app_context():
             snapshot, reference, rows = self._seed(u2c_data)
             record_version_totals(snapshot, reference.strftime('%Y%m%d'), rows)
+            record_version_totals(snapshot, f'observed:{reference:%Y%m%d}', rows)
             db.session.commit()
         response = client.get('/reports/u2c')
         soup = BeautifulSoup(response.data, 'html.parser')
@@ -2064,3 +2087,129 @@ class TestCloseOutQuarter:
             result = close_out_quarter('FY20 Q1')
             assert result['success'] is False
             assert result['reason'] == 'no_snapshot'
+
+
+class TestRolloverCompletion:
+    """Quarter bounds and truthful history when current has no matching publication."""
+
+    def test_backfill_never_probes_dates_outside_the_quarter(self, monkeypatch):
+        """A retained September member is not an October-quarter history point."""
+        import app.services.u2c_pull as pull
+
+        calls = []
+        monkeypatch.setattr(pull, 'candidate_versions',
+                            lambda weeks: ['20270105', '20261006', '20260929'])
+        monkeypatch.setattr(
+            pull, 'pull_u2c_milestones',
+            lambda fq, territories=None, version=None: calls.append(version) or [_msxi_row()],
+        )
+        series = pull.pull_version_series('FY27 Q2')
+        assert calls == ['20261006']
+        assert [version for version, _ in series] == ['20261006']
+
+    def test_unmatched_current_is_saved_as_an_observation_not_a_publication(
+        self, app, monkeypatch, u2c_clock,
+    ):
+        """An unknown source date must not lose history or retain an old date."""
+        import app.services.u2c_pull as pull
+        from app.services.u2c_snapshot import get_attainment_trend, refresh_official_snapshot
+
+        u2c_clock.reference = date(2026, 10, 16)
+        rows = [_msxi_row(converted_acr=8000.0)]
+        monkeypatch.setattr(pull, 'pull_u2c_milestones',
+                            lambda fq, territories=None, version=None: rows)
+        monkeypatch.setattr(pull, 'resolve_current_version', lambda *args, **kwargs: None)
+        monkeypatch.setattr(pull, 'pull_version_series', lambda *args, **kwargs: [])
+        with app.app_context():
+            snapshot = U2CSnapshot(
+                fiscal_quarter='FY27 Q2', msxi_version='20261013',
+                content_fingerprint='old-payload',
+            )
+            db.session.add(snapshot)
+            db.session.commit()
+            refresh_official_snapshot()
+            assert snapshot.msxi_version is None
+            trend = get_attainment_trend(snapshot.id)
+            assert len(trend) == 1
+            assert trend[0]['date'] == '2026-10-16'
+            assert trend[0]['source'] == 'observed'
+            assert 'observed' in trend[0]['label'].lower()
+            assert trend[0]['msxi_converted_acr'] == 8000.0
+
+    def test_observations_update_today_without_losing_previous_days(
+        self, app, monkeypatch, u2c_clock,
+    ):
+        """Keep one accurate observation per local day, even for unchanged pulls."""
+        import app.services.u2c_pull as pull
+        from app.services.u2c_snapshot import get_attainment_trend, refresh_official_snapshot
+
+        u2c_clock.reference = date(2026, 10, 15)
+        rows = [_msxi_row(converted_acr=8000.0)]
+        monkeypatch.setattr(pull, 'pull_u2c_milestones',
+                            lambda fq, territories=None, version=None: rows)
+        monkeypatch.setattr(pull, 'resolve_current_version', lambda *args, **kwargs: None)
+        monkeypatch.setattr(pull, 'pull_version_series', lambda *args, **kwargs: [])
+        with app.app_context():
+            refresh_official_snapshot()
+            snapshot = U2CSnapshot.query.one()
+            rows[0]['converted_acr'] = 6000.0
+            refresh_official_snapshot()
+            assert U2CSnapshotVersion.query.count() == 1
+            assert get_attainment_trend(snapshot.id)[0]['msxi_converted_acr'] == 6000.0
+            u2c_clock.reference = date(2026, 10, 16)
+            refresh_official_snapshot()
+            trend = get_attainment_trend(snapshot.id)
+            assert [point['date'] for point in trend] == ['2026-10-15', '2026-10-16']
+            assert all(point['msxi_converted_acr'] == 6000.0 for point in trend)
+            assert all(version.items.count() == 1 for version in U2CSnapshotVersion.query)
+
+    def test_existing_out_of_quarter_history_is_hidden_not_deleted(self, app):
+        """Correct old histories without destroying stored evidence."""
+        from app.services.u2c_snapshot import get_attainment_trend
+
+        with app.app_context():
+            snapshot = U2CSnapshot(fiscal_quarter='FY27 Q2')
+            db.session.add(snapshot)
+            db.session.flush()
+            for version in ['20260929', '20261006', '20270105']:
+                db.session.add(U2CSnapshotVersion(
+                    snapshot_id=snapshot.id, msxi_version=version,
+                    version_date=datetime.strptime(version, '%Y%m%d').date(),
+                ))
+            db.session.commit()
+            assert [point['date'] for point in get_attainment_trend(snapshot.id)] == [
+                '2026-10-06']
+            assert U2CSnapshotVersion.query.count() == 3
+
+    def test_close_out_retries_after_the_new_quarter_has_already_been_imported(
+        self, app, monkeypatch, u2c_clock,
+    ):
+        """A failed finalization must not be skipped by an unchanged new-quarter pull."""
+        import app.services.u2c_snapshot as service
+
+        u2c_clock.reference = date(2026, 10, 16)
+        FakeMsxi('FY27 Q2', {'20261013': 5000.0}).install(monkeypatch)
+        close_out = service.close_out_quarter
+        attempts = []
+
+        def fail_once(fq, territories=None):
+            """Simulate interruption after the new quarter was already saved."""
+            attempts.append(fq)
+            if len(attempts) == 1:
+                raise RuntimeError('interrupted close-out')
+            return close_out(fq, territories=territories)
+
+        monkeypatch.setattr(service, 'close_out_quarter', fail_once)
+        with app.app_context():
+            old = U2CSnapshot(fiscal_quarter='FY27 Q1', total_items=39,
+                              total_monthly_acr=124978.0, msxi_version='20260929')
+            db.session.add(old)
+            db.session.commit()
+            with pytest.raises(RuntimeError, match='interrupted close-out'):
+                service.refresh_official_snapshot()
+            result = service.refresh_official_snapshot()
+            assert result['outcome'] == service.OUTCOME_UNCHANGED
+            assert old.is_final is True
+            assert old.total_items == 39
+            assert old.total_monthly_acr == 124978.0
+            assert attempts == ['FY27 Q1', 'FY27 Q1']
