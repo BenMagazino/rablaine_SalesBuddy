@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/16/2026
+## 10/16/2026 - 74fab465
 
 - Import Copilot follow-ups even when WorkIQ returns a numbered list instead of JSON, preserving existing suggestions if the response cannot be parsed.
 
