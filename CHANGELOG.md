@@ -8,6 +8,12 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/16/2026
+
+- Make meeting imports more reliable, including saved Internal Contact matching and WorkIQ responses with extra commentary.
+- Keep applied MSX Workspace filters through reloads and newly opened report windows.
+- Hide completed milestones from seller summaries and restore the Home Action Items calendar grid.
+
 ## 10/16/2026 - 691276f6
 
 - *Electron Shell Update* - Show a glowing loading line while opening pages or processing actions, enabled by default with Appearance controls to turn it off, preview it, and adjust its brightness.

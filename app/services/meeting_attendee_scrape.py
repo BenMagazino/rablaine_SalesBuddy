@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from app.models import (
     db, Customer, CustomerContact, Partner, PartnerContact,
-    Seller, SolutionEngineer,
+    Seller, SolutionEngineer, InternalContact,
 )
 
 logger = logging.getLogger(__name__)
@@ -226,7 +226,7 @@ def _categorize_attendees(
     """Categorize each attendee into a type with match info.
 
     Categories:
-    - microsoft: matched to seller/SE by alias
+    - microsoft: matched to seller, SE, or internal contact by alias or name
     - customer_contact: matched to existing customer contact or domain
     - partner_contact: matched to existing partner contact or domain
     - new_partner: unknown external domain, suggest creating partner
@@ -251,19 +251,16 @@ def _categorize_attendees(
         if c.email:
             partner_contacts_by_email[c.email.lower()] = c
 
-    sellers_by_alias = {}
-    sellers_by_name = {}
-    for s in Seller.query.all():
-        if s.alias:
-            sellers_by_alias[s.alias.lower()] = s
-        sellers_by_name[s.name.lower()] = s
-
-    ses_by_alias = {}
-    ses_by_name = {}
-    for se in SolutionEngineer.query.all():
-        if se.alias:
-            ses_by_alias[se.alias.lower()] = se
-        ses_by_name[se.name.lower()] = se
+    people_by_alias = {}
+    people_by_name = {}
+    for ref_type, model in [
+        ('seller', Seller), ('se', SolutionEngineer), ('internal_contact', InternalContact),
+    ]:
+        for person in model.query.all():
+            if person.alias:
+                alias = person.alias.strip().lower().removesuffix('@microsoft.com')
+                people_by_alias.setdefault(alias, (ref_type, person))
+            people_by_name.setdefault(person.name.strip().lower(), (ref_type, person))
 
     result = []
     seen_emails = set()
@@ -299,33 +296,19 @@ def _categorize_attendees(
             "new_partner_domain": None,
         }
 
-        # Microsoft employees -> match to seller or SE
+        # Prefer a known alias over display-name matches across all internal person types.
         if domain == "microsoft.com":
-            # Try alias match (exact and without dots for vanity emails)
             alias_nodots = alias.replace(".", "")
-            seller = (sellers_by_alias.get(alias)
-                      or sellers_by_alias.get(alias_nodots))
-            se = (ses_by_alias.get(alias)
-                  or ses_by_alias.get(alias_nodots))
-            # Fallback: match by name
-            if not seller and not se and name:
-                seller = sellers_by_name.get(name.lower())
-            if not seller and not se and name:
-                se = ses_by_name.get(name.lower())
-            if seller:
-                entry["category"] = "microsoft"
-                entry["ref_type"] = "seller"
-                entry["ref_id"] = seller.id
+            match = (people_by_alias.get(alias) or people_by_alias.get(alias_nodots)
+                     or people_by_name.get(name.lower()))
+            entry["category"] = "microsoft"
+            if match:
+                ref_type, person = match
+                entry["ref_type"] = ref_type
+                entry["ref_id"] = person.id
                 entry["is_new_contact"] = False
-                entry["name"] = seller.name
-            elif se:
-                entry["category"] = "microsoft"
-                entry["ref_type"] = "se"
-                entry["ref_id"] = se.id
-                entry["is_new_contact"] = False
-                entry["name"] = se.name
+                entry["name"] = person.name
             else:
-                entry["category"] = "microsoft"
                 entry["ref_type"] = "external"
                 entry["is_new_contact"] = True
                 entry["checked"] = True  # Default checked - save as external attendee

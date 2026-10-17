@@ -54,11 +54,11 @@
             </nav>
             <section class="sd-panel" id="sdMilestones" role="tabpanel" aria-labelledby="sdMilestonesTab">
                 <header class="sd-panel-header">
-                    <p>Uncommitted, on your team. Excludes Cancelled, Lost to Competitor and Hygiene/Duplicate.</p>
+                    <p>Uncommitted, on your team. On Track, At Risk and Blocked milestones only.</p>
                     {% if milestones %}<button type="button" class="sb-dialog-button" data-sb-dialog="milestonesModal"><i class="bi bi-arrows-fullscreen" aria-hidden="true"></i> Full View</button>{% endif %}
                 </header>
                 <div class="sd-reading" data-sd-scroll="milestones">
-                    {% set active = milestones|rejectattr('customer_commitment', 'equalto', 'Committed')|rejectattr('status', 'in', ['Cancelled', 'Lost to Competitor', 'Hygiene/Duplicate'])|list %}
+                    {% set active = milestones|rejectattr('customer_commitment', 'equalto', 'Committed')|selectattr('status', 'in', ['On Track', 'At Risk', 'Blocked'])|list %}
                     {% if active %}
                     <table class="sd-table" data-sb-sortable data-sb-sort-key="seller-{{ seller.id }}-milestones">
                         <thead><tr>{% for label, type in [('Milestone', 'text'), ('Customer', 'text'), ('Workload', 'text'), ('Status', 'text'), ('Due', 'date'), ('ACR/mo', 'number')] %}<th scope="col" data-sb-sort-type="{{ type }}" data-export-label="{{ label }}">{{ label }}</th>{% endfor %}</tr></thead>

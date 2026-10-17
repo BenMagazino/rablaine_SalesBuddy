@@ -45,7 +45,7 @@ def test_complete_native_inventory(client, sample_data):
     assert not root.select('.card, .badge, .btn, .modal, [data-bs-toggle]')
     for asset in ('ui-dialog.js', 'ui-table-sort.js', 'ui-seller-detail.js',
                   'ui-engagements-directory.js'):
-        assert len(soup.select(f'script[src="/static/js/{asset}"]')) == 1
+        assert len(soup.select(f'script[src^="/static/js/{asset}"]')) == 1
 
 
 def test_embed_uses_exact_seller_provider_scope(client, sample_data):
@@ -86,6 +86,7 @@ def test_milestone_populations_full_consumer_and_raw_values(client, sample_data)
         ('Visible "milestone" <test>', 'On Track', 'Uncommitted', True),
         ('Committed remains in Full View', 'On Track', 'Committed', True),
         ('Cancelled remains in Full View', 'Cancelled', 'Uncommitted', True),
+        ('Completed remains in Full View', 'Completed', 'Uncommitted', True),
         ('Not on team', 'On Track', 'Uncommitted', False),
     ]:
         records.append(Milestone(
@@ -109,9 +110,9 @@ def test_milestone_populations_full_consumer_and_raw_values(client, sample_data)
     ]
     tracker = soup.select_one('dialog#milestonesModal .milestone-tracker-instance')
     assert tracker['data-locked-seller'] == str(seller_id)
-    for record in records[:3]:
+    for record in records[:4]:
         assert record.title in tracker.get_text()
-    assert records[3].title not in soup.get_text()
+    assert records[4].title not in soup.get_text()
     assert soup.select_one(f'#milestonesModal a[href="/reports/milestone-tracker?seller={seller_id}"]')
     for role in ('searchFilter', 'customerFilter', 'myTeamFilter', 'commitmentFilter',
                  'urgencyFilter'):

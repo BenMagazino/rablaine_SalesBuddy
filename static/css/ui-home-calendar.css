@@ -1,15 +1,15 @@
 /* Calendar geometry and customer/semantic colors from the approved theme-pairs archive. */
-.sb-home-calendar #calendarTable {
+.sb-home-calendar :is(#calendarTable, #tasksCalendarTable) {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
 }
-.sb-home-calendar #calendarTable :is(th, td) {
+.sb-home-calendar :is(#calendarTable, #tasksCalendarTable) :is(th, td) {
     width: calc(100% / 7);
     border: 1px solid var(--sb-ui-grid-line);
 }
-.sb-home-calendar #calendarTable th { text-align: center; }
-.sb-home-calendar #calendarTable td {
+.sb-home-calendar :is(#calendarTable, #tasksCalendarTable) th { text-align: center; }
+.sb-home-calendar :is(#calendarTable, #tasksCalendarTable) td {
     padding: 10px 7px;
     vertical-align: top;
     background: var(--sb-ui-surface);

@@ -144,20 +144,27 @@ def _extract_json_array(response: str) -> List[Dict[str, Any]]:
     malformed. The explicit ``calendar_query_status`` distinguishes a
     confirmed empty calendar from a failed lookup. Legacy non-empty arrays
     remain supported, but bare ``[]`` is rejected because WorkIQ emits it
-    for both conditions.
+    for both conditions. Complete envelopes may have surrounding prose or
+    citations, but conflicting envelopes and truncated JSON are rejected.
     """
     if not response:
         raise ValueError("empty WorkIQ response")
     from app.services.workiq_service import repair_json_control_chars
 
-    code_match = _JSON_CODE_BLOCK_RE.search(response)
-    candidate = code_match.group(1).strip() if code_match else response
+    code_blocks = _JSON_CODE_BLOCK_RE.findall(response)
+    candidate = '\n'.join(code_blocks).strip() if code_blocks else response
 
     if '"calendar_query_status"' in candidate:
+        start = candidate.find('{')
+        if start < 0:
+            raise ValueError("calendar response envelope is not an object")
+        raw = repair_json_control_chars(candidate[start:])
         try:
-            envelope = json.loads(repair_json_control_chars(candidate))
+            envelope, end = json.JSONDecoder().raw_decode(raw)
         except json.JSONDecodeError as exc:
             raise ValueError(f"JSON envelope parse failed: {exc}") from exc
+        if re.search(r'\{\s*"', raw[end:]):
+            raise ValueError("multiple calendar response payloads")
         if not isinstance(envelope, dict):
             raise ValueError("calendar response envelope is not an object")
 

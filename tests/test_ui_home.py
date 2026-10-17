@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 from itertools import product
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -93,6 +94,18 @@ def test_action_item_preview_retains_native_fields_and_commands(app: Flask) -> N
     assert soup.select_one('script[src^="/static/js/ui-action-item-dialog.js"]')
 
 
+def test_action_calendar_uses_the_shared_native_grid(app: Flask) -> None:
+    """The task calendar has explicit grid styling without Bootstrap table classes."""
+    soup = render_home(app, task_due_count=1)
+    table = soup.find(id='tasksCalendarTable')
+    assert 'sb-home-calendar-table' in table['class']
+    assert not {'table', 'table-bordered'}.intersection(table['class'])
+    assert len(table.select('thead th')) == 7
+    css = (Path(__file__).parents[1] / 'static' / 'css' / 'ui-home-calendar.css').read_text()
+    assert '.sb-home-calendar :is(#calendarTable, #tasksCalendarTable) :is(th, td)' in css
+    assert 'border: 1px solid var(--sb-ui-grid-line)' in css
+
+
 @pytest.mark.parametrize("engagements,projects,tasks", list(product([False, True], repeat=3)))
 def test_home_frame_and_tabs_exist_in_every_conditional_branch(
     app: Flask, engagements: bool, projects: bool, tasks: bool,
@@ -157,7 +170,7 @@ def test_home_live_route_keeps_calendar_and_empty_destinations(client: FlaskClie
     assert soup.find(id="quickCreateModal")
     assert soup.find(id="homeNoteDetailModal")
     assert b"new bootstrap.Tab" not in response.data
-    assert b"function triggerDaySync(dateStr, wrapEl)" in response.data
+    assert b"function triggerDaySync(dateStr)" in response.data
     assert b"function openQuickCreateModal(dateStr, meetingId = null)" in response.data
     assert not soup.select("body > footer")
     assert root.select_one('nav[aria-label="Breadcrumb"] [aria-current="page"]').text == "Home"

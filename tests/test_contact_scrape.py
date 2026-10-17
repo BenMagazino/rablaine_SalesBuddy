@@ -5,8 +5,32 @@ from unittest.mock import patch, MagicMock
 
 from app.models import (
     db, Partner, PartnerContact, Customer, CustomerContact,
-    Seller, SolutionEngineer, Specialty, Note,
+    Seller, SolutionEngineer, Specialty, Note, InternalContact,
 )
+
+
+@pytest.mark.parametrize('name,email', [
+    ('Imported display name', 'knowninternal@microsoft.com'),
+    ('Imported display name', 'Known.Internal@Microsoft.com'),
+    ('Known Internal Contact', 'different-alias@microsoft.com'),
+])
+def test_meeting_import_matches_internal_contacts(app, sample_data, name, email):
+    """Meeting imports reuse known internal contacts by alias or display name."""
+    from app.services.meeting_attendee_scrape import _categorize_attendees
+
+    with app.app_context():
+        contact = InternalContact(name='Known Internal Contact', alias='knowninternal')
+        db.session.add(contact)
+        db.session.flush()
+        try:
+            attendee = _categorize_attendees([{'name': name, 'email': email}])[0]
+            assert attendee['category'] == 'microsoft'
+            assert attendee['ref_type'] == 'internal_contact'
+            assert attendee['ref_id'] == contact.id
+            assert attendee['name'] == contact.name
+            assert attendee['is_new_contact'] is False
+        finally:
+            db.session.rollback()
 
 
 class TestPartnerScrapeService:
@@ -61,11 +85,10 @@ class TestPartnerScrapeService:
         assert result['meetings_found'] == 5
 
     def test_parse_response_invalid(self, app):
-        """Parse garbage response returns empty."""
+        """An unreadable WorkIQ response raises an explicit, retryable error."""
         from app.services.partner_scrape import _parse_response
-        result = _parse_response('I could not find any data for this partner.')
-        assert result['contacts'] == []
-        assert result['meetings_found'] == 0
+        with pytest.raises(ValueError, match='WorkIQ returned unreadable results'):
+            _parse_response('I could not find any data for this partner.')
 
     def test_match_contacts_new(self, app, sample_data):
         """New contacts are marked as is_new."""
