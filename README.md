@@ -223,7 +223,9 @@ standalone UI iterations using entirely fictional data. See the
 - **Engagement dossier** - the complete story and relationships sit alongside follow-ups and notes in native reading panes. Full pages and action-queue embeds share guarded rich task editors, original APIs and retained failed-save entries; note and shared task editors preserve rich descriptions too.
 - **MSX Workspace** - browse cached opportunities, milestones and open tasks in native
   tabs with independent reading regions, raw-value column sorting and restored scope
-  on Back. Existing MSX details, forecast comments, team actions and task workflows
+  on Back. Applied filters are saved in localStorage for reloads and new report windows;
+  task drafts and reading positions stay local to each window. Existing MSX details,
+  forecast comments, team actions and task workflows
   remain available; failed task creation keeps the draft for retry.
 - **AI Assistant** - auto-suggest topics, match milestones, analyze calls, generate Connect summaries (Azure OpenAI)
 - **WorkIQ Integration** - import Teams meeting summaries directly into notes

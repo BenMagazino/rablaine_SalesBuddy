@@ -437,11 +437,60 @@ window.addEventListener('DOMContentLoaded', function() {
         if (remember) {
             localStorage.setItem('msxWorkspaceTab', id);
             saveView();
+            persistFilters();
         }
     }
 
     const fields = ['filterSeller', 'filterCustomer', 'filterSearch', 'oppStatusFilter',
         'oppTeamFilter', 'msTeamFilter', 'msOppFilter', 'msWorkloadFilter'];
+    const FILTER_STORAGE_KEY = 'msxWorkspaceFilters';
+    function readSavedFilters() {
+        try {
+            const filters = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY));
+            if (filters === null) return null;
+            const statuses = [...msStatusFilter.querySelectorAll('.ms-status-cb')]
+                .map(cb => cb.value);
+            if (!filters.values || fields.some(id => typeof filters.values[id] !== 'string') ||
+                    !Array.isArray(filters.statuses) ||
+                    filters.statuses.some(status => !statuses.includes(status)) ||
+                    !['opps-tab', 'ms-tab', 'tasks-tab'].includes(filters.tab) ||
+                    ['filterSeller', 'filterCustomer', 'msOppFilter'].some(id =>
+                        filters.values[id] && !/^[1-9]\d*$/.test(filters.values[id])) ||
+                    !['', 'open', 'won', 'lost'].includes(filters.values.oppStatusFilter) ||
+                    ['oppTeamFilter', 'msTeamFilter'].some(id =>
+                        !['', 'on', 'off'].includes(filters.values[id]))) {
+                throw new Error('Invalid saved report filters.');
+            }
+            return filters;
+        } catch (error) {
+            console.error('MSX workspace filters could not be restored', error);
+            showToast('Saved report filters could not be restored. Reapply your filters. ' +
+                error.message, 'danger');
+            return null;
+        }
+    }
+
+    function persistFilters() {
+        if (restoring) return;
+        const filters = {
+            values: Object.fromEntries(fields.map(id =>
+                [id, document.getElementById(id)?.value || ''])),
+            statuses: [...msStatusFilter.querySelectorAll('.ms-status-cb:checked')]
+                .map(cb => cb.value),
+            tab: document.querySelector('.msx-tab.active').id,
+        };
+        Object.assign(filters.values, {
+            filterSeller: appliedScope.seller, filterCustomer: appliedScope.customer,
+            filterSearch: appliedScope.search,
+        });
+        try {
+            localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
+        } catch (error) {
+            console.error('MSX workspace filters were not saved', error);
+            showToast('Report filters were not saved. Use Apply to retry. ' + error.message,
+                'danger');
+        }
+    }
     function saveView() {
         if (restoring) return;
         const values = Object.fromEntries(fields.map(id => [id, document.getElementById(id)?.value]));
@@ -705,7 +754,7 @@ window.addEventListener('DOMContentLoaded', function() {
         const selectedStatuses = Array.from(msStatusFilter.querySelectorAll('.ms-status-cb:checked')).map(cb => cb.value);
         if (selectedStatuses.length) params.set('status', selectedStatuses.join(','));
 
-        const opportunityFilter = restoredFilters?.msOppFilter || msOppFilter.value;
+        const opportunityFilter = restoredFilters?.msOppFilter ?? msOppFilter.value;
         if (opportunityFilter) params.set('opportunity_id', opportunityFilter);
 
         disableSort('msTable');
@@ -730,7 +779,8 @@ window.addEventListener('DOMContentLoaded', function() {
         msData.forEach(m => {
             if (m.opportunity_id && m.opportunity_name) opps[m.opportunity_id] = m.opportunity_name;
         });
-        const current = restoredFilters?.msOppFilter || msOppFilter.value;
+        const current = restoredFilters?.msOppFilter ?? msOppFilter.value;
+        if (current && !opps[current]) opps[current] = 'Selected opportunity (no matches)';
         msOppFilter.innerHTML = '<option value="">All Opportunities</option>';
         Object.entries(opps).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
             msOppFilter.innerHTML += `<option value="${id}">${escHtml(name)}</option>`;
@@ -741,8 +791,9 @@ window.addEventListener('DOMContentLoaded', function() {
     function populateWorkloadFilter() {
         const areas = new Set();
         msData.forEach(m => { if (m.workload_area) areas.add(m.workload_area); });
-        const current = restoredFilters?.msWorkloadFilter || msWorkloadFilter.value ||
-            localStorage.getItem('msxWsMsWorkload') || '';
+        const current = restoredFilters?.msWorkloadFilter ?? (msWorkloadFilter.value ||
+            localStorage.getItem('msxWsMsWorkload') || '');
+        if (current) areas.add(current);
         msWorkloadFilter.innerHTML = '<option value="">All Areas</option>';
         [...areas].sort((a, b) => a.localeCompare(b)).forEach(a => {
             msWorkloadFilter.innerHTML += `<option value="${escHtml(a)}">${escHtml(a)}</option>`;
@@ -1069,6 +1120,7 @@ window.addEventListener('DOMContentLoaded', function() {
             seller: filterSeller?.value || '', customer: filterCustomer.value,
             search: filterSearch.value,
         };
+        if (!restoring) persistFilters();
         clearMilestoneContext();
         await Promise.all([loadOpportunities(), loadMilestones(), loadTasks()]);
         saveView();
@@ -1103,17 +1155,35 @@ window.addEventListener('DOMContentLoaded', function() {
     });
 
     // Sub-filters trigger reload of their own tab
-    oppStatusFilter.addEventListener('change', loadOpportunities);
-    oppTeamFilter.addEventListener('change', loadOpportunities);
-    msStatusFilter.querySelectorAll('.ms-status-cb').forEach(cb => cb.addEventListener('change', () => { updateMsStatusBtnLabel(); loadMilestones(); }));
-    document.getElementById('msStatusAll').addEventListener('click', () => { msStatusFilter.querySelectorAll('.ms-status-cb').forEach(cb => cb.checked = true); updateMsStatusBtnLabel(); loadMilestones(); });
-    document.getElementById('msStatusNone').addEventListener('click', () => { msStatusFilter.querySelectorAll('.ms-status-cb').forEach(cb => cb.checked = false); updateMsStatusBtnLabel(); loadMilestones(); });
-    msTeamFilter.addEventListener('change', loadMilestones);
-    msOppFilter.addEventListener('change', loadMilestones);
+    async function reloadFiltered(load) {
+        persistFilters();
+        await load();
+        saveView();
+    }
+    oppStatusFilter.addEventListener('change', () => reloadFiltered(loadOpportunities));
+    oppTeamFilter.addEventListener('change', () => reloadFiltered(loadOpportunities));
+    const reloadStatuses = () => {
+        updateMsStatusBtnLabel();
+        return reloadFiltered(loadMilestones);
+    };
+    msStatusFilter.querySelectorAll('.ms-status-cb').forEach(cb =>
+        cb.addEventListener('change', reloadStatuses));
+    document.getElementById('msStatusAll').addEventListener('click', () => {
+        msStatusFilter.querySelectorAll('.ms-status-cb').forEach(cb => cb.checked = true);
+        reloadStatuses();
+    });
+    document.getElementById('msStatusNone').addEventListener('click', () => {
+        msStatusFilter.querySelectorAll('.ms-status-cb').forEach(cb => cb.checked = false);
+        reloadStatuses();
+    });
+    msTeamFilter.addEventListener('change', () => reloadFiltered(loadMilestones));
+    msOppFilter.addEventListener('change', () => reloadFiltered(loadMilestones));
     msWorkloadFilter.addEventListener('change', () => {
         if (msWorkloadFilter.value) localStorage.setItem('msxWsMsWorkload', msWorkloadFilter.value);
         else localStorage.removeItem('msxWsMsWorkload');
         renderMilestones();
+        persistFilters();
+        saveView();
     });
 
     // Enter key in search
@@ -1163,7 +1233,11 @@ window.addEventListener('DOMContentLoaded', function() {
     updateMsStatusBtnLabel();
 
     async function restoreView() {
-        const view = history.state?.sbMsxWorkspace;
+        const savedFilters = history.state?.sbMsxWorkspace ? null : readSavedFilters();
+        const view = history.state?.sbMsxWorkspace || (savedFilters ? {
+            values: savedFilters.values, statuses: savedFilters.statuses,
+            tab: savedFilters.tab, positions: {},
+        } : null);
         restoring = true;
         try {
             if (view) {
@@ -1178,10 +1252,13 @@ window.addEventListener('DOMContentLoaded', function() {
                     if (el && view.values[id] !== undefined) el.value = view.values[id];
                 });
                 filterCustomerBySeller(filterSeller?.value || '');
+                if (view.values.msWorkloadFilter) {
+                    localStorage.setItem('msxWsMsWorkload', view.values.msWorkloadFilter);
+                } else localStorage.removeItem('msxWsMsWorkload');
                 msStatusFilter.querySelectorAll('.ms-status-cb').forEach(cb =>
                     cb.checked = view.statuses.includes(cb.value));
                 updateMsStatusBtnLabel();
-                showTab(view.tab, false);
+                showTab((urlTab && tabMap[urlTab]) || view.tab, false);
             }
             await applyAll();
             restoredFilters = null;

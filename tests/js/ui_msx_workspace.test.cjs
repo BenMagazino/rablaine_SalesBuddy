@@ -6,10 +6,13 @@ const vm = require('node:vm');
 
 const template = fs.readFileSync(
     path.join(__dirname, '../../templates/report_msx_workspace.html'), 'utf8');
-const source = template.match(/<script>([\s\S]*?)<\/script>/)[1];
+const source = template.match(/<script>([\s\S]*?)<\/script>/)[1].replace(/\r\n/g, '\n');
 
-function fixture() {
+function fixture({savedFilters = null, initialHistory = {}, query = ''} = {}) {
     const elements = {}, requests = [], dialogs = [], listeners = {}, storage = new Map();
+    const storageWrites = [];
+    let storageError = null;
+    if (savedFilters !== null) storage.set('msxWorkspaceFilters', JSON.stringify(savedFilters));
     const timers = new Map();
     const classes = () => {
         const set = new Set();
@@ -38,6 +41,11 @@ function fixture() {
         return node;
     }
     const get = id => elements[id] ||= element(id);
+    const statuses = ['On Track', 'At Risk', 'Blocked', 'Completed', 'Cancelled',
+        'Lost to Competitor'].map((value, index) => ({value, checked: index < 3,
+            addEventListener() {}}));
+    get('msStatusFilterWrap').querySelectorAll = selector =>
+        selector.endsWith(':checked') ? statuses.filter(cb => cb.checked) : statuses;
     const tabs = ['opps-tab', 'ms-tab', 'tasks-tab'].map((id, index) => {
         const tab = get(id);
         tab.dataset.msxPane = ['oppsPane', 'msPane', 'tasksPane'][index];
@@ -68,16 +76,21 @@ function fixture() {
             return null;
         },
     };
-    const window = {location: {search: ''}, addEventListener(event, callback) {
+    const window = {location: {search: query}, addEventListener(event, callback) {
         if (event === 'DOMContentLoaded') this.start = callback;
         else listeners[event] = callback;
     }, setTimeout(callback) { const id = timers.size + 1; timers.set(id, callback); return id; },
     clearTimeout(id) { timers.delete(id); }};
-    const history = {state: {}, replaceState(state) { this.state = state; }};
-    let reply = async () => ({ok: true, json: async () => ({tasks: []})});
+    const history = {state: initialHistory, replaceState(state) { this.state = state; }};
+    let reply = async () => ({ok: true, json: async () =>
+        ({tasks: [], milestones: [], opportunities: []})});
     const context = {window, document, history, URLSearchParams, AbortController,
         localStorage: {getItem: key => storage.get(key) ?? null,
-            setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key)},
+            setItem: (key, value) => {
+                if (key === 'msxWorkspaceFilters' && storageError) throw storageError;
+                storageWrites.push(key);
+                storage.set(key, value);
+            }, removeItem: key => storage.delete(key)},
         fetch: async (url, options) => { requests.push({url, options}); return reply(url, options); },
         setTimeout: () => 1, console, CSS: {escape: id => id},
         MutationObserver: class {
@@ -98,7 +111,7 @@ function fixture() {
     mountSort = () => {};
     window.hooks = {readRecords, renderOpportunities, renderTasks, showTab, saveView,
         openOppDetail,
-        restoreView, applyAll, loadOpportunities, loadTasks, allowContextChange,
+        restoreView, applyAll, loadOpportunities, loadTasks, allowContextChange, persistFilters,
         setScope: value => appliedScope = value,
         setOpps: value => oppsData = value,
         setTasks: value => tasksData = value,
@@ -107,7 +120,8 @@ function fixture() {
     assert.notEqual(instrumented, source);
     vm.runInNewContext(instrumented, context);
     window.start();
-    return {get, requests, dialogs, history, hooks: window.hooks, listeners, timers,
+    return {get, requests, dialogs, history, hooks: window.hooks, listeners, timers, statuses,
+        storage, storageWrites, failStorage: error => { storageError = error; },
         reply: fn => { reply = fn; }};
 }
 
@@ -161,6 +175,10 @@ test('task creation retains exact category, GUID and UTC due-date payload', asyn
     h.get('taskCategory').value = '861980002';
     h.get('taskDescription').value = ' Customer demo ';
     h.get('taskDueDate').value = '2026-10-08';
+    h.hooks.setScope({seller: '2', customer: '3', search: 'applied scope'});
+    h.get('msTeamFilter').value = 'on';
+    h.get('msOppFilter').value = '17';
+    h.statuses[0].checked = false;
     h.reply(async (url, options) => ({ok: true, json: async () =>
         options?.method === 'POST' ? {success: true} : {tasks: []}}));
     await h.get('btnSubmitTask').handlers.click.call(h.get('btnSubmitTask'));
@@ -172,7 +190,131 @@ test('task creation retains exact category, GUID and UTC due-date payload', asyn
     assert.equal(h.get('taskSubject').value, '');
     assert.deepEqual(h.dialogs[0], ['close', 'createTaskModal', 'saved']);
     assert.equal(h.get('btnSubmitTask').disabled, false);
+    const refreshed = new URL(h.requests[1].url, 'http://localhost');
+    assert.equal(refreshed.searchParams.get('seller_id'), null);
+    assert.equal(refreshed.searchParams.get('customer_id'), '3');
+    assert.equal(refreshed.searchParams.get('search'), 'applied scope');
+    assert.equal(h.get('msTeamFilter').value, 'on');
+    assert.equal(h.get('msOppFilter').value, '17');
+    assert.equal(h.statuses[0].checked, false);
 });
+
+function savedScope() {
+    return {values: {
+        filterSeller: '2', filterCustomer: '3', filterSearch: 'saved scope',
+        oppStatusFilter: 'open', oppTeamFilter: 'on', msTeamFilter: 'on',
+        msOppFilter: '17', msWorkloadFilter: 'Data & AI',
+    }, statuses: ['At Risk', 'Blocked'], tab: 'ms-tab'};
+}
+
+test('a fresh report window restores localStorage filters without history or preference requests',
+    async () => {
+        const h = fixture({savedFilters: savedScope()});
+        await h.hooks.restoreView();
+        assert.equal(h.get('filterSearch').value, 'saved scope');
+        assert.equal(h.get('msOppFilter').value, '17');
+        assert.equal(h.get('msWorkloadFilter').value, 'Data & AI');
+        assert.equal(h.get('ms-tab')['aria-selected'], 'true');
+        assert.deepEqual(h.statuses.filter(cb => cb.checked).map(cb => cb.value),
+            ['At Risk', 'Blocked']);
+        const url = new URL(h.requests.find(r => r.url.includes('/milestones?')).url,
+            'http://localhost');
+        assert.equal(url.searchParams.get('customer_id'), '3');
+        assert.equal(url.searchParams.get('opportunity_id'), '17');
+        assert.equal(h.requests.length, 3);
+        assert.equal(h.storageWrites.includes('msxWorkspaceFilters'), false);
+    });
+
+test('history retains its local scope while an explicit URL chooses the tab', async () => {
+    const historyScope = savedScope();
+    historyScope.values.filterSearch = 'history draft';
+    historyScope.appliedScope = {seller: '2', customer: '3', search: 'history applied'};
+    historyScope.positions = {};
+    const h = fixture({savedFilters: savedScope(),
+        initialHistory: {sbMsxWorkspace: historyScope}, query: '?tab=tasks'});
+    await h.hooks.restoreView();
+    assert.equal(h.get('filterSearch').value, 'history draft');
+    assert.equal(h.get('tasks-tab')['aria-selected'], 'true');
+    const url = new URL(h.requests.find(r => r.url.includes('/tasks?')).url, 'http://localhost');
+    assert.equal(url.searchParams.get('search'), 'history applied');
+});
+
+test('persistence saves applied scope, not unsubmitted edits or reading positions', async () => {
+    const h = fixture();
+    h.hooks.setScope({seller: '2', customer: '3', search: 'applied'});
+    h.get('filterSearch').value = 'not applied';
+    h.get('msTeamFilter').value = 'on';
+    h.hooks.setPositions({opps: {top: 99}});
+    await h.hooks.persistFilters();
+    const saved = JSON.parse(h.storage.get('msxWorkspaceFilters'));
+    assert.equal(saved.values.filterSearch, 'applied');
+    assert.equal(saved.values.msTeamFilter, 'on');
+    assert.equal(saved.positions, undefined);
+    assert.equal(saved.milestoneId, undefined);
+    h.hooks.saveView();
+    assert.equal(h.requests.length, 0);
+    assert.deepEqual(h.storageWrites, ['msxWorkspaceFilters']);
+});
+
+test('failed persistence is visible and Apply can retry the same state', async () => {
+    const h = fixture();
+    h.failStorage(new Error('Disk unavailable'));
+    await h.hooks.persistFilters();
+    assert.match(h.get('taskEditorStatus').textContent, /not saved.*Disk unavailable/);
+    h.failStorage(null);
+    await h.hooks.persistFilters();
+    assert.ok(h.storage.has('msxWorkspaceFilters'));
+    assert.equal(h.requests.length, 0);
+});
+
+test('Clear persists the default scope and active milestone statuses', async () => {
+    const h = fixture({savedFilters: savedScope()});
+    await h.hooks.restoreView();
+    h.get('btnClearFilters').handlers.click();
+    const saved = JSON.parse(h.storage.get('msxWorkspaceFilters'));
+    assert.deepEqual(saved.values, {
+        filterSeller: '', filterCustomer: '', filterSearch: '', oppStatusFilter: 'open',
+        oppTeamFilter: '', msTeamFilter: '', msOppFilter: '', msWorkloadFilter: '',
+    });
+    assert.deepEqual(saved.statuses, ['On Track', 'At Risk', 'Blocked']);
+});
+
+test('immediate workload and empty status changes are persisted without applying scope drafts',
+    async () => {
+        const h = fixture({savedFilters: savedScope()});
+        await h.hooks.restoreView();
+        h.get('filterSearch').value = 'not applied';
+        h.get('msWorkloadFilter').value = '';
+        h.get('msWorkloadFilter').handlers.change();
+        let saved = JSON.parse(h.storage.get('msxWorkspaceFilters'));
+        assert.equal(saved.values.msWorkloadFilter, '');
+        assert.equal(saved.values.filterSearch, 'saved scope');
+        h.get('msStatusNone').handlers.click();
+        saved = JSON.parse(h.storage.get('msxWorkspaceFilters'));
+        assert.deepEqual(saved.statuses, []);
+        const lastRead = new URL(h.requests.at(-1).url, 'http://localhost');
+        assert.equal(lastRead.searchParams.has('status'), false);
+    });
+
+test('unreadable localStorage filters are reported and Apply can replace them', async () => {
+    const h = fixture();
+    h.storage.set('msxWorkspaceFilters', '{broken');
+    await h.hooks.restoreView();
+    assert.match(h.get('taskEditorStatus').textContent, /could not be restored/);
+    h.get('filterSearch').value = 'replacement';
+    await h.hooks.applyAll();
+    assert.equal(JSON.parse(h.storage.get('msxWorkspaceFilters')).values.filterSearch,
+        'replacement');
+});
+
+for (const change of [{statuses: ['Invalid']}, {values: {}}, {tab: 'unknown'}]) {
+    test(`invalid localStorage filter state is reported: ${JSON.stringify(change)}`, async () => {
+        const h = fixture({savedFilters: {...savedScope(), ...change}});
+        await h.hooks.restoreView();
+        assert.match(h.get('taskEditorStatus').textContent, /Invalid saved report filters/);
+        assert.equal(h.get('filterSearch').value, '');
+    });
+}
 
 test('failed task creation keeps the draft and re-enables retry', async () => {
     const h = fixture();

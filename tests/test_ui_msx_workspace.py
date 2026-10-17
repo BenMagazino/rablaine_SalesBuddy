@@ -30,8 +30,8 @@ def test_native_workspace_host(client, sample_data, query: str) -> None:
     assert opportunity_shell.select_one(":scope > .sb-dialog-body [data-sb-record-content]")
     assert opportunity_shell.select_one(":scope > .sb-dialog-footer [data-sb-record-status]")
     assert not root.select(".card, .nav-tabs, .table-responsive, [data-bs-toggle]")
-    assert len(soup.select('script[src="/static/js/ui-table-sort.js"]')) == 1
-    assert len(soup.select('script[src="/static/js/ui-dialog.js"]')) == 1
+    assert len(soup.select('script[src^="/static/js/ui-table-sort.js"]')) == 1
+    assert len(soup.select('script[src^="/static/js/ui-dialog.js"]')) == 1
     assert soup.select_one("footer.sb-page-status #workspaceStatus")
 
 

@@ -10,6 +10,7 @@ Covers:
 """
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
 
@@ -143,6 +144,46 @@ class TestExtractJsonArray:
 
         assert items == [{'subject': 'Customer sync'}]
 
+    @pytest.mark.parametrize('wrapper', [
+        '{payload}\nSource: your calendar [1].',
+        'Here are your meetings:\n{payload}\nSource: your calendar [1].',
+        '```json\n{payload}\nSource: your calendar [1].\n```',
+        '```json\nHere are your meetings:\n{payload}\nCalendar checked.\n```',
+    ])
+    @pytest.mark.parametrize('status', ['meetings_found', 'no_meetings'])
+    def test_accepts_one_complete_envelope_with_surrounding_prose(self, wrapper, status):
+        """Decode the complete payload without treating citations as extra JSON."""
+        meetings = [{'subject': 'Customer {sync}', 'attendees': []}]
+        expected = meetings if status == 'meetings_found' else []
+        payload = json.dumps({
+            'calendar_query_status': status, 'meetings': expected, 'error': None,
+        })
+
+        assert meeting_prefetch._extract_json_array(wrapper.format(payload=payload)) == expected
+
+    @pytest.mark.parametrize('separator', ['\n', '\nCalendar checked.\n', '\n```\n```json\n'])
+    @pytest.mark.parametrize('second_payload', [
+        '{"calendar_query_status":"meetings_found",'
+        '"meetings":[{"subject":"Customer sync"}],"error":null}',
+        '[{"subject":"Customer sync"}]',
+    ])
+    def test_rejects_multiple_calendar_payloads(self, separator, second_payload):
+        """Never choose an empty result over a second, conflicting calendar result."""
+        empty = '{"calendar_query_status":"no_meetings","meetings":[],"error":null}'
+
+        with pytest.raises(ValueError, match='multiple calendar response payloads'):
+            meeting_prefetch._extract_json_array(
+                f'```json\n{empty}{separator}{second_payload}\n```',
+            )
+
+    def test_does_not_recover_a_truncated_envelope_from_its_meeting_array(self):
+        """A partial payload must not be mistaken for a complete calendar result."""
+        with pytest.raises(ValueError, match='JSON envelope parse failed'):
+            meeting_prefetch._extract_json_array(
+                '{"calendar_query_status":"meetings_found",'
+                '"meetings":[{"subject":"Customer sync"}],"error":'
+            )
+
     def test_rejects_ambiguous_empty_array(self):
         with pytest.raises(
             meeting_prefetch.CalendarLookupError,
@@ -194,6 +235,26 @@ def test_empty_workiq_day_does_not_retry_or_emit_parse_failure():
     assert error is None
     query_workiq.assert_called_once()
     queue_workiq_call.assert_not_called()
+
+
+def test_workiq_envelope_with_citations_does_not_need_retry_or_markdown():
+    """A complete JSON object plus commentary succeeds on the original WorkIQ call."""
+    response = (
+        '```json\n{"calendar_query_status":"meetings_found",'
+        '"meetings":[{"subject":"Customer sync"}],"error":null}\n'
+        'Source: your calendar [1].\n```'
+    )
+    with patch(
+        'app.services.workiq_service.query_workiq', return_value=response,
+    ) as query_workiq, patch(
+        'app.services.workiq_service.get_meetings_for_date',
+    ) as markdown_fallback:
+        meetings, error = meeting_prefetch.fetch_workiq_meetings_for_date('2026-10-16')
+
+    assert meetings == [{'subject': 'Customer sync'}]
+    assert error is None
+    query_workiq.assert_called_once()
+    markdown_fallback.assert_not_called()
 
 
 def test_ambiguous_empty_workiq_day_records_lookup_failure_without_retry():
@@ -668,6 +729,38 @@ class TestPrefetchForDate:
                 stored, err = meeting_prefetch.prefetch_for_date('2026-04-22')
             assert stored == 0
             assert err and 'WorkIQ down' in err
+
+    @pytest.mark.parametrize('response', [
+        '{"calendar_query_status":"meetings_found",'
+        '"meetings":[{"subject":"Incomplete sync"}],"error":',
+        '{"calendar_query_status":"no_meetings","meetings":[],"error":null}\n'
+        '{"calendar_query_status":"meetings_found",'
+        '"meetings":[{"subject":"Conflicting sync"}],"error":null}',
+    ])
+    def test_unusable_calendar_results_preserve_existing_cache(
+        self, app, clean_prefetch_tables, response,
+    ):
+        """Neither truncated nor conflicting data can clear cached meetings or attendees."""
+        with app.app_context():
+            with patch(
+                'app.services.workiq_service.query_workiq', return_value=SAMPLE_RESPONSE,
+            ):
+                stored, error = meeting_prefetch.prefetch_for_date('2026-04-22')
+            assert stored == 2 and error is None
+            meeting_ids = {meeting.id for meeting in PrefetchedMeeting.query.all()}
+            attendee_ids = {attendee.id for attendee in PrefetchedMeetingAttendee.query.all()}
+
+            with patch(
+                'app.services.workiq_service.query_workiq', return_value=response,
+            ), patch(
+                'app.services.workiq_service.get_meetings_for_date', return_value=([], ''),
+            ):
+                stored, error = meeting_prefetch.prefetch_for_date('2026-04-22')
+
+            assert stored == 0
+            assert error and 'JSON and markdown parsing failed' in error
+            assert {meeting.id for meeting in PrefetchedMeeting.query.all()} == meeting_ids
+            assert {attendee.id for attendee in PrefetchedMeetingAttendee.query.all()} == attendee_ids
 
     def test_resync_rematches_previously_unmatched_ghost(
         self, app, clean_prefetch_tables,
