@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/16/2026
+## 10/16/2026 - d325c465
 
 - Make meeting imports more reliable, including saved Internal Contact matching and WorkIQ responses with extra commentary.
 - Keep applied MSX Workspace filters through reloads and newly opened report windows.
