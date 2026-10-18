@@ -34,12 +34,12 @@ def test_navigation_preserves_report_and_browse_destinations(app):
     soup = render_navigation(app, user_role="se", seller_mode=False)
     reports = {a["href"] for a in soup.select("#reportsMenu a")}
     assert reports == {
-        "/reports", "/reports/connect-goals", "/reports/initiative-tracker",
+        "/reports", "/reports/initiative-tracker",
         "/reports/one-on-one", "/reports/connect-impact", "/reports/u2c",
         "/reports/milestone-tracker", "/reports/activity-coverage", "/reports/whitespace",
         "/reports/hygiene", "/reports/msx-workspace", "/reports/whats-new",
         "/reports/revenue", "/reports/workload", "/reports/marketing-insights",
-        "/reports/synapse-customers",
+        "/reports/synapse-customers", "/reports/p-to-f", "/reports/fabric-consumption",
     }
     browse = {a["href"] for a in soup.select("#browseMenu a")}
     assert browse == {
@@ -85,6 +85,8 @@ def test_dashboards_have_their_own_top_level_menu(app):
         {'name': 'Weekly review', 'url': '/reports/dashboards/12'},
     ])
     trigger = soup.select_one('#navDashboards > button')
+    groups = [node['id'] for node in soup.select('.sb-nav-group[id]')]
+    assert groups.index('navDashboards') < groups.index('navReports')
     assert trigger['aria-label'] == 'Dashboards'
     assert trigger['data-sb-menu'] == 'dashboardsMenu'
     assert [link['href'] for link in soup.select('#dashboardsMenu a')] == [

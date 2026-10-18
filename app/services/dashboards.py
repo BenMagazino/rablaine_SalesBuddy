@@ -62,6 +62,27 @@ class WidgetDefinition:
     report: str
     variants: tuple[WidgetVariant, ...]
     provider: Callable[[date | None], dict[str, Any]]
+    requirements: tuple[str, ...] = ()
+
+
+WIDGET_REQUIREMENTS = {
+    'compensation_buckets': lambda reference: connect_goals.get_setup_state(reference),
+}
+
+
+def get_widget_requirements(
+    definition: WidgetDefinition, reference: date | None = None,
+    states: dict[str, dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Check declared prerequisites before invoking a widget's data provider."""
+    states = states if states is not None else {}
+    missing = []
+    for key in definition.requirements:
+        if key not in states:
+            states[key] = WIDGET_REQUIREMENTS[key](reference)
+        if not states[key]['ready']:
+            missing.append({'key': key, 'setup': states[key]})
+    return missing
 
 
 WIDGET_DEFINITIONS = {
@@ -71,24 +92,28 @@ WIDGET_DEFINITIONS = {
             'Quarter-to-date commitment progress, expected pace, and the U2C trend.',
             'U2C Attainment', _connect_variants('partials/widgets/connect_u2c.html'),
             connect_goals.get_u2c_widget,
+            ('compensation_buckets',),
         ),
         WidgetDefinition(
             'connect_goals.team_coverage', 'Milestone team coverage',
             'ACR-weighted team coverage with a scoped report of off-team milestones.',
             'Milestone Tracker', _connect_variants('partials/widgets/connect_team_coverage.html'),
             connect_goals.get_team_coverage_widget,
+            ('compensation_buckets',),
         ),
         WidgetDefinition(
             'connect_goals.hva_coverage', 'Milestone HVA coverage',
             'On-team milestone activity coverage and technical validation counts.',
             'Activity Coverage', _connect_variants('partials/widgets/connect_hva_coverage.html'),
             connect_goals.get_hva_coverage_widget,
+            ('compensation_buckets',),
         ),
         WidgetDefinition(
             'connect_goals.whitespace', 'Fabric and database whitespace wins',
             'Sustained wins, ramping customers, and their monthly consumption history.',
             'Whitespace Analysis', _connect_variants('partials/widgets/connect_whitespace.html'),
             connect_goals.get_whitespace_widget,
+            ('compensation_buckets',),
         ),
     )
 }
@@ -103,6 +128,7 @@ def get_widget_catalog() -> list[dict[str, Any]]:
             'description': definition.description,
             'scope': 'FY27 Data',
             'report': definition.report,
+            'requirements': definition.requirements,
             'variants': [
                 {
                     'key': variant.key, 'title': variant.title,
@@ -162,8 +188,8 @@ def list_dashboards() -> list[dict[str, Any]]:
 def get_dashboard_data(
     dashboard: Dashboard, reference: date | None = None,
 ) -> dict[str, Any]:
-    """Calculate saved instances using the same providers and gate as Connect Goals."""
-    setup = connect_goals.get_setup_state(reference) if dashboard.widgets else None
+    """Check each definition's prerequisites before calculating its saved instances."""
+    states: dict[str, dict[str, Any]] = {}
     values: dict[str, dict[str, Any]] = {}
     widgets = []
     for instance in sorted(dashboard.widgets, key=lambda item: (
@@ -173,9 +199,10 @@ def get_dashboard_data(
         variant = next((
             item for item in definition.variants if item.key == instance.variant_key
         ), None) if definition else None
+        requirements = get_widget_requirements(definition, reference, states) if definition else []
         if definition is None:
             logger.warning('Unknown dashboard widget %s: %s', instance.id, instance.widget_key)
-        elif variant and setup['ready'] and definition.key not in values:
+        elif variant and not requirements and definition.key not in values:
             values[definition.key] = definition.provider(reference)
         widgets.append({
             'id': instance.id,
@@ -189,13 +216,14 @@ def get_dashboard_data(
             'row_span': instance.row_span,
             'template': variant.template if variant else None,
             'data': values.get(instance.widget_key) if variant else None,
+            'requirements': requirements if variant else [],
             'message': (
                 'This widget is no longer in the catalog. Remove it in Manage Dashboards.'
                 if definition is None else
                 'This presentation is no longer available. Update it in Manage Dashboards.'
                 if variant is None else
-                'Confirm your FY27 Data priorities in Connect Goals to see this widget.'
-                if not setup['ready'] else None
+                'Confirm your compensation buckets to see this widget.'
+                if requirements else None
             ),
         })
     return {
@@ -212,7 +240,7 @@ def get_dashboard_data(
             (item.layout_row + item.row_span for item in dashboard.widgets), default=4,
         ),
         'widgets': widgets,
-        'setup': setup,
+        'setup': states.get('compensation_buckets'),
         'url': f'/reports/dashboards/{dashboard.id}',
     }
 
@@ -387,15 +415,16 @@ def get_widget_preview(key: str, variant_key: str, width: int) -> dict[str, Any]
     """Use live saved data and the same template as a placed widget, never sample numbers."""
     variant = get_variant(key, variant_key)
     validate_footprint(variant, width, variant.default_height)
-    setup = connect_goals.get_setup_state()
     definition = WIDGET_DEFINITIONS[key]
+    requirements = get_widget_requirements(definition)
     return {
         'id': 'preview', 'key': key, 'title': definition.title,
         'template': variant.template, 'variant_key': variant.key,
         'column_span': width, 'row_span': variant.default_height,
-        'data': definition.provider(None) if setup['ready'] else None,
+        'data': definition.provider(None) if not requirements else None,
+        'requirements': requirements,
         'message': (
-            'Confirm your FY27 Data priorities in Connect Goals to preview live values.'
-            if not setup['ready'] else None
+            'Confirm your compensation buckets to preview live values.'
+            if requirements else None
         ),
     }

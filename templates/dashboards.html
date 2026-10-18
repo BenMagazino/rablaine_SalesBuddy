@@ -19,9 +19,19 @@
             <h1 id="dashboardsTitle">Manage Dashboards</h1>
             <p>Create and arrange your dashboard reports. Open them from Dashboards or the quick launcher.</p>
         </div>
+        <button class="db-command" type="button" data-sb-dialog="dashboardTemplatePicker"
+                aria-haspopup="dialog" aria-controls="dashboardTemplatePicker">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i> Add from template
+        </button>
     </header>
     <p class="db-error" id="dashboardError" role="alert" tabindex="-1" hidden></p>
     <div class="db-reading" data-sb-page-body>
+        {% if requested_template %}
+        <aside class="db-template-notice" role="status">
+            {{ requested_template.name }} is now a dashboard. Choose Add from template
+            to create a fresh copy, then edit it however you like.
+        </aside>
+        {% endif %}
         <form class="db-create" data-dashboard-create>
             <label for="dashboardName">New dashboard</label>
             <div class="db-form-row">
@@ -61,6 +71,37 @@
         </div>
         {% endif %}
     </div>
+    <dialog class="sb-dialog db-template-picker" id="dashboardTemplatePicker"
+            aria-labelledby="dashboardTemplatesTitle" aria-describedby="dashboardTemplatesDescription"
+            data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell">
+            <header class="sb-dialog-header">
+                <h2 class="sb-dialog-heading" id="dashboardTemplatesTitle">Add from template</h2>
+                <button class="sb-dialog-close" type="button" data-sb-dialog-close
+                        aria-label="Close template picker" autofocus>
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            </header>
+            <p class="db-error" id="dashboardTemplateError" role="alert" tabindex="-1" hidden></p>
+            <div class="sb-dialog-body">
+                <p class="db-muted" id="dashboardTemplatesDescription">
+                    Choose a starting point. You can edit or delete your copy anytime.
+                </p>
+                {% for template in dashboard_templates %}
+                <div class="db-template-row">
+                    <div>
+                        <h3>{{ template.name }}</h3>
+                        <p>{{ template.description }}</p>
+                        <span class="db-muted">{{ template.widget_count }} widgets · {{ template.content_width|capitalize }} · {{ template.display_style|capitalize }}</span>
+                    </div>
+                    <button class="db-command" type="button" data-dashboard-template="{{ template.key }}">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> Add {{ template.name }}
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </dialog>
 </section>
 {% endblock %}
 {% block extra_js %}

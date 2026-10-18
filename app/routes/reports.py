@@ -2,7 +2,7 @@
 import json
 import logging
 from datetime import datetime, timedelta, timezone, date
-from flask import Blueprint, Response, current_app, render_template, url_for, jsonify, request
+from flask import Blueprint, Response, current_app, render_template, url_for, jsonify, request, redirect
 from app.models import (
     db, Customer, Engagement, Note, Milestone, MilestoneAudit, Opportunity, Seller,
     SolutionEngineer, SyncStatus, MsxTask, PrefetchedMeeting,
@@ -24,8 +24,41 @@ bp = Blueprint('reports', __name__)
 def dashboards_hub():
     """Manage saved dashboards separately from their report views."""
     from app.services.dashboards import list_dashboards
+    from app.services.dashboard_templates import list_dashboard_templates
 
-    return render_template('dashboards.html', dashboards=list_dashboards())
+    templates = list_dashboard_templates()
+    requested = next((
+        template for template in templates if template['key'] == request.args.get('template')
+    ), None)
+    return render_template(
+        'dashboards.html', dashboards=list_dashboards(), dashboard_templates=templates,
+        requested_template=requested,
+    )
+
+
+@bp.route('/api/reports/dashboards/from-template/<key>', methods=['POST'])
+def dashboard_from_template(key: str):
+    """Create a user-owned copy without changing an existing dashboard or local draft."""
+    from app.models import DashboardTemplateInstallation
+    from app.services.dashboard_templates import (
+        DASHBOARD_TEMPLATES, create_dashboard_from_template,
+    )
+
+    try:
+        dashboard = create_dashboard_from_template(key)
+        installation = db.session.get(DashboardTemplateInstallation, key)
+        if installation is None:
+            installation = DashboardTemplateInstallation(
+                key=key, version=DASHBOARD_TEMPLATES[key]['version'],
+            )
+            db.session.add(installation)
+        if installation.dashboard is None:
+            installation.dashboard = dashboard
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    except SQLAlchemyError:
+        return _dashboard_write_error()
+    return _save_dashboard_changes(dashboard, created=True)
 
 
 @bp.route('/reports/dashboards/<int:dashboard_id>')
@@ -198,6 +231,19 @@ def dashboard_widget_preview():
         instance['id'] = instance_id
     return jsonify(success=True, html=render_template(
         'partials/dashboard_widget_content.html', instance=instance,
+    ))
+
+
+@bp.route('/api/reports/dashboards/requirements/<key>')
+def dashboard_requirement(key: str):
+    """Return current shared setup without changing dashboard or draft state."""
+    from app.services.dashboards import WIDGET_REQUIREMENTS
+
+    if key not in WIDGET_REQUIREMENTS:
+        return jsonify(success=False, error='Unknown widget requirement.'), 404
+    setup = WIDGET_REQUIREMENTS[key](None)
+    return jsonify(success=True, setup=setup, html=render_template(
+        'partials/dashboard_requirement_form.html', setup=setup,
     ))
 
 
@@ -535,17 +581,6 @@ def reports_hub():
             'title': 'Planning & Reviews',
             'icon': 'bi-people',
             'reports': [
-                {
-                    'id': 'connect-goals',
-                    'name': 'Connect Goals',
-                    'description': (
-                        'Track FY27 Data U2C pace, milestone influence, HVA '
-                        'coverage, and whitespace wins, then open the reports '
-                        'that help close each gap.'
-                    ),
-                    'icon': 'bi-speedometer2',
-                    'url': url_for('reports.report_connect_goals'),
-                },
                 {
                     'id': 'initiative-tracker',
                     'name': 'Initiative Tracker',
@@ -2287,22 +2322,15 @@ def report_marketing_insights():
 
 
 # =============================================================================
-# Connect Goals Action Center
+# Shared Connect Goals metrics and former page destination
 # =============================================================================
 
 @bp.route('/reports/connect-goals')
-def report_connect_goals():
-    """Render the FY27 Data Connect Goals Action Center."""
-    from app.services.connect_goals import get_connect_goals
+def connect_goals_dashboard():
+    """Send old bookmarks to the editable starter, or offer explicit restoration."""
+    from app.services.dashboard_templates import get_template_dashboard_url
 
-    data = get_connect_goals()
-    widgets = {widget['key']: widget for widget in data['widgets']}
-    return render_template(
-        'report_connect_goals.html',
-        connect_data=data,
-        setup=data['setup'],
-        widgets=widgets,
-    )
+    return redirect(get_template_dashboard_url('connect-goals'))
 
 
 @bp.route('/api/reports/connect-goals')

@@ -5,11 +5,17 @@ const path = require('node:path');
 const vm = require('node:vm');
 const {saveDashboard} = require('../../static/js/ui-dashboards.js');
 
-function deleteUI({confirmed = true, success = true, externalToolbar = false} = {}) {
+function deleteUI({
+    confirmed = true, success = true, externalToolbar = false,
+    template = false, createdId = 42,
+} = {}) {
     const requests = [], confirmations = [], destinations = [], removedDrafts = [];
     const error = {hidden: true, focus() {}};
+    const pickerError = {hidden: true, focus() { this.focused = true; }};
+    const picker = {open: true, addEventListener(name, handler) { this[name] = handler; }};
     const buttons = [21, 22].map(id => ({
-        dataset: {dbDelete: String(id), dashboardName: 'Dashboard ' + id},
+        dataset: template ? {dashboardTemplate: 'connect-goals'}
+            : {dbDelete: String(id), dashboardName: 'Dashboard ' + id},
         disabled: false,
         addEventListener(name, handler) { this[name] = handler; },
     }));
@@ -17,7 +23,8 @@ function deleteUI({confirmed = true, success = true, externalToolbar = false} = 
         dataset: {}, setAttribute() {}, querySelector() { return null; },
         querySelectorAll(selector) {
             if (externalToolbar) return [];
-            return selector === '[data-db-delete]' || selector === 'button, input, select'
+            const action = template ? '[data-dashboard-template]' : '[data-db-delete]';
+            return selector === action || selector === 'button, input, select'
                 ? buttons : [];
         },
     };
@@ -30,6 +37,8 @@ function deleteUI({confirmed = true, success = true, externalToolbar = false} = 
         querySelector() { return root; },
         getElementById(id) {
             if (id === 'layoutEditor' && externalToolbar) return toolbar;
+            if (template && id === 'dashboardTemplatePicker') return picker;
+            if (template && id === 'dashboardTemplateError') return pickerError;
             return id === 'dashboardError' ? error : null;
         },
     };
@@ -41,14 +50,17 @@ function deleteUI({confirmed = true, success = true, externalToolbar = false} = 
         async fetch(url, options) {
             requests.push({url, options});
             return {ok: success, json: async () => ({
-                success, error: success ? undefined : 'Delete failed',
+                success, id: createdId, error: success ? undefined : 'Delete failed',
             })};
         },
     };
     vm.runInNewContext(fs.readFileSync(path.join(
         __dirname, '../../static/js/ui-dashboards.js'), 'utf8'),
     {window, document, console: {error() {}}});
-    return {buttons, requests, confirmations, destinations, error, removedDrafts};
+    return {
+        buttons, requests, confirmations, destinations, removedDrafts, picker,
+        error: template ? pickerError : error, mainError: error,
+    };
 }
 
 test('dashboard deletion removes only its own local draft after confirmed server success', async () => {
@@ -92,6 +104,52 @@ test('the full-width editor toolbar can delete the bounded dashboard', async () 
     await new Promise(setImmediate);
     assert.equal(ui.requests[0].url, '/api/reports/dashboards/21/delete');
     assert.deepEqual(ui.destinations, ['/reports/dashboards']);
+});
+
+test('template creation is guarded while pending and opens the returned editable copy', async () => {
+    const ui = deleteUI({template: true});
+    ui.buttons[0].click();
+    ui.buttons[1].click();
+    assert.ok(ui.buttons.every(button => button.disabled));
+    let prevented = false;
+    ui.picker['sb:dialog-before-close']({preventDefault() { prevented = true; }});
+    assert.equal(prevented, true);
+    await new Promise(setImmediate);
+    assert.equal(ui.requests.length, 1);
+    assert.equal(ui.requests[0].url, '/api/reports/dashboards/from-template/connect-goals');
+    assert.equal(ui.requests[0].options.method, 'POST');
+    assert.deepEqual(JSON.parse(ui.requests[0].options.body), {});
+    assert.deepEqual(ui.destinations, ['/reports/dashboards/42/edit']);
+    assert.deepEqual(ui.removedDrafts, []);
+});
+
+test('failed template creation displays an error and permits an explicit retry', async () => {
+    const ui = deleteUI({template: true, success: false});
+    ui.buttons[0].click();
+    await new Promise(setImmediate);
+    assert.equal(ui.error.hidden, false);
+    assert.equal(ui.error.focused, true);
+    assert.equal(ui.mainError.hidden, true);
+    assert.ok(ui.buttons.every(button => !button.disabled));
+    let prevented = false;
+    ui.picker['sb:dialog-before-close']({preventDefault() { prevented = true; }});
+    assert.equal(prevented, false);
+    assert.deepEqual(ui.destinations, []);
+    ui.buttons[0].click();
+    await new Promise(setImmediate);
+    assert.equal(ui.requests.length, 2);
+});
+
+test('template creation never navigates without a valid returned dashboard identity', async () => {
+    for (const createdId of [null, 0, -1, '42']) {
+        const ui = deleteUI({template: true, createdId});
+        ui.buttons[0].click();
+        await new Promise(setImmediate);
+        assert.deepEqual(ui.destinations, []);
+        assert.equal(ui.error.hidden, false);
+        assert.match(ui.error.textContent, /new dashboard identity/);
+        assert.ok(ui.buttons.every(button => !button.disabled));
+    }
 });
 
 test('dashboard writes send POST and preserve the exact payload', async () => {

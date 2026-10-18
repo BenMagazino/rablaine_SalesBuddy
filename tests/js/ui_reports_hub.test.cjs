@@ -15,7 +15,7 @@ function fixture({state = null, embedded = false, missing = false, writeError = 
     const rows = noReports ? [] : [
         {textContent: 'Synapse Customers New and current Azure Synapse usage', hidden: false},
         {textContent: 'Marketing Insights Active sales plays', hidden: false},
-        {textContent: 'Connect Goals Quarterly progress', hidden: false},
+        {textContent: 'Initiative Tracker Discussion priorities', hidden: false},
         {textContent: '<img onerror=bad()> Literal & "Quotes"', hidden: false},
     ];
     const groups = noReports ? [] : [

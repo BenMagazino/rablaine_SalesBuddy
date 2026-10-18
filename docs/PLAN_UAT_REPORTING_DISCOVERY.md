@@ -2,7 +2,7 @@
 
 **Status:** Deferred discovery
 **Last updated:** 2026-09-23
-**Current scope:** Explicitly out of scope for the Connect Goals Action Center
+**Current scope:** Explicitly out of scope for the Connect Goals dashboard
 
 ## Goal
 
@@ -31,7 +31,7 @@ the application.
 
 This discovery does not:
 
-- Add UAT to the Connect Goals Action Center.
+- Add UAT to the Connect Goals dashboard.
 - Add a UAT widget, report, navigation item, or SalesIQ tool.
 - File, modify, replay, close, or otherwise write a UAT Action.
 - Modify MSX milestones or opportunities.

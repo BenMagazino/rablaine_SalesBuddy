@@ -49,7 +49,7 @@ SURFACE_WIDTHS: dict[str, int | None | tuple[int, int | None]] = {
         "report_workload.html", "revenue_products_list.html", "revenue_product_view.html",
         "partials/customer_view_content.html", "partials/territory_view_content.html",
         "partials/solution_engineer_view_content.html", "seller_form.html", "territory_form.html",
-        "reports_hub.html", "report_connect_goals.html", "report_msx_workspace.html",
+        "reports_hub.html", "report_msx_workspace.html",
         "report_one_on_one.html", "revenue_config.html",
         "partials/pod_view_content.html", "pod_form.html",
         "revenue_customer_view.html",

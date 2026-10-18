@@ -1,5 +1,5 @@
 {% from 'partials/customer_favicon.html' import customer_favicon %}
-<div class="db-widget-body">
+<div class="db-widget-body"{% if instance.requirements %} data-widget-requirements{% endif %}>
 {% if instance.data %}
     {% set widget_id_prefix = 'dw' ~ instance.id ~ '-' %}
     {% set widgets = {instance.data.key: instance.data} %}
@@ -10,6 +10,17 @@
             'teamFilter': instance.data.get('destination_filter'),
             'u2c': instance.data if instance.data.key == 'u2c' and instance.variant_key == 'detailed' else none
         }|tojson }}</script>
+    </div>
+{% elif instance.requirements %}
+    <div class="db-widget-unavailable db-widget-requirements">
+        <h2>{{ instance.title }}</h2>
+        {% for requirement in instance.requirements %}
+        <p>Confirm your {{ requirement.setup.fiscal_year }} compensation buckets to see this widget.</p>
+        <button type="button" class="db-command" data-widget-requirement="{{ requirement.key }}">
+            Select compensation buckets
+        </button>
+        {% endfor %}
+        <p class="db-muted">Shared setup. Your selection applies to all widgets that need it.</p>
     </div>
 {% else %}
     <div class="db-widget-unavailable">

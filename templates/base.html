@@ -167,6 +167,21 @@
                         </ul>
                     </li>
                     {% endif %}
+                    <li class="sb-nav-group" id="navDashboards">
+                        <button class="sb-nav-trigger" id="dashboardsMenuDropdown" type="button" data-sb-menu="dashboardsMenu" aria-controls="dashboardsMenu" aria-haspopup="menu" aria-expanded="false" aria-label="Dashboards" title="Dashboards">
+                            <i class="bi bi-layout-wtf" aria-hidden="true"></i>
+                        </button>
+                        <ul class="sb-nav-menu" id="dashboardsMenu" popover="manual" role="menu" aria-labelledby="dashboardsMenuDropdown">
+                            {% if nav_dashboards %}
+                            <li class="sb-menu-heading" role="presentation">Saved dashboards</li>
+                            {% for dashboard in nav_dashboards %}
+                            <li><a class="sb-nav-link" href="{{ dashboard.url }}"><i class="bi bi-layout-wtf"></i> <span data-dashboard-nav-name="{{ dashboard.id }}">{{ dashboard.name }}</span></a></li>
+                            {% endfor %}
+                            <li><hr class="sb-menu-divider"></li>
+                            {% endif %}
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.dashboards_hub') }}"><i class="bi bi-sliders"></i> Manage Dashboards</a></li>
+                        </ul>
+                    </li>
                     <li class="sb-nav-group" id="navReports">
                         <button class="sb-nav-trigger" id="reportsMenuDropdown" type="button" data-sb-menu="reportsMenu" aria-controls="reportsMenu" aria-haspopup="menu" aria-expanded="false" aria-label="Reports" title="Reports">
                             <i class="bi bi-clipboard-data" aria-hidden="true"></i>
@@ -177,12 +192,11 @@
                             <li><hr class="sb-menu-divider"></li>
                             <!-- Planning & Reviews -->
                             <li class="sb-menu-heading" role="presentation">Planning and reviews</li>
-                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_connect_goals') }}"><i class="bi bi-speedometer2"></i> Connect Goals</a></li>
                             <li><a class="sb-nav-link" href="{{ url_for('reports.report_manager_one_on_one') }}"><i class="bi bi-layout-text-window"></i> Initiative Tracker</a></li>
                             <li><a class="sb-nav-link" href="{{ url_for('reports.report_one_on_one') }}"><i class="bi bi-chat-left-text"></i> 1:1 Report</a></li>
                             <li><a class="sb-nav-link" href="{{ url_for('reports.report_connect_impact') }}"><i class="bi bi-trophy"></i> Connect Impact</a></li>
                             <li><hr class="sb-menu-divider"></li>
-                            <!-- Execution & Coverage: Connect Goals backing reports -->
+                            <!-- Execution & Coverage -->
                             <li class="sb-menu-heading" role="presentation">Execution and coverage</li>
                             <li><a class="sb-nav-link" href="{{ url_for('reports.report_u2c') }}"><i class="bi bi-bullseye"></i> U2C Attainment</a></li>
                             <li><a class="sb-nav-link" href="{{ url_for('milestones.milestone_tracker') }}"><i class="bi bi-flag-fill"></i> Milestone Tracker</a></li>
@@ -203,21 +217,6 @@
                             <li><a class="sb-nav-link" href="{{ url_for('reports.report_fabric_consumption') }}"><i class="bi bi-pie-chart"></i> Fabric Consumption</a></li>
                             <li><a class="sb-nav-link" href="{{ url_for('reports.report_marketing_insights') }}"><i class="bi bi-megaphone"></i> Marketing Insights</a></li>
                             <li><a class="sb-nav-link" href="{{ url_for('revenue.report_synapse_customers') }}"><i class="bi bi-database-gear"></i> Synapse Customers</a></li>
-                        </ul>
-                    </li>
-                    <li class="sb-nav-group" id="navDashboards">
-                        <button class="sb-nav-trigger" id="dashboardsMenuDropdown" type="button" data-sb-menu="dashboardsMenu" aria-controls="dashboardsMenu" aria-haspopup="menu" aria-expanded="false" aria-label="Dashboards" title="Dashboards">
-                            <i class="bi bi-layout-wtf" aria-hidden="true"></i>
-                        </button>
-                        <ul class="sb-nav-menu" id="dashboardsMenu" popover="manual" role="menu" aria-labelledby="dashboardsMenuDropdown">
-                            {% if nav_dashboards %}
-                            <li class="sb-menu-heading" role="presentation">Saved dashboards</li>
-                            {% for dashboard in nav_dashboards %}
-                            <li><a class="sb-nav-link" href="{{ dashboard.url }}"><i class="bi bi-layout-wtf"></i> <span data-dashboard-nav-name="{{ dashboard.id }}">{{ dashboard.name }}</span></a></li>
-                            {% endfor %}
-                            <li><hr class="sb-menu-divider"></li>
-                            {% endif %}
-                            <li><a class="sb-nav-link" href="{{ url_for('reports.dashboards_hub') }}"><i class="bi bi-sliders"></i> Manage Dashboards</a></li>
                         </ul>
                     </li>
                     <li class="sb-nav-group" id="navBrowse">
@@ -803,7 +802,7 @@
             });
         }
         var dashboardsPath = '{{ url_for("reports.dashboards_hub") }}';
-        ['navSellers', 'navReports', 'navDashboards', 'navBrowse'].forEach(function(dropId) {
+        ['navSellers', 'navDashboards', 'navReports', 'navBrowse'].forEach(function(dropId) {
             if (dropId === 'navReports' &&
                 (path === dashboardsPath || path.startsWith(dashboardsPath + '/'))) return;
             var dropEl = document.getElementById(dropId);

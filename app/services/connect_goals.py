@@ -1,6 +1,6 @@
 """FY27 Data Connect Goals calculations.
 
-The Action Center, SalesIQ tool, and tests consume this module so widget values
+Dashboard widgets, the SalesIQ tool, and tests consume this module so values
 cannot drift from one surface to another.
 """
 from __future__ import annotations
@@ -544,7 +544,7 @@ def get_whitespace_widget(reference: date | None = None) -> dict[str, Any]:
 
 
 def get_connect_goals(reference: date | None = None) -> dict[str, Any]:
-    """Return setup state and all FY27 Data Action Center widgets."""
+    """Return setup state and all shared FY27 Data goal metrics."""
     setup = get_setup_state(reference)
     widgets = []
     if setup['ready']:

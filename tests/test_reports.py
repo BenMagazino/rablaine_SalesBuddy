@@ -57,13 +57,13 @@ class TestReportsHub:
                 links.append(link['href'])
         assert groups == [
             ['All Reports'],
-            ['Connect Goals', 'Initiative Tracker', '1:1 Report', 'Connect Impact'],
+            ['Initiative Tracker', '1:1 Report', 'Connect Impact'],
             ['U2C Attainment', 'Milestone Tracker', 'Activity Coverage', 'Whitespace Analysis'],
             ['Hygiene Report', 'MSX Workspace', "What's New"],
             ['Revenue Analyzer', 'Workload Report', 'P to F', 'Fabric Consumption', 'Marketing Insights',
              'Synapse Customers'],
         ]
-        assert len(links) == len(set(links)) == 18
+        assert len(links) == len(set(links)) == 17
         hub_links = {link['href'] for link in soup.select('main a[href]')}
         assert set(links[1:]).issubset(hub_links)
         assert [heading.get_text(strip=True) for heading in menu.select('.sb-menu-heading')] == [
@@ -1028,10 +1028,13 @@ class TestConnectImpactReport:
             assert b'Connect Impact' in resp.data
             assert b'/reports/connect-impact' in resp.data
 
-    def test_hub_and_navigation_include_connect_goals(self, client, app):
-        """Connect Goals should be discoverable from the hub and Reports menu."""
+    def test_connect_goals_is_a_dashboard_template_not_a_report(self, client, app):
+        """Connect Goals belongs in the dashboard library, not the Reports directory."""
         with app.app_context():
             resp = client.get('/reports')
             assert resp.status_code == 200
-            assert b'Connect Goals' in resp.data
-            assert b'/reports/connect-goals' in resp.data
+            page = BeautifulSoup(resp.data, 'html.parser')
+            assert not page.select('main a[href="/reports/connect-goals"]')
+            assert not page.select('#reportsMenu a[href="/reports/connect-goals"]')
+            hub = client.get('/reports/dashboards')
+            assert b'data-dashboard-template="connect-goals"' in hub.data

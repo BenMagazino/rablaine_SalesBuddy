@@ -25,15 +25,18 @@
         if (!root) return;
         const commands = document.getElementById('layoutEditor') || root;
         const errorBox = document.getElementById('dashboardError');
+        const templateDialog = document.getElementById('dashboardTemplatePicker');
+        const templateError = document.getElementById('dashboardTemplateError');
         const reading = document.getElementById('dashboardReading');
         const base = '/api/reports/dashboards';
         let pending = false;
 
         function showError(error) {
             console.error('Dashboard operation:', error);
-            errorBox.textContent = error.message;
-            errorBox.hidden = false;
-            errorBox.focus();
+            const target = templateDialog?.open ? templateError : errorBox;
+            target.textContent = error.message;
+            target.hidden = false;
+            target.focus();
         }
 
         function updateDraftRows() {
@@ -77,6 +80,7 @@
             if (pending) return;
             pending = true;
             errorBox.hidden = true;
+            if (templateError) templateError.hidden = true;
             root.setAttribute('aria-busy', 'true');
             const controls = Array.from(new Set([
                 ...root.querySelectorAll('button, input, select'),
@@ -116,6 +120,15 @@
                 name: event.target.elements.name.value,
                 subtitle: event.target.elements.subtitle.value,
             }, 'created');
+        });
+        root.querySelectorAll('[data-dashboard-template]').forEach(button => {
+            button.addEventListener('click', () => {
+                save(base + '/from-template/' + encodeURIComponent(button.dataset.dashboardTemplate),
+                    {}, 'created');
+            });
+            templateDialog?.addEventListener('sb:dialog-before-close', event => {
+                if (pending) event.preventDefault();
+            });
         });
         commands.querySelectorAll('[data-db-delete]').forEach(button => {
             button.addEventListener('click', () => {

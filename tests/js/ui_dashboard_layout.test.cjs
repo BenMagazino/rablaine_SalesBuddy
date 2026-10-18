@@ -62,6 +62,7 @@ function editorUI(withWidget = false, records = new Map()) {
         }, replaceChildren() {},
         dataset: {}, attributes: new Map(),
         setAttribute(key, value) { this.attributes.set(key, value); },
+        hasAttribute(key) { return this.attributes.has(key); },
         querySelector() { return null; },
         addEventListener(event, handler) { this[event] = handler; },
         querySelectorAll() { return []; },
@@ -92,7 +93,7 @@ function editorUI(withWidget = false, records = new Map()) {
         contentWidth: 'wide', widths: {standard: 1152, wide: 1344},
         displayStyle: 'cards',
         grid: {maxRows: 1000, padding: 16, gap: 12, rowHeight: 64}, catalog: [{
-            key: 'test.widget', variants: [{
+            key: 'test.widget', requirements: ['compensation_buckets'], variants: [{
                 key: 'metric', title: 'Metric', widths: [3, 6, 12], min_height: 3,
             }, {
                 key: 'detailed', title: 'Detailed', widths: [6, 12], min_height: 5,
@@ -109,12 +110,15 @@ function editorUI(withWidget = false, records = new Map()) {
         getAttribute() { return 'Test widget'; },
         querySelector() { return body; },
         hasAttribute(name) { return name === 'data-drag-handle'; },
-        closest() { return this; },
+        closest(selector) { return selector === '[data-widget-requirement]' ? null : this; },
     };
     const resize = {
         ...node(),
         hasAttribute(name) { return name === 'data-resize-handle'; },
-        closest(selector) { return selector === '[data-widget-id]' ? tile : this; },
+        closest(selector) {
+            if (selector === '[data-widget-requirement]') return null;
+            return selector === '[data-widget-id]' ? tile : this;
+        },
     };
     nodes.dashboardCanvas.getBoundingClientRect = () => ({
         left: 0, top: 0, right: 1344, bottom: 760,
@@ -123,8 +127,14 @@ function editorUI(withWidget = false, records = new Map()) {
     nodes.widgetInspector.elements = Object.fromEntries([
         'variant_key', 'column_span', 'layout_column', 'layout_row', 'row_span',
     ].map(name => [name, node()]));
+    nodes.openWidgetLibrary = actions[1];
+    nodes.widgetInspectorFields.querySelectorAll = () => [
+        ...Object.values(nodes.widgetInspector.elements), nodes.removeSelectedWidget,
+    ];
     nodes.dashboardConfig = {textContent: JSON.stringify(config)};
+    const workspace = node();
     const root = {
+        parentElement: workspace,
         dataset: {dashboardId: '21'},
         style: {setProperty() {}},
         classList: node().classList,
@@ -154,11 +164,16 @@ function editorUI(withWidget = false, records = new Map()) {
         cancelAnimationFrame() {},
         confirm() { return true; },
         SBDashboardDrafts: {...createStore(storage), key: id => PREFIX + id},
+        SBDashboardDividers: {
+            render(canvas, items) {
+                canvas.dividerItems = JSON.parse(JSON.stringify(items));
+            },
+        },
     };
     vm.runInNewContext(fs.readFileSync(path.join(
         __dirname, '../../static/js/ui-dashboard-layout.js'), 'utf8'),
     {window, document, console, URLSearchParams});
-    return {nodes, fields, actions, tile, resize, root, window, document, records, body};
+    return {nodes, fields, actions, tile, resize, root, workspace, window, document, records, body};
 }
 
 test('draft preview uses the unsaved state without rewriting the draft or publishing', () => {
@@ -206,6 +221,62 @@ test('draft preview uses the unsaved state without rewriting the draft or publis
     assert.equal(ui.fields[0].value, 'Unsaved title <not HTML>');
     assert.equal(ui.records.get(PREFIX + '21'), stored);
     assert.equal(ui.nodes.saveDashboardLayout.disabled, false);
+});
+
+test('prerequisite prompts stay interactive in editing and cannot start widget drags', () => {
+    const ui = editorUI(true);
+    ui.body.attributes.set('data-widget-requirements', '');
+    ui.nodes.previewDashboardDraft.click();
+    ui.nodes.exitDashboardDraftPreview.click();
+    assert.equal(ui.body.inert, false);
+    ui.nodes.dashboardCanvas.pointerdown({
+        target: {closest: selector => selector === '[data-widget-requirement]' ? {} : ui.tile},
+        preventDefault() { assert.fail('Setup action must not be consumed by dragging'); },
+        button: 0,
+    });
+    assert.equal(ui.tile.capturedPointer, undefined);
+});
+
+test('resolving a prerequisite refreshes content without changing draft or undo history', async () => {
+    const ui = editorUI(true);
+    ui.fields[0].value = 'Local unsaved name';
+    ui.fields[0].input();
+    const draft = ui.records.get(PREFIX + '21');
+    const requests = [];
+    ui.window.fetch = async url => {
+        requests.push(url);
+        return {ok: true, json: async () => ({success: true, html: '<div>Ready</div>'})};
+    };
+    ui.window.SBConnectGoals = {destroy() {}, init() {}};
+    ui.body.remove = () => {};
+    ui.tile.insertAdjacentHTML = () => {};
+    await ui.window.SBDashboardEditor.refreshRequirement('compensation_buckets');
+    assert.equal(requests.length, 1);
+    assert.equal(ui.body.inert, true);
+    assert.equal(ui.records.get(PREFIX + '21'), draft);
+    assert.equal(ui.nodes.undoDashboardEdit.disabled, false);
+    ui.nodes.undoDashboardEdit.click();
+    assert.equal(ui.fields[0].value, 'Original');
+    assert.equal(ui.nodes.undoDashboardEdit.disabled, true);
+});
+
+test('prerequisite refresh errors remain retryable without a stale reload warning', async () => {
+    const ui = editorUI(true);
+    ui.nodes.dashboardError.hidden = true;
+    ui.window.fetch = async () => { throw new Error('Offline'); };
+    await assert.rejects(
+        ui.window.SBDashboardEditor.refreshRequirement('compensation_buckets'), /Retry/,
+    );
+    assert.equal(ui.nodes.dashboardError.hidden, true);
+    assert.equal(ui.window.SBDashboardDrafts.read(21), null);
+    ui.window.fetch = async () => ({
+        ok: true, json: async () => ({success: true, html: '<div>Ready</div>'}),
+    });
+    ui.window.SBConnectGoals = {destroy() {}, init() {}};
+    ui.body.remove = () => {};
+    ui.tile.insertAdjacentHTML = () => {};
+    await ui.window.SBDashboardEditor.refreshRequirement('compensation_buckets');
+    assert.equal(ui.tile.dataset.loadedPresentation, 'metric:6');
 });
 
 test('preview blocks widget editing while preserving normal widget interactions', async () => {
@@ -264,12 +335,15 @@ test('clicking widget content selects without starting a drag or changing the la
 test('dragging widget content moves it, while Escape restores its original placement', () => {
     const ui = editorUI(true);
     const canvas = ui.nodes.dashboardCanvas;
-    const content = {closest() { return ui.tile; }};
+    const content = {closest(selector) {
+        return selector === '[data-widget-requirement]' ? null : ui.tile;
+    }};
     canvas.pointerdown(pointerEvent(content));
     canvas.pointermove(pointerEvent(content, 210, 176));
     assert.equal(ui.tile.style.gridColumn, '2 / span 6');
     assert.equal(ui.tile.style.gridRow, '2 / span 4');
     canvas.keydown({key: 'Escape', preventDefault() {}, stopPropagation() {}});
+    assert.equal(ui.nodes.dashboardReading.classList.values.get('is-quiet-focus'), true);
     assert.equal(ui.tile.style.gridColumn, '1 / span 6');
     assert.equal(ui.tile.style.gridRow, '1 / span 4');
     assert.equal(ui.nodes.saveDashboardLayout.disabled, true);
@@ -284,7 +358,9 @@ test('dragging widget content moves it, while Escape restores its original place
 test('the resize corner changes dimensions instead of dragging the whole widget', () => {
     const ui = editorUI(true);
     const canvas = ui.nodes.dashboardCanvas;
-    const icon = {closest() { return ui.resize; }};
+    const icon = {closest(selector) {
+        return selector === '[data-widget-requirement]' ? null : ui.resize;
+    }};
     canvas.pointerdown(pointerEvent(icon));
     canvas.pointermove(pointerEvent(icon, 100, 176));
     canvas.pointerup();
@@ -598,6 +674,7 @@ test('completed drags and resizes are single undo steps and canceled drags add n
     assert.equal(ui.tile.style.gridRow, '3 / span 4');
     ui.nodes.undoDashboardEdit.click();
     assert.equal(ui.tile.style.gridRow, '1 / span 4');
+    assert.equal(ui.nodes.dashboardCanvas.dividerItems[0].layout_row, 0);
     assert.equal(ui.nodes.undoDashboardEdit.disabled, true);
     ui.nodes.redoDashboardEdit.click();
     canvas.pointerdown(pointerEvent(ui.resize));
@@ -607,6 +684,7 @@ test('completed drags and resizes are single undo steps and canceled drags add n
     ui.nodes.undoDashboardEdit.click();
     assert.equal(ui.tile.dataset.rowSpan, 4);
     assert.equal(ui.tile.style.gridRow, '3 / span 4');
+    assert.equal(ui.nodes.dashboardCanvas.dividerItems[0].layout_row, 2);
     canvas.pointerdown(pointerEvent(ui.tile));
     canvas.pointermove(pointerEvent(ui.tile, 100, 328));
     canvas.keydown({
@@ -710,11 +788,57 @@ test('escape deselects without altering the draft and delete then has no target'
     ui.tile.click();
     const stored = ui.records.get(PREFIX + '21');
     assert.equal(shortcut(ui, 'Escape').defaultPrevented, true);
+    assert.equal(ui.nodes.dashboardReading.focused, true);
+    assert.equal(ui.nodes.dashboardReading.classList.values.get('is-quiet-focus'), true);
     assert.equal(ui.nodes.widgetInspectorFields.hidden, true);
     assert.equal(shortcut(ui, 'Delete').defaultPrevented, false);
     assert.equal(ui.tile.hidden, false);
     assert.equal(ui.records.get(PREFIX + '21'), stored);
     assert.equal(ui.nodes.undoDashboardEdit.disabled, true);
+    ui.nodes.dashboardReading.blur();
+    ui.nodes.dashboardReading.focus();
+    assert.equal(ui.nodes.dashboardReading.classList.values.get('is-quiet-focus'), false);
+});
+
+test('gutter clicks deselect without changing draft history or stealing focus', () => {
+    const ui = editorUI(true);
+    ui.tile.click();
+    const stored = ui.records.get(PREFIX + '21');
+    ui.workspace.click({target: ui.workspace});
+    assert.equal(ui.nodes.widgetInspectorFields.hidden, true);
+    assert.equal(ui.nodes.widgetInspectorEmpty.hidden, false);
+    assert.equal(ui.nodes.selectedWidgetTitle.textContent, 'No widget selected');
+    assert.equal(ui.tile.classList.values.get('is-selected'), false);
+    assert.equal(ui.nodes.dashboardReading.focused, undefined);
+    assert.equal(ui.records.get(PREFIX + '21'), stored);
+    assert.equal(ui.nodes.undoDashboardEdit.disabled, true);
+    assert.equal(shortcut(ui, 'Delete').defaultPrevented, false);
+    assert.equal(ui.tile.hidden, false);
+    for (const target of [ui.tile, ui.resize, ui.fields[0], ui.nodes.widgetInspector,
+        ui.nodes.openWidgetLibrary]) {
+        ui.tile.click();
+        ui.workspace.click({target});
+        assert.equal(ui.nodes.widgetInspectorFields.hidden, false);
+    }
+});
+
+test('Add widget is independent of selection but still respects draft conflicts', () => {
+    const empty = editorUI();
+    assert.equal(empty.nodes.openWidgetLibrary.disabled, false);
+    assert.equal(empty.nodes.removeSelectedWidget.disabled, true);
+    const ui = editorUI(true);
+    ui.tile.click();
+    assert.equal(ui.nodes.openWidgetLibrary.disabled, false);
+    assert.equal(ui.nodes.removeSelectedWidget.disabled, false);
+    ui.workspace.click({target: ui.workspace});
+    assert.equal(ui.nodes.openWidgetLibrary.disabled, false);
+    assert.equal(ui.nodes.removeSelectedWidget.disabled, true);
+    ui.tile.click();
+    shortcut(ui, 'Escape');
+    assert.equal(ui.nodes.openWidgetLibrary.disabled, false);
+    assert.equal(ui.nodes.removeSelectedWidget.disabled, true);
+    ui.window.storage({key: PREFIX + '21'});
+    assert.equal(ui.nodes.openWidgetLibrary.disabled, true);
 });
 
 test('typing, composing, prevented events, and dialogs retain their own shortcuts', () => {

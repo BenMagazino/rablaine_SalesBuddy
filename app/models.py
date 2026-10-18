@@ -481,6 +481,20 @@ class DashboardWidget(db.Model):
     dashboard = db.relationship('Dashboard', back_populates='widgets')
 
 
+class DashboardTemplateInstallation(db.Model):
+    """Remember starter installation even when its editable dashboard is deleted."""
+
+    __tablename__ = 'dashboard_template_installations'
+
+    key = db.Column(db.String(100), primary_key=True)
+    version = db.Column(db.Integer, nullable=False)
+    dashboard_id = db.Column(
+        db.Integer, db.ForeignKey('dashboards.id', ondelete='SET NULL'), nullable=True,
+    )
+    installed_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    dashboard = db.relationship('Dashboard', backref='template_installations')
+
+
 class OneOnOneWorkspace(db.Model):
     """Persistent notes and agenda for one person's recurring 1:1 meetings."""
     __tablename__ = 'one_on_one_workspaces'

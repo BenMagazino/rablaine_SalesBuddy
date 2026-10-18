@@ -254,7 +254,8 @@
         redoButton.addEventListener('click', () => restoreHistory(redoStack, undoStack));
         function setTileMode(tile) {
             tile.tabIndex = previewing ? -1 : 0;
-            tile.querySelector('.db-widget-body').inert = !previewing;
+            const body = tile.querySelector('.db-widget-body');
+            body.inert = !previewing && !body.hasAttribute('data-widget-requirements');
         }
         function setPreview(value) {
             if (pending || published) return;
@@ -298,6 +299,7 @@
             root.style.setProperty('--db-canvas-width', config.widths[contentWidth] + 'px');
             root.classList.toggle('sb-directory-frame-wide', contentWidth === 'wide');
             root.dataset.displayStyle = displayStyle;
+            global.SBDashboardDividers.render(canvas, items);
             const preview = document.getElementById('widgetPreview');
             if (preview) preview.dataset.displayStyle = displayStyle;
             const summary = document.getElementById('dashboardSummary');
@@ -348,7 +350,7 @@
             canvas.append(tile);
             return tile;
         }
-        async function loadContent(item) {
+        async function loadContent(item, reportError = true) {
             const tile = ensureTile(item);
             const signature = item.variant_key + ':' + item.column_span;
             if (tile.dataset.loadedPresentation === signature) {
@@ -377,8 +379,10 @@
                 global.SBConnectGoals.init(tile);
             } catch (error) {
                 if (contentRequests.get(item.id) !== request) return;
-                showError('Could not load current widget content. Your draft is kept; '
-                    + 'reload to retry. ' + error.message, error);
+                if (reportError) {
+                    showError('Could not load current widget content. Your draft is kept; '
+                        + 'reload to retry. ' + error.message, error);
+                }
                 throw error;
             }
         }
@@ -411,7 +415,7 @@
         }
         function updateInspector() {
             const item = entries.find(entry => entry.id === selectedId);
-            inspector.querySelectorAll('input, select, button').forEach(
+            inspectorFields.querySelectorAll('input, select, button').forEach(
                 control => { control.disabled = !item || pending || published || blocked; });
             inspectorFields.hidden = !item;
             inspectorEmpty.hidden = Boolean(item);
@@ -435,6 +439,15 @@
             tiles.forEach((tile, tileId) => tile.classList.toggle('is-selected', tileId === id));
             updateInspector();
         }
+        function deselectFromKeyboard() {
+            select(null);
+            reading.classList.toggle('is-quiet-focus', true);
+            reading.focus({preventScroll: true});
+            status.textContent = 'Widget deselected.';
+        }
+        reading.addEventListener('blur', () => {
+            reading.classList.toggle('is-quiet-focus', false);
+        });
         function apply(item) {
             if (!canPlace(item, entries, config.grid.maxRows)) {
                 showError('That position is occupied or outside the grid. Other widgets were not moved.');
@@ -536,6 +549,10 @@
         canvas.addEventListener('click', event => {
             if (!event.target.closest('[data-widget-id]')) select(null);
         });
+        const workspace = root.parentElement;
+        workspace.addEventListener('click', event => {
+            if (event.target === workspace) select(null);
+        });
 
         function pointerCandidate() {
             const rect = canvas.getBoundingClientRect();
@@ -577,6 +594,7 @@
             }
         }
         canvas.addEventListener('pointerdown', event => {
+            if (event.target.closest('[data-widget-requirement]')) return;
             const handle = event.target.closest('[data-drag-handle], [data-resize-handle]');
             if (previewing || pending || published || blocked || !handle || event.button !== 0) return;
             event.preventDefault();
@@ -613,10 +631,10 @@
                 event.preventDefault();
                 event.stopPropagation();
                 finishGesture(false);
-                select(null);
-                reading.focus({preventScroll: true});
+                deselectFromKeyboard();
                 return;
             }
+            if (event.target.closest('[data-widget-requirement]')) return;
             const handle = event.target.closest('[data-drag-handle], [data-resize-handle]');
             if (previewing || pending || published || blocked
                 || !handle || !event.key.startsWith('Arrow')) return;
@@ -705,9 +723,7 @@
             } else if (event.key === 'Escape' && selectedId !== null) {
                 event.preventDefault();
                 if (gesture) finishGesture(false);
-                select(null);
-                reading.focus({preventScroll: true});
-                status.textContent = 'Widget deselected.';
+                deselectFromKeyboard();
             }
         });
         detailControls.forEach(input => {
@@ -738,6 +754,21 @@
         });
         global.SBDashboardEditor = Object.freeze({
             getSettings: () => ({contentWidth, displayStyle}),
+            async refreshRequirement(key) {
+                tiles.forEach((tile, id) => {
+                    const spec = config.catalog.find(item => item.key === tile.dataset.widgetKey);
+                    if (spec?.requirements?.includes(key)) {
+                        delete tile.dataset.loadedPresentation;
+                        contentRequests.delete(id);
+                    }
+                });
+                const results = await Promise.allSettled(entries
+                    .filter(item => definition(item)?.requirements?.includes(key))
+                    .map(item => loadContent(item, false)));
+                if (results.some(result => result.status === 'rejected')) {
+                    throw new Error('Some widgets could not refresh. Retry to load the saved scope.');
+                }
+            },
             async addWidget(spec) {
                 if (previewing || pending || published || blocked) {
                     throw new Error('The draft is not editable.');
@@ -807,7 +838,7 @@
             markDirty();
             updateInspector();
         });
-        root.querySelectorAll('.db-widget-body').forEach(body => { body.inert = true; });
+        tiles.forEach(setTileMode);
         widthSelect.value = contentWidth;
         styleSelect.value = displayStyle;
         select(null);

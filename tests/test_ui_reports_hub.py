@@ -11,11 +11,11 @@ from flask.testing import FlaskClient
 
 
 GROUPS = [
-    ("Planning & Reviews", ["connect-goals", "initiative-tracker", "one-on-one", "connect-impact"]),
+    ("Planning & Reviews", ["initiative-tracker", "one-on-one", "connect-impact"]),
     ("Execution & Coverage", ["u2c-attainment", "milestone-tracker", "activity-coverage", "whitespace"]),
     ("Pipeline Health", ["hygiene-report", "msx-workspace", "whats-new"]),
-    ("Account Insights", ["revenue-analyzer", "workload-report", "fabric-consumption", "marketing-insights",
-                          "synapse-customers"]),
+    ("Account Insights", ["revenue-analyzer", "workload-report", "p-to-f",
+                          "fabric-consumption", "marketing-insights", "synapse-customers"]),
 ]
 
 
@@ -77,7 +77,6 @@ def test_report_directory_help_matches_filter_and_back(client: FlaskClient) -> N
 
 
 @pytest.mark.parametrize("route,selector", [
-    ("/reports/connect-goals", ".sb-connect-goals"),
     ("/reports/msx-workspace", ".sb-msx-workspace"),
     ("/reports/one-on-one", ".sb-one-on-one"),
     ("/reports", ".sb-reports-hub"),
@@ -133,7 +132,6 @@ def test_report_reading_pane_overrides_shell_overflow(client: FlaskClient) -> No
 @pytest.mark.parametrize("template,bounded", [
     ("reports_hub.html", True),
     ("report_activity_coverage.html", True),
-    ("report_connect_goals.html", True),
     ("report_hygiene.html", True),
     ("report_msx_workspace.html", True),
     ("report_one_on_one.html", True),
@@ -168,7 +166,7 @@ def test_report_and_revenue_standalone_width_dispositions(
     assert ("sb-directory-frame" in surface.group()) is bounded
     assert ("sb-directory-frame-wide" in surface.group()) is (
         template in {
-            "reports_hub.html", "report_connect_goals.html", "report_msx_workspace.html",
+            "reports_hub.html", "report_msx_workspace.html",
             "report_one_on_one.html", "revenue_config.html", "report_connect_impact.html",
             "revenue_customer_view.html",
             "report_manager_one_on_one.html",

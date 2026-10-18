@@ -85,7 +85,8 @@ def test_dashboard_title_canvas_and_editor_use_shared_report_frame(
         assert surface.select_one('#layoutEditor') is None
         row = toolbar.select_one(':scope > .db-editor-command-row')
         assert row.select_one('[aria-label="Canvas tools"] #canvasWidth')
-        assert row.select_one('[aria-label="Canvas tools"] #openWidgetLibrary')
+        assert row.select_one('[aria-label="Canvas tools"] #openWidgetLibrary') is None
+        assert toolbar.select_one('#widgetInspector > #openWidgetLibrary')
         assert row.select_one('[aria-label="Layout actions"] #saveDashboardLayout')
         assert row.select_one('[aria-label="Layout actions"] #cancelDashboardLayout')
         assert row.select_one('.db-editor-danger-actions [data-db-delete]')
@@ -96,7 +97,7 @@ def test_dashboard_title_canvas_and_editor_use_shared_report_frame(
         assert toolbar.select_one('#dashboardLayoutHelp summary')
     else:
         assert not surface.select('#layoutEditor, #widgetLibrary, [data-dashboard-field]')
-    assert not surface.select('.sb-goals-scope, [data-sb-dialog="connectBucketModal"]')
+    assert not surface.select('.db-header button, .db-header select')
 
 
 @pytest.mark.parametrize('display_style', ['cards', 'dividers'])
@@ -124,7 +125,7 @@ def test_display_style_persists_in_report_editor_and_library_without_moving_widg
         assert root['data-display-style'] == display_style
         assert ('sb-directory-frame-wide' in root['class']) is (width == 'wide')
         assert len(root.select('.db-widget-body')) == 2
-        assert not page.select('.sb-goals-scope, [data-sb-dialog="connectBucketModal"]')
+        assert not page.select('.db-header button, .db-header select')
         if editing:
             select = page.select_one('#layoutEditor #dashboardDisplayStyle')
             assert select.select_one('option[selected]')['value'] == display_style

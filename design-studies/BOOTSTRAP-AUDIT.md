@@ -214,7 +214,7 @@ However, presentation changes are not exclusively HTML/JS:
 Tests currently assert Bootstrap-specific markup and symbols. Examples:
 
 - [Manager-report collapse controls](../tests/test_manager_one_on_one.py#L829).
-- [Connect-goals modal targeting](../tests/test_connect_goals.py#L120).
+- [Shared widget prerequisite setup](../tests/test_dashboard_requirements.py).
 - [Hygiene CSS variables](../tests/test_hygiene_report.py#L114).
 - [UX button/icon selectors](../tests/test_ux_improvements.py#L233).
 - [Manager-report JS harness](../tests/js/manager_one_on_one.test.cjs): Bootstrap
@@ -342,7 +342,6 @@ through includes or the shared base.
 | project_form.html | 7 | 6 | 4 | |
 | project_view.html | 0 | 0 | 0 | |
 | report_activity_coverage.html | 83 | 146 | 60 | tokens |
-| report_connect_goals.html | 48 | 199 | 22 | tokens |
 | report_connect_impact.html | 27 | 62 | 10 | |
 | report_hygiene.html | 114 | 117 | 28 | tokens |
 | report_manager_one_on_one.html | 96 | 207 | 25 | tokens |

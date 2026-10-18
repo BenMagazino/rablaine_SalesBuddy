@@ -1,0 +1,15 @@
+<p class="db-muted">Choose the compensation buckets that apply to your business.
+    Confirm once to update every widget that needs this scope.</p>
+{% if setup.reasons %}
+<ul class="db-muted">{% for reason in setup.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+{% endif %}
+{% if setup.available_buckets and setup.fiscal_year == setup.configured_fiscal_year %}
+<div class="sb-goals-bucket-list">
+    {% include 'partials/compensation_bucket_choices.html' %}
+</div>
+{% else %}
+<p>These widgets need revenue data and a supported fiscal year before you can confirm scope.</p>
+{% if not setup.available_buckets %}
+<a class="db-command" href="{{ url_for('revenue.revenue_import') }}">Import revenue data</a>
+{% endif %}
+{% endif %}

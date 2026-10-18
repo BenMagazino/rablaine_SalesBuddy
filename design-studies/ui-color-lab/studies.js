@@ -50,7 +50,7 @@ const menuContent = {
   reports: [
     { group: 'OVERVIEW', items: [{ label: 'All Reports', path: '/reports', symbol: 'reports' }] },
     { group: 'PLANNING & REVIEWS', items: [
-      { label: 'Connect Goals', path: '/reports/connect-goals', symbol: 'check' },
+      { label: 'Manage Dashboards', path: '/reports/dashboards', symbol: 'check' },
       { label: 'Initiative Tracker', path: '/reports/initiative-tracker', symbol: 'grid' },
       { label: '1:1 Report', path: '/reports/one-on-one', symbol: 'chat' },
       { label: 'Connect Impact', path: '/reports/connect-impact', symbol: 'target' }

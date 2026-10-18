@@ -137,6 +137,8 @@ def create_app():
         
         # Run idempotent migrations (safe to run every startup)
         run_migrations(db)
+        from app.services.dashboard_templates import initialize_dashboard_templates
+        initialize_dashboard_templates()
         
         # Ensure the canonical single user (id=1) exists.
         user = db.session.get(User, 1)

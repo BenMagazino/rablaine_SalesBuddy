@@ -152,6 +152,9 @@
             loadPreview();
         });
         widthSelect.addEventListener('change', loadPreview);
+        global.addEventListener('sb:widget-requirements-changed', () => {
+            if (dialog.open && selected) loadPreview();
+        });
         dialog.addEventListener('sb:dialog-opened', filter);
         dialog.addEventListener('sb:dialog-before-close', event => {
             if (pending) event.preventDefault();

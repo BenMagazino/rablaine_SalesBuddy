@@ -380,12 +380,12 @@ class TestToolExecution:
             assert '/reports/activity-coverage' in result['url']
 
     def test_report_connect_goals(self, app):
-        """Connect Goals should return setup state and an action-center URL."""
+        """Shared goal calculations link to the dashboard or its restoration template."""
         with app.app_context():
             result = execute_tool('report_connect_goals', {})
             assert 'setup' in result
             assert 'widgets' in result
-            assert result['url'].endswith('/reports/connect-goals')
+            assert result['url'].endswith('/reports/dashboards?template=connect-goals')
 
     def test_report_workload(self, app):
         """report_workload should return structured data."""

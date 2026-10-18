@@ -1020,7 +1020,10 @@ def get_dashboards(dashboard_id: int | None = None) -> dict:
     )
 
     if dashboard_id is None:
+        from app.services.dashboard_templates import list_dashboard_templates
+
         return {'dashboards': list_dashboards(), 'catalog': get_widget_catalog(),
+                'templates': list_dashboard_templates(),
                 'url': f'{_BASE}/reports/dashboards'}
     if type(dashboard_id) is not int or dashboard_id < 1:
         raise ValueError('Choose a valid dashboard ID.')
@@ -1034,16 +1037,17 @@ def get_dashboards(dashboard_id: int | None = None) -> dict:
 
 @tool(
     'report_connect_goals',
-    'Get the FY27 Data Connect Goals action center metrics, goals, status, and '
+    'Get shared FY27 Data Connect Goals widget metrics, goals, status, and '
     'drill-down destinations.',
     {'type': 'object', 'properties': {}},
 )
 def report_connect_goals() -> dict:
     """Return the shared Connect Goals calculations."""
     from app.services.connect_goals import get_connect_goals
+    from app.services.dashboard_templates import get_template_dashboard_url
 
     data = get_connect_goals()
-    data['url'] = f'{_BASE}/reports/connect-goals'
+    data['url'] = _BASE + get_template_dashboard_url('connect-goals')
     return data
 
 

@@ -10,8 +10,9 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/17/2026
 
-- Build fixed-layout dashboards from a previewable widget library, with Cards or Dividers and optional subtitles. Resume and preview local drafts, with undo/redo while editing; choose Save when the dashboard is ready.
-- Choose the service compensation buckets that apply to your business without being required to select Databases or Fabric.
+- Build fixed-layout dashboards from a previewable widget library, with Cards or layout-aware Dividers and optional subtitles. Resume and preview local drafts, with undo/redo and click-away deselection while editing; choose Save when the dashboard is ready.
+- Choose the compensation buckets that apply to your business, directly from a widget that needs them. Confirm once to refresh all affected widgets without leaving your dashboard or publishing your draft.
+- Connect Goals is now an editable starter dashboard instead of a separate report. Add a fresh copy from Manage Dashboards whenever you want; deleting or customizing it is respected across restarts. Dashboards now comes before Reports in the navigation.
 
 ## 10/16/2026 - d325c465
 

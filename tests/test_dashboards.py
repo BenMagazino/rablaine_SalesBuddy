@@ -160,8 +160,9 @@ def test_setup_gate_is_shared_and_blocks_calculations(client, monkeypatch):
     add_widget(client, dashboard_id)
     response = client.get(f'/reports/dashboards/{dashboard_id}')
     assert response.status_code == 200
-    assert b'Confirm your FY27 Data priorities' in response.data
-    assert b'Open Connect Goals setup' in response.data
+    assert b'Confirm your FY27 compensation buckets' in response.data
+    assert b'Select compensation buckets' in response.data
+    assert b'Open Connect Goals setup' not in response.data
     assert b'<canvas' not in response.data
     provider.assert_not_called()
 
@@ -254,6 +255,12 @@ def test_report_view_has_no_management_markup_and_keeps_widget_content(client, m
     assert editor.select_one('#undoDashboardEdit').has_attr('disabled')
     assert editor.select_one('#redoDashboardEdit').has_attr('disabled')
     assert editor.select_one('#undoDashboardEdit')['aria-keyshortcuts'] == 'Control+Z'
+    add_button = editor.select_one('#openWidgetLibrary')
+    assert add_button.parent['id'] == 'widgetInspector'
+    assert 'is-primary' in add_button['class']
+    assert len(editor.select('#openWidgetLibrary')) == 1
+    assert editor.select_one('#widgetInspectorFields #openWidgetLibrary') is None
+    assert editor.select_one('.db-editor-canvas-tools #openWidgetLibrary') is None
     widget = editor.select_one('.db-widget')
     assert widget['tabindex'] == '0'
     assert widget['aria-describedby'] == 'dashboardLayoutHelp'
@@ -261,6 +268,11 @@ def test_report_view_has_no_management_markup_and_keeps_widget_content(client, m
     assert len(widget.select(':scope > button')) == 1
     assert widget.select_one('button[data-resize-handle]')
     scripts = [script['src'] for script in report.select('script[src]')]
+    assert any('ui-dashboard-dividers.js' in src for src in scripts)
+    editor_scripts = [script['src'].split('?')[0] for script in editor.select('script[src]')]
+    assert editor_scripts.index('/static/js/ui-dashboard-dividers.js') < (
+        editor_scripts.index('/static/js/ui-dashboard-layout.js')
+    )
     assert not any('ui-dashboard-layout.js' in src or 'ui-dashboard-library.js' in src
                    for src in scripts)
     assert report.select_one('.db-widget-body').get_text(' ', strip=True) == (

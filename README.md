@@ -248,7 +248,9 @@ standalone UI iterations using entirely fictional data. See the
   Editor actions and canvas controls share a full-width command bar above the bounded
   dashboard title and canvas. Canvas tools, save/discard actions, and dashboard deletion
   are grouped separately. Select a widget to reveal its appearance, position, and size
-  controls; click empty canvas space to clear selection. Layout help expands on demand.
+  controls; click empty canvas space or either outer gutter to clear selection.
+  A prominent **Add widget** button stays at the right of the widget properties bar,
+  whether or not a widget is selected. Layout help expands below the bar on demand.
   That editor bar is absent from report views. Place widgets
   on a 12-column grid by dragging anywhere on a widget, using its bottom-right resize
   handle, or setting explicit position and size controls. Focus a widget and use arrow
@@ -257,6 +259,13 @@ standalone UI iterations using entirely fictional data. See the
   variations and half/full-width detailed variations share the four Connect Goals
   calculations. The searchable widget-library dialog shows actual-size previews using
   current synced data, with report, width, and variation filters.
+  Widgets declare their own shared setup requirements. If compensation buckets have
+  not been confirmed, each affected widget offers **Select compensation buckets**
+  in the saved dashboard, editor, and library preview. Confirming once refreshes all
+  dependent widgets with that scope, without reloading, publishing the dashboard,
+  changing its local draft, or adding an undo step. The selection is the same annual
+  application setting used by all Connect Goals widgets. Failed saves or
+  refreshes remain visible and can be retried.
   Opening an editor immediately enables layout editing, with name and subtitle editing
   available alongside it. Name, subtitle, display settings, widget additions/removals, and
   geometry persist together in local storage across reloads and navigation. Manage Dashboards
@@ -269,14 +278,19 @@ standalone UI iterations using entirely fictional data. See the
   widget additions/removals, geometry, display settings, and text edits.
   **Ctrl+Shift+Z** also redoes. Continuous name/subtitle typing is one dashboard undo step.
   **Delete** or **Backspace** removes the selected widget; **Escape** deselects it and
-  cancels an active drag. Shortcuts leave text fields and open dialogs alone.
+  cancels an active drag without highlighting the canvas.
+  Shortcuts leave text fields and open dialogs alone.
   Undo history is editor-session-only and resets on reload, Save, or Discard draft;
   the current draft still persists in local storage.
   **Save** publishes the complete dashboard in one transaction and clears its local draft.
   **Discard draft** requires confirmation and restores all saved settings, including text.
   Failed saves keep the draft. Conflicting saved changes are never silently overwritten.
   The **Display** selector switches between outlined **Cards** and flat **Dividers**
-  with horizontal section rules. It previews immediately and saves or resets with the layout,
+  with shared horizontal and vertical separators between neighboring widgets.
+  Lines join across the normal grid gaps, without outlining the dashboard or crossing
+  intentional empty space. A lone widget has no divider.
+  Dividers update during editing, undo/redo, and draft previews, and in saved views.
+  The display choice previews immediately and saves or resets with the layout,
   without changing widget positions, sizes, gaps, or the Standard/Wide report frame.
   New dashboards use Cards. Widget-library previews follow the current draft display style
   and canvas width. Add or remove widgets freely while editing, without publishing or reloading.
@@ -288,6 +302,17 @@ standalone UI iterations using entirely fictional data. See the
   Widgets retain the FY27 Data scope, annual setup, drill-through reports, charts, and
   consumption history. Values are not saved snapshots. Full-window canvases and custom
   seller/date filters are not available yet.
+  **Connect Goals** is supplied as an ordinary, editable starter dashboard, replacing
+  the standalone report. It is installed once, not recreated after deletion or reset
+  after customization. An exact existing pre-release copy is adopted without changing
+  its name, widget IDs, layout, or revision. The **Add from template** button on Manage
+  Dashboards opens a picker with descriptions and layout details. Choose a template
+  to create another copy or restore the original starting layout. Copies are
+  independent and can be renamed, rearranged, or deleted. Old Connect Goals bookmarks
+  open the starter while it exists; otherwise they offer explicit template recreation.
+  The template has a stable key and version, separate from ordinary dashboard IDs.
+  Installation history lives in `dashboard_template_installations` so deletion remains
+  intentional across restarts. There is no dashboard-specific F1 editor or scope toolbar.
   Compensation bucket choices are not restricted to Databases or Fabric. Any non-empty
   selection from the current imported taxonomy can be confirmed for the fiscal year;
   the existing Data goal calculations retain their report-specific scope.
@@ -295,8 +320,9 @@ standalone UI iterations using entirely fictional data. See the
   stable widget definitions and presentation support live in the code-owned catalog,
   independently of menu placement. Geometry uses zero-based `layout_column` and
   `layout_row`, plus `column_span`, `row_span` (64px rows with 12px gaps), and `variant_key`.
-- **Reports Navigation** - divider-separated groups for planning and reviews, execution
-  and coverage, pipeline health, and account insights. Connect Goals' action reports
+- **Reports Navigation** - Dashboards precedes Reports, separating personal overviews
+  from their drill-through reports. Reports uses divider-separated groups for planning
+  and reviews, execution and coverage, pipeline health, and account insights. Goal action reports
   stay together, separate from planning and review pages. All Reports uses the same
   groups and report order.
 - **U2C Trends** - U2C Attainment and Connect Goals preserve quarter-specific MSXi history

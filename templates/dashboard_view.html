@@ -31,13 +31,10 @@
             </select>
             <label for="dashboardDisplayStyle">Display</label>
             <select class="db-input db-style-select" id="dashboardDisplayStyle"
-                    title="Cards outline each widget. Dividers use flat sections with horizontal rules.">
+                    title="Cards outline each widget. Dividers separate neighboring widgets with shared rules.">
                 <option value="cards"{% if dashboard.display_style == 'cards' %} selected{% endif %}>Cards</option>
                 <option value="dividers"{% if dashboard.display_style == 'dividers' %} selected{% endif %}>Dividers</option>
             </select>
-            <button class="db-command" type="button" data-sb-dialog="widgetLibrary" id="openWidgetLibrary">
-                <i class="bi bi-plus-lg" aria-hidden="true"></i> Add widget
-            </button>
         </div>
         <div class="db-actions" role="group" aria-label="Edit history">
             <button class="db-command" type="button" id="undoDashboardEdit"
@@ -108,6 +105,10 @@
                Other widgets never move. Every change is kept as a local draft in this browser.
                Save publishes the complete dashboard. Discard draft restores the saved dashboard.</p>
         </details>
+        <button class="db-command is-primary db-inspector-add" type="button"
+                data-sb-dialog="widgetLibrary" id="openWidgetLibrary">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i> Add widget
+        </button>
     </form>
 </section>
 {% endif %}
@@ -138,14 +139,6 @@
         </div>
     </header>
     <div class="db-reading" id="dashboardReading" data-sb-page-body tabindex="0" role="region" aria-label="Dashboard canvas">
-        {% if dashboard.setup and not dashboard.setup.ready %}
-        <aside class="db-setup" aria-labelledby="setupTitle">
-            <h2 id="setupTitle">Confirm your FY27 Data priorities</h2>
-            <p>These widgets share the Connect Goals setup. Confirm it once to use them here too.</p>
-            <ul>{% for reason in dashboard.setup.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
-            <a href="{{ url_for('reports.report_connect_goals') }}">Open Connect Goals setup</a>
-        </aside>
-        {% endif %}
         <div class="db-canvas" id="dashboardCanvas"
              style="--db-rows: {{ dashboard.canvas_rows }};">
             {% for instance in dashboard.widgets %}
@@ -185,6 +178,28 @@
         </div>
     </div>
 </section>
+<dialog class="sb-dialog sb-dialog-compact sb-dashboards"
+        id="dashboardRequirementDialog" aria-labelledby="dashboardRequirementTitle">
+    <form class="sb-dialog-shell" id="dashboardRequirementForm">
+        <header class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <h2 id="dashboardRequirementTitle">Compensation buckets</h2>
+            </div>
+            <button class="sb-dialog-close" type="button" data-sb-dialog-close aria-label="Close">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </header>
+        <div class="sb-dialog-body">
+            <div id="dashboardRequirementChoices"></div>
+            <p id="dashboardRequirementStatus" role="status" aria-live="polite"></p>
+        </div>
+        <footer class="sb-dialog-footer">
+            <button type="button" class="db-command" data-sb-dialog-close>Cancel</button>
+            <button type="submit" class="db-command is-primary"
+                    id="confirmDashboardRequirement" disabled>Confirm buckets</button>
+        </footer>
+    </form>
+</dialog>
 {% if manage_dashboard %}
 <dialog class="sb-dialog db-library sb-dashboards" id="widgetLibrary" aria-labelledby="widgetLibraryTitle">
     <div class="sb-dialog-shell">
@@ -233,7 +248,9 @@
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ui-connect-goals.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboard-drafts.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-dashboard-dividers.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboards.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-dashboard-requirements.js') }}" defer></script>
 {% if manage_dashboard %}
 <script src="{{ url_for('static', filename='js/ui-dashboard-layout.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboard-library.js') }}" defer></script>
