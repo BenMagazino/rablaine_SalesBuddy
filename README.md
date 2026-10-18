@@ -44,9 +44,10 @@ populate through the existing MSX sync or detail refresh, never from local impor
 timestamps. Older events load on demand. A compact-window flyout is not included yet.
 
 Press **Ctrl+Space** anywhere to open the Quick Launcher. Type any part of a page
-or report title, then press Enter to open the first match, or use Tab and arrow
+or report title or seller name, then press Enter to open the first match, or use Tab and arrow
 keys to choose another. Escape closes it and returns you to your work.
-The launcher follows the current navigation menu and includes Home and Sync Status.
+The launcher follows the current navigation menu, including individual sellers,
+and includes Home and Sync Status.
 
 A logo-green light with a fading trail travels along the menu/toolbar divider
 to acknowledge page navigation and foreground action requests without blocking
