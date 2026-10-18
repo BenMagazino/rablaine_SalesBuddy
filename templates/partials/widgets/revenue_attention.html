@@ -1,0 +1,45 @@
+{% macro money(value) %}{{ '${:,.0f}'.format(value) if value is not none else 'Not supplied' }}{% endmacro %}
+{% set data = instance.data %}
+<section class="db-report-widget" aria-labelledby="{{ widget_id_prefix }}revenueTitle">
+    <header class="db-report-heading">
+        <h2 id="{{ widget_id_prefix }}revenueTitle">Revenue risk / opportunity</h2>
+        <a href="{{ data.destination }}">Open report <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    </header>
+    {% for notice in data.notices %}<p class="db-report-notice">{{ notice }}</p>{% endfor %}
+    {% if not data.has_analysis %}
+    <p class="db-report-empty">No saved revenue analysis{% if data.seller_name %} for {{ data.seller_name }}{% endif %}. Open Revenue Analyzer to import revenue and run analysis.</p>
+    {% else %}
+    <p class="db-report-caption">{{ data.pending_count }} unreviewed alert{{ '' if data.pending_count == 1 else 's' }} · Priority 20+{% if data.seller_name %} · {{ data.seller_name }}{% endif %}</p>
+    <dl class="db-report-metrics">
+        <div><dt>At risk / month</dt><dd>{{ money(data.at_risk) }}{% if data.at_risk_missing %}<small>{{ data.at_risk_missing }} not supplied</small>{% endif %}</dd></div>
+        <div><dt>Opportunity / month</dt><dd>{{ money(data.opportunity) }}{% if data.opportunity_missing %}<small>{{ data.opportunity_missing }} not supplied</small>{% endif %}</dd></div>
+    </dl>
+    {% if data.oldest_analysis %}<p class="db-report-caption">Oldest pending analysis: {{ data.oldest_analysis[:10] }} UTC. Estimates, not a revenue forecast.</p>{% endif %}
+    {% if instance.variant_key == 'detailed' and data.rows %}
+    <table class="db-report-table" data-sb-sortable data-sb-sort-key="{{ widget_id_prefix }}revenue"
+           data-sb-sort-default-column="1" data-sb-sort-default-direction="descending">
+        <caption class="sb-visually-hidden">Unreviewed revenue alerts</caption>
+        <thead><tr>
+            <th scope="col" data-sb-sort-type="text">Customer / signal</th>
+            <th scope="col" data-sb-sort-type="number">Priority</th>
+            <th scope="col" data-sb-sort-type="number">At risk/mo</th>
+            <th scope="col" data-sb-sort-type="number">Opportunity/mo</th>
+        </tr></thead>
+        <tbody>{% for row in data.rows %}
+            <tr>
+                <th scope="row" data-sb-sort-value="{{ row.customer_name }}">
+                    {% if row.customer_id %}<a href="{{ url_for('revenue.revenue_customer_view', customer_id=row.customer_id) }}">{{ row.customer_name }}</a>{% else %}{{ row.customer_name }}{% endif %}
+                    <small>{{ row.bucket }} · {{ row.category|replace('_', ' ')|title }}</small>
+                    {% if row.seller_name %}
+                    {% if row.seller_id %}<a class="db-report-seller badge bg-primary text-decoration-none" href="{{ url_for('sellers.seller_view', id=row.seller_id) }}">{% else %}<span class="db-report-seller badge bg-primary">{% endif %}<i class="bi bi-person" aria-hidden="true"></i> {{ row.seller_name }}{% if row.seller_id %}</a>{% else %}</span>{% endif %}
+                    {% endif %}
+                </th>
+                <td data-sb-sort-value="{{ row.priority }}">{{ row.priority }}</td>
+                <td data-sb-sort-value="{{ row.at_risk if row.at_risk is not none else '' }}">{{ money(row.at_risk) }}</td>
+                <td data-sb-sort-value="{{ row.opportunity if row.opportunity is not none else '' }}">{{ money(row.opportunity) }}</td>
+            </tr>
+        {% endfor %}</tbody>
+    </table>
+    {% elif not data.rows %}<p class="db-report-empty">No unreviewed alerts at priority 20 or higher. Reviewed and actioned alerts are not counted.</p>{% endif %}
+    {% endif %}
+</section>

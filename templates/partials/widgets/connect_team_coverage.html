@@ -1,0 +1,35 @@
+        {% set team = widgets.get('team_coverage') %}
+        <section class="sb-goals-section" aria-labelledby="{{ widget_id_prefix|default('') }}teamGoalTitle">
+            <div class="sb-goals-eyebrow">Influence</div>
+            <h2  id="{{ widget_id_prefix|default('') }}teamGoalTitle">Milestone team coverage</h2>
+            {% if team and team.available %}
+            <div class="sb-goals-value is-{{ team.status_tone }}"
+                 tabindex="0" aria-describedby="{{ widget_id_prefix|default('') }}teamExplanation">{{ "%.1f"|format(team.value) }}%</div>
+            <div class="sb-goals-measure">ACR-weighted coverage</div>
+            <p class="sb-goals-caption sb-goals-muted" id="{{ widget_id_prefix|default('') }}teamExplanation">{{ team.status_explanation }}</p>
+            <div class="sb-goals-progress"
+                 role="progressbar" aria-label="Milestone team coverage"
+                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ team.value }}"
+                 aria-valuetext="{{ team.value }} percent; 50 percent target">
+                <div class="sb-goals-progress-fill is-{{ team.status_tone }}"
+                     style="width: {{ [team.value, 100]|min }}%"></div>
+                <span class="sb-goals-target" style="left: {{ team.target }}%"
+                      title="{{ team.target }}% goal"></span>
+            </div>
+            <div class="sb-goals-caption sb-goals-muted">
+                {{ team.on_team_count }} of {{ team.total_count }} milestones ·
+                ${{ "{:,.0f}".format(team.on_team_acr) }} of ${{ "{:,.0f}".format(team.total_acr) }} ACR
+            </div>
+            <button type="button" class="sb-goals-link"
+                    data-goals-coverage>
+                Review off-team milestones <i class="bi bi-arrow-right"></i>
+            </button>
+            {% if team.freshness %}
+            <div class="sb-goals-caption sb-goals-muted">
+                Milestones synced {{ team.freshness.strftime('%b %d, %Y') }}
+            </div>
+            {% endif %}
+            {% else %}
+            <p class="sb-goals-muted">No active FY27 Data milestones with matched customers are available.</p>
+            {% endif %}
+        </section>

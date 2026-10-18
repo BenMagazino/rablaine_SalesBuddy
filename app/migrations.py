@@ -71,6 +71,7 @@ def run_migrations(db):
     # Add new migrations below this line
     # =========================================================================
 
+    _migrate_dashboard_layout(db)
     _add_column_if_not_exists(
         db, inspector, 'manager_initiative_items', 'points_created_at', 'DATETIME',
     )
@@ -674,6 +675,50 @@ def _migrate_loading_indicator(db, inspector) -> None:
             db, inspector, 'user_preferences', 'loading_indicator_brightness',
             'INTEGER DEFAULT 100 NOT NULL',
         )
+
+
+def _migrate_dashboard_layout(db) -> None:
+    """Add dashboard presentation and geometry without resetting saved choices or positions."""
+    from sqlalchemy import MetaData, Table, select
+
+    inspector = inspect(db.engine)
+    tables = set(inspector.get_table_names())
+    for table, columns in (
+        ('dashboards', (
+            ('subtitle', "VARCHAR(500) NOT NULL DEFAULT ''"),
+            ('content_width', "VARCHAR(16) NOT NULL DEFAULT 'wide'"),
+            ('display_style', "VARCHAR(16) NOT NULL DEFAULT 'cards'"),
+            ('layout_revision', 'INTEGER NOT NULL DEFAULT 0'),
+        )),
+        ('dashboard_widgets', (
+            ('layout_column', 'INTEGER NOT NULL DEFAULT 0'),
+            ('layout_row', 'INTEGER'),
+            ('column_span', 'INTEGER NOT NULL DEFAULT 12'),
+            ('row_span', 'INTEGER NOT NULL DEFAULT 8'),
+            ('variant_key', "VARCHAR(32) NOT NULL DEFAULT 'detailed'"),
+        )),
+    ):
+        if table in tables:
+            for column, definition in columns:
+                _add_column_if_not_exists(db, inspector, table, column, definition)
+    if 'dashboard_widgets' not in tables:
+        return
+    widgets = Table('dashboard_widgets', MetaData(), autoload_with=db.engine)
+    rows = db.session.execute(select(widgets).order_by(
+        widgets.c.dashboard_id, widgets.c.sort_order, widgets.c.id,
+    )).mappings().all()
+    bottom: dict[int, int] = {}
+    for row in rows:
+        dashboard_id = row['dashboard_id']
+        if row['layout_row'] is None:
+            position = bottom.get(dashboard_id, 0)
+            db.session.execute(widgets.update().where(widgets.c.id == row['id']).values(
+                layout_row=position,
+            ))
+        else:
+            position = row['layout_row']
+        bottom[dashboard_id] = max(bottom.get(dashboard_id, 0), position + row['row_span'])
+    db.session.commit()
 
 
 def _add_column_if_not_exists(db, inspector, table: str, column: str, column_def: str):

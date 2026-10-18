@@ -147,9 +147,15 @@ class TestToolCoverage:
         """Connect Goals should expose its shared calculations."""
         assert 'report_connect_goals' in self._tool_names()
 
+    def test_dashboard_tool_exists(self):
+        """Saved dashboards and their widget instances share a read tool."""
+        assert 'get_dashboards' in self._tool_names()
+        assert 'report_dashboard_signals' in self._tool_names()
+
     def test_fabric_consumption_report_tool_exists(self):
         """Saved Fabric measurements must be available without starting an import."""
         assert 'report_fabric_consumption' in self._tool_names()
+        assert 'report_fabric_capacity_pressure' in self._tool_names()
 
     def test_ptof_report_tool_exists(self):
         """Renewal assessments and details must be queryable without refreshing."""
@@ -376,12 +382,12 @@ class TestToolExecution:
             assert '/reports/activity-coverage' in result['url']
 
     def test_report_connect_goals(self, app):
-        """Connect Goals should return setup state and an action-center URL."""
+        """Shared goal calculations link to the dashboard or its restoration template."""
         with app.app_context():
             result = execute_tool('report_connect_goals', {})
             assert 'setup' in result
             assert 'widgets' in result
-            assert result['url'].endswith('/reports/connect-goals')
+            assert result['url'].endswith('/reports/dashboards?template=connect-goals')
 
     def test_report_workload(self, app):
         """report_workload should return structured data."""

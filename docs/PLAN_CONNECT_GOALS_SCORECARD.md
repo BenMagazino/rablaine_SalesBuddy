@@ -1,13 +1,14 @@
-# Plan: Connect Goals Action Center and Future Custom Reports
+# Plan: Connect Goals Dashboard and Shared Metrics
 
-**Status:** V1 implemented and shipped. Retained for Phase 2 observation, future
-custom report pages, deferred widget concepts, and outstanding manager confirmations.
-**Last updated:** 2026-10-16
+**Status:** Shared metrics implemented. During dashboard v1 development, the standalone
+composition was replaced by the editable Connect Goals starter template. Retained for
+metric definitions, deferred widget concepts, and outstanding manager confirmations.
+**Last updated:** 2026-10-18
 **Reference:** `Connect.html` in the repository root
 
 ## Goal
 
-Build a Connect Goals Action Center that answers two questions:
+Build a Connect Goals dashboard that answers two questions:
 
 1. How am I doing against the goals Sales Buddy can help with?
 2. What can I do in Sales Buddy right now to improve the result?
@@ -113,10 +114,11 @@ large table into the widget.
 
 ## Product shape
 
-### Fixed page now, reusable widgets from the beginning
+### Editable starter dashboard and reusable widgets
 
-The first release is an opinionated Connect Goals page with a fixed set and
-order of widgets. Users will not configure or rearrange it yet.
+Connect Goals is a code-owned starting layout copied into an ordinary dashboard.
+Users can configure, rearrange, rename, and delete their copy. Installation occurs
+once; Add from template offers explicit recreation without resetting existing copies.
 
 The implementation should still treat each goal as a reusable widget:
 
@@ -125,8 +127,7 @@ The implementation should still treat each goal as a reusable widget:
 - One destination report.
 - Zero or more contextual actions.
 
-This gives the future custom report system real, proven widgets without making
-the first release wait for a page builder.
+The fixed-layout dashboard editor owns composition; shared providers own calculations.
 
 ### Not a uniform card grid
 
@@ -344,7 +345,7 @@ Whenever any bucket picker saves a non-empty selection:
 
 The Action Center may render widgets only when:
 
-- Both `Databases` and `Fabric` are selected.
+- At least one compensation bucket is selected; no specific bucket is mandatory.
 - The saved fiscal-year stamp matches the current Microsoft fiscal year.
 - The confirmed taxonomy version matches the current taxonomy version.
 - Every selected bucket still exists in the imported revenue taxonomy.
@@ -353,12 +354,13 @@ If any condition fails, render a setup gate instead of the widgets.
 
 ### Setup gate
 
-The setup gate should live at `/reports/connect-goals`; do not redirect the user
-through an unrelated page before explaining why setup is required.
+Each widget declares its setup prerequisites and offers an in-place picker in saved
+dashboards, the editor, and library previews. Resolving one shared requirement
+refreshes all dependent widgets without reloading or publishing a draft.
 
 Reuse one shared prioritized-bucket picker partial and save service across:
 
-- Action Center setup.
+- Widget prerequisite setup.
 - Revenue Import.
 - Onboarding.
 - Any future Settings editor.
@@ -1096,18 +1098,21 @@ performance-tracking database.
 
 ### Route and navigation
 
-- Page: `/reports/connect-goals`
-- APIs: `/api/reports/connect-goals/...`
+- Dashboard: `/reports/dashboards/<id>`.
+- Former `/reports/connect-goals` bookmarks redirect to the installed starter, or
+  Manage Dashboards with an explicit template recreation prompt after deletion.
+- Shared metric API: `/api/reports/connect-goals`.
 - Blueprint: existing `reports` blueprint.
-- Template: `templates/report_connect_goals.html`.
-- Add the page to the Reports navigation dropdown.
-- Add it to the Connect Prep group in `reports_hub()`.
+- Page template: `templates/dashboard_view.html`.
+- Starting layout: `app/services/dashboard_templates.py`.
+- Navigation: Dashboards, before Reports. The standalone report entry is removed.
 - Keep existing reports accessible as independent pages.
 
 ### Contextual F1 help
 
-The existing contextual page-help shortcut is **F1**. Add a route-specific
-entry for `/reports/connect-goals` in `static/js/page-help.js`.
+There is no dashboard-specific F1 editor or goals-only page-help entry. Personal
+dashboards do not require author-maintained help. The definitions below remain
+planning documentation for the shared metrics, not a separate runtime help surface.
 
 The help page should explain what v1 tracks and the goal definition for each
 metric. It must not repeat the user's current live values from the widgets.
@@ -1302,10 +1307,9 @@ Manager confirmation questions and answer space live in
 - A selection confirmed against an older taxonomy version shows the setup gate.
 - A selection containing a bucket no longer present in imported revenue data
   shows the setup gate and identifies the invalid selection.
-- A current-FY selection containing both `Databases` and `Fabric`, confirmed
-  against the current taxonomy, renders widgets.
-- A current-FY selection missing either required FY27 Data bucket shows the
-  setup gate and identifies the missing bucket.
+- Any non-empty current-FY selection confirmed against the current taxonomy renders
+  widgets, including selections without Databases or Fabric. The existing Data goal
+  calculations retain their report-specific scope independently of compensation choices.
 - Saving from the shared picker stamps the current fiscal year and taxonomy
   version.
 - Saving updates both the database fallback and existing local-storage key.

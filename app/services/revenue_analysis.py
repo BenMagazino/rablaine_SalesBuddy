@@ -28,9 +28,12 @@ from datetime import date, datetime, timezone
 from typing import Optional
 from dataclasses import dataclass, field
 
+from flask import has_request_context
+from sqlalchemy.orm import Query, joinedload
+
 from app.models import (
     db, CustomerRevenueData, RevenueAnalysis, RevenueConfig, Customer,
-    SyncStatus
+    Seller, SyncStatus
 )
 
 
@@ -893,6 +896,87 @@ def _run_analysis_generator(exclude_latest_month: bool = True):
     yield {'complete': True, 'stats': stats}
 
 
+def get_actionable_analysis_query(
+    min_priority: int = 0,
+    categories: list[str] | None = None,
+    seller_name: str | None = None,
+) -> Query[RevenueAnalysis]:
+    """Share the analyzer's action and scope filters without truncating widget totals."""
+    query = RevenueAnalysis.query.filter(
+        RevenueAnalysis.recommended_action.notin_(["NO ACTION"]),
+        RevenueAnalysis.priority_score >= min_priority,
+    )
+    if categories:
+        query = query.filter(RevenueAnalysis.category.in_(categories))
+    if seller_name:
+        query = query.filter(RevenueAnalysis.seller_name == seller_name)
+    return query
+
+
+def get_revenue_attention_widget(reference: date | None = None) -> dict:
+    """Read the complete unreviewed analyzer queue without running revenue analysis."""
+    from app.services.seller_mode import get_seller_mode_seller_id
+
+    seller_id = get_seller_mode_seller_id() if has_request_context() else None
+    seller = db.session.get(Seller, seller_id) if seller_id else None
+    if seller_id and seller is None:
+        raise ValueError('The selected seller no longer exists.')
+    seller_name = seller.name if seller else None
+    query = get_actionable_analysis_query(min_priority=20, seller_name=seller_name)
+    analyses = query.options(
+        joinedload(RevenueAnalysis.customer).joinedload(Customer.seller),
+    ).filter(RevenueAnalysis.review_status.in_(['new', 'to_be_reviewed'])).order_by(
+        RevenueAnalysis.priority_score.desc(), RevenueAnalysis.id,
+    ).all()
+    rows = [_attention_row(analysis) for analysis in analyses]
+    coverage = RevenueAnalysis.query
+    if seller_name:
+        coverage = coverage.filter(RevenueAnalysis.seller_name == seller_name)
+    timestamps = [analysis.analyzed_at for analysis in analyses]
+    notices = [
+        f'Last {label} {status["state"]}; showing saved analysis.'
+        for label, status in (
+            ('revenue sync', SyncStatus.get_status('revenue_sync')),
+            ('revenue analysis', SyncStatus.get_status('revenue_analysis')),
+        )
+        if status and status['state'] in ('failed', 'incomplete')
+    ]
+    return {
+        'destination': '/reports/revenue', 'rows': rows,
+        'has_analysis': coverage.first() is not None, 'pending_count': len(rows),
+        'at_risk': _attention_total(rows, 'at_risk'),
+        'opportunity': _attention_total(rows, 'opportunity'),
+        'at_risk_missing': sum(row['at_risk'] is None for row in rows),
+        'opportunity_missing': sum(row['opportunity'] is None for row in rows),
+        'oldest_analysis': min(timestamps).replace(tzinfo=timezone.utc).isoformat()
+        if timestamps else None,
+        'seller_name': seller_name, 'notices': notices,
+    }
+
+
+def _attention_total(rows: list[dict], key: str) -> float | None:
+    """Preserve unknown impacts while distinguishing a genuinely empty review queue."""
+    known = [row[key] for row in rows if row[key] is not None]
+    return sum(known) if known or not rows else None
+
+
+def _attention_row(analysis: RevenueAnalysis) -> dict:
+    """Serialize the same saved signal and customer used by the analyzer."""
+    customer = analysis.customer
+    seller = customer.seller if customer else None
+    return {
+        'id': analysis.id, 'customer_id': analysis.customer_id,
+        'customer_name': customer.get_display_name() if customer else analysis.customer_name,
+        'seller_id': seller.id if seller else None,
+        'seller_name': seller.name if seller else analysis.seller_name,
+        'bucket': analysis.bucket, 'category': analysis.category,
+        'priority': analysis.priority_score, 'at_risk': analysis.dollars_at_risk,
+        'opportunity': analysis.dollars_opportunity,
+        'rationale': analysis.engagement_rationale,
+        'review_status': analysis.review_status,
+    }
+
+
 def get_actionable_analyses(
     min_priority: int = 0,
     categories: Optional[list[str]] = None,
@@ -911,16 +995,7 @@ def get_actionable_analyses(
     Returns:
         List of RevenueAnalysis records
     """
-    query = RevenueAnalysis.query.filter(
-        RevenueAnalysis.recommended_action.notin_(["NO ACTION"]),
-        RevenueAnalysis.priority_score >= min_priority
-    )
-    
-    if categories:
-        query = query.filter(RevenueAnalysis.category.in_(categories))
-    
-    if seller_name:
-        query = query.filter(RevenueAnalysis.seller_name == seller_name)
+    query = get_actionable_analysis_query(min_priority, categories, seller_name)
     
     return query.order_by(RevenueAnalysis.priority_score.desc()).limit(limit).all()
 

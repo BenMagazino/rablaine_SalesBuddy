@@ -21,7 +21,6 @@ REPORT_PAGES = [
     ("reports.report_marketing_insights", "Marketing Insights"),
     ("reports.report_fabric_consumption", "Fabric Consumption"),
     ("reports.report_ptof", "P to F"),
-    ("reports.report_connect_goals", "Connect Goals"),
     ("reports.report_u2c", "U2C Attainment"),
     ("reports.report_connect_impact", "Connect Impact"),
     ("revenue.reports_list", "Revenue Reports"),
@@ -243,6 +242,7 @@ def test_non_page_endpoints_are_unhandled(endpoint):
 def test_declared_pages_have_real_get_destinations(app):
     """The declaration covers precisely the owned, rendered page endpoint set."""
     expected = {endpoint for endpoint, _ in REPORT_PAGES} | {
+        "reports.dashboards_hub", "reports.dashboard_view", "reports.dashboard_edit",
         "reports.reports_hub", "revenue.revenue_dashboard", "revenue.revenue_import",
         "revenue.revenue_config", "revenue.revenue_customer_view",
         "revenue.revenue_bucket_products", "revenue.revenue_seller_view",
@@ -253,6 +253,26 @@ def test_declared_pages_have_real_get_destinations(app):
     assert HANDLED_ENDPOINTS == expected
     get_endpoints = {rule.endpoint for rule in app.url_map.iter_rules() if "GET" in rule.methods}
     assert HANDLED_ENDPOINTS <= get_endpoints
+
+
+def test_dashboards_separate_reporting_and_management_ancestry(breadcrumb_context):
+    """Dashboards have top-level ancestry, with editors beneath their management page."""
+    _assert_trail(
+        get_report_breadcrumbs(breadcrumb_context, "reports.dashboards_hub"),
+        ["Home", "Manage Dashboards"],
+        [url_for("main.index")],
+    )
+    breadcrumb_context["dashboard"] = {"name": "Manager 1:1"}
+    _assert_trail(
+        get_report_breadcrumbs(breadcrumb_context, "reports.dashboard_view"),
+        ["Home", "Manager 1:1"],
+        [url_for("main.index")],
+    )
+    _assert_trail(
+        get_report_breadcrumbs(breadcrumb_context, "reports.dashboard_edit"),
+        ["Home", "Manage Dashboards", "Edit Manager 1:1"],
+        [url_for("main.index"), url_for("reports.dashboards_hub")],
+    )
 
 
 @pytest.mark.parametrize("template", [

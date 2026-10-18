@@ -1,0 +1,56 @@
+{% set meeting = instance.data %}
+<section class="db-report-widget" aria-labelledby="{{ widget_id_prefix }}meetingCoverageTitle">
+    <header class="db-report-heading">
+        <h2 id="{{ widget_id_prefix }}meetingCoverageTitle">Meeting activity coverage</h2>
+        <a href="{{ meeting.destination }}">Open report <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    </header>
+    <p class="db-report-caption">{{ meeting.fiscal_year_label }} · {{ meeting.fiscal_start }} to {{ meeting.through }}. Saved, non-dismissed meetings{% if meeting.seller_id %} matched to the selected seller's customers; unmatched meetings are excluded{% endif %}.</p>
+    <dl class="db-report-metrics">
+        <div><dt>Activity coverage</dt><dd>{{ (meeting.coverage_percent|string ~ '%') if meeting.coverage_percent is not none else 'No denominator' }}</dd></div>
+        <div><dt>Logged / meetings</dt><dd>{{ meeting.summary.logged }} / {{ meeting.summary.total }}</dd></div>
+        <div><dt>Ready to log</dt><dd>{{ meeting.summary.ready }}</dd></div>
+        <div><dt>Need matching</dt><dd>{{ meeting.summary.needs_attention }}</dd></div>
+    </dl>
+    <p class="db-report-caption">{{ meeting.summary.hva_logged }} HVA-linked meetings · {{ meeting.summary.other_logged }} other-activity-linked meetings. Any linked activity covers a meeting; this is not milestone HVA coverage. {{ meeting.summary.needs_customer }} need customer · {{ meeting.summary.needs_milestone }} need milestone.</p>
+    {% if meeting.population.error %}
+    <p class="db-report-notice" role="status">Calendar import failed: {{ meeting.population.error }}. Coverage is only for saved meetings. Open the report to retry.</p>
+    {% elif meeting.population.running %}
+    <p class="db-report-notice" role="status">Calendar import in progress. Coverage may change as meetings arrive.</p>
+    {% elif not meeting.population.populated_through %}
+    <p class="db-report-notice">Fiscal-year calendar completeness is unknown. Import the calendar in the report before treating coverage as complete.</p>
+    {% elif meeting.population.pending_count %}
+    <p class="db-report-notice">Calendar imported through {{ meeting.population.populated_through }}; {{ meeting.population.pending_count }} weekdays remain. Coverage excludes meetings not yet imported.</p>
+    {% else %}
+    <p class="db-report-caption">Calendar imported through {{ meeting.population.populated_through }}. Coverage reflects locally saved activity links.</p>
+    {% endif %}
+    {% if not meeting.summary.total %}
+    <p class="db-report-empty">No saved meetings in this fiscal-year scope. Import or review meetings in Activity Coverage; this is not 100% coverage.</p>
+    {% elif not meeting.queue %}
+    <p class="db-report-empty">Every saved meeting in scope has a linked activity. Check calendar completeness before closing the audit.</p>
+    {% elif instance.variant_key == 'detailed' %}
+    <table class="db-report-table" data-sb-sortable data-sb-sort-key="{{ widget_id_prefix }}meeting-coverage">
+        <caption class="sb-visually-hidden">Complete queue of saved meetings without linked activities</caption>
+        <thead><tr>
+            <th scope="col" data-sb-sort-type="text">Meeting</th>
+            <th scope="col" data-sb-sort-type="text">Date</th>
+            <th scope="col" data-sb-sort-type="text">Customer / seller</th>
+            <th scope="col" data-sb-sort-type="text">Next step</th>
+        </tr></thead>
+        <tbody>{% for row in meeting.queue %}
+            <tr>
+                <th scope="row" data-sb-sort-value="{{ row.subject }}"><a href="{{ row.destination }}">{{ row.subject }}</a></th>
+                <td data-sb-sort-value="{{ row.meeting_date }}">{{ row.meeting_date }}</td>
+                <td data-sb-sort-value="{{ row.customer.name if row.customer else '' }}">
+                    {% if row.customer %}
+                    <a href="{{ url_for('customers.customer_view', id=row.customer.id) }}">{{ row.customer.nickname or row.customer.name }}</a>
+                    {% if row.customer.seller %}
+                    <a class="badge bg-primary text-decoration-none db-report-seller" href="{{ url_for('sellers.seller_view', id=row.customer.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ row.customer.seller.name }}</a>
+                    {% endif %}
+                    {% else %}Unmatched{% endif %}
+                </td>
+                <td data-sb-sort-value="{{ row.status }}"><a href="{{ row.destination }}">{{ 'Log activity' if row.status == 'ready' else 'Match customer' if row.status == 'needs_customer' else 'Match milestone' }}</a></td>
+            </tr>
+        {% endfor %}</tbody>
+    </table>
+    {% endif %}
+</section>

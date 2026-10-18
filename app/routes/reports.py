@@ -2,7 +2,7 @@
 import json
 import logging
 from datetime import datetime, timedelta, timezone, date
-from flask import Blueprint, Response, current_app, render_template, url_for, jsonify, request
+from flask import Blueprint, Response, current_app, render_template, url_for, jsonify, request, redirect
 from app.models import (
     db, Customer, Engagement, Note, Milestone, MilestoneAudit, Opportunity, Seller,
     SolutionEngineer, SyncStatus, MsxTask, PrefetchedMeeting,
@@ -10,7 +10,7 @@ from app.models import (
     notes_engagements, notes_milestones, notes_topics,
     MarketingSummary, MarketingInteraction, MarketingContact,
     U2CSnapshot, U2CSnapshotItem,
-    OneOnOneWorkspace, Territory, Project,
+    OneOnOneWorkspace, Territory, Project, Dashboard, DashboardWidget,
 )
 from sqlalchemy import func, desc, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -18,6 +18,251 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 logger = logging.getLogger(__name__)
 
 bp = Blueprint('reports', __name__)
+
+
+@bp.route('/reports/dashboards')
+def dashboards_hub():
+    """Manage saved dashboards separately from their report views."""
+    from app.services.dashboards import list_dashboards
+    from app.services.dashboard_templates import list_dashboard_templates
+
+    templates = list_dashboard_templates()
+    requested = next((
+        template for template in templates if template['key'] == request.args.get('template')
+    ), None)
+    return render_template(
+        'dashboards.html', dashboards=list_dashboards(), dashboard_templates=templates,
+        requested_template=requested,
+    )
+
+
+@bp.route('/api/reports/dashboards/from-template/<key>', methods=['POST'])
+def dashboard_from_template(key: str):
+    """Create a user-owned copy without changing an existing dashboard or local draft."""
+    from app.models import DashboardTemplateInstallation
+    from app.services.dashboard_templates import (
+        DASHBOARD_TEMPLATES, create_dashboard_from_template,
+    )
+
+    try:
+        dashboard = create_dashboard_from_template(key)
+        installation = db.session.get(DashboardTemplateInstallation, key)
+        if installation is None:
+            installation = DashboardTemplateInstallation(
+                key=key, version=DASHBOARD_TEMPLATES[key]['version'],
+            )
+            db.session.add(installation)
+        if installation.dashboard is None:
+            installation.dashboard = dashboard
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    except SQLAlchemyError:
+        return _dashboard_write_error()
+    return _save_dashboard_changes(dashboard, created=True)
+
+
+@bp.route('/reports/dashboards/<int:dashboard_id>')
+@bp.route('/reports/dashboards/<int:dashboard_id>/edit', endpoint='dashboard_edit')
+def dashboard_view(dashboard_id: int):
+    """Render a saved report, or its explicit dashboard management surface."""
+    from app.services.dashboards import (
+        CANVAS_WIDTHS, GRID_GAP, GRID_PADDING, GRID_ROW_HEIGHT, MAX_LAYOUT_ROWS,
+        get_dashboard_data, get_widget_catalog,
+    )
+
+    dashboard = db.get_or_404(Dashboard, dashboard_id)
+    manage_dashboard = request.endpoint == 'reports.dashboard_edit'
+    return render_template(
+        'dashboard_view.html', dashboard=get_dashboard_data(dashboard),
+        manage_dashboard=manage_dashboard,
+        catalog=get_widget_catalog() if manage_dashboard else [],
+        canvas_widths=CANVAS_WIDTHS,
+        grid_config={
+            'rowHeight': GRID_ROW_HEIGHT, 'gap': GRID_GAP, 'padding': GRID_PADDING,
+            'maxRows': MAX_LAYOUT_ROWS,
+        },
+    )
+
+
+@bp.route('/api/reports/dashboards', methods=['GET', 'POST'])
+@bp.route('/api/reports/dashboards/<int:dashboard_id>', methods=['GET', 'POST'])
+@bp.route('/api/reports/dashboards/<int:dashboard_id>/delete', methods=['POST'])
+def dashboard_data(dashboard_id: int | None = None):
+    """Read, create, describe, or delete dashboards without changing source records."""
+    from app.services.dashboards import (
+        get_dashboard_data, get_widget_catalog, list_dashboards, validate_dashboard_name,
+        validate_dashboard_subtitle,
+    )
+
+    dashboard = db.get_or_404(Dashboard, dashboard_id) if dashboard_id is not None else None
+    if request.method == 'GET':
+        if dashboard is not None:
+            return jsonify(success=True, dashboard=get_dashboard_data(dashboard))
+        return jsonify(success=True, dashboards=list_dashboards(), catalog=get_widget_catalog())
+    if request.path.endswith('/delete'):
+        db.session.delete(dashboard)
+        return _save_dashboard_changes()
+    data = request.get_json(silent=True)
+    created = dashboard is None
+    try:
+        if not isinstance(data, dict):
+            raise ValueError('Enter a dashboard name of 1 to 200 characters.')
+        changes = {}
+        if created or 'name' in data:
+            changes['name'] = validate_dashboard_name(data.get('name'))
+        if created or 'subtitle' in data:
+            changes['subtitle'] = validate_dashboard_subtitle(data.get('subtitle', ''))
+        if not changes:
+            raise ValueError('Provide a dashboard name or subtitle to save.')
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    if created:
+        dashboard = Dashboard(**changes)
+        db.session.add(dashboard)
+    else:
+        for field, value in changes.items():
+            setattr(dashboard, field, value)
+    return _save_dashboard_changes(dashboard, created)
+
+
+def _save_dashboard_changes(
+    dashboard: Dashboard | None = None, created: bool = False,
+) -> tuple:
+    """Commit dashboard edits with rollback and a visible failure response."""
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Failed to save dashboard changes')
+        return jsonify(success=False, error='Dashboard changes could not be saved. Try again.'), 500
+    return jsonify(
+        success=True, id=dashboard.id if dashboard is not None else None,
+        name=dashboard.name if dashboard is not None else None,
+        subtitle=dashboard.subtitle if dashboard is not None else None,
+    ), (
+        201 if created else 200
+    )
+
+
+@bp.route('/api/reports/dashboards/<int:dashboard_id>/widgets', methods=['POST'])
+@bp.route(
+    '/api/reports/dashboards/<int:dashboard_id>/widgets/<int:widget_id>/<action>',
+    methods=['POST'],
+)
+def dashboard_widget_edit(
+    dashboard_id: int, widget_id: int | None = None, action: str | None = None,
+):
+    """Add or remove one placement without rearranging its neighbors."""
+    from app.services.dashboards import (
+        LayoutConflict, add_dashboard_widget, advance_layout_revision,
+    )
+
+    dashboard = db.get_or_404(Dashboard, dashboard_id)
+    instance = None
+    if widget_id is not None:
+        instance = db.first_or_404(db.select(DashboardWidget).filter_by(
+            id=widget_id, dashboard_id=dashboard_id,
+        ))
+    data = request.get_json(silent=True)
+    try:
+        if widget_id is None:
+            add_dashboard_widget(
+                dashboard, data.get('key') if isinstance(data, dict) else None,
+                data.get('variant_key', 'detailed') if isinstance(data, dict) else 'detailed',
+                data.get('column_span') if isinstance(data, dict) else None,
+                data.get('row_span') if isinstance(data, dict) else None,
+            )
+        elif action == 'remove':
+            advance_layout_revision(dashboard, dashboard.layout_revision)
+            dashboard.widgets.remove(instance)
+        else:
+            return jsonify(success=False, error='Unknown widget action.'), 400
+    except LayoutConflict as exc:
+        db.session.rollback()
+        return jsonify(success=False, error=str(exc)), 409
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    except SQLAlchemyError:
+        return _dashboard_write_error()
+    return _save_dashboard_changes()
+
+
+def _dashboard_write_error() -> tuple[Response, int]:
+    """Roll back failed layout writes, including errors before commit."""
+    db.session.rollback()
+    logger.exception('Failed to update dashboard layout')
+    return jsonify(success=False, error='Dashboard changes could not be saved. Try again.'), 500
+
+
+@bp.route('/api/reports/dashboards/<int:dashboard_id>/layout', methods=['POST'])
+def dashboard_layout_save(dashboard_id: int) -> tuple[Response, int]:
+    """Save explicit grid positions and sizes atomically, never repacking widgets."""
+    from app.services.dashboards import LayoutConflict, save_dashboard_layout
+
+    dashboard = db.get_or_404(Dashboard, dashboard_id)
+    try:
+        save_dashboard_layout(dashboard, request.get_json(silent=True))
+    except LayoutConflict as exc:
+        db.session.rollback()
+        return jsonify(success=False, error=str(exc)), 409
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    except SQLAlchemyError:
+        return _dashboard_write_error()
+    return _save_dashboard_changes()
+
+
+@bp.route('/api/reports/dashboards/widget-preview')
+def dashboard_widget_preview():
+    """Render an actual-size library preview using the placed-widget presentation."""
+    from app.services.dashboards import get_widget_preview
+
+    try:
+        instance = get_widget_preview(
+            request.args.get('key', ''), request.args.get('variant', ''),
+            request.args.get('width', type=int),
+        )
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    instance_id = request.args.get('instance_id', type=int)
+    if 'instance_id' in request.args and instance_id is None:
+        return jsonify(success=False, error='Provide a valid widget preview identity.'), 400
+    if instance_id is not None:
+        instance['id'] = instance_id
+    return jsonify(success=True, html=render_template(
+        'partials/dashboard_widget_content.html', instance=instance,
+    ))
+
+
+@bp.route('/api/reports/dashboards/requirements/<key>')
+def dashboard_requirement(key: str):
+    """Return current shared setup without changing dashboard or draft state."""
+    from app.services.dashboards import WIDGET_REQUIREMENTS
+
+    if key not in WIDGET_REQUIREMENTS:
+        return jsonify(success=False, error='Unknown widget requirement.'), 404
+    setup = WIDGET_REQUIREMENTS[key](None)
+    return jsonify(success=True, setup=setup, html=render_template(
+        'partials/dashboard_requirement_form.html', setup=setup,
+    ))
+
+
+@bp.route('/api/reports/dashboards/<int:dashboard_id>/save', methods=['POST'])
+def dashboard_draft_save(dashboard_id: int) -> tuple:
+    """Publish a complete local draft in one database transaction."""
+    from app.services.dashboards import LayoutConflict, save_dashboard_draft
+
+    dashboard = db.get_or_404(Dashboard, dashboard_id)
+    try:
+        save_dashboard_draft(dashboard, request.get_json(silent=True))
+    except LayoutConflict as exc:
+        db.session.rollback()
+        return jsonify(success=False, error=str(exc)), 409
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    except SQLAlchemyError:
+        return _dashboard_write_error()
+    return _save_dashboard_changes(dashboard)
 
 
 @bp.route('/reports/p-to-f')
@@ -58,6 +303,28 @@ def fabric_capacity_overview_data():
     from app.services.fabric_consumption import get_fabric_capacity_overview
 
     return jsonify(success=True, **get_fabric_capacity_overview())
+
+
+@bp.route('/api/reports/fabric-capacity-pressure')
+@bp.route('/reports/fabric-capacity-pressure')
+def report_fabric_capacity_pressure():
+    """Investigate the full saved capacity population behind the compact widget."""
+    from app.services.fabric_consumption import (
+        PRESSURE_SIGNALS, get_fabric_capacity_pressure_report,
+    )
+
+    try:
+        data = get_fabric_capacity_pressure_report(
+            signal=request.args.get('signal', 'attention'),
+            search=request.args.get('q', ''),
+        )
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    if request.path.startswith('/api/'):
+        return jsonify(success=True, **data)
+    return render_template(
+        'report_fabric_capacity_pressure.html', data=data, signal_labels=PRESSURE_SIGNALS,
+    )
 
 
 @bp.route('/api/reports/fabric-consumption')
@@ -337,17 +604,6 @@ def reports_hub():
             'icon': 'bi-people',
             'reports': [
                 {
-                    'id': 'connect-goals',
-                    'name': 'Connect Goals',
-                    'description': (
-                        'Track FY27 Data U2C pace, milestone influence, HVA '
-                        'coverage, and whitespace wins, then open the reports '
-                        'that help close each gap.'
-                    ),
-                    'icon': 'bi-speedometer2',
-                    'url': url_for('reports.report_connect_goals'),
-                },
-                {
                     'id': 'initiative-tracker',
                     'name': 'Initiative Tracker',
                     'description': (
@@ -510,6 +766,16 @@ def reports_hub():
                     ),
                     'icon': 'bi-pie-chart',
                     'url': url_for('reports.report_fabric_consumption'),
+                },
+                {
+                    'id': 'fabric-capacity-pressure',
+                    'name': 'Fabric Capacity Pressure',
+                    'description': (
+                        'Investigate saved capacity throttling, high utilization, '
+                        'historical peaks, and incomplete measurements.'
+                    ),
+                    'icon': 'bi-speedometer2',
+                    'url': url_for('reports.report_fabric_capacity_pressure'),
                 },
                 {
                     'id': 'marketing-insights',
@@ -1237,61 +1503,9 @@ def report_hygiene():
     Shows engagements without milestones and milestones without
     engagements so gaps can be identified and annotated quickly.
     """
-    from app.services.seller_mode import get_seller_mode_seller_id
-    seller_mode_sid = get_seller_mode_seller_id()
+    from app.services.hygiene import get_hygiene_report_data
 
-    # --- Engagements without milestones ---
-    eng_q = (
-        Engagement.query
-        .filter(
-            Engagement.status == 'Active',
-            ~Engagement.milestones.any(),
-        )
-        .options(db.joinedload(Engagement.customer))
-        .order_by(Engagement.estimated_acr.desc(), Engagement.title)
-    )
-    if seller_mode_sid:
-        eng_q = eng_q.join(
-            Customer, Engagement.customer_id == Customer.id
-        ).filter(Customer.seller_id == seller_mode_sid)
-    engagements_no_ms = eng_q.all()
-
-    # --- Milestones without engagements (active statuses, all team status) ---
-    ms_q = (
-        Milestone.query
-        .filter(
-            Milestone.customer_id.isnot(None),
-            Milestone.msx_status.in_(['On Track', 'At Risk', 'Blocked']),
-            ~Milestone.engagements.any(),
-        )
-        .options(
-            db.joinedload(Milestone.customer).joinedload(Customer.seller),
-        )
-        .order_by(Milestone.monthly_usage.desc(), Milestone.title)
-    )
-    if seller_mode_sid:
-        ms_q = ms_q.join(
-            Customer, Milestone.customer_id == Customer.id
-        ).filter(Customer.seller_id == seller_mode_sid)
-    milestones_no_eng = ms_q.all()
-
-    # Load reason notes for displayed engagements.
-    eng_ids = [e.id for e in engagements_no_ms]
-
-    eng_notes = {}
-    if eng_ids:
-        for hn in HygieneNote.query.filter(
-            HygieneNote.entity_type == 'engagement',
-            HygieneNote.entity_id.in_(eng_ids),
-        ).all():
-            eng_notes[hn.entity_id] = hn.note
-
-    return render_template(
-        'report_hygiene.html',
-        engagements_no_ms=engagements_no_ms,
-        milestones_no_eng=milestones_no_eng,
-        eng_notes=eng_notes,
-    )
+    return render_template('report_hygiene.html', **get_hygiene_report_data())
 
 
 @bp.route('/api/hygiene-note', methods=['POST'])
@@ -2088,22 +2302,15 @@ def report_marketing_insights():
 
 
 # =============================================================================
-# Connect Goals Action Center
+# Shared Connect Goals metrics and former page destination
 # =============================================================================
 
 @bp.route('/reports/connect-goals')
-def report_connect_goals():
-    """Render the FY27 Data Connect Goals Action Center."""
-    from app.services.connect_goals import get_connect_goals
+def connect_goals_dashboard():
+    """Send old bookmarks to the editable starter, or offer explicit restoration."""
+    from app.services.dashboard_templates import get_template_dashboard_url
 
-    data = get_connect_goals()
-    widgets = {widget['key']: widget for widget in data['widgets']}
-    return render_template(
-        'report_connect_goals.html',
-        connect_data=data,
-        setup=data['setup'],
-        widgets=widgets,
-    )
+    return redirect(get_template_dashboard_url('connect-goals'))
 
 
 @bp.route('/api/reports/connect-goals')

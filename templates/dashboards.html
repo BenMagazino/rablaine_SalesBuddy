@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Manage Dashboards - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-dashboards.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Dashboards status">
+    <span>{{ dashboards|length }} saved dashboards</span>
+    <span>Drafts stay in this browser until you choose Save in the editor.</span>
+</footer>
+{% endblock %}
+{% block content %}
+<section class="sb-dashboards sb-directory-frame" data-sb-page-surface
+         data-dashboard-hub aria-labelledby="dashboardsTitle">
+    <header class="db-header" data-sb-page-band>
+        <div>
+            <h1 id="dashboardsTitle">Manage Dashboards</h1>
+            <p>Create and arrange your dashboard reports. Open them from Dashboards or the quick launcher.</p>
+        </div>
+        <button class="db-command" type="button" data-sb-dialog="dashboardTemplatePicker"
+                aria-haspopup="dialog" aria-controls="dashboardTemplatePicker">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i> Add from template
+        </button>
+    </header>
+    <p class="db-error" id="dashboardError" role="alert" tabindex="-1" hidden></p>
+    <div class="db-reading" data-sb-page-body>
+        {% if requested_template %}
+        <aside class="db-template-notice" role="status">
+            {{ requested_template.name }} is now a dashboard. Choose Add from template
+            to create a fresh copy, then edit it however you like.
+        </aside>
+        {% endif %}
+        <form class="db-create" data-dashboard-create>
+            <label for="dashboardName">New dashboard</label>
+            <div class="db-form-row">
+                <input id="dashboardName" name="name" class="db-input" required maxlength="200"
+                       placeholder="e.g. Business priorities" autocomplete="off">
+                <button class="db-command is-primary" type="submit">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Create dashboard
+                </button>
+            </div>
+            <label for="dashboardSubtitle">Subtitle (optional)</label>
+            <input id="dashboardSubtitle" name="subtitle" class="db-input" maxlength="500"
+                   placeholder="What do you want to track?" autocomplete="off">
+        </form>
+        {% if dashboards %}
+        <nav class="db-list" aria-label="Saved dashboards">
+            {% for dashboard in dashboards %}
+            <div class="db-list-row" data-dashboard-row="{{ dashboard.id }}">
+                <div class="db-list-title">
+                    <span>{{ dashboard.name }}</span>
+                    <span class="db-draft-indicator" data-dashboard-draft hidden>Draft</span>
+                    {% if dashboard.subtitle %}<p class="db-muted">{{ dashboard.subtitle }}</p>{% endif %}
+                </div>
+                <span class="db-muted">{{ dashboard.widget_count }} {{ 'widget' if dashboard.widget_count == 1 else 'widgets' }}</span>
+                <a class="db-command" href="{{ dashboard.url }}" aria-label="View {{ dashboard.name }} dashboard">View dashboard</a>
+                <a class="db-command" data-dashboard-edit href="{{ url_for('reports.dashboard_edit', dashboard_id=dashboard.id) }}" aria-label="Edit {{ dashboard.name }}">Edit</a>
+                <button class="db-command is-danger" type="button"
+                        data-db-delete="{{ dashboard.id }}" data-dashboard-name="{{ dashboard.name }}"
+                        aria-label="Delete {{ dashboard.name }}">Delete</button>
+            </div>
+            {% endfor %}
+        </nav>
+        {% else %}
+        <div class="db-empty">
+            <h2>Track the parts of your business you care about.</h2>
+            <p>Create a dashboard, then add widgets from the library to bring your
+               metrics and reports together.</p>
+        </div>
+        {% endif %}
+    </div>
+    <dialog class="sb-dialog db-template-picker" id="dashboardTemplatePicker"
+            aria-labelledby="dashboardTemplatesTitle" aria-describedby="dashboardTemplatesDescription"
+            data-sb-backdrop-close="true">
+        <div class="sb-dialog-shell">
+            <header class="sb-dialog-header">
+                <h2 class="sb-dialog-heading" id="dashboardTemplatesTitle">Add from template</h2>
+                <button class="sb-dialog-close" type="button" data-sb-dialog-close
+                        aria-label="Close template picker" autofocus>
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            </header>
+            <p class="db-error" id="dashboardTemplateError" role="alert" tabindex="-1" hidden></p>
+            <div class="sb-dialog-body">
+                <p class="db-muted" id="dashboardTemplatesDescription">
+                    Choose a starting point. You can edit or delete your copy anytime.
+                </p>
+                {% for template in dashboard_templates %}
+                <div class="db-template-row">
+                    <div>
+                        <h3>{{ template.name }}</h3>
+                        <p>{{ template.description }}</p>
+                        <span class="db-muted">{{ template.widget_count }} widgets · {{ template.content_width|capitalize }} · {{ template.display_style|capitalize }}</span>
+                    </div>
+                    <button class="db-command" type="button" data-dashboard-template="{{ template.key }}">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> Add {{ template.name }}
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </dialog>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-dashboard-drafts.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-dashboards.js') }}" defer></script>
+{% endblock %}

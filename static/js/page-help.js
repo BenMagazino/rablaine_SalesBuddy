@@ -602,22 +602,6 @@ const PageHelp = (function () {
         <li>Use <strong>Milestone Tracker</strong> for filters, calendar, exports and MSX sync, or <strong>New Milestone</strong> to create one manually.</li>
       </ul>
     `},
-    { pattern: /^\/reports\/connect-goals/, title: 'Connect Goals', content: `
-      <p>This FY27 Data action center tracks the goals Sales Buddy can measure and links each gap to the report where you can act on it. Definitions remain provisional until manager confirmation.</p>
-
-      <h6>Quarterly U2C progression</h6>
-      <p><strong>Goal: 40% by quarter end.</strong> Committed Data milestone ACR is divided by the official quarter-start snapshot ACR. The status color compares actual progress with a linear expected pace for today.</p>
-      <p>The graph spans the current fiscal quarter from its first day to its last day. The snapshot series shows each publish unchanged. A separate <strong>Today (live)</strong> diamond uses current synced commitment status and dollars from the latest imported snapshot, not current milestone ACR. A same-day snapshot and Today are both kept; Today does not imply values before that date.</p>
-
-      <h6>Milestone team coverage</h6>
-      <p><strong>Goal: 50%.</strong> Active Data milestones due this or next fiscal year are weighted by estimated monthly ACR. The metric compares ACR on milestones where you are on the team with all in-scope milestone ACR.</p>
-
-      <h6>Milestone HVA coverage</h6>
-      <p><strong>Goal: 100%.</strong> Every active, on-team Data milestone due this or next fiscal year should have at least one qualifying HVA activity in the current fiscal year. Technical Workshop, Demo, L300+ Demo, Architecture Design Session, and PoC/Pilot counts provide additional technical-validation context.</p>
-
-      <h6>Whitespace wins</h6>
-      <p><strong>Goal: one Databases win and one Fabric win per fiscal half.</strong> After three complete zero-ACR months, an activation appears as ramping until the same customer and bucket remain above $0 for three consecutive months. Consumption must remain positive through the latest available month, so a customer that later returns to $0 no longer counts. Any positive ACR qualifies; there is no minimum spend threshold.</p>
-    `},
     { pattern: /^\/reports\/u2c/, title: 'U2C Attainment', content: `
       <p>Track uncommitted-to-committed milestones against an official MSXi quarterly snapshot.</p>
       <h6>Reading the measures</h6>

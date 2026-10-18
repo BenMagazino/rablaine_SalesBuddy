@@ -1,0 +1,58 @@
+    {% set u2c = widgets.get('u2c') %}
+    <section class="sb-goals-section" aria-labelledby="{{ widget_id_prefix|default('') }}u2cGoalTitle">
+        {% if u2c and u2c.available %}
+        <div class="sb-goals-u2c">
+            <div>
+                <div class="sb-goals-eyebrow">{{ u2c.fiscal_quarter }}</div>
+                <h2  id="{{ widget_id_prefix|default('') }}u2cGoalTitle">Quarterly U2C progression</h2>
+                <div class="sb-goals-value is-{{ u2c.status_tone }}"
+                     aria-describedby="{{ widget_id_prefix|default('') }}u2cExplanation"
+                     tabindex="0">{{ "%.1f"|format(u2c.value) }}%</div>
+                <div class="sb-goals-measure">Committed snapshot ACR</div>
+                <div class="sb-goals-status is-{{ u2c.status_tone }}">
+                    <i class="bi bi-{% if u2c.status_tone == 'success' %}check-circle-fill{% elif u2c.status_tone == 'neutral' %}circle{% else %}exclamation-circle-fill{% endif %}"></i>
+                    {{ u2c.status_label }}
+                </div>
+                <p class="sb-goals-caption sb-goals-muted" id="{{ widget_id_prefix|default('') }}u2cExplanation">{{ u2c.status_explanation }}</p>
+                <div class="sb-goals-progress"
+                     role="progressbar" aria-label="Quarterly U2C progress"
+                     aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ u2c.value }}"
+                     aria-valuetext="{{ u2c.value }} percent committed; 40 percent target">
+                    <div class="sb-goals-progress-fill is-{{ u2c.status_tone }}"
+                         style="width: {{ [u2c.value, 100]|min }}%"></div>
+                    <span class="sb-goals-target" style="left: {{ u2c.target }}%"
+                          title="{{ u2c.target }}% goal"></span>
+                </div>
+                <div class="sb-goals-caption sb-goals-muted sb-goals-spread">
+                    <span>${{ "{:,.0f}".format(u2c.committed_acr) }} committed</span>
+                    <span>{{ u2c.remaining_count }} remaining</span>
+                </div>
+                <a class="sb-goals-link" href="{{ u2c.destination }}">
+                    Audit remaining U2C <i class="bi bi-arrow-right"></i>
+                </a>
+                {% if u2c.freshness %}
+                <div class="sb-goals-caption sb-goals-muted">
+                    Source refreshed {{ u2c.freshness.strftime('%b %d, %Y') }}
+                </div>
+                {% endif %}
+            </div>
+            <div>
+                <div class="sb-goals-chart">
+                    <canvas id="{{ widget_id_prefix|default('') }}connectU2cChart"
+                            role="img"
+                            aria-label="Data U2C progression for {{ u2c.fiscal_quarter }}, weekly history and latest synced milestones"></canvas>
+                </div>
+                <div class="sb-goals-caption sb-goals-muted">
+                    {{ u2c.fiscal_quarter }} published snapshots{% if u2c.trend and u2c.trend[-1].get('source') == 'live' %} + Today (live commitment status, snapshot ACR){% endif %}
+                </div>
+                <p class="sb-goals-sr-only" id="{{ widget_id_prefix|default('') }}u2cChartSummary">
+                    Data U2C is {{ u2c.value }} percent against a 40 percent quarter target.
+                </p>
+            </div>
+        </div>
+        {% else %}
+        <h2 id="{{ widget_id_prefix|default('') }}u2cGoalTitle">Quarterly U2C progression</h2>
+        <p class="sb-goals-muted">{{ u2c.message if u2c else 'U2C data is unavailable.' }}</p>
+        <a class="sb-goals-link" href="/reports/u2c">Open U2C Attainment <i class="bi bi-arrow-right"></i></a>
+        {% endif %}
+    </section>

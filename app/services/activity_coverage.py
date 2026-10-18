@@ -401,6 +401,96 @@ def _serialize_meeting(meeting: PrefetchedMeeting) -> dict[str, Any]:
     }
 
 
+def _meeting_coverage_query(reference: date) -> Any:
+    """Build the report's saved, non-dismissed FY-to-date meeting population."""
+    from app.services.seller_mode import get_seller_mode_seller_id
+
+    fiscal_start, fiscal_end = fiscal_year_bounds(reference)
+    query = PrefetchedMeeting.query.filter(
+        PrefetchedMeeting.meeting_date >= fiscal_start,
+        PrefetchedMeeting.meeting_date <= min(reference, fiscal_end),
+        PrefetchedMeeting.dismissed.is_(False),
+    ).options(
+        db.joinedload(PrefetchedMeeting.activity),
+        db.joinedload(PrefetchedMeeting.customer).joinedload(Customer.seller),
+        db.joinedload(PrefetchedMeeting.note),
+    )
+    seller_id = get_seller_mode_seller_id()
+    if seller_id:
+        query = query.join(
+            Customer, PrefetchedMeeting.customer_id == Customer.id,
+        ).filter(Customer.seller_id == seller_id)
+    return query
+
+
+def get_meeting_coverage_data(reference: date | None = None) -> dict[str, Any]:
+    """Return the shared meeting denominator and lightweight evidence rows.
+
+    Any linked activity covers a meeting, including the report's note-linked
+    fallback. HVA is a separate subset, not a requirement for meeting coverage.
+    Seller mode includes only meetings matched to that seller's customers.
+    """
+    today = reference or date.today()
+    fiscal_start, fiscal_end = fiscal_year_bounds(today)
+    rows = []
+    for meeting in _meeting_coverage_query(today).order_by(
+        PrefetchedMeeting.start_time.asc(), PrefetchedMeeting.id.asc(),
+    ).all():
+        task = _linked_task(meeting)
+        rows.append({
+            'id': meeting.id,
+            'subject': meeting.subject,
+            'meeting_date': meeting.meeting_date,
+            'customer': meeting.customer,
+            'status': _status(meeting, task),
+            'is_hva': bool(task and task.is_hva),
+            'destination': (
+                f'/reports/activity-coverage?lens=meetings'
+                f'&week={meeting.meeting_date.isoformat()}'
+            ),
+        })
+    total = len(rows)
+    logged = sum(row['status'] == 'logged' for row in rows)
+    ready = sum(row['status'] == 'ready' for row in rows)
+    hva_logged = sum(row['is_hva'] for row in rows)
+    return {
+        'rows': rows,
+        'fiscal_start': fiscal_start,
+        'fiscal_end': fiscal_end,
+        'through': today,
+        'fiscal_year_label': f'FY{fiscal_end.year % 100:02d}',
+        'summary': {
+            'total': total,
+            'logged': logged,
+            'ready': ready,
+            'needs_attention': total - logged - ready,
+            'needs_customer': sum(row['status'] == 'needs_customer' for row in rows),
+            'needs_milestone': sum(row['status'] == 'needs_milestone' for row in rows),
+            'hva_logged': hva_logged,
+            'other_logged': logged - hva_logged,
+            'coverage_percent': round(logged / total * 100) if total else 0,
+        },
+    }
+
+
+def get_meeting_activity_coverage_widget(reference: date | None = None) -> dict[str, Any]:
+    """Read meeting coverage and import completeness without starting any work."""
+    from app.services.operational_widget_data import serialize_widget_value
+    from app.services.seller_mode import get_seller_mode_seller_id
+
+    data = get_meeting_coverage_data(reference)
+    data.update({
+        'destination': '/reports/activity-coverage?lens=meetings&view=all',
+        'population': get_population_status(reference),
+        'seller_id': get_seller_mode_seller_id(),
+        'coverage_percent': (
+            data['summary']['coverage_percent'] if data['summary']['total'] else None
+        ),
+        'queue': [row for row in data['rows'] if row['status'] != 'logged'],
+    })
+    return serialize_widget_value(data)
+
+
 def get_report_data(
     week_start: date | None = None,
     view_all: bool = False,
@@ -418,24 +508,14 @@ def get_report_data(
     visible_start = fiscal_start if view_all else max(selected_start, fiscal_start)
     visible_end = min(today, fiscal_end) if view_all else min(selected_end, today, fiscal_end)
     visible_query = (
-        PrefetchedMeeting.query
+        _meeting_coverage_query(today)
         .filter(PrefetchedMeeting.meeting_date >= visible_start)
         .filter(PrefetchedMeeting.meeting_date <= visible_end)
-        .filter(PrefetchedMeeting.dismissed.is_(False))
     )
     if milestone_id:
         visible_query = visible_query.filter(PrefetchedMeeting.milestone_id == milestone_id)
     visible_rows = visible_query.order_by(PrefetchedMeeting.start_time.asc()).all()
-    fiscal_rows = (
-        PrefetchedMeeting.query
-        .filter(PrefetchedMeeting.meeting_date >= fiscal_start)
-        .filter(PrefetchedMeeting.meeting_date <= min(fiscal_end, today))
-        .filter(PrefetchedMeeting.dismissed.is_(False))
-        .all()
-    )
-    statuses = [_status(row, _linked_task(row)) for row in fiscal_rows]
-    logged = statuses.count('logged')
-    total = len(statuses)
+    coverage = get_meeting_coverage_data(today)
     return {
         'meetings': [_serialize_meeting(row) for row in visible_rows],
         'view_all': view_all,
@@ -450,13 +530,7 @@ def get_report_data(
         'fiscal_start': fiscal_start,
         'fiscal_end': fiscal_end,
         'fiscal_year_label': f'FY{fiscal_end.year % 100:02d}',
-        'summary': {
-            'total': total,
-            'logged': logged,
-            'ready': statuses.count('ready'),
-            'needs_attention': total - logged - statuses.count('ready'),
-            'coverage_percent': round((logged / total) * 100) if total else 0,
-        },
+        'summary': coverage['summary'],
         'customers': Customer.query.order_by(Customer.name.asc()).all(),
         'task_categories': TASK_CATEGORIES,
     }

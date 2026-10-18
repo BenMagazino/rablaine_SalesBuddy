@@ -37,6 +37,7 @@ function launcher({embedded = false} = {}) {
         return element;
     }
     const nav = {
+        '#dashboardsMenu a[href]': [],
         '#reportsMenu a[href]': [
             link('Whitespace Analysis', '/reports/whitespace'),
             link('Workload Report', '/reports/workload'),
@@ -138,6 +139,31 @@ test('Ctrl+Space opens from typing contexts and works before modal bubbling hand
     assert.equal(ui.document.activeElement, ui.input);
     ui.key(null, ' ', {ctrlKey: true, repeat: true});
     assert.equal(ui.openings(), 1);
+});
+
+test('saved dashboards use report URLs and refresh from navigation on every opening', () => {
+    const ui = launcher();
+    const Element = ui.nav['#reportsMenu a[href]'][0].constructor;
+    const dashboard = new Element('a', 'Manager weekly');
+    dashboard.setAttribute('href', '/reports/dashboards/12');
+    ui.nav['#dashboardsMenu a[href]'].push(dashboard);
+    ui.open();
+    ui.query('manager weekly');
+    assert.equal(ui.links().length, 1);
+    assert.equal(ui.links()[0].href, '/reports/dashboards/12');
+    assert.equal(ui.links()[0].children[2].textContent, 'Dashboards');
+    dashboard.textContent = 'Seller weekly';
+    ui.dialog.open = false;
+    ui.open();
+    ui.query('manager weekly');
+    assert.equal(ui.links().length, 0);
+    ui.query('seller weekly');
+    assert.equal(ui.links()[0].href, '/reports/dashboards/12');
+    ui.nav['#dashboardsMenu a[href]'].pop();
+    ui.dialog.open = false;
+    ui.open();
+    ui.query('seller weekly');
+    assert.equal(ui.links().length, 0);
 });
 
 test('plain Space, modified shortcuts and composition retain their original ownership', () => {

@@ -1,0 +1,35 @@
+{% set data = instance.data %}
+{% set prefix = widget_id_prefix|default('fabric-pressure-') %}
+<section class="db-report-widget" aria-labelledby="{{ prefix }}pressure-title">
+    <header class="db-report-heading">
+        <h2 id="{{ prefix }}pressure-title">Fabric capacity pressure</h2>
+        <a href="{{ data.destination }}">Open report <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>
+    </header>
+    {% if data.snapshot_state == 'not_imported' %}
+    <p class="db-report-empty">No saved Fabric snapshot. Open the report to get started.</p>
+    {% else %}
+    <dl class="db-report-metrics">
+        <div><dt>Need attention</dt><dd>{{ data.counts.attention }} / {{ data.counts.capacities }}</dd></div>
+        <div><dt>Throttling recorded</dt><dd>{{ data.counts.throttled }}</dd></div>
+    </dl>
+    {% if instance.variant_key|default('metric') == 'detailed' and data.rows %}
+    <ol class="db-pressure-preview" aria-label="Highest-priority capacities needing attention">
+        {% for row in data.rows %}
+        <li>
+            <div><a href="{{ row.destination }}" title="Capacity {{ row.capacity.capacity_id }}; tenant {{ row.capacity.tenant_id }}">{{ row.name }}</a><small>Capacity {{ row.capacity_index }}/{{ row.capacity_total }}{% if row.capacity.sku %} · {{ row.capacity.sku }}{% endif %}</small></div>
+            <div class="db-pressure-reading">
+                {% if row.signals.throttled %}<strong>{% if row.throttling_seconds < 60 %}{{ "%.3g"|format(row.throttling_seconds) }}s{% elif row.throttling_seconds < 3600 %}{{ "%.1f"|format(row.throttling_seconds / 60) }}m{% else %}{{ "%.1f"|format(row.throttling_seconds / 3600) }}h{% endif %}</strong><small>throttling</small>
+                {% elif row.signals.overloaded or row.signals.near_limit %}<strong>{{ "%.1f"|format(row.latest_utilization_pct) }}%</strong><small>latest-hour utilization</small>
+                {% else %}<strong>{{ "%.1f"|format(row.max_30s_utilization_pct) }}%</strong><small>latest-hour peak (30s)</small>{% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ol>
+    <p class="db-report-caption">Top {{ data.shown_count }} of {{ data.counts.attention }} needing attention.</p>
+    {% elif not data.counts.capacities %}
+    <p class="db-report-empty">No saved capacities to assess. Missing data is not evidence of healthy capacity.</p>
+    {% elif not data.counts.attention %}
+    <p class="db-report-caption">No recorded pressure signals.</p>
+    {% endif %}
+    {% endif %}
+</section>

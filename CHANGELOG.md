@@ -8,6 +8,12 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/18/2026
+
+- Create multiple custom dashboards with resizable report widgets, content-fitted library previews, and locally saved drafts. Choose Cards or Dividers, undo changes, and preview your dashboard before publishing.
+- Customize or delete the Connect Goals starter dashboard and recreate it with Add from template. Set up compensation buckets once to update all widgets that need them. Dashboards now appears before Reports in the navigation.
+- Track initiatives and combined monthly ACR, hygiene gaps, meeting coverage, revenue risk and opportunity, upcoming P-to-F renewals, and Fabric capacity pressure with new widgets. Investigate capacity utilization in the dedicated Fabric Capacity Pressure report.
+
 ## 10/16/2026 - d325c465
 
 - Make meeting imports more reliable, including saved Internal Contact matching and WorkIQ responses with extra commentary.

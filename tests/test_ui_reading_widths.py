@@ -30,6 +30,7 @@ WORKFLOW_WIDTHS = {
 SURFACE_WIDTHS: dict[str, int | None | tuple[int, int | None]] = {
     **WORKFLOW_WIDTHS,
     "note_form.html": (1152, None),
+    "dashboard_view.html": (1152, 1344),
     **dict.fromkeys([
         "customers_list.html", "sellers_list.html", "customer_form.html",
         "partners_list.html", "partner_form.html", "topics_list.html",
@@ -38,7 +39,7 @@ SURFACE_WIDTHS: dict[str, int | None | tuple[int, int | None]] = {
         "solution_engineers_list.html", "solution_engineer_form.html",
         "internal_contacts_list.html", "internal_contact_form.html",
         "report_activity_coverage.html", "report_hygiene.html",
-        "report_u2c.html",
+        "report_u2c.html", "dashboards.html",
         "revenue_seller_product_view.html", "revenue_reports_list.html",
         "revenue_report_synapse_customers.html",
         "settings.html", "metrics.html", "connect_export.html", "admin_favicons.html",
@@ -48,7 +49,7 @@ SURFACE_WIDTHS: dict[str, int | None | tuple[int, int | None]] = {
         "report_workload.html", "revenue_products_list.html", "revenue_product_view.html",
         "partials/customer_view_content.html", "partials/territory_view_content.html",
         "partials/solution_engineer_view_content.html", "seller_form.html", "territory_form.html",
-        "reports_hub.html", "report_connect_goals.html", "report_msx_workspace.html",
+        "reports_hub.html", "report_msx_workspace.html",
         "report_one_on_one.html", "revenue_config.html",
         "partials/pod_view_content.html", "pod_form.html",
         "revenue_customer_view.html",
@@ -77,10 +78,14 @@ def test_surface_has_explicit_reading_width(
     for surface in surfaces:
         assert ("sb-directory-frame" in surface) == (width is not None)
         if isinstance(width, tuple):
-            assert width == (1152, None)
-            assert 'data-sb-note-paired=' in surface
-            assert "{% if is_general_note %} sb-directory-frame" in surface
-            assert "sb-directory-frame-wide" not in surface
+            if template == "dashboard_view.html":
+                assert width == (1152, 1344)
+                assert "{% if dashboard.content_width == 'wide' %} sb-directory-frame-wide" in surface
+            else:
+                assert width == (1152, None)
+                assert 'data-sb-note-paired=' in surface
+                assert "{% if is_general_note %} sb-directory-frame" in surface
+                assert "sb-directory-frame-wide" not in surface
         else:
             assert ("sb-directory-frame-wide" in surface) == (width == 1344)
 
@@ -114,6 +119,21 @@ def test_width_rules_only_match_standalone_roots() -> None:
         key.strip().startswith(selector)
         for key in rules if "sb-directory-frame" in key
     )
+
+
+def test_dashboard_grid_fills_fixed_shared_report_frame() -> None:
+    """Keep the shared frame fixed and scroll it, rather than shrinking the widget grid."""
+    source = (ROOT / "static" / "css" / "ui-dashboards.css").read_text(encoding="utf-8")
+    rules = {
+        selector.strip(): declarations
+        for selector, declarations in re.findall(r"([^{}]+)\{([^{}]*)\}", source)
+    }
+    assert "min-width: var(--db-canvas-width);" in rules[".db-dashboard"]
+    assert "overflow-x: auto;" in rules[
+        ".sb-page-frame #main-content:has(> .db-dashboard)"
+    ]
+    assert "width: 100%;" in rules[".db-canvas"]
+    assert "--db-canvas-width" not in rules[".db-canvas"]
 
 
 def test_search_history_wraps_within_the_reading_region() -> None:

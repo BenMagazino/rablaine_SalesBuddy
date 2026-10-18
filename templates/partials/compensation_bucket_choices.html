@@ -1,0 +1,7 @@
+{% for bucket in setup.available_buckets %}
+<label class="sb-goals-bucket-choice">
+    <input type="checkbox" value="{{ bucket }}"
+           {% if bucket in setup.selected_buckets %}checked{% endif %}>
+    <span>{{ bucket }}</span>
+</label>
+{% endfor %}

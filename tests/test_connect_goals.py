@@ -3,6 +3,7 @@ from datetime import date, datetime, timezone
 import json
 
 from bs4 import BeautifulSoup
+import pytest
 
 from app.models import (
     Customer,
@@ -20,6 +21,15 @@ from app.models import (
 from app.services import connect_goals
 
 
+def _goals_dashboard_page(client) -> BeautifulSoup:
+    """Render a normal dashboard copied from the Connect Goals template."""
+    response = client.post('/api/reports/dashboards/from-template/connect-goals', json={})
+    assert response.status_code == 201
+    return BeautifulSoup(
+        client.get(f'/reports/dashboards/{response.json["id"]}').data, 'html.parser',
+    )
+
+
 def _confirm_scope() -> None:
     """Confirm FY27 Databases and Fabric priorities for a test."""
     preference = UserPreference.query.first()
@@ -30,8 +40,8 @@ def _confirm_scope() -> None:
     )
 
 
-def _seed_required_buckets(customer_id: int | None = None) -> None:
-    """Seed the authoritative FY27 Data buckets needed by the setup gate."""
+def _seed_revenue_buckets(customer_id: int | None = None) -> None:
+    """Seed example revenue buckets used by the Data goal report."""
     imported = RevenueImport(filename='connect-scope-test')
     db.session.add(imported)
     db.session.flush()
@@ -64,19 +74,16 @@ def _milestone(customer_id: int, *, number: str, on_team: bool,
     )
 
 
-def test_setup_requires_confirmed_fy27_buckets(app):
-    """The page remains gated until both required buckets are confirmed."""
+@pytest.mark.parametrize('selected', [
+    ['Databases'], ['Fabric'], ['Infra'], ['Infra', 'AI'],
+])
+def test_setup_accepts_any_confirmed_compensation_buckets(client, app, selected):
+    """Compensation choices need not contain either of the Data report's goal buckets."""
     with app.app_context():
-        preference = UserPreference.query.first()
-        preference.compensated_buckets = json.dumps(['Databases'])
-        preference.compensated_buckets_fiscal_year = 'FY27'
-        preference.compensated_buckets_confirmed_taxonomy_version = (
-            preference.bucket_taxonomy_version
-        )
         imported = RevenueImport(filename='setup-test')
         db.session.add(imported)
         db.session.flush()
-        for bucket in ('Databases', 'Fabric'):
+        for bucket in selected:
             db.session.add(CustomerRevenueData(
                 customer_name='Setup Customer',
                 bucket=bucket,
@@ -87,61 +94,62 @@ def test_setup_requires_confirmed_fy27_buckets(app):
             ))
         db.session.commit()
 
-        state = connect_goals.get_setup_state(date(2026, 9, 23))
-
-        assert state['ready'] is False
-        assert state['missing_required'] == ['Fabric']
-
-
-def test_connect_goals_route_shows_setup_gate(client):
-    """The report explains annual setup instead of rendering fake values."""
-    response = client.get('/reports/connect-goals')
-
+    response = client.post('/api/revenue/compensated-buckets', json={
+        'buckets': selected, 'confirm_for_fiscal_year': True,
+    })
     assert response.status_code == 200
-    assert b'Confirm your FY27 Data priorities' in response.data
-
-
-def test_connect_goals_route_renders_action_metrics(client, app):
-    """Keep three primary dashboard metrics and the supporting whitespace workflow."""
     with app.app_context():
-        _seed_required_buckets()
+        state = connect_goals.get_setup_state(date(2026, 9, 23))
+        assert state['ready'] is True
+        assert state['selected_buckets'] == selected
+        assert state['reasons'] == []
+        assert json.loads(UserPreference.query.first().compensated_buckets) == selected
+    page = _goals_dashboard_page(client)
+    assert len(page.select('.db-widget .sb-goals-section')) == 4
+    assert page.select_one('[data-widget-requirement]') is None
+    picker = BeautifulSoup(client.get(
+        '/api/reports/dashboards/requirements/compensation_buckets',
+    ).json['html'], 'html.parser')
+    assert {item['value'] for item in picker.select('input:checked')} == (
+        set(selected)
+    )
+
+
+def test_connect_goals_dashboard_shows_widget_setup_gate(client):
+    """The template uses widget-level setup rather than rendering fake values."""
+    page = _goals_dashboard_page(client)
+    assert len(page.select('.db-widget [data-widget-requirement]')) == 4
+    assert 'Confirm your FY27 compensation buckets' in page.get_text()
+
+
+def test_connect_goals_template_renders_action_metrics(client, app):
+    """The normal dashboard preserves all shared metric and drill-through content."""
+    with app.app_context():
+        _seed_revenue_buckets()
         _confirm_scope()
         db.session.commit()
 
-    response = client.get('/reports/connect-goals')
-
-    assert response.status_code == 200
-    assert b'Quarterly U2C progression' in response.data
-    assert b'Select FY27 Comp Buckets' in response.data
-    assert b'data-sb-dialog="connectBucketModal"' in response.data
-    assert b'Edit FY27 priorities' not in response.data
-    assert b'Save Comp Buckets' in response.data
-    assert b'Milestone team coverage' in response.data
-    assert b'Milestone HVA coverage' in response.data
-    assert b'Fabric and database whitespace wins' in response.data
-    page = BeautifulSoup(response.data, 'html.parser')
+    page = _goals_dashboard_page(client)
     headings = [
         heading.get_text(strip=True)
-        for heading in page.select('.sb-goals-dashboard h2')
+        for heading in page.select('.db-widget h2')
     ]
     assert headings == [
         'Quarterly U2C progression', 'Milestone team coverage',
         'Milestone HVA coverage', 'Fabric and database whitespace wins',
     ]
     assert len(page.select('.sb-goals-section:not(.is-supporting)')) == 3
-    assert page.select_one('.sb-goals-section.is-supporting')['aria-labelledby'] == (
-        'whitespaceGoalTitle'
-    )
-    dialog = page.select_one('dialog#connectBucketModal')
-    assert dialog.select_one('form.sb-dialog-shell')
-    assert len(dialog.select('[data-sb-dialog-close]')) == 2
+    assert page.select_one('.sb-goals-section.is-supporting')
     assert not page.select('.sb-connect-goals [data-bs-toggle], .sb-connect-goals .btn')
     assert page.select_one('body.sb-page-frame')
     assert page.select_one('#main-content > [data-sb-page-surface]')
-    assert page.select_one('#connectGoalsReading[data-sb-page-body]')
-    assert page.select_one('body > footer.sb-page-status')['aria-label'] == 'Connect Goals status'
+    assert page.select_one('#dashboardReading[data-sb-page-body]')
+    assert page.select_one('body > footer.sb-page-status')['aria-label'] == 'Dashboard status'
     assert not page.select('#main-content main')
-    config = json.loads(page.select_one('#connectGoalsData').string)
+    config = next(
+        json.loads(script.string) for script in page.select('.db-canvas script')
+        if json.loads(script.string).get('teamFilter')
+    )
     assert config['teamFilter']['area'] == ['Data']
     assert config['teamFilter']['myTeam'] == 'off'
     assert config['teamFilter']['quarters'] == [
@@ -150,7 +158,7 @@ def test_connect_goals_route_renders_action_metrics(client, app):
     ]
     assert config['teamFilter']['status'] == list(connect_goals.ACTIVE_MILESTONE_STATUSES)
     assert config['teamFilter']['favoritesOnly'] is False
-    assert b'No matched Databases or Fabric revenue history is available.' in response.data
+    assert 'No matched Databases or Fabric revenue history is available.' in page.get_text()
 
 
 def test_team_coverage_is_acr_weighted(app):
@@ -309,16 +317,14 @@ def test_whitespace_win_requires_sustained_consumption(app, client):
             0, 0, 0, 0, 0, 20, 75, 250,
         ]
 
-        response = client.get('/reports/connect-goals')
-        assert response.status_code == 200
-        assert b'Whitespace Customer' in response.data
-        assert f'/customer/{customer.id}'.encode() in response.data
-        assert b'data:image/png;base64,ZmFrZQ==' in response.data
-        assert b'Fabric monthly ACR' not in response.data
-        assert b'Feb26' in response.data
-        assert b'First positive' not in response.data
-        assert b'Sustained' in response.data
-        page = BeautifulSoup(response.data, 'html.parser')
+        page = _goals_dashboard_page(client)
+        assert 'Whitespace Customer' in page.get_text()
+        assert page.select_one(f'a[href="/customer/{customer.id}"]')
+        assert page.select_one('img[src="data:image/png;base64,ZmFrZQ=="]')
+        assert 'Fabric monthly ACR' not in page.get_text()
+        assert 'Feb26' in page.get_text()
+        assert 'First positive' not in page.get_text()
+        assert 'Sustained' in page.get_text()
         history = page.select_one('.sb-goals-history-table')
         assert len(history.select('td.is-danger')) == 5
         assert len(history.select('td.is-success')) == 3
@@ -432,7 +438,7 @@ def test_connect_goals_api_serializes_shared_data(client):
 def test_ready_connect_goals_api_has_four_shared_widgets(client, app):
     """The page, API and tool provider share the same four measurable goals."""
     with app.app_context():
-        _seed_required_buckets()
+        _seed_revenue_buckets()
         _confirm_scope()
         db.session.commit()
 
@@ -444,33 +450,32 @@ def test_ready_connect_goals_api_has_four_shared_widgets(client, app):
 
 
 def test_setup_form_uses_native_scope_choices(client, app):
-    """Annual setup still offers required buckets before metrics are available."""
+    """Annual setup offers available buckets without marking any specific choice mandatory."""
     with app.app_context():
-        _seed_required_buckets()
+        _seed_revenue_buckets()
         db.session.commit()
 
-    page = BeautifulSoup(client.get('/reports/connect-goals').data, 'html.parser')
-    form = page.select_one('#connectSetupForm')
-    assert form
-    assert {item['value'] for item in form.select('input[type="checkbox"]')} == {
+    response = client.get('/api/reports/dashboards/requirements/compensation_buckets')
+    page = BeautifulSoup(response.json['html'], 'html.parser')
+    assert {item['value'] for item in page.select('input[type="checkbox"]')} == {
         'Databases', 'Fabric',
     }
-    assert len(form.select('.sb-goals-tag.is-required')) == 2
-    assert not page.select('.sb-goals-section, #connectBucketModal')
-    assert page.select_one('#connectSetupStatus')['aria-live'] == 'polite'
+    assert {item.get_text(' ', strip=True) for item in page.select('label')} == {
+        'Databases', 'Fabric',
+    }
+    assert response.json['setup']['ready'] is False
 
 
-def test_embedded_connect_goals_does_not_own_the_window_footer(client, app):
-    """An embedded dashboard leaves window and footer ownership to its host."""
+def test_connect_goals_widgets_do_not_own_the_dashboard_shell(client, app):
+    """Widget fragments leave window and footer ownership to their dashboard."""
     with app.app_context():
-        _seed_required_buckets()
+        _seed_revenue_buckets()
         _confirm_scope()
         db.session.commit()
 
-    page = BeautifulSoup(client.get('/reports/connect-goals?embed=1').data, 'html.parser')
-    assert page.select_one('.sb-connect-goals')['data-embedded'] == 'true'
-    assert page.select_one('#connectGoalsReading')
-    assert not page.select('body.sb-page-frame, body > footer')
+    page = _goals_dashboard_page(client)
+    assert all(widget['data-embedded'] == 'true' for widget in page.select('.sb-connect-goals'))
+    assert len(page.select('body > footer.sb-page-status')) == 1
 
 
 def test_u2c_widget_uses_data_snapshot(app):

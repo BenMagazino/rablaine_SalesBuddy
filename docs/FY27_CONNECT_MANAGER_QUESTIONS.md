@@ -2,7 +2,7 @@
 
 **Prepared:** September 23, 2026  
 **Purpose:** Confirm the working definitions Sales Buddy will use for the FY27
-Data Connect Goals Action Center.
+Data Connect Goals dashboard.
 
 The definitions below are our current working assumptions. Please confirm or
 correct each one.

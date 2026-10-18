@@ -233,8 +233,130 @@ standalone UI iterations using entirely fictional data. See the
 - **Connect Export** - structured self-eval summaries over date ranges with per-customer breakdowns
 - **Global Search** - full-text across notes, customers, sellers, topics, and territories
 - **Analytics Dashboard** - activity heatmap, engagement trends, top topics and customers
-- **Reports Navigation** - divider-separated groups for planning and reviews, execution
-  and coverage, pipeline health, and account insights. Connect Goals' action reports
+- **Custom Dashboards** - Saved dashboards appear by name in the top-level
+  Dashboards menu and the Quick Launcher, separately from Reports and All Reports.
+  They open as clean report views, without layout or management controls.
+  Use **Dashboards > Manage Dashboards** to create,
+  edit, rename, or delete them. Each entry has **View dashboard**, **Edit**, and **Delete**
+  actions. Deleting requires confirmation and removes only the dashboard and its layout.
+  In the editor, click the name or optional subtitle to edit it. Every change is saved
+  to a local browser draft, not to the published dashboard. Subtitles can also be set on creation
+  and cleared later; blank subtitles do not appear in dashboard views.
+  The editor saves fixed-layout collections of report-backed widgets.
+  Choose a Standard (1152px) or Wide (1344px) report container. The title and canvas
+  share the existing report frame, side borders, and outer gutters.
+  Editor actions and canvas controls share a full-width command bar above the bounded
+  dashboard title and canvas. Canvas tools, save/discard actions, and dashboard deletion
+  are grouped separately. Select a widget to reveal its appearance, position, and size
+  controls; click empty canvas space or either outer gutter to clear selection.
+  A prominent **Add widget** button stays at the right of the widget properties bar,
+  whether or not a widget is selected. Layout help expands below the bar on demand.
+  That editor bar is absent from report views. Place widgets
+  on a 12-column grid by dragging anywhere on a widget, using its bottom-right resize
+  handle, or setting explicit position and size controls. Focus a widget and use arrow
+  keys to move it, or focus its resize handle to resize with arrow keys. A click selects
+  without moving it; Escape cancels a drag. Quarter, third, half, and full-width metric
+  variations and half/full-width detailed variations share the four Connect Goals
+  calculations. The searchable widget-library dialog shows actual-size previews using
+  current synced data, with report, width, and variation filters. New widgets start at
+  a content-fitted height for the selected width, snapped to grid rows and capped at
+  the variant's normal starting height for long queues. The preview and inserted size
+  match. After insertion, sizes stay fixed until you resize them; data refreshes and
+  this sizing behavior never resize existing widgets.
+  **Initiative Tracker** also has Summary and By seller widgets. Summary supports
+  quarter, third, half, and full widths; By seller supports half and full widths,
+  placing seller subtotals beside each initiative when the widget has enough room.
+  Both use the tracker's live saved work. ACR/month combines engagement ACR and
+  ACR from milestones added directly to the initiative. Missing amounts remain explicit, and shared work
+  is not rolled into a misleading cross-initiative grand total. Internal projects
+  have no revenue amount. Open an initiative to continue its tracker workflow.
+  This widget does not require compensation-bucket setup.
+  The library also includes **Hygiene gaps**, **Meeting activity coverage**,
+  **Revenue risk / opportunity**, **Upcoming P-to-F renewals**, and
+  **Fabric capacity pressure**, each with compact Summary and detailed views.
+  They read the same saved data as their reports and link back to existing workflows;
+  opening a dashboard never starts an external refresh. Revenue totals cover the complete
+  unreviewed priority-20+ queue, rather than just the report's first page.
+  Source timestamps and missing measurements remain available in the reports instead of implying
+  that an empty or outdated snapshot means everything is healthy.
+  P-to-F shows subscription expirations in the next 90 days and annual SA expiration
+  amounts, not monthly ACR; renewal assessments remain account-level context.
+  Capacity pressure flags recorded throttling, latest-hour utilization at 80% or higher
+  (100% or higher for overload), and 30-second peaks within that hour at 100% or higher.
+  The latest-hour peak is not a peak across the full 15-day average's reporting period.
+  These are monitoring heuristics over saved measurements, not live service alerts.
+  Signals can overlap; capacity utilization percentages are never added together.
+  **Fabric Capacity Pressure** has its own report under Reports, with the complete
+  capacity population, signal/search filters, sortable measurements including
+  15-day average utilization, and export.
+  Its dashboard widget keeps attention and throttling counts and, in Details, only
+  the five highest-priority capacities needing attention. Counts remain portfolio-wide.
+  One Open report link provides the full investigation view, including measurement
+  dates, utilization thresholds, and incomplete-data context.
+  Widgets declare their own shared setup requirements. If compensation buckets have
+  not been confirmed, each affected widget offers **Select compensation buckets**
+  in the saved dashboard, editor, and library preview. Confirming once refreshes all
+  dependent widgets with that scope, without reloading, publishing the dashboard,
+  changing its local draft, or adding an undo step. The selection is the same annual
+  application setting used by all Connect Goals widgets. Failed saves or
+  refreshes remain visible and can be retried.
+  Opening an editor immediately enables layout editing, with name and subtitle editing
+  available alongside it. Name, subtitle, display settings, widget additions/removals, and
+  geometry persist together in local storage across reloads and navigation. Manage Dashboards
+  marks these entries **Draft** and offers **Edit draft** to resume them. Drafts belong to the
+  current browser profile and do not sync between browsers or installations.
+  **Preview draft** shows the current draft without the editor grid, selection outlines,
+  resize handles, or editable headings. Widget drill-throughs and charts work as in the
+  saved dashboard. **Back to editing** resumes the same draft without publishing it.
+  **Undo** / **Redo** or **Ctrl+Z** / **Ctrl+Y** step through editing changes, including
+  widget additions/removals, geometry, display settings, and text edits.
+  **Ctrl+Shift+Z** also redoes. Continuous name/subtitle typing is one dashboard undo step.
+  **Delete** or **Backspace** removes the selected widget; **Escape** deselects it and
+  cancels an active drag without highlighting the canvas.
+  Shortcuts leave text fields and open dialogs alone.
+  Undo history is editor-session-only and resets on reload, Save, or Discard draft;
+  the current draft still persists in local storage.
+  **Save** publishes the complete dashboard in one transaction and clears its local draft.
+  **Discard draft** requires confirmation and restores all saved settings, including text.
+  Failed saves keep the draft. Conflicting saved changes are never silently overwritten.
+  The **Display** selector switches between outlined **Cards** and flat **Dividers**
+  with shared horizontal and vertical separators between neighboring widgets.
+  Lines join across the normal grid gaps, without outlining the dashboard or crossing
+  intentional empty space. A lone widget has no divider.
+  Dividers update during editing, undo/redo, and draft previews, and in saved views.
+  The display choice previews immediately and saves or resets with the layout,
+  without changing widget positions, sizes, gaps, or the Standard/Wide report frame.
+  New dashboards use Cards. Widget-library previews follow the current draft display style
+  and canvas width. Add or remove widgets freely while editing, without publishing or reloading.
+  Overlapping positions are rejected without pushing neighbors. Widgets never reflow,
+  shrink, or move when the window narrows; scroll the fixed report surface instead. Overflowing widget
+  content scrolls inside its saved footprint, and removing a widget leaves its space empty.
+  Existing vertical dashboards migrate into full-width slots in their original order.
+  Changes in another window are detected before a stale draft can overwrite a newer layout.
+  Widgets retain the FY27 Data scope, annual setup, drill-through reports, charts, and
+  consumption history. Values are not saved snapshots. Full-window canvases and custom
+  seller/date filters are not available yet.
+  **Connect Goals** is supplied as an ordinary, editable starter dashboard, replacing
+  the standalone report. It is installed once, not recreated after deletion or reset
+  after customization. An exact existing pre-release copy is adopted without changing
+  its name, widget IDs, layout, or revision. The **Add from template** button on Manage
+  Dashboards opens a picker with descriptions and layout details. Choose a template
+  to create another copy or restore the original starting layout. Copies are
+  independent and can be renamed, rearranged, or deleted. Old Connect Goals bookmarks
+  open the starter while it exists; otherwise they offer explicit template recreation.
+  The template has a stable key and version, separate from ordinary dashboard IDs.
+  Installation history lives in `dashboard_template_installations` so deletion remains
+  intentional across restarts. There is no dashboard-specific F1 editor or scope toolbar.
+  Compensation bucket choices are not restricted to Databases or Fabric. Any non-empty
+  selection from the current imported taxonomy can be confirmed for the fiscal year;
+  the existing Data goal calculations retain their report-specific scope.
+  Dashboard layouts are stored locally in `dashboards` and `dashboard_widgets`;
+  stable widget definitions and presentation support live in the code-owned catalog,
+  independently of menu placement. Geometry uses zero-based `layout_column` and
+  `layout_row`, plus `column_span`, `row_span` (64px rows with 12px gaps), and `variant_key`.
+- **Reports Navigation** - Dashboards precedes Reports, separating personal overviews
+  from their drill-through reports. Reports uses divider-separated groups for planning
+  and reviews, execution and coverage, pipeline health, and account insights. Goal action reports
   stay together, separate from planning and review pages. All Reports uses the same
   groups and report order.
 - **U2C Trends** - U2C Attainment and Connect Goals preserve quarter-specific MSXi history

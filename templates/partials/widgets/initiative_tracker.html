@@ -1,0 +1,71 @@
+{% macro amount(summary) %}
+    <span class="db-initiative-amount">{{ '${:,.0f}'.format(summary.acr) if summary.acr is not none else 'Not set' if summary.acr_count else '-' }}</span>
+    {% if summary.acr_missing_count and summary.acr is not none %}
+    <small class="db-initiative-missing">{{ summary.acr_missing_count }} not set</small>
+    {% endif %}
+{% endmacro %}
+<section class="db-initiative-widget" aria-labelledby="{{ widget_id_prefix }}initiativeTitle"
+         data-initiative-variant="{{ instance.variant_key }}">
+    <header class="db-initiative-heading">
+        <h2 id="{{ widget_id_prefix }}initiativeTitle">Initiative Tracker</h2>
+        <a href="{{ instance.data.destination }}">Open tracker <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    </header>
+    {% if instance.data.sections %}
+    <p class="db-muted db-initiative-explanation">
+        {% if instance.variant_key == 'metric' %}
+        Monthly ACR estimates. Shared work may repeat.
+        {% else %}
+        ACR/mo combines engagement ACR and directly added milestone ACR.
+        Shared work can appear in multiple initiatives.
+        {% endif %}
+    </p>
+    <div class="db-initiative-list">
+        {% for section in instance.data.sections %}
+        <article class="db-initiative" data-initiative-id="{{ section.id }}">
+            <div class="db-initiative-overview">
+                <div class="db-initiative-identity">
+                    <h3><a href="{{ instance.data.destination }}#section-{{ section.id }}">{{ section.name }}</a></h3>
+                    <p class="db-muted db-initiative-count">{{ section.summary.item_count }} work item{{ '' if section.summary.item_count == 1 else 's' }}</p>
+                </div>
+                <dl class="db-initiative-totals">
+                    <div><dt class="sb-visually-hidden">ACR/mo</dt><dd>{{ amount(section.summary) }}</dd></div>
+                </dl>
+                {% if section.summary.unavailable_count %}
+                <p class="db-initiative-missing">{{ section.summary.unavailable_count }} unavailable record{{ '' if section.summary.unavailable_count == 1 else 's' }}. Open the initiative to review.</p>
+                {% endif %}
+            </div>
+            {% if instance.variant_key == 'detailed' and section.seller_groups %}
+            <div class="db-initiative-sellers">
+                <table data-sb-sortable data-sb-sort-key="{{ widget_id_prefix }}initiative-{{ section.id }}">
+                    <caption>Seller breakdown for {{ section.name }}</caption>
+                    <thead><tr>
+                        <th scope="col" data-sb-sort-type="text">Seller</th>
+                        <th scope="col" data-sb-sort-type="number">ACR/mo</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for group in section.seller_groups %}
+                        <tr>
+                            <th scope="row" data-sb-sort-value="{{ group.seller_name }}">
+                                {% if group.seller_id is not none %}
+                                <a class="badge bg-primary text-decoration-none" href="{{ url_for('sellers.seller_view', id=group.seller_id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ group.seller_name }}</a>
+                                {% else %}<span class="db-muted">No seller</span>{% endif %}
+                            </th>
+                            <td data-sb-sort-value="{{ group.summary.acr if group.summary.acr is not none else '' }}">{{ amount(group.summary) }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="db-initiative-empty">
+        <h3>No initiatives yet</h3>
+        <p class="db-muted">Create an initiative in the tracker and add milestones, engagements,
+            or internal projects. Your saved initiatives will appear here.</p>
+        <a href="{{ instance.data.destination }}">Create your first initiative</a>
+    </div>
+    {% endif %}
+</section>

@@ -170,9 +170,29 @@ def report_fabric_consumption(customer_id: int | None = None, overview: bool = F
 
 
 @tool(
+    'report_fabric_capacity_pressure',
+    'Investigate the full saved Fabric capacity pressure report, including recorded throttling, '
+    'latest utilization, historical peaks, incomplete data, timestamps, and exact capacity links. '
+    'Defaults to capacities needing attention. Use signal=all for the complete population. '
+    'Unlike the dashboard widget, results are not limited to five capacities.',
+    {'type': 'object', 'properties': {
+        'signal': {'type': 'string', 'description': 'attention, all, throttled, overloaded, '
+                   'near_limit, historical_spike, unknown, or below_threshold.'},
+        'search': {'type': 'string', 'description': 'Customer, seller, TPID, SKU or capacity ID.'},
+    }},
+)
+def report_fabric_capacity_pressure(signal: str = 'attention', search: str = '') -> dict:
+    """Read the same complete, filterable investigation data as the report."""
+    from app.services.fabric_consumption import get_fabric_capacity_pressure_report
+
+    return get_fabric_capacity_pressure_report(signal=signal, search=search)
+
+
+@tool(
     'report_manager_one_on_one',
     'Read Initiative Tracker, including named initiatives, '
     'seller-grouped engagements and milestones, internal projects, live status, commitment, dates, '
+    'combined ACR/month from engagements and directly added milestones per initiative and seller, '
     'current points, and discussion history with creation and discussion timestamps.',
     {'type': 'object', 'properties': {}},
 )
@@ -998,17 +1018,80 @@ def list_action_items(
 # ============================================================================
 
 @tool(
+    'get_dashboards',
+    'List saved dashboards and the widget catalog, or read one dashboard with '
+    'its current report-backed widget data and setup requirements.',
+    {
+        'type': 'object',
+        'properties': {
+            'dashboard_id': {
+                'type': 'integer',
+                'minimum': 1,
+                'description': 'Optional saved dashboard ID. Omit to list dashboards.',
+            },
+        },
+    },
+)
+def get_dashboards(dashboard_id: int | None = None) -> dict:
+    """Read the same saved dashboard definitions and values used by the UI."""
+    from app.models import Dashboard, db
+    from app.services.dashboards import (
+        get_dashboard_data, get_widget_catalog, list_dashboards,
+    )
+
+    if dashboard_id is None:
+        from app.services.dashboard_templates import list_dashboard_templates
+
+        return {'dashboards': list_dashboards(), 'catalog': get_widget_catalog(),
+                'templates': list_dashboard_templates(),
+                'url': f'{_BASE}/reports/dashboards'}
+    if type(dashboard_id) is not int or dashboard_id < 1:
+        raise ValueError('Choose a valid dashboard ID.')
+    dashboard = db.session.get(Dashboard, dashboard_id)
+    if dashboard is None:
+        raise ValueError('Dashboard not found.')
+    result = get_dashboard_data(dashboard)
+    result['url'] = f'{_BASE}{result["url"]}'
+    return result
+
+
+@tool(
+    'report_dashboard_signals',
+    'Read a dashboard widget calculation without creating a dashboard or refreshing data. '
+    'Use widget_key from the get_dashboards catalog. Includes hygiene.gaps, '
+    'activity_coverage.meetings, revenue.attention, ptof.upcoming_renewals, and '
+    'fabric.capacity_pressure. Returns saved-data scope, missing data, source timestamps, '
+    'and drill-through destinations alongside each signal. Shared prerequisites are preserved.',
+    {'type': 'object', 'properties': {
+        'widget_key': {'type': 'string', 'description': 'Registered widget key.'},
+    }, 'required': ['widget_key']},
+)
+def report_dashboard_signals(widget_key: str) -> dict:
+    """Reuse the catalog provider rather than duplicating a widget's analytical rules."""
+    from app.services.dashboards import WIDGET_DEFINITIONS, get_widget_requirements
+
+    definition = WIDGET_DEFINITIONS.get(widget_key)
+    if definition is None:
+        raise ValueError('Choose a registered dashboard widget key from get_dashboards.')
+    requirements = get_widget_requirements(definition)
+    if requirements:
+        return {'requirements': requirements}
+    return definition.provider(None)
+
+
+@tool(
     'report_connect_goals',
-    'Get the FY27 Data Connect Goals action center metrics, goals, status, and '
+    'Get shared FY27 Data Connect Goals widget metrics, goals, status, and '
     'drill-down destinations.',
     {'type': 'object', 'properties': {}},
 )
 def report_connect_goals() -> dict:
     """Return the shared Connect Goals calculations."""
     from app.services.connect_goals import get_connect_goals
+    from app.services.dashboard_templates import get_template_dashboard_url
 
     data = get_connect_goals()
-    data['url'] = f'{_BASE}/reports/connect-goals'
+    data['url'] = _BASE + get_template_dashboard_url('connect-goals')
     return data
 
 
@@ -1135,28 +1218,10 @@ def report_caip_coverage() -> dict:
     },
 )
 def report_hygiene(seller_id: int | None = None) -> dict:
-    """Return hygiene report data."""
-    from app.models import Engagement, Milestone
+    """Return the shared active hygiene repair queues."""
+    from app.services.hygiene import get_hygiene_report_data
 
-    eng_q = (
-        Engagement.query
-        .filter(Engagement.status == 'Active')
-        .filter(~Engagement.milestones.any())
-    )
-    ms_q = (
-        Milestone.query
-        .filter(Milestone.customer_id.isnot(None))
-        .filter(Milestone.on_my_team == True)
-        .filter(~Milestone.engagements.any())
-    )
-    if seller_id:
-        from app.models import Customer
-        cust_ids = [
-            c.id for c in Customer.query.filter_by(seller_id=seller_id).all()
-        ]
-        eng_q = eng_q.filter(Engagement.customer_id.in_(cust_ids))
-        ms_q = ms_q.filter(Milestone.customer_id.in_(cust_ids))
-
+    data = get_hygiene_report_data(seller_id)
     return {
         'engagements_without_milestones': [
             {
@@ -1165,7 +1230,7 @@ def report_hygiene(seller_id: int | None = None) -> dict:
                 'title': e.title,
                 'customer': e.customer.name if e.customer else None,
             }
-            for e in eng_q.all()
+            for e in data['engagements_no_ms']
         ],
         'milestones_without_engagements': [
             {
@@ -1176,7 +1241,7 @@ def report_hygiene(seller_id: int | None = None) -> dict:
                 'commitment': m.customer_commitment,
                 'status': m.msx_status,
             }
-            for m in ms_q.all()
+            for m in data['milestones_no_eng']
         ],
     }
 

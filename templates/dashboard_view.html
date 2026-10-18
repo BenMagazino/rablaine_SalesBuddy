@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit ' if manage_dashboard else '' }}{{ dashboard.name }} - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-goals.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-dashboards.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Dashboard status">
+    <span id="dashboardSummary">{{ dashboard.widgets|length }} {{ 'widget' if dashboard.widgets|length == 1 else 'widgets' }} · Fixed canvas · {{ dashboard.canvas_width }}px · Current synced data</span>
+    {% if manage_dashboard %}<span id="layoutState" role="status" aria-live="polite">Editing dashboard</span>
+    {% else %}<span>Dashboard report</span>{% endif %}
+</footer>
+{% endblock %}
+{% block content %}
+{% if manage_dashboard %}
+<section class="db-editor-toolbar db-layout-editor" id="layoutEditor"
+         data-sb-page-band aria-label="Dashboard editor">
+    <div class="db-editor-command-row" id="dashboardEditorCommands">
+        <div class="db-editor-identity">
+            <strong>Dashboard editor</strong>
+            <span class="db-muted" id="dashboardDetailsState" role="status" aria-live="polite"
+                  aria-label="Local draft status"></span>
+        </div>
+        <div class="db-editor-canvas-tools" role="group" aria-label="Canvas tools">
+            <label for="canvasWidth">Canvas width</label>
+            <select class="db-input" id="canvasWidth">
+                <option value="standard">Standard · 1152px</option>
+                <option value="wide">Wide · 1344px</option>
+            </select>
+            <label for="dashboardDisplayStyle">Display</label>
+            <select class="db-input db-style-select" id="dashboardDisplayStyle"
+                    title="Cards outline each widget. Dividers separate neighboring widgets with shared rules.">
+                <option value="cards"{% if dashboard.display_style == 'cards' %} selected{% endif %}>Cards</option>
+                <option value="dividers"{% if dashboard.display_style == 'dividers' %} selected{% endif %}>Dividers</option>
+            </select>
+        </div>
+        <div class="db-actions" role="group" aria-label="Edit history">
+            <button class="db-command" type="button" id="undoDashboardEdit"
+                    aria-label="Undo" aria-keyshortcuts="Control+Z" title="Undo (Ctrl+Z)" disabled>
+                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+            </button>
+            <button class="db-command" type="button" id="redoDashboardEdit"
+                    aria-label="Redo" aria-keyshortcuts="Control+Y Control+Shift+Z"
+                    title="Redo (Ctrl+Y)" disabled>
+                <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="db-editor-save-actions" role="group" aria-label="Layout actions">
+            <button class="db-command is-quiet" type="button" id="cancelDashboardLayout">Discard draft</button>
+            <button class="db-command is-primary" type="button" id="saveDashboardLayout">Save</button>
+            <button class="db-command" type="button" id="previewDashboardDraft">
+                <i class="bi bi-eye" aria-hidden="true"></i> Preview draft
+            </button>
+            <a class="db-command" href="{{ dashboard.url }}">View dashboard</a>
+        </div>
+        <div class="db-editor-danger-actions">
+            <button class="db-command is-danger" type="button"
+                    data-db-delete="{{ dashboard.id }}" data-dashboard-name="{{ dashboard.name }}">Delete dashboard</button>
+        </div>
+    </div>
+    <div class="db-editor-command-row" id="dashboardDraftPreviewBar" hidden>
+        <div class="db-editor-identity">
+            <strong>Draft preview</strong>
+            <span class="db-muted">Preview only. Nothing is published.</span>
+        </div>
+        <div class="db-editor-save-actions">
+            <button class="db-command" type="button" id="exitDashboardDraftPreview">
+                <i class="bi bi-pencil" aria-hidden="true"></i> Back to editing
+            </button>
+        </div>
+    </div>
+    <form class="db-inspector" id="widgetInspector" aria-label="Widget properties">
+        <div class="db-inspector-selection">
+            <span>Widget properties</span>
+            <strong id="selectedWidgetTitle">No widget selected</strong>
+        </div>
+        <p class="db-inspector-hint" id="widgetInspectorEmpty">
+            Select a widget on the canvas to change its appearance, position, or size.
+        </p>
+        <div class="db-inspector-fields" id="widgetInspectorFields" hidden>
+            <div class="db-inspector-group" role="group" aria-label="Widget appearance">
+                <label>Variation <select class="db-input" name="variant_key" aria-label="Widget variation" disabled></select></label>
+            </div>
+            <div class="db-inspector-group" role="group" aria-label="Widget position">
+                <label>Column <input class="db-input" name="layout_column" aria-label="Widget column" type="number" min="1" max="12" disabled></label>
+                <label>Row <input class="db-input" name="layout_row" aria-label="Widget row" type="number" min="1" max="1000" disabled></label>
+            </div>
+            <div class="db-inspector-group" role="group" aria-label="Widget size">
+                <label>Width <select class="db-input" name="column_span" aria-label="Widget width" disabled></select></label>
+                <label>Height <input class="db-input" name="row_span" aria-label="Widget height in grid rows" type="number" min="3" max="20" disabled></label>
+            </div>
+            <button class="db-command is-danger is-quiet" id="removeSelectedWidget" type="button" disabled>Remove widget</button>
+        </div>
+        <details class="db-editor-help" id="dashboardLayoutHelp">
+            <summary>Layout help</summary>
+            <p>Drag anywhere on a widget to move it or its lower-right handle to resize.
+               Focus a widget and use arrow keys to move it; focus its resize handle
+               and use arrow keys to resize. Escape cancels a drag and deselects the widget.
+               Delete or Backspace removes the selected widget when not editing a field.
+               Ctrl+Z undoes edits; Ctrl+Y or Ctrl+Shift+Z redoes them.
+               Text fields keep their native editing shortcuts.
+               Undo history lasts until you reload, save, or discard the draft.
+               Other widgets never move. Every change is kept as a local draft in this browser.
+               Save publishes the complete dashboard. Discard draft restores the saved dashboard.</p>
+        </details>
+        <button class="db-command is-primary db-inspector-add" type="button"
+                data-sb-dialog="widgetLibrary" id="openWidgetLibrary">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i> Add widget
+        </button>
+    </form>
+</section>
+{% endif %}
+<section class="sb-dashboards db-dashboard sb-directory-frame{% if dashboard.content_width == 'wide' %} sb-directory-frame-wide{% endif %}{% if manage_dashboard %} is-editing{% endif %}"
+         data-sb-page-surface style="--db-canvas-width: {{ dashboard.canvas_width }}px;"
+         data-dashboard-id="{{ dashboard.id }}" data-display-style="{{ dashboard.display_style }}"
+         aria-labelledby="dashboardTitle">
+    <p class="db-error" id="dashboardError" role="alert" tabindex="-1" hidden></p>
+    <header class="db-header" data-sb-page-band>
+        <div class="db-heading">
+            {% if manage_dashboard %}
+            <h1 id="dashboardTitle" aria-label="{{ dashboard.name }}">
+                <input class="db-inline-input" name="name" data-dashboard-field
+                       aria-label="Dashboard name" required maxlength="200"
+                       title="Edit dashboard name. Kept in your local draft until you choose Save."
+                       value="{{ dashboard.name }}">
+                <span id="dashboardPreviewName" hidden></span>
+            </h1>
+            <p id="dashboardSubtitleEditor"><input class="db-inline-input" name="subtitle" data-dashboard-field
+                      aria-label="Dashboard subtitle (optional)" maxlength="500"
+                      title="Edit dashboard subtitle. Kept in your local draft until you choose Save."
+                      placeholder="Add a subtitle (optional)" value="{{ dashboard.subtitle }}"></p>
+            <p class="db-subtitle" id="dashboardPreviewSubtitle" hidden></p>
+            {% else %}
+            <h1 id="dashboardTitle">{{ dashboard.name }}</h1>
+            {% if dashboard.subtitle %}<p class="db-subtitle">{{ dashboard.subtitle }}</p>{% endif %}
+            {% endif %}
+        </div>
+    </header>
+    <div class="db-reading" id="dashboardReading" data-sb-page-body tabindex="0" role="region" aria-label="Dashboard canvas">
+        <div class="db-canvas" id="dashboardCanvas"
+             style="--db-rows: {{ dashboard.canvas_rows }};">
+            {% for instance in dashboard.widgets %}
+            <article class="db-widget" id="widget-{{ instance.id }}" aria-label="{{ instance.title }}"
+                     {% if manage_dashboard %}tabindex="0" data-drag-handle aria-describedby="dashboardLayoutHelp"{% endif %}
+                     data-widget-id="{{ instance.id }}" data-widget-key="{{ instance.key }}"
+                     data-column="{{ instance.layout_column }}" data-row="{{ instance.layout_row }}"
+                     data-column-span="{{ instance.column_span }}" data-row-span="{{ instance.row_span }}"
+                     data-variant="{{ instance.variant_key }}"
+                     style="grid-column: {{ instance.layout_column + 1 }} / span {{ instance.column_span }}; grid-row: {{ instance.layout_row + 1 }} / span {{ instance.row_span }};">
+                {% include 'partials/dashboard_widget_content.html' %}
+                {% if manage_dashboard %}
+                <button class="db-handle db-resize-handle" type="button" data-resize-handle
+                        aria-label="Resize {{ instance.title }}" aria-describedby="dashboardLayoutHelp">
+                    <i class="bi bi-arrows-angle-expand" aria-hidden="true"></i>
+                </button>
+                {% endif %}
+            </article>
+            {% endfor %}
+            <div class="db-empty"{% if dashboard.widgets %} hidden{% endif %}>
+                {% if manage_dashboard %}
+                <div id="dashboardEmptyEditor">
+                <h2>Make this view yours.</h2>
+                <p>Add a widget from the library, then drag or resize it in the editor.
+                   Your layout stays fixed, including empty spaces.</p>
+                <button class="db-command" type="button" data-sb-dialog="widgetLibrary">Browse widget library</button>
+                </div>
+                <div id="dashboardEmptyPreview" hidden>
+                    <h2>No widgets yet.</h2>
+                    <p>This dashboard has no widgets to display.</p>
+                </div>
+                {% else %}
+                <h2>No widgets yet.</h2>
+                <p>This dashboard has no widgets to display.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+<dialog class="sb-dialog sb-dialog-compact sb-dashboards"
+        id="dashboardRequirementDialog" aria-labelledby="dashboardRequirementTitle">
+    <form class="sb-dialog-shell" id="dashboardRequirementForm">
+        <header class="sb-dialog-header">
+            <div class="sb-dialog-heading">
+                <h2 id="dashboardRequirementTitle">Compensation buckets</h2>
+            </div>
+            <button class="sb-dialog-close" type="button" data-sb-dialog-close aria-label="Close">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </header>
+        <div class="sb-dialog-body">
+            <div id="dashboardRequirementChoices"></div>
+            <p id="dashboardRequirementStatus" role="status" aria-live="polite"></p>
+        </div>
+        <footer class="sb-dialog-footer">
+            <button type="button" class="db-command" data-sb-dialog-close>Cancel</button>
+            <button type="submit" class="db-command is-primary"
+                    id="confirmDashboardRequirement" disabled>Confirm buckets</button>
+        </footer>
+    </form>
+</dialog>
+{% if manage_dashboard %}
+<dialog class="sb-dialog db-library sb-dashboards" id="widgetLibrary" aria-labelledby="widgetLibraryTitle">
+    <div class="sb-dialog-shell">
+        <header class="sb-dialog-header">
+            <div><h2 id="widgetLibraryTitle">Widget library</h2><p>Report-backed widgets · Preview current data before adding</p></div>
+            <button class="sb-dialog-close" type="button" data-sb-dialog-close aria-label="Close widget library"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </header>
+        <div class="db-library-filters">
+            <label>Search <input class="db-input" id="librarySearch" type="search" placeholder="Find a widget" autofocus></label>
+            <label>Report <select class="db-input" id="libraryReport"><option value="">All reports</option>{% for item in catalog %}<option>{{ item.report }}</option>{% endfor %}</select></label>
+            <label>Width <select class="db-input" id="libraryWidthFilter"><option value="">Any width</option><option value="3">Quarter</option><option value="4">Third</option><option value="6">Half</option><option value="12">Full</option></select></label>
+            <label>Variation <select class="db-input" id="libraryVariantFilter"><option value="">Any variation</option><option value="metric">Metric</option><option value="detailed">Detailed</option></select></label>
+        </div>
+        <div class="db-library-content">
+            <nav id="libraryResults" class="db-library-results" aria-label="Available widgets"></nav>
+            <section class="db-library-preview" aria-labelledby="previewTitle">
+                <div class="db-preview-controls">
+                    <h3 id="previewTitle">Choose a widget</h3>
+                    <div class="db-form-row">
+                        <label>Variation <select class="db-input" id="previewVariant"></select></label>
+                        <label>Width <select class="db-input" id="previewWidth"></select></label>
+                    </div>
+                    <p id="previewDimensions" class="db-muted"></p>
+                    <p id="libraryError" class="db-error" role="alert" hidden></p>
+                    <p id="previewLoading" role="status" hidden>Loading current synced values...</p>
+                </div>
+                <div id="widgetPreview" class="db-preview-stage" data-display-style="{{ dashboard.display_style }}"></div>
+            </section>
+        </div>
+        <footer class="sb-dialog-footer">
+            <span class="db-muted">Actual-size previews. No custom seller or date filters yet.</span>
+            <button class="db-command" type="button" data-sb-dialog-close>Cancel</button>
+            <button class="db-command is-primary" type="button" id="addLibraryWidget" disabled>Add widget</button>
+        </footer>
+    </div>
+</dialog>
+<script id="dashboardConfig" type="application/json">{{ {
+    'revision': dashboard.layout_revision, 'contentWidth': dashboard.content_width,
+    'displayStyle': dashboard.display_style,
+    'name': dashboard.name, 'subtitle': dashboard.subtitle,
+    'widths': canvas_widths, 'grid': grid_config, 'catalog': catalog
+}|tojson }}</script>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-connect-goals.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-dashboard-drafts.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-dashboard-dividers.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-dashboards.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-dashboard-requirements.js') }}" defer></script>
+{% if manage_dashboard %}
+<script src="{{ url_for('static', filename='js/ui-dashboard-layout.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-dashboard-library.js') }}" defer></script>
+{% endif %}
+{% endblock %}
