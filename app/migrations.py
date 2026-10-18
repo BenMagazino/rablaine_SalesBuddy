@@ -678,14 +678,16 @@ def _migrate_loading_indicator(db, inspector) -> None:
 
 
 def _migrate_dashboard_layout(db) -> None:
-    """Add fixed geometry, preserving old widget order in full-width vertical slots."""
+    """Add dashboard presentation and geometry without resetting saved choices or positions."""
     from sqlalchemy import MetaData, Table, select
 
     inspector = inspect(db.engine)
     tables = set(inspector.get_table_names())
     for table, columns in (
         ('dashboards', (
+            ('subtitle', "VARCHAR(500) NOT NULL DEFAULT ''"),
             ('content_width', "VARCHAR(16) NOT NULL DEFAULT 'wide'"),
+            ('display_style', "VARCHAR(16) NOT NULL DEFAULT 'cards'"),
             ('layout_revision', 'INTEGER NOT NULL DEFAULT 0'),
         )),
         ('dashboard_widgets', (

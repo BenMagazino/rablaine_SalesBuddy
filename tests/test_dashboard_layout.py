@@ -37,10 +37,132 @@ def test_adjacent_sizes_holes_and_canvas_width_are_saved_exactly(client, app):
     page = BeautifulSoup(
         client.get(f'/reports/dashboards/{dashboard_id}').data, 'html.parser',
     )
-    assert '--db-canvas-width: 1152px' in page.select_one('#dashboardCanvas')['style']
+    assert '--db-canvas-width: 1152px' in page.select_one('.db-dashboard')['style']
     assert 'grid-column: 5 / span 4; grid-row: 1 / span 4;' in (
         page.select('.db-widget')[1]['style']
     )
+
+
+@pytest.mark.parametrize('width,pixels', [('standard', 1152), ('wide', 1344)])
+@pytest.mark.parametrize('editing', [False, True])
+def test_dashboard_title_canvas_and_editor_use_shared_report_frame(
+    client, width, pixels, editing,
+):
+    """The full-width editor sits above the bounded title and grid, not inside their frame."""
+    dashboard_id = create_dashboard(client)
+    add_widget(client, dashboard_id)
+    payload = layout_payload(client, dashboard_id)
+    payload['content_width'] = width
+    assert client.post(f'{BASE}/{dashboard_id}/layout', json=payload).status_code == 200
+    destination = f'/reports/dashboards/{dashboard_id}' + ('/edit' if editing else '')
+    page = BeautifulSoup(client.get(destination).data, 'html.parser')
+    surface = page.select_one('#main-content > .db-dashboard.sb-directory-frame')
+    assert surface
+    assert ('sb-directory-frame-wide' in surface['class']) is (width == 'wide')
+    assert f'--db-canvas-width: {pixels}px' in surface['style']
+    title = surface.select_one(':scope > header.db-header')
+    assert title.select_one('#dashboardTitle')
+    assert not title.select('a, button, select')
+    assert bool(title.select('[data-dashboard-field]')) is editing
+    reading = surface.select_one(':scope > #dashboardReading[data-sb-page-body]')
+    assert reading.select_one('#dashboardCanvas .db-widget')
+    assert '--db-canvas-width' not in reading.select_one('#dashboardCanvas')['style']
+    assert reading.select_one('.db-widget')['style'] == (
+        'grid-column: 1 / span 12; grid-row: 1 / span 8;'
+    )
+    toolbar = page.select_one('#main-content > #layoutEditor.db-editor-toolbar')
+    assert bool(toolbar) is editing
+    assert ('is-editing' in surface['class']) is editing
+    assert surface.select_one('#editDashboardLayout') is None
+    if editing:
+        assert toolbar['aria-label'] == 'Dashboard editor'
+        assert toolbar.select_one('#openWidgetLibrary')
+        assert not toolbar.has_attr('hidden')
+        assert toolbar.select_one('#cancelDashboardLayout').get_text() == 'Discard draft'
+        assert toolbar.select_one('#saveDashboardLayout').get_text() == 'Save'
+        assert not any(field.has_attr('disabled') for field in title.select('[data-dashboard-field]'))
+        assert surface.find_previous_sibling() == toolbar
+        assert surface.select_one('#layoutEditor') is None
+        row = toolbar.select_one(':scope > .db-editor-command-row')
+        assert row.select_one('[aria-label="Canvas tools"] #canvasWidth')
+        assert row.select_one('[aria-label="Canvas tools"] #openWidgetLibrary')
+        assert row.select_one('[aria-label="Layout actions"] #saveDashboardLayout')
+        assert row.select_one('[aria-label="Layout actions"] #cancelDashboardLayout')
+        assert row.select_one('.db-editor-danger-actions [data-db-delete]')
+        assert row.select_one('a[href]')['href'] == f'/reports/dashboards/{dashboard_id}'
+        assert len(row.select('.is-primary')) == 1
+        assert toolbar.select_one('#widgetInspectorFields').has_attr('hidden')
+        assert not toolbar.select_one('#widgetInspectorEmpty').has_attr('hidden')
+        assert toolbar.select_one('#dashboardLayoutHelp summary')
+    else:
+        assert not surface.select('#layoutEditor, #widgetLibrary, [data-dashboard-field]')
+    assert not surface.select('.sb-goals-scope, [data-sb-dialog="connectBucketModal"]')
+
+
+@pytest.mark.parametrize('display_style', ['cards', 'dividers'])
+@pytest.mark.parametrize('width', ['standard', 'wide'])
+def test_display_style_persists_in_report_editor_and_library_without_moving_widgets(
+    client, display_style, width,
+):
+    """Presentation choices share the report frame and widget content, not new layouts."""
+    dashboard_id = create_dashboard(client)
+    add_widget(client, dashboard_id)
+    add_widget(client, dashboard_id, 'connect_goals.team_coverage')
+    before = layout_payload(client, dashboard_id)
+    payload = deepcopy(before)
+    payload.update(display_style=display_style, content_width=width)
+    assert client.post(f'{BASE}/{dashboard_id}/layout', json=payload).status_code == 200
+    saved = layout_payload(client, dashboard_id)
+    assert saved['display_style'] == display_style
+    assert saved['widgets'] == before['widgets']
+    assert saved['revision'] == before['revision'] + 1
+    assert client.get(BASE).json['dashboards'][0]['display_style'] == display_style
+    for editing in (False, True):
+        url = f'/reports/dashboards/{dashboard_id}' + ('/edit' if editing else '')
+        page = BeautifulSoup(client.get(url).data, 'html.parser')
+        root = page.select_one('#main-content > .db-dashboard.sb-directory-frame')
+        assert root['data-display-style'] == display_style
+        assert ('sb-directory-frame-wide' in root['class']) is (width == 'wide')
+        assert len(root.select('.db-widget-body')) == 2
+        assert not page.select('.sb-goals-scope, [data-sb-dialog="connectBucketModal"]')
+        if editing:
+            select = page.select_one('#layoutEditor #dashboardDisplayStyle')
+            assert select.select_one('option[selected]')['value'] == display_style
+            assert page.select_one('#widgetPreview')['data-display-style'] == display_style
+        else:
+            assert page.select_one('#dashboardDisplayStyle') is None
+
+
+@pytest.mark.parametrize('display_style', ['', 'unknown', None, True, [], {}])
+def test_invalid_display_style_is_rejected_before_layout_changes(client, display_style):
+    """Invalid display modes cannot partially change geometry, width, or revision."""
+    dashboard_id = create_dashboard(client)
+    add_widget(client, dashboard_id)
+    before = layout_payload(client, dashboard_id)
+    payload = deepcopy(before)
+    payload.update(display_style=display_style, content_width='standard')
+    payload['widgets'][0]['layout_row'] = 3
+    response = client.post(f'{BASE}/{dashboard_id}/layout', json=payload)
+    assert response.status_code == 400
+    assert 'Cards or Dividers' in response.json['error']
+    assert layout_payload(client, dashboard_id) == before
+
+
+def test_display_choice_rejects_stale_changes_and_survives_older_layout_clients(client):
+    """Style shares revision protection, while omitted style leaves the saved choice intact."""
+    dashboard_id = create_dashboard(client)
+    before = layout_payload(client, dashboard_id)
+    assert before['display_style'] == 'cards'
+    update = dict(before, display_style='dividers')
+    assert client.post(f'{BASE}/{dashboard_id}/layout', json=update).status_code == 200
+    assert client.post(f'{BASE}/{dashboard_id}/layout', json=before).status_code == 409
+    older = layout_payload(client, dashboard_id)
+    older.pop('display_style')
+    older['content_width'] = 'standard'
+    assert client.post(f'{BASE}/{dashboard_id}/layout', json=older).status_code == 200
+    assert client.get(f'{BASE}/{dashboard_id}').json['dashboard']['display_style'] == 'dividers'
+    assert client.post(f'{BASE}/{dashboard_id}', json={'subtitle': 'New details'}).status_code == 200
+    assert client.get(f'{BASE}/{dashboard_id}').json['dashboard']['display_style'] == 'dividers'
 
 
 @pytest.mark.parametrize('changes', [
@@ -105,6 +227,7 @@ def test_concurrent_write_after_loading_dashboard_cannot_overwrite_layout(client
     add_widget(client, dashboard_id)
     payload = layout_payload(client, dashboard_id)
     payload['content_width'] = 'standard'
+    payload['display_style'] = 'dividers'
     payload['widgets'][0]['layout_row'] = 5
     with app.app_context():
         dashboard = db.session.get(Dashboard, dashboard_id)
@@ -118,6 +241,7 @@ def test_concurrent_write_after_loading_dashboard_cannot_overwrite_layout(client
             save_dashboard_layout(dashboard, payload)
         db.session.rollback()
         assert dashboard.content_width == 'wide'
+        assert dashboard.display_style == 'cards'
         assert dashboard.widgets[0].layout_row == 0
         assert dashboard.layout_revision == payload['revision'] + 1
 
@@ -128,6 +252,7 @@ def test_layout_write_failure_before_commit_is_visible_and_rolled_back(client, m
     add_widget(client, dashboard_id)
     before = layout_payload(client, dashboard_id)
     payload = deepcopy(before)
+    payload['display_style'] = 'dividers'
     payload['widgets'][0]['layout_row'] = 5
 
     def fail_revision(*args):
@@ -139,6 +264,27 @@ def test_layout_write_failure_before_commit_is_visible_and_rolled_back(client, m
     assert response.status_code == 500
     assert response.json['success'] is False
     assert 'could not be saved' in response.json['error']
+    assert layout_payload(client, dashboard_id) == before
+
+
+def test_display_and_geometry_roll_back_together_if_commit_fails(client, monkeypatch):
+    """A commit failure cannot leave presentation or positions partially saved."""
+    dashboard_id = create_dashboard(client)
+    add_widget(client, dashboard_id)
+    before = layout_payload(client, dashboard_id)
+    payload = deepcopy(before)
+    payload.update(display_style='dividers', content_width='standard')
+    payload['widgets'][0]['layout_row'] = 3
+
+    def fail_commit() -> None:
+        """Simulate a failure after all validated layout values have been assigned."""
+        raise SQLAlchemyError('Dashboard commit failed')
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(db.session, 'commit', fail_commit)
+        response = client.post(f'{BASE}/{dashboard_id}/layout', json=payload)
+    assert response.status_code == 500
+    assert response.json['success'] is False
     assert layout_payload(client, dashboard_id) == before
 
 

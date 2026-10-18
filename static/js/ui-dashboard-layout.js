@@ -71,15 +71,25 @@
         const reading = document.getElementById('dashboardReading');
         const editor = document.getElementById('layoutEditor');
         const inspector = document.getElementById('widgetInspector');
+        const inspectorFields = document.getElementById('widgetInspectorFields');
+        const inspectorEmpty = document.getElementById('widgetInspectorEmpty');
         const status = document.getElementById('layoutState');
         const errorBox = document.getElementById('dashboardError');
         const widthSelect = document.getElementById('canvasWidth');
+        const styleSelect = document.getElementById('dashboardDisplayStyle');
         const saveButton = document.getElementById('saveDashboardLayout');
-        const editButton = document.getElementById('editDashboardLayout');
+        const previewButton = document.getElementById('previewDashboardDraft');
+        const exitPreviewButton = document.getElementById('exitDashboardDraftPreview');
+        const undoButton = document.getElementById('undoDashboardEdit');
+        const redoButton = document.getElementById('redoDashboardEdit');
+        const actionSelector = '[data-sb-dialog="widgetLibrary"], [data-db-delete]';
         const outsideControls = [
-            document.getElementById('openWidgetLibrary'),
-            ...root.querySelectorAll('[data-db-toggle], [data-dashboard-rename] button, [data-dashboard-rename] input'),
+            ...root.querySelectorAll(actionSelector), ...editor.querySelectorAll(actionSelector),
         ];
+        const detailControls = root.querySelectorAll('[data-dashboard-field]');
+        const [nameInput, subtitleInput] = detailControls;
+        const detailsState = document.getElementById('dashboardDetailsState');
+        const drafts = global.SBDashboardDrafts;
         const tiles = new Map(Array.from(canvas.querySelectorAll('[data-widget-id]'),
             tile => [Number(tile.dataset.widgetId), tile]));
         const saved = Array.from(tiles, ([id, tile]) => ({
@@ -89,12 +99,43 @@
         }));
         let entries = saved.map(item => ({...item}));
         let contentWidth = config.contentWidth;
-        let editing = false;
+        let displayStyle = config.displayStyle;
         let dirty = false;
         let pending = false;
         let selectedId = null;
         let gesture = null;
         let frame = null;
+        let lastDraft = null;
+        let draftRevision = config.revision;
+        let baseName = config.name;
+        let baseSubtitle = config.subtitle;
+        let storageHealthy = true;
+        let blocked = false;
+        let published = false;
+        let initializing = true;
+        let previewing = false;
+        let historyState = null;
+        let historyGroup = null;
+        const undoStack = [];
+        const redoStack = [];
+        const contentRequests = new Map();
+
+        function editableState() {
+            return {
+                name: nameInput.value, subtitle: subtitleInput.value,
+                content_width: contentWidth, display_style: displayStyle,
+                widgets: entries.map(item => ({
+                    id: item.id, key: item.key, variant_key: item.variant_key,
+                    layout_column: item.layout_column, layout_row: item.layout_row,
+                    column_span: item.column_span, row_span: item.row_span,
+                })),
+            };
+        }
+        const originalState = {
+            name: config.name, subtitle: config.subtitle,
+            content_width: config.contentWidth, display_style: config.displayStyle,
+            widgets: saved,
+        };
 
         function definition(item) {
             return config.catalog.find(entry => entry.key === item.key);
@@ -114,20 +155,158 @@
             errorBox.textContent = message;
             errorBox.hidden = false;
         }
-        function markDirty() {
-            dirty = JSON.stringify(entries) !== JSON.stringify(saved)
-                || contentWidth !== config.contentWidth;
-            saveButton.disabled = !dirty || pending;
-            status.textContent = dirty
-                ? 'Unsaved layout. Presentation changes apply on save.'
-                : editing ? 'Editing layout' : 'Layout saved';
+        function updateHistoryButtons() {
+            const unavailable = previewing || pending || blocked || published;
+            undoButton.disabled = unavailable || !undoStack.length;
+            redoButton.disabled = unavailable || !redoStack.length;
         }
+        function markDirty(group = null) {
+            const state = editableState();
+            if (historyState && !initializing && !blocked && !published
+                && JSON.stringify(state) !== JSON.stringify(historyState)) {
+                if (!group || group !== historyGroup) {
+                    undoStack.push({state: historyState, selectedId});
+                } else if (undoStack.length
+                    && JSON.stringify(undoStack.at(-1).state) === JSON.stringify(state)) {
+                    undoStack.pop();
+                    group = null;
+                }
+                redoStack.length = 0;
+                historyGroup = group;
+            }
+            historyState = state;
+            const title = nameInput.value.trim() || 'Untitled dashboard';
+            document.title = (previewing ? 'Preview ' : 'Edit ') + title + ' - Sales Buddy';
+            document.getElementById('dashboardTitle').setAttribute('aria-label', title);
+            const crumb = document.querySelector(
+                '.sb-context-bar [aria-current="page"] > span:last-child');
+            if (crumb?.setAttribute) {
+                crumb.textContent = 'Edit ' + title;
+                crumb.setAttribute('title', 'Edit ' + title);
+            }
+            dirty = !published && JSON.stringify(editableState()) !== JSON.stringify(originalState);
+            if (!initializing && !blocked && !published) {
+                try {
+                    if (dirty) {
+                        lastDraft = drafts.write(root.dataset.dashboardId, {
+                            version: 1, revision: draftRevision,
+                            base_name: baseName, base_subtitle: baseSubtitle,
+                            ...editableState(),
+                        }, lastDraft);
+                    } else if (lastDraft) {
+                        drafts.remove(root.dataset.dashboardId, lastDraft);
+                        lastDraft = null;
+                    }
+                    storageHealthy = true;
+                } catch (error) {
+                    storageHealthy = false;
+                    if (error.name === 'DashboardDraftConflict') blocked = true;
+                    showError('Could not store your draft in this browser. Keep this page open '
+                        + 'or choose Save to publish it. ' + error.message, error);
+                }
+            }
+            saveButton.disabled = !dirty || pending || blocked || published;
+            previewButton.disabled = pending || published;
+            outsideControls.forEach(control => {
+                control.disabled = pending || published || blocked;
+                control.title = '';
+            });
+            detailControls.forEach(control => {
+                control.disabled = previewing || pending || published || blocked;
+            });
+            widthSelect.disabled = styleSelect.disabled = pending || published || blocked;
+            document.getElementById('cancelDashboardLayout').disabled =
+                pending || published || (!dirty && !blocked);
+            detailsState.textContent = published ? 'Saved' : blocked ? 'Draft needs attention'
+                : dirty ? (storageHealthy ? 'Draft saved locally' : 'Draft not backed up') : '';
+            status.textContent = (previewing ? 'Draft preview. Nothing has been published. ' : '')
+                + (published ? 'Dashboard saved'
+                : pending ? 'Saving dashboard...'
+                : blocked ? 'Local draft kept. Discard it to return to the saved dashboard.'
+                : dirty ? (storageHealthy ? 'Draft saved in this browser. Choose Save to publish.'
+                    : 'Draft is only in memory. Keep this page open or choose Save.')
+                : 'Editing dashboard');
+            updateHistoryButtons();
+        }
+        function restoreHistory(source, destination) {
+            if (previewing || pending || blocked || published || gesture || !source.length) return;
+            destination.push({state: editableState(), selectedId});
+            const previous = source.pop();
+            const state = previous.state;
+            nameInput.value = state.name;
+            subtitleInput.value = state.subtitle;
+            contentWidth = state.content_width;
+            displayStyle = state.display_style;
+            entries = state.widgets.map(item => ({...item}));
+            widthSelect.value = contentWidth;
+            styleSelect.value = displayStyle;
+            errorBox.hidden = true;
+            renderEntries();
+            select(entries.some(item => item.id === previous.selectedId)
+                ? previous.selectedId : null);
+            historyState = editableState();
+            historyGroup = null;
+            markDirty();
+            status.textContent += source === undoStack ? ' Edit undone.' : ' Edit redone.';
+            (selectedId === null ? reading : tiles.get(selectedId)).focus({preventScroll: true});
+        }
+        undoButton.addEventListener('click', () => restoreHistory(undoStack, redoStack));
+        redoButton.addEventListener('click', () => restoreHistory(redoStack, undoStack));
+        function setTileMode(tile) {
+            tile.tabIndex = previewing ? -1 : 0;
+            tile.querySelector('.db-widget-body').inert = !previewing;
+        }
+        function setPreview(value) {
+            if (pending || published) return;
+            if (gesture) finishGesture(false);
+            select(null);
+            previewing = value;
+            updateHistoryButtons();
+            detailControls.forEach(control => {
+                control.disabled = previewing || pending || published || blocked;
+            });
+            root.classList.toggle('is-editing', !previewing);
+            document.getElementById('dashboardEditorCommands').hidden = previewing;
+            document.getElementById('dashboardDraftPreviewBar').hidden = !previewing;
+            inspector.hidden = previewing;
+            nameInput.hidden = previewing;
+            document.getElementById('dashboardSubtitleEditor').hidden = previewing;
+            const title = nameInput.value.trim() || 'Untitled dashboard';
+            const previewName = document.getElementById('dashboardPreviewName');
+            previewName.textContent = title;
+            previewName.hidden = !previewing;
+            const previewSubtitle = document.getElementById('dashboardPreviewSubtitle');
+            previewSubtitle.textContent = subtitleInput.value.trim();
+            previewSubtitle.hidden = !previewing || !previewSubtitle.textContent;
+            document.getElementById('dashboardEmptyEditor').hidden = previewing;
+            document.getElementById('dashboardEmptyPreview').hidden = !previewing;
+            tiles.forEach(setTileMode);
+            sizeCanvas();
+            document.title = (previewing ? 'Preview ' : 'Edit ') + title + ' - Sales Buddy';
+            status.textContent = previewing ? 'Draft preview. Nothing has been published.'
+                : detailsState.textContent || 'Editing dashboard';
+            (previewing ? exitPreviewButton : previewButton).focus();
+        }
+        previewButton.addEventListener('click', () => setPreview(true));
+        exitPreviewButton.addEventListener('click', () => setPreview(false));
         function sizeCanvas(extra) {
             const items = extra ? entries.map(item => item.id === extra.id ? extra : item) : entries;
-            const bottom = Math.max(4, ...items.map(item => item.layout_row + item.row_span));
+            const bottom = Math.max(items.length ? 0 : 4,
+                ...items.map(item => item.layout_row + item.row_span));
             canvas.style.setProperty('--db-rows', Math.min(config.grid.maxRows,
-                bottom + (editing ? 6 : 0)));
-            canvas.style.setProperty('--db-canvas-width', config.widths[contentWidth] + 'px');
+                previewing ? bottom : Math.max(4, bottom) + 6));
+            root.style.setProperty('--db-canvas-width', config.widths[contentWidth] + 'px');
+            root.classList.toggle('sb-directory-frame-wide', contentWidth === 'wide');
+            root.dataset.displayStyle = displayStyle;
+            const preview = document.getElementById('widgetPreview');
+            if (preview) preview.dataset.displayStyle = displayStyle;
+            const summary = document.getElementById('dashboardSummary');
+            if (summary) {
+                const count = entries.length;
+                summary.textContent = `${count} ${count === 1 ? 'widget' : 'widgets'}`
+                    + ` \u00b7 Fixed canvas \u00b7 ${config.widths[contentWidth]}px`
+                    + ' \u00b7 Current synced data';
+            }
         }
         function paint(item, invalid = false) {
             const tile = tiles.get(item.id);
@@ -136,8 +315,90 @@
             tile.dataset.columnSpan = item.column_span;
             tile.dataset.rowSpan = item.row_span;
             tile.classList.toggle('is-invalid', invalid);
-            tile.querySelector('.db-widget-tools > span').textContent =
-                'FY27 Data · ' + variant(item).title;
+        }
+        function bindTile(tile, id) {
+            tile.addEventListener('click', () => select(id));
+            tile.addEventListener('focusin', () => select(id));
+        }
+        function ensureTile(item) {
+            if (tiles.has(item.id)) return tiles.get(item.id);
+            const tile = document.createElement('article');
+            const title = definition(item)?.title || 'Unavailable widget';
+            tile.className = 'db-widget';
+            tile.id = 'widget-' + item.id;
+            tile.tabIndex = 0;
+            tile.dataset.widgetId = item.id;
+            tile.dataset.widgetKey = item.key;
+            tile.setAttribute('data-drag-handle', '');
+            tile.setAttribute('aria-label', title);
+            tile.setAttribute('aria-describedby', 'dashboardLayoutHelp');
+            const body = document.createElement('div');
+            body.className = 'db-widget-body';
+            body.inert = true;
+            body.textContent = 'Loading current report data...';
+            const resize = document.createElement('button');
+            resize.className = 'db-handle db-resize-handle';
+            resize.type = 'button';
+            resize.setAttribute('data-resize-handle', '');
+            resize.setAttribute('aria-label', 'Resize ' + title);
+            resize.innerHTML = '<i class="bi bi-arrows-angle-expand" aria-hidden="true"></i>';
+            tile.append(body, resize);
+            tiles.set(item.id, tile);
+            bindTile(tile, item.id);
+            canvas.append(tile);
+            return tile;
+        }
+        async function loadContent(item) {
+            const tile = ensureTile(item);
+            const signature = item.variant_key + ':' + item.column_span;
+            if (tile.dataset.loadedPresentation === signature) {
+                contentRequests.delete(item.id);
+                return;
+            }
+            const request = {};
+            contentRequests.set(item.id, request);
+            try {
+                const query = new URLSearchParams({
+                    key: item.key, variant: item.variant_key,
+                    width: String(item.column_span), instance_id: String(item.id),
+                });
+                const response = await global.fetch('/api/reports/dashboards/widget-preview?' + query);
+                const data = await response.json();
+                if (!response.ok || data.success !== true || typeof data.html !== 'string') {
+                    throw new Error(data.error || 'The server did not return widget content.');
+                }
+                if (contentRequests.get(item.id) !== request) return;
+                global.SBConnectGoals.destroy(tile);
+                tile.querySelector('.db-widget-body').remove();
+                tile.insertAdjacentHTML('afterbegin', data.html);
+                setTileMode(tile);
+                tile.dataset.loadedPresentation = signature;
+                tile.dataset.variant = item.variant_key;
+                global.SBConnectGoals.init(tile);
+            } catch (error) {
+                if (contentRequests.get(item.id) !== request) return;
+                showError('Could not load current widget content. Your draft is kept; '
+                    + 'reload to retry. ' + error.message, error);
+                throw error;
+            }
+        }
+        function renderEntries() {
+            const ids = new Set(entries.map(item => item.id));
+            tiles.forEach((tile, id) => {
+                tile.hidden = !ids.has(id);
+                if (tile.hidden) contentRequests.delete(id);
+            });
+            entries.forEach(item => {
+                const tile = ensureTile(item);
+                tile.hidden = false;
+                paint(item);
+                loadContent(item).catch(() => {
+                    // loadContent already surfaces the error and keeps the local draft.
+                });
+            });
+            const empty = canvas.querySelector('.db-empty');
+            if (empty) empty.hidden = Boolean(entries.length);
+            sizeCanvas();
         }
         function options(select, choices, current) {
             select.replaceChildren(...choices.map(([value, label]) => {
@@ -151,9 +412,13 @@
         function updateInspector() {
             const item = entries.find(entry => entry.id === selectedId);
             inspector.querySelectorAll('input, select, button').forEach(
-                control => { control.disabled = !item || pending; });
-            document.getElementById('selectedWidgetTitle').textContent = item
-                ? tiles.get(item.id).getAttribute('aria-label') : 'Select a widget';
+                control => { control.disabled = !item || pending || published || blocked; });
+            inspectorFields.hidden = !item;
+            inspectorEmpty.hidden = Boolean(item);
+            const title = document.getElementById('selectedWidgetTitle');
+            title.textContent = item
+                ? tiles.get(item.id).getAttribute('aria-label') : 'No widget selected';
+            title.title = item ? title.textContent : '';
             if (!item) return;
             options(inspector.elements.variant_key,
                 variants(item).map(entry => [entry.key, entry.title]), item.variant_key);
@@ -165,21 +430,10 @@
             inspector.elements.row_span.min = variant(item).min_height;
         }
         function select(id) {
+            if (previewing && id !== null) return;
             selectedId = id;
             tiles.forEach((tile, tileId) => tile.classList.toggle('is-selected', tileId === id));
             updateInspector();
-        }
-        function setEditing(value) {
-            editing = value;
-            root.classList.toggle('is-editing', value);
-            editor.hidden = !value;
-            editButton.hidden = value;
-            outsideControls.forEach(control => { control.disabled = value; });
-            document.getElementById('dashboardSettings').hidden = true;
-            root.querySelectorAll('.db-widget-body').forEach(body => { body.inert = value; });
-            widthSelect.value = contentWidth;
-            sizeCanvas();
-            markDirty();
         }
         function apply(item) {
             if (!canPlace(item, entries, config.grid.maxRows)) {
@@ -200,28 +454,58 @@
             sizeCanvas();
             updateInspector();
             markDirty();
+            loadContent(item).catch(() => {
+                // Layout edits remain usable if live report data is temporarily unavailable.
+            });
             status.textContent += ` Row ${item.layout_row + 1}, column ${item.layout_column + 1}, ${WIDTH_LABELS[item.column_span]} width, ${item.row_span} rows high.`;
             return true;
         }
 
-        editButton.addEventListener('click', () => setEditing(true));
         document.getElementById('cancelDashboardLayout').addEventListener('click', () => {
+            if ((dirty || blocked) && !global.confirm(
+                'Discard this local draft and return to the saved dashboard?')) return;
             if (gesture) finishGesture(false);
+            try {
+                drafts.remove(root.dataset.dashboardId);
+            } catch (error) {
+                showError('Could not discard the local draft. ' + error.message, error);
+                return;
+            }
+            lastDraft = null;
+            blocked = false;
+            storageHealthy = true;
+            draftRevision = config.revision;
+            baseName = config.name;
+            baseSubtitle = config.subtitle;
             entries = saved.map(item => ({...item}));
             contentWidth = config.contentWidth;
-            entries.forEach(item => paint(item));
+            displayStyle = config.displayStyle;
+            nameInput.value = config.name;
+            subtitleInput.value = config.subtitle;
+            renderEntries();
             errorBox.hidden = true;
             select(null);
-            setEditing(false);
+            widthSelect.value = contentWidth;
+            styleSelect.value = displayStyle;
+            sizeCanvas();
+            undoStack.length = redoStack.length = 0;
+            historyState = editableState();
+            historyGroup = null;
+            markDirty();
         });
         widthSelect.addEventListener('change', () => {
             contentWidth = widthSelect.value;
             sizeCanvas();
             markDirty();
         });
+        styleSelect.addEventListener('change', () => {
+            displayStyle = styleSelect.value;
+            sizeCanvas();
+            markDirty();
+        });
         inspector.addEventListener('submit', event => event.preventDefault());
-        inspector.addEventListener('change', event => {
-            if (pending) return;
+        function updateWidgetField(event) {
+            if (previewing || pending || published || blocked) return;
             const field = event.target.name;
             const origin = entries.find(item => item.id === selectedId);
             if (!origin) return;
@@ -239,14 +523,18 @@
                     - (['layout_column', 'layout_row'].includes(field) ? 1 : 0);
             }
             apply(item);
+        }
+        inspector.addEventListener('change', updateWidgetField);
+        inspector.addEventListener('input', event => {
+            if (event.target.tagName === 'INPUT' && event.target.value !== ''
+                && event.target.checkValidity()) updateWidgetField(event);
         });
         tiles.forEach((tile, id) => {
-            tile.querySelector('[data-edit-widget]').addEventListener('click', () => {
-                setEditing(true);
-                select(id);
-                tile.querySelector('[data-drag-handle]').focus();
-            });
-            tile.addEventListener('click', () => { if (editing) select(id); });
+            bindTile(tile, id);
+            tile.dataset.loadedPresentation = tile.dataset.variant + ':' + tile.dataset.columnSpan;
+        });
+        canvas.addEventListener('click', event => {
+            if (!event.target.closest('[data-widget-id]')) select(null);
         });
 
         function pointerCandidate() {
@@ -281,7 +569,8 @@
             const current = gesture;
             gesture = null;
             global.cancelAnimationFrame(frame);
-            if (!commit || !apply(current.candidate)) paint(current.origin);
+            current.tile.classList.toggle('is-dragging', false);
+            if (current.started && (!commit || !apply(current.candidate))) paint(current.origin);
             sizeCanvas();
             if (current.handle.hasPointerCapture(current.pointerId)) {
                 current.handle.releasePointerCapture(current.pointerId);
@@ -289,25 +578,31 @@
         }
         canvas.addEventListener('pointerdown', event => {
             const handle = event.target.closest('[data-drag-handle], [data-resize-handle]');
-            if (!editing || pending || !handle || event.button !== 0) return;
+            if (previewing || pending || published || blocked || !handle || event.button !== 0) return;
             event.preventDefault();
             const id = Number(handle.closest('[data-widget-id]').dataset.widgetId);
             select(id);
             handle.focus();
             const origin = {...entries.find(item => item.id === id)};
             gesture = {
-                origin, candidate: origin, handle, pointerId: event.pointerId,
+                origin, candidate: origin, handle, tile: tiles.get(id),
+                pointerId: event.pointerId, started: false,
                 mode: handle.hasAttribute('data-drag-handle') ? 'move' : 'resize',
                 startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY,
                 rect: canvas.getBoundingClientRect(),
             };
             handle.setPointerCapture(event.pointerId);
-            frame = global.requestAnimationFrame(autoScroll);
         });
         canvas.addEventListener('pointermove', event => {
             if (!gesture || event.pointerId !== gesture.pointerId) return;
             gesture.x = event.clientX;
             gesture.y = event.clientY;
+            if (!gesture.started) {
+                if (Math.hypot(gesture.x - gesture.startX, gesture.y - gesture.startY) < 4) return;
+                gesture.started = true;
+                gesture.tile.classList.toggle('is-dragging', gesture.mode === 'move');
+                frame = global.requestAnimationFrame(autoScroll);
+            }
             updateGesture();
         });
         canvas.addEventListener('pointerup', () => finishGesture(true));
@@ -318,10 +613,13 @@
                 event.preventDefault();
                 event.stopPropagation();
                 finishGesture(false);
+                select(null);
+                reading.focus({preventScroll: true});
                 return;
             }
             const handle = event.target.closest('[data-drag-handle], [data-resize-handle]');
-            if (!editing || pending || !handle || !event.key.startsWith('Arrow')) return;
+            if (previewing || pending || published || blocked
+                || !handle || !event.key.startsWith('Arrow')) return;
             event.preventDefault();
             event.stopPropagation();
             const id = Number(handle.closest('[data-widget-id]').dataset.widgetId);
@@ -333,53 +631,189 @@
                 event.key, type.widths, type.min_height, config.grid.maxRows));
         });
         global.addEventListener('beforeunload', event => {
-            if (!dirty) return;
+            if (!dirty || storageHealthy) return;
             event.preventDefault();
             event.returnValue = '';
         });
         saveButton.addEventListener('click', async () => {
-            if (pending || !dirty || gesture) return;
+            if (previewing || pending || published || blocked || !dirty || gesture) return;
+            if (!nameInput.value.trim() || nameInput.value.trim().length > 200
+                || subtitleInput.value.trim().length > 500) {
+                showError('Enter a dashboard name of 1 to 200 characters and a subtitle '
+                    + 'of at most 500 characters. Your draft is kept locally.');
+                return;
+            }
             pending = true;
-            let committed = false;
+            markDirty();
             editor.querySelectorAll('button, input, select').forEach(control => { control.disabled = true; });
             try {
                 await global.SBDashboards.request(
-                    `/api/reports/dashboards/${root.dataset.dashboardId}/layout`,
-                    {revision: config.revision, content_width: contentWidth, widgets: entries},
+                    `/api/reports/dashboards/${root.dataset.dashboardId}/save`,
+                    {
+                        revision: draftRevision, base_name: baseName, base_subtitle: baseSubtitle,
+                        ...editableState(),
+                    },
                 );
-                committed = true;
+                published = true;
                 dirty = false;
+                try {
+                    drafts.remove(root.dataset.dashboardId, lastDraft);
+                } catch (error) {
+                    showError('Dashboard saved, but its local draft could not be cleared. '
+                        + 'Open View dashboard to see the saved version. ' + error.message, error);
+                    return;
+                }
                 global.location.reload();
             } catch (error) {
-                showError('Could not save your layout. Your draft is still here. ' + error.message, error);
+                showError('Could not save your dashboard. Your draft is still here. '
+                    + error.message, error);
             } finally {
                 pending = false;
                 editor.querySelectorAll('button, input, select').forEach(control => { control.disabled = false; });
                 updateInspector();
-                if (!committed) markDirty();
+                markDirty();
             }
         });
-        document.getElementById('removeSelectedWidget').addEventListener('click', async () => {
-            if (pending || selectedId === null) return;
-            if (!global.confirm(dirty
-                ? 'Discard unsaved layout changes and remove this widget? Other saved widgets will not move.'
-                : 'Remove this widget? Other widgets will stay in place.')) return;
-            pending = true;
-            editor.querySelectorAll('button, input, select').forEach(control => { control.disabled = true; });
-            try {
-                await global.SBDashboards.request(
-                    `/api/reports/dashboards/${root.dataset.dashboardId}/widgets/${selectedId}/remove`, {});
-                dirty = false;
-                global.location.reload();
-            } catch (error) {
-                showError('Could not remove the widget. ' + error.message, error);
-            } finally {
-                pending = false;
-                editor.querySelectorAll('button, input, select').forEach(control => { control.disabled = false; });
-                updateInspector();
+        function removeSelectedWidget() {
+            if (previewing || pending || published || blocked || selectedId === null) return;
+            entries = entries.filter(item => item.id !== selectedId);
+            renderEntries();
+            markDirty();
+            select(null);
+            reading.focus({preventScroll: true});
+        }
+        document.getElementById('removeSelectedWidget')
+            .addEventListener('click', removeSelectedWidget);
+        document.addEventListener('keydown', event => {
+            if (event.defaultPrevented || event.isComposing || event.altKey
+                || document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]')) return;
+            const target = event.target;
+            const tag = target.tagName?.toLowerCase();
+            if (['input', 'textarea', 'select'].includes(tag) || target.isContentEditable) return;
+            const key = event.key.toLowerCase();
+            if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
+                event.preventDefault();
+                const redo = key === 'y' || event.shiftKey;
+                restoreHistory(redo ? redoStack : undoStack, redo ? undoStack : redoStack);
+            } else if (previewing || pending || blocked || published) {
+                return;
+            } else if (!event.ctrlKey && !event.metaKey && !event.shiftKey
+                && (event.key === 'Delete' || event.key === 'Backspace') && selectedId !== null) {
+                event.preventDefault();
+                if (gesture) finishGesture(false);
+                removeSelectedWidget();
+            } else if (event.key === 'Escape' && selectedId !== null) {
+                event.preventDefault();
+                if (gesture) finishGesture(false);
+                select(null);
+                reading.focus({preventScroll: true});
+                status.textContent = 'Widget deselected.';
             }
         });
+        detailControls.forEach(input => {
+            let focusValue = input.value;
+            input.addEventListener('focus', () => {
+                focusValue = input.value;
+                historyGroup = null;
+            });
+            input.addEventListener('input', () => {
+                markDirty(input);
+            });
+            input.addEventListener('blur', () => {
+                input.value = input.value.trim();
+                markDirty(input);
+                historyGroup = null;
+            });
+            input.addEventListener('keydown', event => {
+                if (event.isComposing) return;
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    input.blur();
+                } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    input.value = focusValue;
+                    input.blur();
+                }
+            });
+        });
+        global.SBDashboardEditor = Object.freeze({
+            getSettings: () => ({contentWidth, displayStyle}),
+            async addWidget(spec) {
+                if (previewing || pending || published || blocked) {
+                    throw new Error('The draft is not editable.');
+                }
+                const item = {
+                    id: Math.min(0, ...tiles.keys()) - 1, key: spec.key,
+                    variant_key: spec.variant_key, column_span: spec.column_span,
+                    row_span: spec.row_span, layout_column: 0,
+                    layout_row: Math.max(0, ...entries.map(entry => entry.layout_row + entry.row_span)),
+                };
+                const type = variant(item);
+                if (!definition(item) || type.key !== item.variant_key
+                    || !type.widths.includes(item.column_span)
+                    || item.row_span < type.min_height
+                    || !canPlace(item, entries, config.grid.maxRows)) {
+                    throw new Error('This widget does not fit below the current draft.');
+                }
+                const tile = ensureTile(item);
+                tile.hidden = true;
+                await loadContent(item);
+                entries.push(item);
+                renderEntries();
+                select(item.id);
+                markDirty();
+            },
+        });
+        try {
+            lastDraft = drafts.read(root.dataset.dashboardId);
+            if (lastDraft) {
+                for (const item of lastDraft.widgets) {
+                    const type = variant(item);
+                    if (!canPlace(item, lastDraft.widgets, config.grid.maxRows)
+                        || type.key !== item.variant_key
+                        || !type.widths.includes(item.column_span)
+                        || item.row_span < type.min_height || item.row_span > 20
+                        || (!definition(item) && !tiles.has(item.id))) {
+                        throw new Error('The local draft has an unavailable or invalid widget layout.');
+                    }
+                }
+                entries = lastDraft.widgets.map(item => ({...item}));
+                contentWidth = lastDraft.content_width;
+                displayStyle = lastDraft.display_style;
+                nameInput.value = lastDraft.name;
+                subtitleInput.value = lastDraft.subtitle;
+                draftRevision = lastDraft.revision;
+                baseName = lastDraft.base_name;
+                baseSubtitle = lastDraft.base_subtitle;
+                if (draftRevision !== config.revision || baseName !== config.name
+                    || baseSubtitle !== config.subtitle) {
+                    blocked = true;
+                    showError('The saved dashboard changed since this draft began. '
+                        + 'Your draft is preserved for review. Discard it to start from the saved version.');
+                }
+                renderEntries();
+            }
+        } catch (error) {
+            blocked = true;
+            showError('Could not restore the local draft. It has not been deleted. '
+                + 'Discard draft to return to the saved dashboard. ' + error.message, error);
+        }
+        global.addEventListener('storage', event => {
+            if (event.key !== drafts.key(root.dataset.dashboardId) && event.key !== null) return;
+            blocked = true;
+            storageHealthy = false;
+            showError('This draft changed in another window. Your current edits are still here; '
+                + 'reload to resume the stored draft.');
+            markDirty();
+            updateInspector();
+        });
+        root.querySelectorAll('.db-widget-body').forEach(body => { body.inert = true; });
+        widthSelect.value = contentWidth;
+        styleSelect.value = displayStyle;
+        select(null);
         sizeCanvas();
+        initializing = false;
+        markDirty();
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

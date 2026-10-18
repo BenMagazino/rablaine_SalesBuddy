@@ -446,7 +446,9 @@ class Dashboard(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
+    subtitle = db.Column(db.String(500), nullable=False, default='', server_default='')
     content_width = db.Column(db.String(16), nullable=False, default='wide', server_default='wide')
+    display_style = db.Column(db.String(16), nullable=False, default='cards', server_default='cards')
     layout_revision = db.Column(db.Integer, nullable=False, default=0, server_default='0')
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)

@@ -10,7 +10,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/17/2026
 
-- Build fixed-layout dashboards from a previewable widget library. Open saved dashboards as reports from their own Dashboards menu or Quick Launcher, and use Manage Dashboards to create and edit them.
+- Build fixed-layout dashboards from a previewable widget library, with Cards or Dividers and optional subtitles. Resume and preview local drafts, with undo/redo while editing; choose Save when the dashboard is ready.
 - Choose the service compensation buckets that apply to your business without being required to select Databases or Fabric.
 
 ## 10/16/2026 - d325c465

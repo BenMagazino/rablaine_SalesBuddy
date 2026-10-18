@@ -33,6 +33,7 @@ def layout_payload(client, dashboard_id: int) -> dict:
     data = client.get(f'{BASE}/{dashboard_id}').json['dashboard']
     return {
         'revision': data['layout_revision'], 'content_width': data['content_width'],
+        'display_style': data['display_style'],
         'widgets': [{
             key: item[key] for key in (
                 'id', 'variant_key', 'layout_column', 'layout_row', 'column_span', 'row_span',
@@ -236,12 +237,29 @@ def test_report_view_has_no_management_markup_and_keeps_widget_content(client, m
     assert report.select_one('#dashboardCanvas .db-widget')
     assert report.select_one('#dashboardCanvas [data-goals-coverage]')
     for selector in (
-        '#openWidgetLibrary', '#editDashboardLayout', '#dashboardSettings',
+        '#openWidgetLibrary', '[data-dashboard-field]',
         '#layoutEditor', '#widgetInspector', '#widgetLibrary', '#dashboardConfig',
-        '[data-drag-handle]', '[data-resize-handle]', '[data-edit-widget]', '.db-widget-tools',
+        '#previewDashboardDraft', '#exitDashboardDraftPreview', '#dashboardDraftPreviewBar',
+        '#undoDashboardEdit', '#redoDashboardEdit',
+        '#dashboardPreviewName', '#dashboardPreviewSubtitle',
+        '.db-widget[data-drag-handle]', '[data-resize-handle]',
     ):
         assert report.select_one(selector) is None
         assert editor.select_one(selector) is not None
+    assert editor.select_one('#dashboardDraftPreviewBar').has_attr('hidden')
+    assert editor.select_one('#dashboardDraftPreviewBar').parent['id'] == 'layoutEditor'
+    assert editor.select_one('#dashboardPreviewName').has_attr('hidden')
+    assert editor.select_one('#dashboardPreviewSubtitle').has_attr('hidden')
+    assert editor.select_one('#previewDashboardDraft')['type'] == 'button'
+    assert editor.select_one('#undoDashboardEdit').has_attr('disabled')
+    assert editor.select_one('#redoDashboardEdit').has_attr('disabled')
+    assert editor.select_one('#undoDashboardEdit')['aria-keyshortcuts'] == 'Control+Z'
+    widget = editor.select_one('.db-widget')
+    assert widget['tabindex'] == '0'
+    assert widget['aria-describedby'] == 'dashboardLayoutHelp'
+    assert widget.select_one(':scope > header') is None
+    assert len(widget.select(':scope > button')) == 1
+    assert widget.select_one('button[data-resize-handle]')
     scripts = [script['src'] for script in report.select('script[src]')]
     assert not any('ui-dashboard-layout.js' in src or 'ui-dashboard-library.js' in src
                    for src in scripts)
@@ -249,6 +267,8 @@ def test_report_view_has_no_management_markup_and_keeps_widget_content(client, m
         editor.select_one('.db-widget-body').get_text(' ', strip=True)
     )
     assert report.select_one('.db-widget')['style'] == editor.select_one('.db-widget')['style']
+    assert editor.select_one('#dashboardSettings') is None
+    assert editor.select_one('[data-dashboard-rename]') is None
     assert [node.get_text(strip=True).lstrip('>') for node in
             report.select('.sb-context-bar li')] == ['Home', 'Manager 1:1']
 
@@ -258,6 +278,8 @@ def test_management_hub_has_separate_view_and_edit_destinations(client):
     dashboard_id = create_dashboard(client)
     hub = BeautifulSoup(client.get('/reports/dashboards').data, 'html.parser')
     assert hub.select_one('h1').get_text() == 'Manage Dashboards'
+    assert hub.select_one('[data-dashboard-create] input[name="subtitle"]')
+    assert not hub.select_one('input[name="subtitle"]').has_attr('required')
     row = hub.select_one('.db-list-row')
     assert {link['href'] for link in row.select('a[href]')} == {
         f'/reports/dashboards/{dashboard_id}', f'/reports/dashboards/{dashboard_id}/edit',
@@ -273,6 +295,72 @@ def test_management_hub_has_separate_view_and_edit_destinations(client):
     assert 'No widgets yet.' in report.select_one('main').get_text()
     assert report.select_one('[data-sb-dialog="widgetLibrary"]') is None
     assert client.get(f'/reports/dashboards/{dashboard_id + 1000}/edit').status_code == 404
+
+
+def test_inline_dashboard_details_preserve_layout_and_support_optional_subtitle(client):
+    """The partial metadata API preserves other fields and existing widget geometry."""
+    dashboard_id = create_dashboard(client)
+    add_widget(client, dashboard_id)
+    original_layout = layout_payload(client, dashboard_id)
+    assert client.get(f'{BASE}/{dashboard_id}').json['dashboard']['subtitle'] == ''
+    response = client.post(f'{BASE}/{dashboard_id}', json={'subtitle': '  Business priorities  '})
+    assert response.status_code == 200
+    assert response.json['name'] == 'Manager 1:1'
+    assert response.json['subtitle'] == 'Business priorities'
+    response = client.post(f'{BASE}/{dashboard_id}', json={'name': '  Seller view  '})
+    assert response.json['name'] == 'Seller view'
+    assert response.json['subtitle'] == 'Business priorities'
+    assert layout_payload(client, dashboard_id) == original_layout
+    editor = BeautifulSoup(
+        client.get(f'/reports/dashboards/{dashboard_id}/edit').data, 'html.parser',
+    )
+    assert editor.select_one('h1 input[name="name"]')['value'] == 'Seller view'
+    assert editor.select_one('header input[name="subtitle"]')['value'] == 'Business priorities'
+    assert not editor.select_one('input[name="subtitle"]').has_attr('required')
+    assert editor.select_one('.db-editor-toolbar [data-db-delete]')
+    assert 'View dashboard' in editor.select_one('.db-editor-toolbar').get_text()
+    report = BeautifulSoup(
+        client.get(f'/reports/dashboards/{dashboard_id}').data, 'html.parser',
+    )
+    assert report.select_one('.db-subtitle').get_text() == 'Business priorities'
+    assert not report.select('[data-dashboard-field], [data-db-delete]')
+    assert client.post(f'{BASE}/{dashboard_id}', json={'subtitle': '  '}).status_code == 200
+    report = BeautifulSoup(
+        client.get(f'/reports/dashboards/{dashboard_id}').data, 'html.parser',
+    )
+    assert report.select_one('.db-subtitle') is None
+
+
+@pytest.mark.parametrize('subtitle', [None, 123, [], 'x' * 501])
+def test_invalid_subtitle_does_not_partially_create_or_update_dashboard(client, subtitle):
+    """Invalid descriptions cannot create a row or partially apply a simultaneous rename."""
+    payload = {'name': 'New name', 'subtitle': subtitle}
+    assert client.post(BASE, json=payload).status_code == 400
+    assert client.get(BASE).json['dashboards'] == []
+    dashboard_id = create_dashboard(client)
+    assert client.post(f'{BASE}/{dashboard_id}', json=payload).status_code == 400
+    saved = client.get(f'{BASE}/{dashboard_id}').json['dashboard']
+    assert saved['name'] == 'Manager 1:1'
+    assert saved['subtitle'] == ''
+
+
+def test_subtitle_creation_length_limit_escaping_and_empty_updates(client):
+    """Subtitles are optional text on creation, summaries, and report headers."""
+    response = client.post(BASE, json={'name': 'My dashboard', 'subtitle': '<img src=x>'})
+    assert response.status_code == 201
+    dashboard_id = response.json['id']
+    for url, selector in (
+        (f'/reports/dashboards/{dashboard_id}', '.db-subtitle'),
+        ('/reports/dashboards', '.db-list-title p'),
+    ):
+        page = BeautifulSoup(client.get(url).data, 'html.parser')
+        assert page.select_one(selector).get_text() == '<img src=x>'
+        assert page.select_one(f'{selector} img') is None
+    assert client.get(BASE).json['dashboards'][0]['subtitle'] == '<img src=x>'
+    assert client.post(f'{BASE}/{dashboard_id}', json={'subtitle': 'x' * 500}).status_code == 200
+    for payload in ({}, [], {'unrecognized': 'value'}, {'name': ''}):
+        assert client.post(f'{BASE}/{dashboard_id}', json=payload).status_code == 400
+    assert client.get(f'{BASE}/{dashboard_id}').json['dashboard']['subtitle'] == 'x' * 500
 
 
 def test_unknown_saved_widget_has_explicit_recoverable_state(client, app, caplog):

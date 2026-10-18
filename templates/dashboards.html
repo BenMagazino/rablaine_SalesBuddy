@@ -8,7 +8,7 @@
 {% block footer %}
 <footer class="sb-page-status" aria-label="Dashboards status">
     <span>{{ dashboards|length }} saved dashboards</span>
-    <span>Saved locally. Widgets use current synced data.</span>
+    <span>Drafts stay in this browser until you choose Save in the editor.</span>
 </footer>
 {% endblock %}
 {% block content %}
@@ -31,15 +31,22 @@
                     <i class="bi bi-plus-lg" aria-hidden="true"></i> Create dashboard
                 </button>
             </div>
+            <label for="dashboardSubtitle">Subtitle (optional)</label>
+            <input id="dashboardSubtitle" name="subtitle" class="db-input" maxlength="500"
+                   placeholder="What do you want to track?" autocomplete="off">
         </form>
         {% if dashboards %}
         <nav class="db-list" aria-label="Saved dashboards">
             {% for dashboard in dashboards %}
-            <div class="db-list-row">
-                <span class="db-list-title">{{ dashboard.name }}</span>
+            <div class="db-list-row" data-dashboard-row="{{ dashboard.id }}">
+                <div class="db-list-title">
+                    <span>{{ dashboard.name }}</span>
+                    <span class="db-draft-indicator" data-dashboard-draft hidden>Draft</span>
+                    {% if dashboard.subtitle %}<p class="db-muted">{{ dashboard.subtitle }}</p>{% endif %}
+                </div>
                 <span class="db-muted">{{ dashboard.widget_count }} {{ 'widget' if dashboard.widget_count == 1 else 'widgets' }}</span>
-                <a class="db-command" href="{{ dashboard.url }}" aria-label="View {{ dashboard.name }} report">View report</a>
-                <a class="db-command" href="{{ url_for('reports.dashboard_edit', dashboard_id=dashboard.id) }}" aria-label="Edit {{ dashboard.name }}">Edit</a>
+                <a class="db-command" href="{{ dashboard.url }}" aria-label="View {{ dashboard.name }} dashboard">View dashboard</a>
+                <a class="db-command" data-dashboard-edit href="{{ url_for('reports.dashboard_edit', dashboard_id=dashboard.id) }}" aria-label="Edit {{ dashboard.name }}">Edit</a>
                 <button class="db-command is-danger" type="button"
                         data-db-delete="{{ dashboard.id }}" data-dashboard-name="{{ dashboard.name }}"
                         aria-label="Delete {{ dashboard.name }}">Delete</button>
@@ -57,5 +64,6 @@
 </section>
 {% endblock %}
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-dashboard-drafts.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboards.js') }}" defer></script>
 {% endblock %}

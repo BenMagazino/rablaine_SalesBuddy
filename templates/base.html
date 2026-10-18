@@ -213,7 +213,7 @@
                             {% if nav_dashboards %}
                             <li class="sb-menu-heading" role="presentation">Saved dashboards</li>
                             {% for dashboard in nav_dashboards %}
-                            <li><a class="sb-nav-link" href="{{ dashboard.url }}"><i class="bi bi-layout-wtf"></i> {{ dashboard.name }}</a></li>
+                            <li><a class="sb-nav-link" href="{{ dashboard.url }}"><i class="bi bi-layout-wtf"></i> <span data-dashboard-nav-name="{{ dashboard.id }}">{{ dashboard.name }}</span></a></li>
                             {% endfor %}
                             <li><hr class="sb-menu-divider"></li>
                             {% endif %}

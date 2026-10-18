@@ -45,7 +45,16 @@ def test_migration_preserves_widget_ids_order_and_existing_geometry():
         dashboard = Table('dashboards', MetaData(), autoload_with=engine)
         saved = session.execute(select(dashboard)).mappings().one()
         assert saved['name'] == 'Keep my dashboard'
+        assert saved['subtitle'] == ''
         assert saved['content_width'] == 'wide' and saved['layout_revision'] == 0
+        assert saved['display_style'] == 'cards'
+        session.execute(dashboard.update().where(dashboard.c.id == 1).values(
+            subtitle='Keep my subtitle', display_style='dividers',
+        ))
+        session.commit()
+        _migrate_dashboard_layout(database)
+        assert session.execute(select(dashboard.c.subtitle)).scalar_one() == 'Keep my subtitle'
+        assert session.execute(select(dashboard.c.display_style)).scalar_one() == 'dividers'
         assert {'layout_column', 'layout_row', 'column_span', 'row_span', 'variant_key'} <= {
             column['name'] for column in inspect(engine).get_columns('dashboard_widgets')
         }

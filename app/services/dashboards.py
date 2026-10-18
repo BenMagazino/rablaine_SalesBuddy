@@ -14,7 +14,9 @@ from app.services import connect_goals
 
 logger = logging.getLogger(__name__)
 MAX_DASHBOARD_NAME = 200
+MAX_DASHBOARD_SUBTITLE = 500
 CANVAS_WIDTHS = {'standard': 1152, 'wide': 1344}
+DISPLAY_STYLES = ('cards', 'dividers')
 GRID_COLUMNS = 12
 GRID_ROW_HEIGHT = 64
 GRID_GAP = 12
@@ -121,6 +123,13 @@ def validate_dashboard_name(value: object) -> str:
     return value.strip()
 
 
+def validate_dashboard_subtitle(value: object) -> str:
+    """Allow an empty subtitle without silently truncating descriptive text."""
+    if not isinstance(value, str) or len(value.strip()) > MAX_DASHBOARD_SUBTITLE:
+        raise ValueError('Enter a dashboard subtitle of up to 500 characters, or leave it blank.')
+    return value.strip()
+
+
 def get_dashboard_links() -> list[dict[str, Any]]:
     """List report destinations without loading widget instances or calculating metrics."""
     return [
@@ -138,8 +147,10 @@ def list_dashboards() -> list[dict[str, Any]]:
         {
             'id': dashboard.id,
             'name': dashboard.name,
+            'subtitle': dashboard.subtitle,
             'widget_count': len(dashboard.widgets),
             'content_width': dashboard.content_width,
+            'display_style': dashboard.display_style,
             'created_at': dashboard.created_at,
             'updated_at': dashboard.updated_at,
             'url': f'/reports/dashboards/{dashboard.id}',
@@ -190,9 +201,11 @@ def get_dashboard_data(
     return {
         'id': dashboard.id,
         'name': dashboard.name,
+        'subtitle': dashboard.subtitle,
         'created_at': dashboard.created_at,
         'updated_at': dashboard.updated_at,
         'content_width': dashboard.content_width,
+        'display_style': dashboard.display_style,
         'canvas_width': CANVAS_WIDTHS[dashboard.content_width],
         'layout_revision': dashboard.layout_revision,
         'canvas_rows': max(
@@ -226,11 +239,20 @@ def validate_footprint(variant: WidgetVariant, width: object, height: object) ->
         )
 
 
-def advance_layout_revision(dashboard: Dashboard, expected: int) -> None:
+def advance_layout_revision(
+    dashboard: Dashboard, expected: int, expected_details: tuple[str, str] | None = None,
+) -> None:
     """Acquire the layout revision inside the same transaction as its changes."""
-    result = db.session.execute(db.update(Dashboard).where(
+    statement = db.update(Dashboard).where(
         Dashboard.id == dashboard.id, Dashboard.layout_revision == expected,
-    ).values(layout_revision=expected + 1, updated_at=utc_now()))
+    )
+    if expected_details is not None:
+        statement = statement.where(
+            Dashboard.name == expected_details[0], Dashboard.subtitle == expected_details[1],
+        )
+    result = db.session.execute(statement.values(
+        layout_revision=expected + 1, updated_at=utc_now(),
+    ))
     if result.rowcount != 1:
         raise LayoutConflict('This dashboard changed in another window. Reload before editing.')
 
@@ -269,8 +291,10 @@ def rectangles_overlap(first: dict[str, Any], second: dict[str, Any]) -> bool:
     )
 
 
-def save_dashboard_layout(dashboard: Dashboard, payload: object) -> None:
-    """Validate a complete fixed layout before changing any saved geometry."""
+def _validate_dashboard_layout(
+    dashboard: Dashboard, payload: object, replace_widgets: bool = False,
+) -> tuple[int, str, str, list[dict[str, Any]], dict[int, DashboardWidget]]:
+    """Validate a complete snapshot before changing metadata or widget membership."""
     if not isinstance(payload, dict) or not isinstance(payload.get('widgets'), list):
         raise ValueError('Provide a complete dashboard layout.')
     revision = payload.get('revision')
@@ -279,16 +303,25 @@ def save_dashboard_layout(dashboard: Dashboard, payload: object) -> None:
     width = payload.get('content_width')
     if not isinstance(width, str) or width not in CANVAS_WIDTHS:
         raise ValueError('Choose Standard or Wide dashboard width.')
+    display_style = payload.get('display_style', dashboard.display_style)
+    if not isinstance(display_style, str) or display_style not in DISPLAY_STYLES:
+        raise ValueError('Choose Cards or Dividers dashboard display.')
     saved = {item.id: item for item in dashboard.widgets}
     entries = payload['widgets']
     ids = [item.get('id') for item in entries if isinstance(item, dict)]
-    if (len(ids) != len(entries) or any(type(item) is not int for item in ids)
-            or len(ids) != len(set(ids)) or set(ids) != set(saved)):
+    if (len(ids) != len(entries) or any(type(item) is not int or item == 0 for item in ids)
+            or len(ids) != len(set(ids))
+            or (not replace_widgets and set(ids) != set(saved))):
         raise ValueError('The layout must contain each widget on this dashboard exactly once.')
     for index, entry in enumerate(entries):
-        instance = saved[entry['id']]
-        if instance.widget_key in WIDGET_DEFINITIONS:
-            variant = get_variant(instance.widget_key, entry.get('variant_key'))
+        instance = saved.get(entry['id'])
+        if instance is None and entry['id'] > 0:
+            raise ValueError('A widget does not belong to this dashboard.')
+        key = instance.widget_key if instance is not None else entry.get('key')
+        if replace_widgets and instance is not None and entry.get('key') != key:
+            raise ValueError('An existing widget cannot change its report.')
+        if instance is None or key in WIDGET_DEFINITIONS:
+            variant = get_variant(key, entry.get('variant_key'))
         else:
             if entry.get('variant_key') != instance.variant_key:
                 raise ValueError('An unavailable widget cannot change its variation.')
@@ -301,12 +334,53 @@ def save_dashboard_layout(dashboard: Dashboard, payload: object) -> None:
             raise ValueError('Place every widget inside the dashboard grid.')
         if any(rectangles_overlap(entry, other) for other in entries[:index]):
             raise ValueError('Widgets cannot overlap. Move or resize the highlighted widget.')
+    return revision, width, display_style, entries, saved
+
+
+def _assign_widget_layout(instance: DashboardWidget, entry: dict[str, Any]) -> None:
+    """Apply already validated placement fields to one widget."""
+    for field in ('layout_column', 'layout_row', 'column_span', 'row_span', 'variant_key'):
+        setattr(instance, field, entry[field])
+
+
+def save_dashboard_layout(dashboard: Dashboard, payload: object) -> None:
+    """Save geometry for existing API callers without changing widget membership."""
+    revision, width, display_style, entries, saved = _validate_dashboard_layout(dashboard, payload)
     advance_layout_revision(dashboard, revision)
     dashboard.content_width = width
+    dashboard.display_style = display_style
     for entry in entries:
-        instance = saved[entry['id']]
-        for field in ('layout_column', 'layout_row', 'column_span', 'row_span', 'variant_key'):
-            setattr(instance, field, entry[field])
+        _assign_widget_layout(saved[entry['id']], entry)
+
+
+def save_dashboard_draft(dashboard: Dashboard, payload: object) -> None:
+    """Publish metadata, membership, and geometry together with stale-draft protection."""
+    if not isinstance(payload, dict):
+        raise ValueError('Provide a complete dashboard draft.')
+    name = validate_dashboard_name(payload.get('name'))
+    subtitle = validate_dashboard_subtitle(payload.get('subtitle'))
+    if (payload.get('base_name') != dashboard.name
+            or payload.get('base_subtitle') != dashboard.subtitle):
+        raise LayoutConflict('The saved dashboard details changed. Your local draft was kept.')
+    revision, width, style, entries, saved = _validate_dashboard_layout(
+        dashboard, payload, replace_widgets=True,
+    )
+    advance_layout_revision(
+        dashboard, revision, (payload['base_name'], payload['base_subtitle']),
+    )
+    dashboard.name, dashboard.subtitle = name, subtitle
+    dashboard.content_width, dashboard.display_style = width, style
+    retained = {entry['id'] for entry in entries}
+    for widget_id, instance in saved.items():
+        if widget_id not in retained:
+            dashboard.widgets.remove(instance)
+    for index, entry in enumerate(entries):
+        instance = saved.get(entry['id'])
+        if instance is None:
+            instance = DashboardWidget(widget_key=entry['key'])
+            dashboard.widgets.append(instance)
+        instance.sort_order = index
+        _assign_widget_layout(instance, entry)
 
 
 def get_widget_preview(key: str, variant_key: str, width: int) -> dict[str, Any]:

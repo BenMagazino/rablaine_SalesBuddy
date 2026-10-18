@@ -237,18 +237,51 @@ standalone UI iterations using entirely fictional data. See the
   Dashboards menu and the Quick Launcher, separately from Reports and All Reports.
   They open as clean report views, without layout or management controls.
   Use **Dashboards > Manage Dashboards** to create,
-  edit, rename, or delete them. Each entry has **View report**, **Edit**, and **Delete**
+  edit, rename, or delete them. Each entry has **View dashboard**, **Edit**, and **Delete**
   actions. Deleting requires confirmation and removes only the dashboard and its layout.
+  In the editor, click the name or optional subtitle to edit it. Every change is saved
+  to a local browser draft, not to the published dashboard. Subtitles can also be set on creation
+  and cleared later; blank subtitles do not appear in dashboard views.
   The editor saves fixed-layout collections of report-backed widgets.
-  Choose a Standard (1152px) or Wide (1344px) canvas. Place widgets
-  on a 12-column grid using drag handles, snapped resize handles, keyboard arrows, or
-  explicit position and size controls. Quarter, third, half, and full-width metric
+  Choose a Standard (1152px) or Wide (1344px) report container. The title and canvas
+  share the existing report frame, side borders, and outer gutters.
+  Editor actions and canvas controls share a full-width command bar above the bounded
+  dashboard title and canvas. Canvas tools, save/discard actions, and dashboard deletion
+  are grouped separately. Select a widget to reveal its appearance, position, and size
+  controls; click empty canvas space to clear selection. Layout help expands on demand.
+  That editor bar is absent from report views. Place widgets
+  on a 12-column grid by dragging anywhere on a widget, using its bottom-right resize
+  handle, or setting explicit position and size controls. Focus a widget and use arrow
+  keys to move it, or focus its resize handle to resize with arrow keys. A click selects
+  without moving it; Escape cancels a drag. Quarter, third, half, and full-width metric
   variations and half/full-width detailed variations share the four Connect Goals
   calculations. The searchable widget-library dialog shows actual-size previews using
   current synced data, with report, width, and variation filters.
-  Edit layout keeps a local draft until **Save layout**; Cancel discards it.
+  Opening an editor immediately enables layout editing, with name and subtitle editing
+  available alongside it. Name, subtitle, display settings, widget additions/removals, and
+  geometry persist together in local storage across reloads and navigation. Manage Dashboards
+  marks these entries **Draft** and offers **Edit draft** to resume them. Drafts belong to the
+  current browser profile and do not sync between browsers or installations.
+  **Preview draft** shows the current draft without the editor grid, selection outlines,
+  resize handles, or editable headings. Widget drill-throughs and charts work as in the
+  saved dashboard. **Back to editing** resumes the same draft without publishing it.
+  **Undo** / **Redo** or **Ctrl+Z** / **Ctrl+Y** step through editing changes, including
+  widget additions/removals, geometry, display settings, and text edits.
+  **Ctrl+Shift+Z** also redoes. Continuous name/subtitle typing is one dashboard undo step.
+  **Delete** or **Backspace** removes the selected widget; **Escape** deselects it and
+  cancels an active drag. Shortcuts leave text fields and open dialogs alone.
+  Undo history is editor-session-only and resets on reload, Save, or Discard draft;
+  the current draft still persists in local storage.
+  **Save** publishes the complete dashboard in one transaction and clears its local draft.
+  **Discard draft** requires confirmation and restores all saved settings, including text.
+  Failed saves keep the draft. Conflicting saved changes are never silently overwritten.
+  The **Display** selector switches between outlined **Cards** and flat **Dividers**
+  with horizontal section rules. It previews immediately and saves or resets with the layout,
+  without changing widget positions, sizes, gaps, or the Standard/Wide report frame.
+  New dashboards use Cards. Widget-library previews follow the current draft display style
+  and canvas width. Add or remove widgets freely while editing, without publishing or reloading.
   Overlapping positions are rejected without pushing neighbors. Widgets never reflow,
-  shrink, or move when the window narrows; scroll the canvas instead. Overflowing widget
+  shrink, or move when the window narrows; scroll the fixed report surface instead. Overflowing widget
   content scrolls inside its saved footprint, and removing a widget leaves its space empty.
   Existing vertical dashboards migrate into full-width slots in their original order.
   Changes in another window are detected before a stale draft can overwrite a newer layout.

@@ -55,9 +55,10 @@ def dashboard_view(dashboard_id: int):
 @bp.route('/api/reports/dashboards/<int:dashboard_id>', methods=['GET', 'POST'])
 @bp.route('/api/reports/dashboards/<int:dashboard_id>/delete', methods=['POST'])
 def dashboard_data(dashboard_id: int | None = None):
-    """Read, create, rename, or delete dashboards without changing source records."""
+    """Read, create, describe, or delete dashboards without changing source records."""
     from app.services.dashboards import (
         get_dashboard_data, get_widget_catalog, list_dashboards, validate_dashboard_name,
+        validate_dashboard_subtitle,
     )
 
     dashboard = db.get_or_404(Dashboard, dashboard_id) if dashboard_id is not None else None
@@ -69,16 +70,25 @@ def dashboard_data(dashboard_id: int | None = None):
         db.session.delete(dashboard)
         return _save_dashboard_changes()
     data = request.get_json(silent=True)
+    created = dashboard is None
     try:
-        name = validate_dashboard_name(data.get('name') if isinstance(data, dict) else None)
+        if not isinstance(data, dict):
+            raise ValueError('Enter a dashboard name of 1 to 200 characters.')
+        changes = {}
+        if created or 'name' in data:
+            changes['name'] = validate_dashboard_name(data.get('name'))
+        if created or 'subtitle' in data:
+            changes['subtitle'] = validate_dashboard_subtitle(data.get('subtitle', ''))
+        if not changes:
+            raise ValueError('Provide a dashboard name or subtitle to save.')
     except ValueError as exc:
         return jsonify(success=False, error=str(exc)), 400
-    created = dashboard is None
     if created:
-        dashboard = Dashboard(name=name)
+        dashboard = Dashboard(**changes)
         db.session.add(dashboard)
     else:
-        dashboard.name = name
+        for field, value in changes.items():
+            setattr(dashboard, field, value)
     return _save_dashboard_changes(dashboard, created)
 
 
@@ -92,7 +102,11 @@ def _save_dashboard_changes(
         db.session.rollback()
         logger.exception('Failed to save dashboard changes')
         return jsonify(success=False, error='Dashboard changes could not be saved. Try again.'), 500
-    return jsonify(success=True, id=dashboard.id if dashboard is not None else None), (
+    return jsonify(
+        success=True, id=dashboard.id if dashboard is not None else None,
+        name=dashboard.name if dashboard is not None else None,
+        subtitle=dashboard.subtitle if dashboard is not None else None,
+    ), (
         201 if created else 200
     )
 
@@ -177,9 +191,32 @@ def dashboard_widget_preview():
         )
     except ValueError as exc:
         return jsonify(success=False, error=str(exc)), 400
+    instance_id = request.args.get('instance_id', type=int)
+    if 'instance_id' in request.args and instance_id is None:
+        return jsonify(success=False, error='Provide a valid widget preview identity.'), 400
+    if instance_id is not None:
+        instance['id'] = instance_id
     return jsonify(success=True, html=render_template(
         'partials/dashboard_widget_content.html', instance=instance,
     ))
+
+
+@bp.route('/api/reports/dashboards/<int:dashboard_id>/save', methods=['POST'])
+def dashboard_draft_save(dashboard_id: int) -> tuple:
+    """Publish a complete local draft in one database transaction."""
+    from app.services.dashboards import LayoutConflict, save_dashboard_draft
+
+    dashboard = db.get_or_404(Dashboard, dashboard_id)
+    try:
+        save_dashboard_draft(dashboard, request.get_json(silent=True))
+    except LayoutConflict as exc:
+        db.session.rollback()
+        return jsonify(success=False, error=str(exc)), 409
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    except SQLAlchemyError:
+        return _dashboard_write_error()
+    return _save_dashboard_changes(dashboard)
 
 
 @bp.route('/reports/p-to-f')

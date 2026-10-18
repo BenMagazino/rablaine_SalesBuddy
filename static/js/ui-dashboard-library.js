@@ -5,7 +5,6 @@
     function init() {
         const dialog = document.getElementById('widgetLibrary');
         if (!dialog) return;
-        const root = document.querySelector('[data-dashboard-id]');
         const config = JSON.parse(document.getElementById('dashboardConfig').textContent);
         const search = document.getElementById('librarySearch');
         const report = document.getElementById('libraryReport');
@@ -61,7 +60,9 @@
             errorBox.hidden = true;
             const variant = selected.variants.find(item => item.key === variantSelect.value);
             const span = Number(widthSelect.value);
-            const pixels = (config.widths[config.contentWidth] - config.grid.padding * 2
+            const settings = global.SBDashboardEditor.getSettings();
+            preview.dataset.displayStyle = settings.displayStyle;
+            const pixels = (config.widths[settings.contentWidth] - config.grid.padding * 2
                 + config.grid.gap) / 12 * span - config.grid.gap;
             const height = variant.default_height * (config.grid.rowHeight + config.grid.gap)
                 - config.grid.gap;
@@ -83,10 +84,6 @@
                 article.dataset.columnSpan = span;
                 article.style.width = pixels + 'px';
                 article.style.height = height + 'px';
-                const heading = document.createElement('header');
-                heading.className = 'db-widget-tools';
-                heading.textContent = 'FY27 Data · ' + variant.title;
-                article.append(heading);
                 article.insertAdjacentHTML('beforeend', data.html);
                 preview.append(article);
                 global.SBConnectGoals.init(preview);
@@ -172,12 +169,12 @@
             controls.forEach(control => { control.disabled = true; });
             errorBox.hidden = true;
             try {
-                await global.SBDashboards.request(
-                    `/api/reports/dashboards/${root.dataset.dashboardId}/widgets`, {
+                await global.SBDashboardEditor.addWidget({
                         key: selected.key, variant_key: variant.key,
                         column_span: Number(widthSelect.value), row_span: variant.default_height,
-                    });
-                global.location.reload();
+                });
+                pending = false;
+                global.SBDialog.close(dialog, 'added');
             } catch (error) {
                 console.error('Widget library add:', error);
                 errorBox.textContent = 'Could not add the widget. ' + error.message;
