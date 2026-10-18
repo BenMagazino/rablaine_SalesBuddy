@@ -10,7 +10,7 @@ from app.models import (
     notes_engagements, notes_milestones, notes_topics,
     MarketingSummary, MarketingInteraction, MarketingContact,
     U2CSnapshot, U2CSnapshotItem,
-    OneOnOneWorkspace, Territory, Project,
+    OneOnOneWorkspace, Territory, Project, Dashboard, DashboardWidget,
 )
 from sqlalchemy import func, desc, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -18,6 +18,168 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 logger = logging.getLogger(__name__)
 
 bp = Blueprint('reports', __name__)
+
+
+@bp.route('/reports/dashboards')
+def dashboards_hub():
+    """Manage saved dashboards separately from their report views."""
+    from app.services.dashboards import list_dashboards
+
+    return render_template('dashboards.html', dashboards=list_dashboards())
+
+
+@bp.route('/reports/dashboards/<int:dashboard_id>')
+@bp.route('/reports/dashboards/<int:dashboard_id>/edit', endpoint='dashboard_edit')
+def dashboard_view(dashboard_id: int):
+    """Render a saved report, or its explicit dashboard management surface."""
+    from app.services.dashboards import (
+        CANVAS_WIDTHS, GRID_GAP, GRID_PADDING, GRID_ROW_HEIGHT, MAX_LAYOUT_ROWS,
+        get_dashboard_data, get_widget_catalog,
+    )
+
+    dashboard = db.get_or_404(Dashboard, dashboard_id)
+    manage_dashboard = request.endpoint == 'reports.dashboard_edit'
+    return render_template(
+        'dashboard_view.html', dashboard=get_dashboard_data(dashboard),
+        manage_dashboard=manage_dashboard,
+        catalog=get_widget_catalog() if manage_dashboard else [],
+        canvas_widths=CANVAS_WIDTHS,
+        grid_config={
+            'rowHeight': GRID_ROW_HEIGHT, 'gap': GRID_GAP, 'padding': GRID_PADDING,
+            'maxRows': MAX_LAYOUT_ROWS,
+        },
+    )
+
+
+@bp.route('/api/reports/dashboards', methods=['GET', 'POST'])
+@bp.route('/api/reports/dashboards/<int:dashboard_id>', methods=['GET', 'POST'])
+@bp.route('/api/reports/dashboards/<int:dashboard_id>/delete', methods=['POST'])
+def dashboard_data(dashboard_id: int | None = None):
+    """Read, create, rename, or delete dashboards without changing source records."""
+    from app.services.dashboards import (
+        get_dashboard_data, get_widget_catalog, list_dashboards, validate_dashboard_name,
+    )
+
+    dashboard = db.get_or_404(Dashboard, dashboard_id) if dashboard_id is not None else None
+    if request.method == 'GET':
+        if dashboard is not None:
+            return jsonify(success=True, dashboard=get_dashboard_data(dashboard))
+        return jsonify(success=True, dashboards=list_dashboards(), catalog=get_widget_catalog())
+    if request.path.endswith('/delete'):
+        db.session.delete(dashboard)
+        return _save_dashboard_changes()
+    data = request.get_json(silent=True)
+    try:
+        name = validate_dashboard_name(data.get('name') if isinstance(data, dict) else None)
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    created = dashboard is None
+    if created:
+        dashboard = Dashboard(name=name)
+        db.session.add(dashboard)
+    else:
+        dashboard.name = name
+    return _save_dashboard_changes(dashboard, created)
+
+
+def _save_dashboard_changes(
+    dashboard: Dashboard | None = None, created: bool = False,
+) -> tuple:
+    """Commit dashboard edits with rollback and a visible failure response."""
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Failed to save dashboard changes')
+        return jsonify(success=False, error='Dashboard changes could not be saved. Try again.'), 500
+    return jsonify(success=True, id=dashboard.id if dashboard is not None else None), (
+        201 if created else 200
+    )
+
+
+@bp.route('/api/reports/dashboards/<int:dashboard_id>/widgets', methods=['POST'])
+@bp.route(
+    '/api/reports/dashboards/<int:dashboard_id>/widgets/<int:widget_id>/<action>',
+    methods=['POST'],
+)
+def dashboard_widget_edit(
+    dashboard_id: int, widget_id: int | None = None, action: str | None = None,
+):
+    """Add or remove one placement without rearranging its neighbors."""
+    from app.services.dashboards import (
+        LayoutConflict, add_dashboard_widget, advance_layout_revision,
+    )
+
+    dashboard = db.get_or_404(Dashboard, dashboard_id)
+    instance = None
+    if widget_id is not None:
+        instance = db.first_or_404(db.select(DashboardWidget).filter_by(
+            id=widget_id, dashboard_id=dashboard_id,
+        ))
+    data = request.get_json(silent=True)
+    try:
+        if widget_id is None:
+            add_dashboard_widget(
+                dashboard, data.get('key') if isinstance(data, dict) else None,
+                data.get('variant_key', 'detailed') if isinstance(data, dict) else 'detailed',
+                data.get('column_span') if isinstance(data, dict) else None,
+                data.get('row_span') if isinstance(data, dict) else None,
+            )
+        elif action == 'remove':
+            advance_layout_revision(dashboard, dashboard.layout_revision)
+            dashboard.widgets.remove(instance)
+        else:
+            return jsonify(success=False, error='Unknown widget action.'), 400
+    except LayoutConflict as exc:
+        db.session.rollback()
+        return jsonify(success=False, error=str(exc)), 409
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    except SQLAlchemyError:
+        return _dashboard_write_error()
+    return _save_dashboard_changes()
+
+
+def _dashboard_write_error() -> tuple[Response, int]:
+    """Roll back failed layout writes, including errors before commit."""
+    db.session.rollback()
+    logger.exception('Failed to update dashboard layout')
+    return jsonify(success=False, error='Dashboard changes could not be saved. Try again.'), 500
+
+
+@bp.route('/api/reports/dashboards/<int:dashboard_id>/layout', methods=['POST'])
+def dashboard_layout_save(dashboard_id: int) -> tuple[Response, int]:
+    """Save explicit grid positions and sizes atomically, never repacking widgets."""
+    from app.services.dashboards import LayoutConflict, save_dashboard_layout
+
+    dashboard = db.get_or_404(Dashboard, dashboard_id)
+    try:
+        save_dashboard_layout(dashboard, request.get_json(silent=True))
+    except LayoutConflict as exc:
+        db.session.rollback()
+        return jsonify(success=False, error=str(exc)), 409
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    except SQLAlchemyError:
+        return _dashboard_write_error()
+    return _save_dashboard_changes()
+
+
+@bp.route('/api/reports/dashboards/widget-preview')
+def dashboard_widget_preview():
+    """Render an actual-size library preview using the placed-widget presentation."""
+    from app.services.dashboards import get_widget_preview
+
+    try:
+        instance = get_widget_preview(
+            request.args.get('key', ''), request.args.get('variant', ''),
+            request.args.get('width', type=int),
+        )
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    return jsonify(success=True, html=render_template(
+        'partials/dashboard_widget_content.html', instance=instance,
+    ))
 
 
 @bp.route('/reports/p-to-f')

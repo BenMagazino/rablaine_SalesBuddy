@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
-const {missingRequiredBuckets, confirmBuckets, coverageFilter, validateReadingView,
+const {confirmBuckets, coverageFilter, validateReadingView,
     quarterChartSeries} =
     require('../../static/js/ui-connect-goals.js');
 const source = fs.readFileSync(
@@ -15,15 +15,8 @@ const scope = {area: ['Data'], myTeam: 'off', quarters: [
 status: ['On Track', 'At Risk', 'Blocked'], seller: '', urgency: '', commitment: '',
 favoritesOnly: false};
 
-test('annual scope requires both priority buckets and retains optional choices', () => {
-    assert.deepEqual(missingRequiredBuckets([]), ['Databases', 'Fabric']);
-    assert.deepEqual(missingRequiredBuckets(['Databases']), ['Fabric']);
-    assert.deepEqual(missingRequiredBuckets(['Fabric']), ['Databases']);
-    assert.deepEqual(missingRequiredBuckets(['Databases', 'Fabric', 'Infra']), []);
-});
-
 test('confirmation sends the original exact payload and accepts taxonomy zero', async () => {
-    const selected = ['Databases', 'Fabric', 'Infra'];
+    const selected = ['Infra', 'AI'];
     const result = await confirmBuckets(selected, async (url, request) => {
         assert.equal(url, '/api/revenue/compensated-buckets');
         assert.equal(request.method, 'POST');
@@ -109,7 +102,7 @@ test('rendered chart binds quarter dates to a linear axis and retains the live t
     let pointColorsAtCreation;
     const document = {
         readyState: 'complete', documentElement: {},
-        querySelector: () => ({dataset: {embedded: 'true'}}),
+        querySelectorAll: () => [{dataset: {embedded: 'true'}, querySelectorAll: () => []}],
         getElementById: id => ({
             connectGoalsData: {textContent: JSON.stringify({teamFilter: scope, u2c: widget})},
             connectU2cChart: canvas,
@@ -172,6 +165,56 @@ test('Today can be shown without inventing a published snapshot series', () => {
     assert.equal(series.live.length, 1);
     assert.equal(series.live[0].y, 8.4);
 });
+
+test('dashboard instances initialize separate charts and bind drill-downs to their own scope', () => {
+        const charts = [];
+        const handlers = [];
+        const writes = [];
+        const roots = [1, 2, 3, 4].map(id => {
+            const canvas = id <= 2 ? {instance: id} : null;
+            const button = {addEventListener: (_, handler) => handlers.push(handler)};
+            const nodes = {
+                connectGoalsData: {textContent: JSON.stringify({
+                    teamFilter: {...scope, seller: String(id)},
+                    u2c: canvas ? {
+                        value: id, target: 40,
+                        period_start: '2026-10-01', period_end: '2026-12-31',
+                        trend: [{date: '2026-10-16', u2c_pct: id}],
+                    } : null,
+                })},
+                connectU2cChart: canvas,
+            };
+            return {
+                dataset: {embedded: 'true', widgetPrefix: `dw${id}-`},
+                querySelector: selector => nodes[selector.replace(`#dw${id}-`, '')] || null,
+                querySelectorAll: () => canvas ? [] : [button],
+            };
+        });
+        const document = {
+            readyState: 'complete', documentElement: {},
+            querySelectorAll: () => roots,
+            getElementById() { throw new Error('Dashboard instances must use scoped queries'); },
+            createElement: () => ({getContext: () => ({
+                clearRect() {}, fillRect() {}, getImageData: () => ({data: [1, 2, 3, 255]}),
+            })}),
+        };
+        const window = {
+            document,
+            Chart: class {
+                constructor(canvas, config) { charts.push({canvas, config}); }
+            },
+            MutationObserver: class { observe() {} },
+            getComputedStyle: () => ({getPropertyValue: () => 'rgb(1, 2, 3)'}),
+            localStorage: {setItem: (key, value) => writes.push(JSON.parse(value))},
+            location: {assign() {}},
+        };
+        vm.runInNewContext(source, {window, document});
+        assert.deepEqual(charts.map(chart => chart.canvas.instance), [1, 2]);
+        assert.deepEqual(charts.map(chart => chart.config.data.datasets[0].data[0].y), [1, 2]);
+        handlers[0]();
+        handlers[1]();
+        assert.deepEqual(writes.map(filter => filter.seller), ['3', '4']);
+});
 function controller({selected = ['Databases', 'Fabric'], setup = false,
     storageFailure = false, reloadFailure = false, withReading = false,
     savedView, embedded = false, historyFailure = false, fetcher} = {}) {
@@ -206,7 +249,9 @@ function controller({selected = ['Databases', 'Fabric'], setup = false,
         }),
     };
     const document = {readyState: 'complete',
-        querySelector: () => ({dataset: {embedded: String(embedded)}}),
+        querySelectorAll: () => [{
+            dataset: {embedded: String(embedded)}, querySelectorAll: () => [],
+        }],
         getElementById: id => nodes[id] || null};
     const window = {
         document,
@@ -249,13 +294,24 @@ function controller({selected = ['Databases', 'Fabric'], setup = false,
         }};
 }
 
-test('missing required selections never send a write', async () => {
-    const page = controller({selected: ['Databases']});
+test('an empty compensation selection never sends a write', async () => {
+    const page = controller({selected: []});
     await page.submitForm();
-    assert.match(page.status.textContent, /Select Fabric/);
+    assert.match(page.status.textContent, /Select at least one compensation bucket/);
     assert.deepEqual(page.events, []);
 });
 
+test('both bucket pickers save any nonempty selection without forcing Data buckets', async () => {
+    for (const setup of [false, true]) {
+        for (const selected of [['Databases'], ['Fabric'], ['Infra'], ['Infra', 'AI']]) {
+            const page = controller({selected, setup});
+            await page.submitForm();
+            assert.deepEqual(page.events[0].payload.buckets, selected);
+            assert.equal(page.events.at(-1).type, 'reload');
+            assert.deepEqual(JSON.parse(page.events[1].value), selected);
+        }
+    }
+});
 test('pending saves disable controls and block duplicate submission and native dismissal', async () => {
     let finish;
     const page = controller({fetcher: () => new Promise(resolve => { finish = resolve; })});

@@ -147,6 +147,10 @@ class TestToolCoverage:
         """Connect Goals should expose its shared calculations."""
         assert 'report_connect_goals' in self._tool_names()
 
+    def test_dashboard_tool_exists(self):
+        """Saved dashboards and their widget instances share a read tool."""
+        assert 'get_dashboards' in self._tool_names()
+
     def test_fabric_consumption_report_tool_exists(self):
         """Saved Fabric measurements must be available without starting an import."""
         assert 'report_fabric_consumption' in self._tool_names()

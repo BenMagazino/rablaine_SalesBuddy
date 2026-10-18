@@ -998,6 +998,41 @@ def list_action_items(
 # ============================================================================
 
 @tool(
+    'get_dashboards',
+    'List saved dashboards and the widget catalog, or read one dashboard with '
+    'its current report-backed widget data and setup requirements.',
+    {
+        'type': 'object',
+        'properties': {
+            'dashboard_id': {
+                'type': 'integer',
+                'minimum': 1,
+                'description': 'Optional saved dashboard ID. Omit to list dashboards.',
+            },
+        },
+    },
+)
+def get_dashboards(dashboard_id: int | None = None) -> dict:
+    """Read the same saved dashboard definitions and values used by the UI."""
+    from app.models import Dashboard, db
+    from app.services.dashboards import (
+        get_dashboard_data, get_widget_catalog, list_dashboards,
+    )
+
+    if dashboard_id is None:
+        return {'dashboards': list_dashboards(), 'catalog': get_widget_catalog(),
+                'url': f'{_BASE}/reports/dashboards'}
+    if type(dashboard_id) is not int or dashboard_id < 1:
+        raise ValueError('Choose a valid dashboard ID.')
+    dashboard = db.session.get(Dashboard, dashboard_id)
+    if dashboard is None:
+        raise ValueError('Dashboard not found.')
+    result = get_dashboard_data(dashboard)
+    result['url'] = f'{_BASE}{result["url"]}'
+    return result
+
+
+@tool(
     'report_connect_goals',
     'Get the FY27 Data Connect Goals action center metrics, goals, status, and '
     'drill-down destinations.',

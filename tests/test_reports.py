@@ -60,10 +60,10 @@ class TestReportsHub:
             ['Connect Goals', 'Initiative Tracker', '1:1 Report', 'Connect Impact'],
             ['U2C Attainment', 'Milestone Tracker', 'Activity Coverage', 'Whitespace Analysis'],
             ['Hygiene Report', 'MSX Workspace', "What's New"],
-            ['Revenue Analyzer', 'Workload Report', 'Fabric Consumption', 'Marketing Insights',
+            ['Revenue Analyzer', 'Workload Report', 'P to F', 'Fabric Consumption', 'Marketing Insights',
              'Synapse Customers'],
         ]
-        assert len(links) == len(set(links)) == 17
+        assert len(links) == len(set(links)) == 18
         hub_links = {link['href'] for link in soup.select('main a[href]')}
         assert set(links[1:]).issubset(hub_links)
         assert [heading.get_text(strip=True) for heading in menu.select('.sb-menu-heading')] == [
@@ -73,7 +73,8 @@ class TestReportsHub:
         sections = soup.select('main .sb-reports-group')
         headings = [section.select_one('h2') for section in sections]
         assert [heading.get_text(strip=True) for heading in headings] == [
-            'Planning & Reviews', 'Execution & Coverage', 'Pipeline Health', 'Account Insights',
+            'Planning & Reviews', 'Execution & Coverage', 'Pipeline Health',
+            'Account Insights',
         ]
         for section, expected in zip(sections, grouped_links[1:]):
             assert [link['href'] for link in section.select('.sb-reports-entry')] == expected

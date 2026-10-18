@@ -8,6 +8,11 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/17/2026
+
+- Build fixed-layout dashboards from a previewable widget library. Open saved dashboards as reports from their own Dashboards menu or Quick Launcher, and use Manage Dashboards to create and edit them.
+- Choose the service compensation buckets that apply to your business without being required to select Databases or Fabric.
+
 ## 10/16/2026 - d325c465
 
 - Make meeting imports more reliable, including saved Internal Contact matching and WorkIQ responses with extra commentary.

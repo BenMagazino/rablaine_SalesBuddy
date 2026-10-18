@@ -1,0 +1,105 @@
+    {% set whitespace = widgets.get('whitespace') %}
+    <section class="sb-goals-section is-supporting" aria-labelledby="{{ widget_id_prefix|default('') }}whitespaceGoalTitle">
+        <div class="sb-goals-section-heading">
+            <div>
+                <div class="sb-goals-eyebrow">{{ whitespace.half_label if whitespace else 'Current half' }}</div>
+                <h2  id="{{ widget_id_prefix|default('') }}whitespaceGoalTitle">Fabric and database whitespace wins</h2>
+                <p class="sb-goals-muted">One zero-to-consumption win in each priority bucket per half.</p>
+            </div>
+            <a class="sb-goals-link" href="{{ whitespace.destination if whitespace else '/reports/whitespace' }}">
+                Find actionable whitespace <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+        {% if whitespace and whitespace.available %}
+        <div class="sb-goals-lanes">
+            {% for lane in whitespace.bucket_progress %}
+            <div class="sb-goals-lane {% if lane.complete %}is-complete{% endif %}">
+                <div class="sb-goals-lane-heading">
+                    <h3 >{{ lane.bucket }}</h3>
+                    <span class="sb-goals-status is-{{ 'success' if lane.complete else 'warning' }}">
+                        <i class="bi bi-{{ 'check-circle-fill' if lane.complete else 'circle' }}"></i>
+                        {{ lane.wins }} / {{ lane.target }}
+                    </span>
+                </div>
+                <p class="sb-goals-caption sb-goals-muted">
+                    {{ 'Goal reached' if lane.complete else 'Sustained win still needed' }}
+                    {% if lane.ramping %}
+                    <span class="is-warning sb-goals-ramping">
+                        {{ lane.ramping }} ramping
+                    </span>
+                    {% endif %}
+                </p>
+                {% set bucket_wins = whitespace.wins.get(lane.bucket, []) %}
+                {% set bucket_ramping = whitespace.ramping.get(lane.bucket, []) %}
+                {% set bucket_results = bucket_wins + bucket_ramping %}
+                {% if bucket_results %}
+                <ul class="sb-goals-win-list"
+                    aria-label="{{ lane.bucket }} whitespace progress">
+                    {% for win in bucket_results %}
+                    <li>
+                        <details class="sb-goals-history"
+                                 data-goals-history-key="{{ lane.bucket }}:{{ win.customer_id }}">
+                            <summary class="sb-goals-win-summary">
+                                <span class="sb-goals-win-name">
+                                    <i class="bi bi-chevron-right sb-goals-win-chevron"
+                                       aria-hidden="true"></i>
+                                    <a href="{{ url_for('customers.customer_view', id=win.customer_id) }}"
+                                       class="sb-goals-customer-link"
+                                       onclick="event.stopPropagation()">
+                                        {{ customer_favicon(win) }}
+                                        <span class="sb-goals-customer-name">{{ win.customer_name }}</span>
+                                    </a>
+                                </span>
+                                <span class="sb-goals-win-amount">
+                                    <span class="sb-goals-win-state is-{{ 'success' if win.state == 'confirmed' else 'warning' }}">
+                                        {{ win.state_label }}
+                                    </span>
+                                    <span class="sb-goals-muted">
+                                        ${{ "{:,.0f}".format(win.revenue) }} ACR
+                                    </span>
+                                </span>
+                            </summary>
+                            <div class="sb-goals-history-body">
+                                <div class="sb-goals-history-scroll">
+                                    <table class="sb-goals-history-table">
+                                        <thead>
+                                            <tr class="sb-goals-caption sb-goals-muted">
+                                                <th scope="col">Metric</th>
+                                                {% for point in win.history %}
+                                                <th scope="col" class="sb-goals-number">{{ point.label }}</th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <th scope="row" class="sb-goals-caption">ACR</th>
+                                                {% for point in win.history %}
+                                                <td class="sb-goals-number {{ 'is-success' if point.revenue > 0 else 'is-danger' }}">
+                                                    ${{ "{:,.0f}".format(point.revenue) }}
+                                                </td>
+                                                {% endfor %}
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </details>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <p class="sb-goals-caption sb-goals-muted">{{ whitespace.status_explanation }}</p>
+        {% if whitespace.data_through %}
+        <p class="sb-goals-caption sb-goals-muted">
+            Revenue data through {{ whitespace.data_through.strftime('%b %Y') }}
+        </p>
+        {% endif %}
+        {% else %}
+        <p class="sb-goals-muted">
+            No matched Databases or Fabric revenue history is available.
+        </p>
+        {% endif %}
+    </section>

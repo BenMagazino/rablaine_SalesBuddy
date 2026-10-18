@@ -1,0 +1,40 @@
+<section class="db-metric" aria-labelledby="{{ widget_id_prefix }}metricTitle">
+    <h2 id="{{ widget_id_prefix }}metricTitle">{{ instance.title }}</h2>
+    {% set metric = instance.data %}
+    {% if metric.available %}
+        {% if metric.key == 'whitespace' %}
+        <div class="sb-goals-eyebrow">{{ metric.half_label }}</div>
+        <dl class="db-metric-buckets">
+            {% for lane in metric.bucket_progress %}
+            <div>
+                <dt>{{ lane.bucket }}</dt>
+                <dd class="is-{{ 'success' if lane.complete else 'warning' }}">{{ lane.wins }} / {{ lane.target }}</dd>
+                <span class="sb-goals-caption sb-goals-muted">{{ lane.ramping }} ramping</span>
+            </div>
+            {% endfor %}
+        </dl>
+        {% else %}
+        <div class="sb-goals-value is-{{ metric.status_tone }}">{{ "%.1f"|format(metric.value) }}%</div>
+        <div class="sb-goals-status is-{{ metric.status_tone }}">{{ metric.status_label }}</div>
+        <p class="sb-goals-caption sb-goals-muted">
+            {% if metric.key == 'u2c' %}
+            {{ metric.fiscal_quarter }} · {{ metric.target|int }}% target · {{ metric.expected_today }}% expected today
+            {% elif metric.key == 'team_coverage' %}
+            ACR-weighted · {{ metric.on_team_count }} of {{ metric.total_count }} milestones · {{ metric.target|int }}% target
+            {% else %}
+            {{ metric.covered }} of {{ metric.total_count }} milestones covered · {{ metric.target|int }}% target
+            {% endif %}
+        </p>
+        {% endif %}
+        {% if metric.freshness %}
+        <p class="sb-goals-caption sb-goals-muted">Source refreshed {{ metric.freshness.strftime('%b %d, %Y') }}</p>
+        {% endif %}
+    {% else %}
+        <p class="sb-goals-muted">{{ metric.get('message', 'No in-scope data is available.') }}</p>
+    {% endif %}
+    {% if metric.key == 'team_coverage' %}
+    <button class="sb-goals-link" type="button" data-goals-coverage>Review off-team milestones <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+    {% else %}
+    <a class="sb-goals-link" href="{{ metric.destination }}">Open report <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    {% endif %}
+</section>

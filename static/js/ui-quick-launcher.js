@@ -19,6 +19,7 @@
             const entries = new Map();
             const sources = [
                 [document.querySelectorAll('#reportsMenu a[href]'), 'Reports'],
+                [document.querySelectorAll('#dashboardsMenu a[href]'), 'Dashboards'],
                 [document.querySelectorAll('#browseMenu a[href]'), 'Browse'],
                 [document.querySelectorAll('#navCustomers a[href]'), 'Browse'],
                 [document.querySelectorAll('#settingsMenu a[href]'), 'Settings'],

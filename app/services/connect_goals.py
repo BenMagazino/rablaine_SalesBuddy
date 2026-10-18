@@ -69,14 +69,12 @@ def get_setup_state(reference: date | None = None) -> dict[str, Any]:
     """Return whether annual FY27 Data priorities are confirmed."""
     preference = UserPreference.query.first()
     selected = _selected_buckets(preference)
-    required = list(FY27_DATA_SCOPE['revenue_buckets'])
     available = sorted(
         bucket
         for (bucket,) in db.session.query(CustomerRevenueData.bucket).distinct().all()
         if bucket
     )
     fiscal_year = current_fiscal_year_label(reference)
-    missing_required = [bucket for bucket in required if bucket not in selected]
     unavailable_selected = [bucket for bucket in selected if bucket not in available]
     confirmed_version = (
         preference.compensated_buckets_confirmed_taxonomy_version
@@ -90,10 +88,8 @@ def get_setup_state(reference: date | None = None) -> dict[str, Any]:
     reasons = []
     if fiscal_year != FY27_DATA_SCOPE['fiscal_year']:
         reasons.append('This v1 report is configured for FY27 Data priorities.')
-    if missing_required:
-        reasons.append(
-            f"Select the required FY27 Data buckets: {', '.join(missing_required)}."
-        )
+    if not selected:
+        reasons.append('Select at least one compensation bucket.')
     if confirmed_fiscal_year != fiscal_year:
         reasons.append(f'Confirm priorities for {fiscal_year}.')
     if confirmed_version != taxonomy_version:
@@ -111,8 +107,6 @@ def get_setup_state(reference: date | None = None) -> dict[str, Any]:
         'fiscal_year': fiscal_year,
         'configured_fiscal_year': FY27_DATA_SCOPE['fiscal_year'],
         'selected_buckets': selected,
-        'required_buckets': required,
-        'missing_required': missing_required,
         'available_buckets': available,
         'taxonomy_version': taxonomy_version,
         'confirmed_taxonomy_version': confirmed_version,

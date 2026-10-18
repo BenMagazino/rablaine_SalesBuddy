@@ -33,7 +33,6 @@
 .sb-goals-eyebrow { color: var(--sb-ui-muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .sb-goals-tag { display: inline-flex; align-items: center; gap: 5px; color: var(--sb-ui-accent); font-size: 12px; }
 .sb-goals-tag + .sb-goals-tag { margin-left: 8px; }
-.sb-goals-tag.is-required { margin-left: 6px; font-size: 11px; }
 .sb-connect-goals .sb-goals-reading {
     min-height: 0;
     overflow: auto;

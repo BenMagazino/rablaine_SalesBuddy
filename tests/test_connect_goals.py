@@ -3,6 +3,7 @@ from datetime import date, datetime, timezone
 import json
 
 from bs4 import BeautifulSoup
+import pytest
 
 from app.models import (
     Customer,
@@ -30,8 +31,8 @@ def _confirm_scope() -> None:
     )
 
 
-def _seed_required_buckets(customer_id: int | None = None) -> None:
-    """Seed the authoritative FY27 Data buckets needed by the setup gate."""
+def _seed_revenue_buckets(customer_id: int | None = None) -> None:
+    """Seed example revenue buckets used by the Data goal report."""
     imported = RevenueImport(filename='connect-scope-test')
     db.session.add(imported)
     db.session.flush()
@@ -64,19 +65,16 @@ def _milestone(customer_id: int, *, number: str, on_team: bool,
     )
 
 
-def test_setup_requires_confirmed_fy27_buckets(app):
-    """The page remains gated until both required buckets are confirmed."""
+@pytest.mark.parametrize('selected', [
+    ['Databases'], ['Fabric'], ['Infra'], ['Infra', 'AI'],
+])
+def test_setup_accepts_any_confirmed_compensation_buckets(client, app, selected):
+    """Compensation choices need not contain either of the Data report's goal buckets."""
     with app.app_context():
-        preference = UserPreference.query.first()
-        preference.compensated_buckets = json.dumps(['Databases'])
-        preference.compensated_buckets_fiscal_year = 'FY27'
-        preference.compensated_buckets_confirmed_taxonomy_version = (
-            preference.bucket_taxonomy_version
-        )
         imported = RevenueImport(filename='setup-test')
         db.session.add(imported)
         db.session.flush()
-        for bucket in ('Databases', 'Fabric'):
+        for bucket in selected:
             db.session.add(CustomerRevenueData(
                 customer_name='Setup Customer',
                 bucket=bucket,
@@ -87,10 +85,25 @@ def test_setup_requires_confirmed_fy27_buckets(app):
             ))
         db.session.commit()
 
+    response = client.post('/api/revenue/compensated-buckets', json={
+        'buckets': selected, 'confirm_for_fiscal_year': True,
+    })
+    assert response.status_code == 200
+    with app.app_context():
         state = connect_goals.get_setup_state(date(2026, 9, 23))
-
-        assert state['ready'] is False
-        assert state['missing_required'] == ['Fabric']
+        assert state['ready'] is True
+        assert state['selected_buckets'] == selected
+        assert state['reasons'] == []
+        assert json.loads(UserPreference.query.first().compensated_buckets) == selected
+    page = BeautifulSoup(client.get('/reports/connect-goals').data, 'html.parser')
+    assert page.select_one('.sb-goals-dashboard')
+    assert page.select_one('#connectSetupForm') is None
+    assert [item.get_text(strip=True) for item in page.select('.sb-goals-scope .is-scope')] == (
+        selected
+    )
+    assert {item['value'] for item in page.select('#connectBucketModal input:checked')} == (
+        set(selected)
+    )
 
 
 def test_connect_goals_route_shows_setup_gate(client):
@@ -104,7 +117,7 @@ def test_connect_goals_route_shows_setup_gate(client):
 def test_connect_goals_route_renders_action_metrics(client, app):
     """Keep three primary dashboard metrics and the supporting whitespace workflow."""
     with app.app_context():
-        _seed_required_buckets()
+        _seed_revenue_buckets()
         _confirm_scope()
         db.session.commit()
 
@@ -134,6 +147,7 @@ def test_connect_goals_route_renders_action_metrics(client, app):
     )
     dialog = page.select_one('dialog#connectBucketModal')
     assert dialog.select_one('form.sb-dialog-shell')
+    assert dialog.select_one('.sb-dialog-header > .sb-dialog-heading #connectBucketModalTitle')
     assert len(dialog.select('[data-sb-dialog-close]')) == 2
     assert not page.select('.sb-connect-goals [data-bs-toggle], .sb-connect-goals .btn')
     assert page.select_one('body.sb-page-frame')
@@ -432,7 +446,7 @@ def test_connect_goals_api_serializes_shared_data(client):
 def test_ready_connect_goals_api_has_four_shared_widgets(client, app):
     """The page, API and tool provider share the same four measurable goals."""
     with app.app_context():
-        _seed_required_buckets()
+        _seed_revenue_buckets()
         _confirm_scope()
         db.session.commit()
 
@@ -444,9 +458,9 @@ def test_ready_connect_goals_api_has_four_shared_widgets(client, app):
 
 
 def test_setup_form_uses_native_scope_choices(client, app):
-    """Annual setup still offers required buckets before metrics are available."""
+    """Annual setup offers available buckets without marking any specific choice mandatory."""
     with app.app_context():
-        _seed_required_buckets()
+        _seed_revenue_buckets()
         db.session.commit()
 
     page = BeautifulSoup(client.get('/reports/connect-goals').data, 'html.parser')
@@ -455,7 +469,9 @@ def test_setup_form_uses_native_scope_choices(client, app):
     assert {item['value'] for item in form.select('input[type="checkbox"]')} == {
         'Databases', 'Fabric',
     }
-    assert len(form.select('.sb-goals-tag.is-required')) == 2
+    assert {item.get_text(' ', strip=True) for item in form.select('label')} == {
+        'Databases', 'Fabric',
+    }
     assert not page.select('.sb-goals-section, #connectBucketModal')
     assert page.select_one('#connectSetupStatus')['aria-live'] == 'polite'
 
@@ -463,7 +479,7 @@ def test_setup_form_uses_native_scope_choices(client, app):
 def test_embedded_connect_goals_does_not_own_the_window_footer(client, app):
     """An embedded dashboard leaves window and footer ownership to its host."""
     with app.app_context():
-        _seed_required_buckets()
+        _seed_revenue_buckets()
         _confirm_scope()
         db.session.commit()
 

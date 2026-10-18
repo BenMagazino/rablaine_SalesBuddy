@@ -1,0 +1,20 @@
+{% from 'partials/customer_favicon.html' import customer_favicon %}
+<div class="db-widget-body">
+{% if instance.data %}
+    {% set widget_id_prefix = 'dw' ~ instance.id ~ '-' %}
+    {% set widgets = {instance.data.key: instance.data} %}
+    <div class="sb-connect-goals" data-widget-prefix="{{ widget_id_prefix }}" data-embedded="true">
+        <p class="sb-goals-notice" id="{{ widget_id_prefix }}connectNavigationStatus" role="alert" hidden></p>
+        {% include instance.template %}
+        <script id="{{ widget_id_prefix }}connectGoalsData" type="application/json">{{ {
+            'teamFilter': instance.data.get('destination_filter'),
+            'u2c': instance.data if instance.data.key == 'u2c' and instance.variant_key == 'detailed' else none
+        }|tojson }}</script>
+    </div>
+{% else %}
+    <div class="db-widget-unavailable">
+        <h2>{{ instance.title }}</h2>
+        <p>{{ instance.message }}</p>
+    </div>
+{% endif %}
+</div>

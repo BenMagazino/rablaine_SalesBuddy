@@ -79,6 +79,24 @@ def test_navigation_dynamic_sellers_and_menu_labels(app):
     assert soup.select_one("#browseMenu .sb-menu-heading").get_text(strip=True) == "People and accounts"
 
 
+def test_dashboards_have_their_own_top_level_menu(app):
+    """Saved dashboard reports and management are separate from the Reports menu."""
+    soup = render_navigation(app, nav_dashboards=[
+        {'name': 'Weekly review', 'url': '/reports/dashboards/12'},
+    ])
+    trigger = soup.select_one('#navDashboards > button')
+    assert trigger['aria-label'] == 'Dashboards'
+    assert trigger['data-sb-menu'] == 'dashboardsMenu'
+    assert [link['href'] for link in soup.select('#dashboardsMenu a')] == [
+        '/reports/dashboards/12', '/reports/dashboards',
+    ]
+    assert soup.select_one('#reportsMenu a[href^="/reports/dashboards"]') is None
+    empty = render_navigation(app, nav_dashboards=[])
+    assert [link['href'] for link in empty.select('#dashboardsMenu a')] == [
+        '/reports/dashboards',
+    ]
+
+
 @pytest.mark.parametrize("update_available", [False, True])
 def test_navigation_update_badges_and_modal_entry_points(app, update_available):
     """Update availability and existing dialog actions keep their hooks."""

@@ -439,6 +439,46 @@ class ManagerDiscussedPoint(db.Model):
     item = db.relationship('ManagerInitiativeItem', back_populates='discussed_points')
 
 
+class Dashboard(db.Model):
+    """A named, user-curated collection of reusable widget instances."""
+
+    __tablename__ = 'dashboards'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    content_width = db.Column(db.String(16), nullable=False, default='wide', server_default='wide')
+    layout_revision = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+    widgets = db.relationship(
+        'DashboardWidget', back_populates='dashboard', cascade='all, delete-orphan',
+        order_by='DashboardWidget.sort_order, DashboardWidget.id',
+        lazy='selectin',
+    )
+
+
+class DashboardWidget(db.Model):
+    """One ordered placement of a code-defined widget on a dashboard."""
+
+    __tablename__ = 'dashboard_widgets'
+
+    id = db.Column(db.Integer, primary_key=True)
+    dashboard_id = db.Column(
+        db.Integer, db.ForeignKey('dashboards.id', ondelete='CASCADE'),
+        nullable=False, index=True,
+    )
+    widget_key = db.Column(db.String(100), nullable=False)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+    layout_column = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    layout_row = db.Column(db.Integer, nullable=False, default=0)
+    column_span = db.Column(db.Integer, nullable=False, default=12, server_default='12')
+    row_span = db.Column(db.Integer, nullable=False, default=8, server_default='8')
+    variant_key = db.Column(
+        db.String(32), nullable=False, default='detailed', server_default='detailed',
+    )
+    dashboard = db.relationship('Dashboard', back_populates='widgets')
+
+
 class OneOnOneWorkspace(db.Model):
     """Persistent notes and agenda for one person's recurring 1:1 meetings."""
     __tablename__ = 'one_on_one_workspaces'

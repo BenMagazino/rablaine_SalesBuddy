@@ -233,6 +233,35 @@ standalone UI iterations using entirely fictional data. See the
 - **Connect Export** - structured self-eval summaries over date ranges with per-customer breakdowns
 - **Global Search** - full-text across notes, customers, sellers, topics, and territories
 - **Analytics Dashboard** - activity heatmap, engagement trends, top topics and customers
+- **Custom Dashboards** - Saved dashboards appear by name in the top-level
+  Dashboards menu and the Quick Launcher, separately from Reports and All Reports.
+  They open as clean report views, without layout or management controls.
+  Use **Dashboards > Manage Dashboards** to create,
+  edit, rename, or delete them. Each entry has **View report**, **Edit**, and **Delete**
+  actions. Deleting requires confirmation and removes only the dashboard and its layout.
+  The editor saves fixed-layout collections of report-backed widgets.
+  Choose a Standard (1152px) or Wide (1344px) canvas. Place widgets
+  on a 12-column grid using drag handles, snapped resize handles, keyboard arrows, or
+  explicit position and size controls. Quarter, third, half, and full-width metric
+  variations and half/full-width detailed variations share the four Connect Goals
+  calculations. The searchable widget-library dialog shows actual-size previews using
+  current synced data, with report, width, and variation filters.
+  Edit layout keeps a local draft until **Save layout**; Cancel discards it.
+  Overlapping positions are rejected without pushing neighbors. Widgets never reflow,
+  shrink, or move when the window narrows; scroll the canvas instead. Overflowing widget
+  content scrolls inside its saved footprint, and removing a widget leaves its space empty.
+  Existing vertical dashboards migrate into full-width slots in their original order.
+  Changes in another window are detected before a stale draft can overwrite a newer layout.
+  Widgets retain the FY27 Data scope, annual setup, drill-through reports, charts, and
+  consumption history. Values are not saved snapshots. Full-window canvases and custom
+  seller/date filters are not available yet.
+  Compensation bucket choices are not restricted to Databases or Fabric. Any non-empty
+  selection from the current imported taxonomy can be confirmed for the fiscal year;
+  the existing Data goal calculations retain their report-specific scope.
+  Dashboard layouts are stored locally in `dashboards` and `dashboard_widgets`;
+  stable widget definitions and presentation support live in the code-owned catalog,
+  independently of menu placement. Geometry uses zero-based `layout_column` and
+  `layout_row`, plus `column_span`, `row_span` (64px rows with 12px gaps), and `variant_key`.
 - **Reports Navigation** - divider-separated groups for planning and reviews, execution
   and coverage, pipeline health, and account insights. Connect Goals' action reports
   stay together, separate from planning and review pages. All Reports uses the same

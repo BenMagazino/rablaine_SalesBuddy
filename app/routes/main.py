@@ -2112,6 +2112,8 @@ def dev_toggle_role():
 @main_bp.app_context_processor
 def inject_preferences():
     """Inject user preferences and pending link requests into all templates."""
+    from app.services.dashboards import get_dashboard_links
+
     pref = UserPreference.query.first() if g.user.is_authenticated else None
     dark_mode = pref.dark_mode if pref else None
     dark_mode_unset = dark_mode is None
@@ -2201,6 +2203,7 @@ def inject_preferences():
         update_available=update_available,
         today=datetime.today(),
         nav_sellers=nav_sellers,
+        nav_dashboards=get_dashboard_links(),
         fy_transition_active=fy_transition_active,
         fy_transition_label=fy_transition_label,
         fy_sync_complete=fy_sync_complete,

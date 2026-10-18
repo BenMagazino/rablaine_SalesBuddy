@@ -1,0 +1,39 @@
+        {% set hva = widgets.get('hva_coverage') %}
+        <section class="sb-goals-section" aria-labelledby="{{ widget_id_prefix|default('') }}hvaGoalTitle">
+            <div class="sb-goals-eyebrow">Execution evidence</div>
+            <h2  id="{{ widget_id_prefix|default('') }}hvaGoalTitle">Milestone HVA coverage</h2>
+            {% if hva and hva.available %}
+            <div class="sb-goals-hva-summary">
+                <div>
+                    <div class="sb-goals-value is-{{ hva.status_tone }}"
+                         tabindex="0" aria-describedby="{{ widget_id_prefix|default('') }}hvaExplanation">{{ "%.1f"|format(hva.value) }}%</div>
+                    <div class="sb-goals-measure">{{ hva.covered }} of {{ hva.total_count }} covered</div>
+                </div>
+                <p class="sb-goals-caption sb-goals-muted" id="{{ widget_id_prefix|default('') }}hvaExplanation">{{ hva.status_explanation }}</p>
+            </div>
+            <div class="sb-goals-progress"
+                 role="progressbar" aria-label="Milestone HVA coverage"
+                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ hva.value }}"
+                 aria-valuetext="{{ hva.value }} percent; 100 percent target">
+                <div class="sb-goals-progress-fill is-{{ hva.status_tone }}"
+                     style="width: {{ [hva.value, 100]|min }}%"></div>
+                <span class="sb-goals-target" style="left: 100%" title="100% goal"></span>
+            </div>
+            <div class="sb-goals-measure">Technical validation this fiscal year</div>
+            <dl class="sb-goals-validation-list sb-goals-caption">
+                {% for label, count in hva.validation_counts.items() %}
+                <div><dt >{{ label }}</dt><dd >{{ count }}</dd></div>
+                {% endfor %}
+            </dl>
+            <a class="sb-goals-link" href="{{ hva.destination }}">
+                Cover milestone gaps <i class="bi bi-arrow-right"></i>
+            </a>
+            {% if hva.freshness %}
+            <div class="sb-goals-caption sb-goals-muted">
+                Milestones and activities synced {{ hva.freshness.strftime('%b %d, %Y') }}
+            </div>
+            {% endif %}
+            {% else %}
+            <p class="sb-goals-muted">No active, on-team FY27 Data milestones with matched customers are available.</p>
+            {% endif %}
+        </section>

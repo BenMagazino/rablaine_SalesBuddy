@@ -344,7 +344,7 @@ Whenever any bucket picker saves a non-empty selection:
 
 The Action Center may render widgets only when:
 
-- Both `Databases` and `Fabric` are selected.
+- At least one compensation bucket is selected; no specific bucket is mandatory.
 - The saved fiscal-year stamp matches the current Microsoft fiscal year.
 - The confirmed taxonomy version matches the current taxonomy version.
 - Every selected bucket still exists in the imported revenue taxonomy.
@@ -1302,10 +1302,9 @@ Manager confirmation questions and answer space live in
 - A selection confirmed against an older taxonomy version shows the setup gate.
 - A selection containing a bucket no longer present in imported revenue data
   shows the setup gate and identifies the invalid selection.
-- A current-FY selection containing both `Databases` and `Fabric`, confirmed
-  against the current taxonomy, renders widgets.
-- A current-FY selection missing either required FY27 Data bucket shows the
-  setup gate and identifies the missing bucket.
+- Any non-empty current-FY selection confirmed against the current taxonomy renders
+  widgets, including selections without Databases or Fabric. The existing Data goal
+  calculations retain their report-specific scope independently of compensation choices.
 - Saving from the shared picker stamps the current fiscal year and taxonomy
   version.
 - Saving updates both the database fallback and existing local-storage key.

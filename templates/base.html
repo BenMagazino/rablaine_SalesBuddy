@@ -199,10 +199,25 @@
                             <li class="sb-menu-heading" role="presentation">Account insights</li>
                             <li><a class="sb-nav-link" href="{{ url_for('revenue.revenue_dashboard') }}"><i class="bi bi-graph-up"></i> Revenue Analyzer</a></li>
                             <li><a class="sb-nav-link" href="{{ url_for('reports.report_workload') }}"><i class="bi bi-tag"></i> Workload Report</a></li>
-                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_fabric_consumption') }}"><i class="bi bi-pie-chart"></i> Fabric Consumption</a></li>
                             <li><a class="sb-nav-link" href="{{ url_for('reports.report_ptof') }}"><i class="bi bi-arrow-left-right"></i> P to F</a></li>
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.report_fabric_consumption') }}"><i class="bi bi-pie-chart"></i> Fabric Consumption</a></li>
                             <li><a class="sb-nav-link" href="{{ url_for('reports.report_marketing_insights') }}"><i class="bi bi-megaphone"></i> Marketing Insights</a></li>
                             <li><a class="sb-nav-link" href="{{ url_for('revenue.report_synapse_customers') }}"><i class="bi bi-database-gear"></i> Synapse Customers</a></li>
+                        </ul>
+                    </li>
+                    <li class="sb-nav-group" id="navDashboards">
+                        <button class="sb-nav-trigger" id="dashboardsMenuDropdown" type="button" data-sb-menu="dashboardsMenu" aria-controls="dashboardsMenu" aria-haspopup="menu" aria-expanded="false" aria-label="Dashboards" title="Dashboards">
+                            <i class="bi bi-layout-wtf" aria-hidden="true"></i>
+                        </button>
+                        <ul class="sb-nav-menu" id="dashboardsMenu" popover="manual" role="menu" aria-labelledby="dashboardsMenuDropdown">
+                            {% if nav_dashboards %}
+                            <li class="sb-menu-heading" role="presentation">Saved dashboards</li>
+                            {% for dashboard in nav_dashboards %}
+                            <li><a class="sb-nav-link" href="{{ dashboard.url }}"><i class="bi bi-layout-wtf"></i> {{ dashboard.name }}</a></li>
+                            {% endfor %}
+                            <li><hr class="sb-menu-divider"></li>
+                            {% endif %}
+                            <li><a class="sb-nav-link" href="{{ url_for('reports.dashboards_hub') }}"><i class="bi bi-sliders"></i> Manage Dashboards</a></li>
                         </ul>
                     </li>
                     <li class="sb-nav-group" id="navBrowse">
@@ -787,7 +802,10 @@
                 if (h) reportHrefs.add(h.split('?')[0]);
             });
         }
-        ['navSellers', 'navReports', 'navBrowse'].forEach(function(dropId) {
+        var dashboardsPath = '{{ url_for("reports.dashboards_hub") }}';
+        ['navSellers', 'navReports', 'navDashboards', 'navBrowse'].forEach(function(dropId) {
+            if (dropId === 'navReports' &&
+                (path === dashboardsPath || path.startsWith(dashboardsPath + '/'))) return;
             var dropEl = document.getElementById(dropId);
             if (!dropEl) return;
             var items = dropEl.querySelectorAll('.sb-nav-link');

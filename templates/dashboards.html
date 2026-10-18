@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Manage Dashboards - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-dashboards.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Dashboards status">
+    <span>{{ dashboards|length }} saved dashboards</span>
+    <span>Saved locally. Widgets use current synced data.</span>
+</footer>
+{% endblock %}
+{% block content %}
+<section class="sb-dashboards sb-directory-frame" data-sb-page-surface
+         data-dashboard-hub aria-labelledby="dashboardsTitle">
+    <header class="db-header" data-sb-page-band>
+        <div>
+            <h1 id="dashboardsTitle">Manage Dashboards</h1>
+            <p>Create and arrange your dashboard reports. Open them from Dashboards or the quick launcher.</p>
+        </div>
+    </header>
+    <p class="db-error" id="dashboardError" role="alert" tabindex="-1" hidden></p>
+    <div class="db-reading" data-sb-page-body>
+        <form class="db-create" data-dashboard-create>
+            <label for="dashboardName">New dashboard</label>
+            <div class="db-form-row">
+                <input id="dashboardName" name="name" class="db-input" required maxlength="200"
+                       placeholder="e.g. Business priorities" autocomplete="off">
+                <button class="db-command is-primary" type="submit">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Create dashboard
+                </button>
+            </div>
+        </form>
+        {% if dashboards %}
+        <nav class="db-list" aria-label="Saved dashboards">
+            {% for dashboard in dashboards %}
+            <div class="db-list-row">
+                <span class="db-list-title">{{ dashboard.name }}</span>
+                <span class="db-muted">{{ dashboard.widget_count }} {{ 'widget' if dashboard.widget_count == 1 else 'widgets' }}</span>
+                <a class="db-command" href="{{ dashboard.url }}" aria-label="View {{ dashboard.name }} report">View report</a>
+                <a class="db-command" href="{{ url_for('reports.dashboard_edit', dashboard_id=dashboard.id) }}" aria-label="Edit {{ dashboard.name }}">Edit</a>
+                <button class="db-command is-danger" type="button"
+                        data-db-delete="{{ dashboard.id }}" data-dashboard-name="{{ dashboard.name }}"
+                        aria-label="Delete {{ dashboard.name }}">Delete</button>
+            </div>
+            {% endfor %}
+        </nav>
+        {% else %}
+        <div class="db-empty">
+            <h2>Track the parts of your business you care about.</h2>
+            <p>Create a dashboard, then add widgets from the library to bring your
+               metrics and reports together.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-dashboards.js') }}" defer></script>
+{% endblock %}

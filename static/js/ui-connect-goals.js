@@ -1,10 +1,6 @@
 (function (global) {
     'use strict';
 
-    function missingRequiredBuckets(selected) {
-        return ['Databases', 'Fabric'].filter(bucket => !selected.includes(bucket));
-    }
-
     async function confirmBuckets(selected, fetcher) {
         const response = await fetcher('/api/revenue/compensated-buckets', {
             method: 'POST',
@@ -59,16 +55,23 @@
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = {
-            missingRequiredBuckets, confirmBuckets, coverageFilter, validateReadingView,
+            confirmBuckets, coverageFilter, validateReadingView,
             quarterChartSeries,
         };
     }
     if (!global.document) return;
+    const initialized = new WeakSet();
+    const cleanup = new WeakMap();
 
-    function init() {
-        const root = document.querySelector('.sb-connect-goals');
-        if (!root) return;
-        const config = JSON.parse(document.getElementById('connectGoalsData').textContent);
+    function initRoot(root) {
+        if (initialized.has(root)) return;
+        initialized.add(root);
+        function find(id) {
+            return root.dataset.widgetPrefix
+                ? root.querySelector('#' + root.dataset.widgetPrefix + id)
+                : document.getElementById(id);
+        }
+        const config = JSON.parse(find('connectGoalsData').textContent);
 
         function setStatus(status, message, error) {
             status.classList.toggle('is-danger', error);
@@ -78,12 +81,12 @@
 
         function warn(message, error) {
             console.error('Connect Goals reading state:', error);
-            const notice = document.getElementById('connectNavigationStatus');
+            const notice = find('connectNavigationStatus');
             notice.hidden = false;
             notice.textContent = message;
         }
 
-        const reading = document.getElementById('connectGoalsReading');
+        const reading = find('connectGoalsReading');
         if (reading && root.dataset.embedded !== 'true') {
             const histories = Array.from(reading.querySelectorAll('[data-goals-history-key]'));
             function restoreReading() {
@@ -135,9 +138,8 @@
                 }
                 const selected = Array.from(form.querySelectorAll('input:checked'))
                     .map(input => input.value);
-                const missing = missingRequiredBuckets(selected);
-                if (missing.length) {
-                    setStatus(status, 'Select ' + missing.join(' and ') + ' to continue.', true);
+                if (!selected.length) {
+                    setStatus(status, 'Select at least one compensation bucket to continue.', true);
                     return;
                 }
                 pending = true;
@@ -179,27 +181,31 @@
             });
         }
 
-        const setupForm = document.getElementById('connectSetupForm');
-        if (setupForm) bindForm(setupForm, document.getElementById('connectSetupStatus'));
-        const bucketForm = document.getElementById('connectBucketModalForm');
+        const setupForm = find('connectSetupForm');
+        if (setupForm) bindForm(setupForm, find('connectSetupStatus'));
+        const bucketForm = find('connectBucketModalForm');
         if (bucketForm) bindForm(bucketForm,
-            document.getElementById('connectBucketModalStatus'),
-            document.getElementById('connectBucketModal'));
+            find('connectBucketModalStatus'),
+            find('connectBucketModal'));
 
-        global.openMilestoneCoverage = function () {
+        function openMilestoneCoverage() {
             try {
                 const state = coverageFilter(config.teamFilter);
                 global.localStorage.setItem('salesbuddy_milestone_filters', JSON.stringify(state));
                 global.location.assign('/reports/milestone-tracker');
             } catch (error) {
                 console.error('Connect Goals milestone navigation:', error);
-                const status = document.getElementById('connectNavigationStatus');
+                const status = find('connectNavigationStatus');
                 status.hidden = false;
                 status.textContent = 'Could not open the scoped milestone report. ' + error.message;
             }
-        };
+        }
+        if (!root.dataset.widgetPrefix) global.openMilestoneCoverage = openMilestoneCoverage;
+        root.querySelectorAll('[data-goals-coverage]').forEach(button => {
+            button.addEventListener('click', openMilestoneCoverage);
+        });
 
-        const canvas = document.getElementById('connectU2cChart');
+        const canvas = find('connectU2cChart');
         if (!canvas || !config.u2c.trend.length) return;
         const series = quarterChartSeries(config.u2c);
         let chart;
@@ -297,12 +303,31 @@
             chart = new global.Chart(canvas, chartConfig);
         }
         applyChartTheme();
-        new global.MutationObserver(applyChartTheme).observe(document.documentElement, {
+        const observer = new global.MutationObserver(applyChartTheme);
+        observer.observe(document.documentElement, {
             attributes: true, attributeFilter: ['data-sb-mode', 'data-sb-family'],
+        });
+        cleanup.set(root, () => {
+            observer.disconnect();
+            chart.destroy();
         });
     }
 
+    function init(container = document) {
+        container.querySelectorAll('.sb-connect-goals').forEach(initRoot);
+    }
+    global.SBConnectGoals = Object.freeze({
+        init,
+        destroy(container) {
+            container.querySelectorAll('.sb-connect-goals').forEach(root => {
+                cleanup.get(root)?.();
+                cleanup.delete(root);
+                initialized.delete(root);
+            });
+        },
+    });
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => init());
     } else init();
 })(typeof window === 'undefined' ? globalThis : window);
