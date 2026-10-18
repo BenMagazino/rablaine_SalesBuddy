@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/18/2026
+## 10/18/2026 - 57c9a59b
 
 - Create multiple custom dashboards with resizable report widgets, content-fitted library previews, and locally saved drafts. Choose Cards or Dividers, undo changes, and preview your dashboard before publishing.
 - Customize or delete the Connect Goals starter dashboard and recreate it with Add from template. Set up compensation buckets once to update all widgets that need them. Dashboards now appears before Reports in the navigation.
