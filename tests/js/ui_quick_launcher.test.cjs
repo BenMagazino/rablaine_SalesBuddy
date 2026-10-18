@@ -38,6 +38,7 @@ function launcher({embedded = false} = {}) {
     }
     const nav = {
         '#dashboardsMenu a[href]': [],
+        '#sellersMenu a[href]': [],
         '#reportsMenu a[href]': [
             link('Whitespace Analysis', '/reports/whitespace'),
             link('Workload Report', '/reports/workload'),
@@ -163,6 +164,54 @@ test('saved dashboards use report URLs and refresh from navigation on every open
     ui.dialog.open = false;
     ui.open();
     ui.query('seller weekly');
+    assert.equal(ui.links().length, 0);
+});
+
+test('seller names open their existing detail pages and directory aliases are deduplicated', () => {
+    const ui = launcher();
+    const Element = ui.nav['#reportsMenu a[href]'][0].constructor;
+    const seller = new Element('a', 'Alex Seller');
+    seller.setAttribute('href', '/seller/42');
+    seller.records = {'.bi': {className: 'bi bi-person'}};
+    const directory = new Element('a', 'All Sellers');
+    directory.setAttribute('href', '/sellers');
+    const alias = new Element('a', 'Sellers');
+    alias.setAttribute('href', '/sellers');
+    ui.nav['#sellersMenu a[href]'].push(directory, seller);
+    ui.nav['#browseMenu a[href]'].push(alias);
+    ui.open();
+    ui.query('alex');
+    assert.equal(ui.links().length, 1);
+    assert.equal(ui.links()[0].href, '/seller/42');
+    assert.equal(ui.links()[0].children[0].className, 'bi bi-person');
+    assert.equal(ui.links()[0].children[2].textContent, 'Sellers');
+    ui.key(ui.input, 'Enter');
+    assert.equal(ui.links()[0].clicked, true);
+    ui.query('sellers');
+    assert.equal(ui.links().length, 1);
+    assert.equal(ui.links()[0].href, '/sellers');
+});
+
+test('seller renames and removals refresh from navigation on the next opening', () => {
+    const ui = launcher();
+    const Element = ui.nav['#reportsMenu a[href]'][0].constructor;
+    const seller = new Element('a', 'Original seller');
+    seller.setAttribute('href', '/seller/42');
+    ui.nav['#sellersMenu a[href]'].push(seller);
+    ui.open();
+    ui.query('original seller');
+    assert.equal(ui.links().length, 1);
+    seller.textContent = 'Renamed seller';
+    ui.dialog.open = false;
+    ui.open();
+    ui.query('original seller');
+    assert.equal(ui.links().length, 0);
+    ui.query('renamed seller');
+    assert.equal(ui.links()[0].href, '/seller/42');
+    ui.nav['#sellersMenu a[href]'].pop();
+    ui.dialog.open = false;
+    ui.open();
+    ui.query('renamed seller');
     assert.equal(ui.links().length, 0);
 });
 
