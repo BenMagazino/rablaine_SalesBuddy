@@ -150,10 +150,12 @@ class TestToolCoverage:
     def test_dashboard_tool_exists(self):
         """Saved dashboards and their widget instances share a read tool."""
         assert 'get_dashboards' in self._tool_names()
+        assert 'report_dashboard_signals' in self._tool_names()
 
     def test_fabric_consumption_report_tool_exists(self):
         """Saved Fabric measurements must be available without starting an import."""
         assert 'report_fabric_consumption' in self._tool_names()
+        assert 'report_fabric_capacity_pressure' in self._tool_names()
 
     def test_ptof_report_tool_exists(self):
         """Renewal assessments and details must be queryable without refreshing."""

@@ -19,6 +19,7 @@ REPORT_ENDPOINTS = {
     "reports.report_msx_workspace",
     "reports.report_marketing_insights",
     "reports.report_fabric_consumption",
+    "reports.report_fabric_capacity_pressure",
     "reports.report_ptof",
     "reports.report_u2c",
     "reports.report_connect_impact",

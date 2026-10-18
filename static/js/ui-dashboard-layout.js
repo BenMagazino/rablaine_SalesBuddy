@@ -377,6 +377,7 @@
                 tile.dataset.loadedPresentation = signature;
                 tile.dataset.variant = item.variant_key;
                 global.SBConnectGoals.init(tile);
+                global.SBTableSort?.mount(tile);
             } catch (error) {
                 if (contentRequests.get(item.id) !== request) return;
                 if (reportError) {

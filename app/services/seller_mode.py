@@ -2,7 +2,7 @@
 Seller mode helpers for Sales Buddy.
 Provides shared utility for resolving the active seller in seller mode.
 """
-from flask import session
+from flask import has_request_context, session
 
 from app.models import UserPreference
 
@@ -16,4 +16,4 @@ def get_seller_mode_seller_id():
     pref = UserPreference.query.first()
     if pref and pref.user_role == 'dss' and pref.my_seller_id:
         return pref.my_seller_id
-    return session.get('seller_mode_seller_id')
+    return session.get('seller_mode_seller_id') if has_request_context() else None

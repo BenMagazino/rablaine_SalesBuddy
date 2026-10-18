@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Fabric Capacity Pressure - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-fabric-consumption.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-fabric-pressure.css') }}">
+{% endblock %}
+{% block content %}
+<section class="sb-fabric sb-fabric-overview sb-fabric-pressure" data-sb-page-surface aria-labelledby="pressureTitle">
+    <header class="sb-fabric-header" data-sb-page-band>
+        <div><h1 id="pressureTitle">Fabric Capacity Pressure</h1><p>Investigate recorded throttling, utilization, and gaps in saved measurements.</p></div>
+        <div class="sb-pressure-commands">
+            {% set export_table_id = '#fabricPressureTable' %}
+            {% set export_filename = 'fabric-capacity-pressure' %}
+            {% set export_title = 'Fabric Capacity Pressure' %}
+            {% include 'partials/_report_export.html' %}
+            <a class="sb-dialog-button" href="{{ url_for('reports.report_fabric_consumption') }}">Fabric Consumption / import</a>
+        </div>
+    </header>
+    {% if data.snapshot %}
+    <dl class="sb-pressure-totals" data-sb-page-band aria-label="All saved capacities, before filtering">
+        {% for label, key in [('Need attention', 'attention'), ('Throttling', 'throttled'), ('Latest hour ≥100%', 'overloaded'), ('Near limit', 'near_limit'), ('Latest-hour peaks', 'historical_spike'), ('Incomplete', 'unknown')] %}
+        <div><dt>{{ label }}</dt><dd>{{ data.counts[key] }}</dd></div>
+        {% endfor %}
+    </dl>
+    {% endif %}
+    <form class="sb-fabric-import-band" data-sb-page-band method="get">
+        <label>Find customer or capacity <input type="search" name="q" value="{{ data.filters.search }}" placeholder="Customer, seller, SKU, TPID or capacity ID"></label>
+        <label>Signal <select name="signal">{% for key, label in signal_labels.items() %}<option value="{{ key }}"{% if data.filters.signal == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+        <button type="submit" class="sb-dialog-button primary">Apply filters</button>
+        <a href="{{ url_for('reports.report_fabric_capacity_pressure') }}">Reset</a>
+    </form>
+    <div class="sb-pressure-explanation" data-sb-page-band>
+        <p>Measurements: <strong>{{ data.capacity_as_of_date or 'date unknown' }}</strong>{% if data.snapshot_age_days is not none %} · {{ data.snapshot_age_days }} days old{% endif %}. Saved snapshot, not live service health. Counts above cover all {{ data.counts.capacities }} saved capacities and can overlap.</p>
+        <details><summary>How pressure is identified</summary>
+            <p>Investigation heuristics, not official alerts: throttling recorded &gt;0 seconds; latest-hour utilization ≥80% (near limit) or ≥100% (overload); peak 30-second utilization within that hour ≥100%. Missing metrics remain unknown. Utilization percentages are never summed.</p>
+            <p>The 30-second peak covers the latest available hour, not the full 15-day period. It can be lower than the 15-day average.</p>
+            <p>Capacity window: {{ data.capacity_window or 'unknown' }}. Imported {{ data.snapshot.imported_at if data.snapshot and data.snapshot.imported_at else 'at an unknown time' }}. Recorded throttling and peaks may be historical, not ongoing.</p>
+        </details>
+    </div>
+    <div class="sb-fabric-overview-table" data-sb-page-body tabindex="0" role="region" aria-label="Capacity pressure investigation">
+        {% if data.rows %}
+        <table id="fabricPressureTable" class="sb-fabric-table sb-pressure-table" data-sb-sortable data-sb-sort-key="fabric-capacity-pressure">
+            <caption class="sb-visually-hidden">Saved capacity signals, ranked by investigation priority. Missing values are unknown.</caption>
+            <thead><tr>
+                <th scope="col" data-sb-sort-type="text">Customer / capacity</th>
+                <th scope="col" data-sb-sort-type="text">Seller</th>
+                <th scope="col" data-sb-sort-type="number">15-day avg %</th>
+                <th scope="col" data-sb-sort-type="number" title="Utilization in the latest available hour of the saved snapshot.">Latest hour %</th>
+                <th scope="col" data-sb-sort-type="number" title="Highest 30-second utilization within the latest available hour, not the full 15-day period.">Latest-hour peak (30s) %</th>
+                <th scope="col" data-sb-sort-type="number">Throttling seconds</th>
+                <th scope="col" data-sb-sort-type="text">Signals</th>
+            </tr></thead>
+            <tbody>{% for row in data.rows %}
+                <tr data-row-key="{{ row.row_key }}">
+                    <td><a href="{{ row.destination }}" title="Capacity {{ row.capacity.capacity_id }}; tenant {{ row.capacity.tenant_id }}">{{ row.name }}</a><small>Capacity {{ row.capacity_index }}/{{ row.capacity_total }} · {{ row.capacity.sku or 'SKU not supplied' }}</small></td>
+                    <td>{% if row.seller %}<a class="sb-pressure-seller badge bg-primary text-decoration-none" href="{{ url_for('sellers.seller_view', id=row.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ row.seller.name }}</a>{% else %}No seller{% endif %}</td>
+                    {% for key in ['utilization_pct', 'latest_utilization_pct', 'max_30s_utilization_pct', 'throttling_seconds'] %}
+                    <td data-sb-sort-value="{{ row[key] if row[key] is not none else '' }}">{% if row[key] is none %}Not supplied{% elif key == 'throttling_seconds' %}{{ '{:,.0f}'.format(row[key]) }}{% else %}{{ '%.1f'|format(row[key]) }}%{% endif %}</td>
+                    {% endfor %}
+                    <td class="sb-pressure-signals">{% for key, active in row.signals.items() if active %}<span>{{ signal_labels[key] }}</span>{% else %}{{ signal_labels[row.state] }}{% endfor %}{% if row.unknown and row.attention %}<span>Incomplete metrics</span>{% endif %}</td>
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}
+        <p class="sb-pressure-empty">{% if data.snapshot_state == 'not_imported' %}No saved Fabric snapshot. Open Fabric Consumption to import your data.{% elif data.snapshot_state == 'empty' %}No saved capacities to assess. Missing data is not evidence of healthy capacity.{% else %}No capacities match these filters. Choose All capacities or clear the search to investigate the rest of the snapshot.{% endif %}</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Capacity pressure status">{{ data.matching_count }} matching / {{ data.counts.capacities }} saved capacities · Measurements {{ data.capacity_as_of_date or 'date unknown' }}</footer>
+{% endblock %}

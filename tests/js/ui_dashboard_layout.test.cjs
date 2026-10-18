@@ -611,6 +611,8 @@ test('discarding a variation change prevents late report responses from replacin
 
 test('report content arriving during preview stays interactive and locks again on return', async () => {
     const ui = editorUI(true);
+    const mounted = [];
+    ui.window.SBTableSort = {mount(root) { mounted.push(root); }};
     let finish;
     ui.window.fetch = () => new Promise(resolve => { finish = resolve; });
     ui.window.SBConnectGoals = {destroy() {}, init() {}};
@@ -622,6 +624,7 @@ test('report content arriving during preview stays interactive and locks again o
     finish({ok: true, json: async () => ({success: true, html: '<div>Detailed</div>'})});
     await new Promise(setImmediate);
     assert.equal(ui.tile.dataset.loadedPresentation, 'detailed:6');
+    assert.deepEqual(mounted, [ui.tile]);
     assert.equal(ui.body.inert, false);
     assert.equal(ui.nodes.dashboardError.hidden, true);
     ui.nodes.exitDashboardDraftPreview.click();

@@ -1,0 +1,15 @@
+.sb-page-frame #main-content > .sb-fabric.sb-fabric-pressure[data-sb-page-surface] { max-width: 1344px; }
+.sb-pressure-commands { display: flex; align-items: center; gap: 12px; }
+.sb-fabric-pressure input[type="search"] { width: 320px; }
+.sb-pressure-totals { display: flex; flex-wrap: wrap; gap: 12px 32px; margin: 0; padding: 12px 20px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-pressure-totals > div { display: flex; align-items: baseline; gap: 12px; }
+.sb-pressure-totals dt { color: var(--sb-ui-muted); font-size: 12px; }
+.sb-pressure-totals dd { margin: 0; font-weight: 600; }
+.sb-pressure-explanation { padding: 8px 20px; border-bottom: 1px solid var(--sb-ui-line); font-size: 12px; }
+.sb-pressure-explanation details { margin: 0; }
+.sb-pressure-table td { white-space: normal; }
+.sb-pressure-table td:nth-child(n+3):nth-child(-n+6) { text-align: right; white-space: nowrap; }
+.sb-pressure-table small { display: block; color: var(--sb-ui-muted); font-size: 11px; margin-top: 4px; }
+.sb-pressure-signals span { display: block; }
+.sb-pressure-seller { display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 5px; background: var(--sb-ui-selection); color: var(--sb-ui-accent); text-decoration: none; font-size: 12px; }
+.sb-pressure-empty { padding: 24px 20px; }

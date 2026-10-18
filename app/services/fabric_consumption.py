@@ -6,8 +6,9 @@ import logging
 import math
 import threading
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Callable
+from urllib.parse import urlencode
 
 from flask import current_app
 from sqlalchemy.orm import joinedload
@@ -838,6 +839,137 @@ def get_fabric_capacity_overview() -> dict:
             })
     return {
         "snapshot": snapshot, "rows": rows, "workloads": names, "totals": report["totals"],
+    }
+
+
+PRESSURE_SIGNALS = {
+    "attention": "Needs attention", "all": "All capacities",
+    "throttled": "Throttling recorded", "overloaded": "Latest hour at/above 100%",
+    "near_limit": "Latest hour 80% to <100%",
+    "historical_spike": "Latest-hour peak at/above 100%",
+    "unknown": "Incomplete metrics", "below_threshold": "Below thresholds",
+}
+PRESSURE_WIDGET_LIMIT = 5
+
+
+def get_fabric_capacity_pressure_report(
+    reference: date | None = None, *, signal: str = "all", search: str = "",
+) -> dict:
+    """Prioritize native saved capacity signals without implying live health.
+
+    These are investigation heuristics, not official alert thresholds.
+    Signal counts overlap; attention counts each customer/tenant/capacity once.
+    """
+    if signal not in PRESSURE_SIGNALS:
+        raise ValueError("Choose a valid capacity signal filter.")
+    reference = reference or date.today()
+    overview = get_fabric_capacity_overview()
+    rows = []
+    counts = {
+        "capacities": 0, "attention": 0, "throttled": 0, "overloaded": 0,
+        "near_limit": 0, "historical_spike": 0, "unknown": 0,
+        "below_threshold": 0, "customers_without_capacity": 0,
+    }
+    seen = set()
+    for source in overview["rows"]:
+        capacity = source["capacity"]
+        if capacity is None:
+            counts["customers_without_capacity"] += 1
+            continue
+        identity = (source["id"], capacity.get("tenant_id"), capacity.get("capacity_id"))
+        if identity in seen:
+            continue
+        seen.add(identity)
+        latest = _number(capacity.get("latest_utilization_pct"))
+        peak = _number(capacity.get("max_30s_utilization_pct"))
+        throttle = _number(capacity.get("throttling_seconds"))
+        signals = {
+            "throttled": throttle is not None and throttle > 0,
+            "overloaded": latest is not None and latest >= 100,
+            "near_limit": latest is not None and 80 <= latest < 100,
+            "historical_spike": peak is not None and peak >= 100,
+        }
+        unknown = any(value is None for value in (latest, peak, throttle))
+        attention = any(signals.values())
+        priority = next((index for index, flag in enumerate(signals.values()) if flag), 4)
+        state = next((name for name, flag in signals.items() if flag),
+                     "unknown" if unknown else "below_threshold")
+        for name, flag in signals.items():
+            counts[name] += int(flag)
+        counts["unknown"] += int(unknown)
+        counts["attention"] += int(attention)
+        counts["below_threshold"] += int(not attention and not unknown)
+        capacity_key = f"{capacity.get('tenant_id') or ''}|{capacity.get('capacity_id') or ''}"
+        rows.append({
+            **source, "capacity_key": capacity_key,
+            "row_key": f"{source['id']}:{capacity_key}",
+            "utilization_pct": _number(capacity.get("utilization_pct")),
+            "latest_utilization_pct": latest, "max_30s_utilization_pct": peak,
+            "throttling_seconds": throttle, "signals": signals,
+            "unknown": unknown, "attention": attention, "state": state,
+            "priority": priority,
+            "destination": "/reports/fabric-consumption?" + urlencode({
+                "customer_id": source["id"], "capacity": capacity_key,
+            }),
+        })
+    rows.sort(key=lambda row: (
+        row["priority"], not row["unknown"] if row["priority"] == 4 else False,
+        -(row["throttling_seconds"] or 0), -(row["latest_utilization_pct"] or 0),
+        row["name"].casefold(), row["row_key"],
+    ))
+    counts["capacities"] = len(rows)
+    needle = search.strip().casefold()
+    rows = [
+        row for row in rows
+        if (
+            signal == "all"
+            or signal in row["signals"] and row["signals"][signal]
+            or signal == "attention" and row["attention"]
+            or signal == "unknown" and row["unknown"]
+            or signal == "below_threshold" and row["state"] == "below_threshold"
+        ) and (
+            not needle or needle in " ".join(str(value or "") for value in (
+                row["name"], row.get("tpid"), row["capacity"].get("capacity_id"),
+                row["capacity"].get("tenant_id"), row["capacity"].get("sku"),
+                (row.get("seller") or {}).get("name"),
+            )).casefold()
+        )
+    ]
+    snapshot = overview["snapshot"]
+    as_of = snapshot.get("capacity_as_of") if snapshot else None
+    try:
+        parsed_as_of = _source_datetime(as_of) if as_of else None
+    except (FabricPullError, ValueError, OverflowError, OSError):
+        parsed_as_of = None
+    as_of_date = parsed_as_of.date() if parsed_as_of else None
+    return {
+        "snapshot": snapshot,
+        "snapshot_state": (
+            "not_imported" if snapshot is None else
+            "available" if counts["capacities"] else "empty"
+        ),
+        "scope": "all_local_accounts", "destination": "/reports/fabric-capacity-pressure",
+        "reference_date": reference.isoformat(), "rows": rows, "counts": counts,
+        "filters": {"signal": signal, "search": search.strip()},
+        "matching_count": len(rows),
+        "capacity_as_of": as_of if parsed_as_of else None,
+        "capacity_as_of_date": as_of_date.isoformat() if as_of_date else None,
+        "capacity_window": snapshot.get("capacity_window") if snapshot else None,
+        "snapshot_age_days": (reference - as_of_date).days if as_of_date else None,
+        "thresholds": {"near_limit_pct": 80, "overloaded_pct": 100,
+                       "historical_spike_pct": 100, "throttling_seconds": 0},
+        "signal_basis": "Investigation heuristics, not official alerts; counts can overlap",
+    }
+
+
+def get_fabric_capacity_pressure_widget(reference: date | None = None) -> dict:
+    """Show a bounded attention preview while keeping complete report counts."""
+    report = get_fabric_capacity_pressure_report(reference)
+    attention = [row for row in report["rows"] if row["attention"]]
+    rows = attention[:PRESSURE_WIDGET_LIMIT]
+    return {
+        **report, "rows": rows, "preview_limit": PRESSURE_WIDGET_LIMIT,
+        "shown_count": len(rows), "remaining_count": len(attention) - len(rows),
     }
 
 

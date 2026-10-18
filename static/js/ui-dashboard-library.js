@@ -1,5 +1,16 @@
 (function (global) {
     'use strict';
+
+    function fitPreviewRows(height, variant, grid) {
+        if (!Number.isFinite(height) || height <= 0) {
+            throw new Error('The widget preview could not be measured.');
+        }
+        return Math.min(variant.default_height, Math.max(variant.min_height,
+            Math.ceil((height + grid.gap) / (grid.rowHeight + grid.gap))));
+    }
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = {fitPreviewRows};
+    }
     if (!global.document) return;
 
     function init() {
@@ -22,6 +33,7 @@
         let controller = null;
         let generation = 0;
         let pending = false;
+        let previewRows = null;
 
         function eligibleVariants(definition) {
             return definition.variants.filter(variant =>
@@ -43,6 +55,8 @@
             generation++;
             global.SBConnectGoals.destroy(preview);
             preview.replaceChildren();
+            previewRows = null;
+            document.getElementById('previewDimensions').textContent = '';
             addButton.disabled = true;
         }
         function configureWidths(preferred) {
@@ -64,10 +78,6 @@
             preview.dataset.displayStyle = settings.displayStyle;
             const pixels = (config.widths[settings.contentWidth] - config.grid.padding * 2
                 + config.grid.gap) / 12 * span - config.grid.gap;
-            const height = variant.default_height * (config.grid.rowHeight + config.grid.gap)
-                - config.grid.gap;
-            document.getElementById('previewDimensions').textContent =
-                `${labels[span]} width · ${Math.round(pixels)} × ${height}px · Scroll to inspect`;
             try {
                 const query = new URLSearchParams({
                     key: selected.key, variant: variant.key, width: String(span),
@@ -83,10 +93,18 @@
                 article.className = 'db-widget db-preview-widget';
                 article.dataset.columnSpan = span;
                 article.style.width = pixels + 'px';
-                article.style.height = height + 'px';
                 article.insertAdjacentHTML('beforeend', data.html);
                 preview.append(article);
                 global.SBConnectGoals.init(preview);
+                global.SBTableSort?.mount(preview);
+                previewRows = fitPreviewRows(article.getBoundingClientRect().height,
+                    variant, config.grid);
+                const height = previewRows * (config.grid.rowHeight + config.grid.gap)
+                    - config.grid.gap;
+                article.style.height = height + 'px';
+                preview.scrollTop = 0;
+                document.getElementById('previewDimensions').textContent =
+                    `${selected.scope} · ${labels[span]} width · ${Math.round(pixels)} × ${height}px · Content-fitted starting size`;
                 addButton.disabled = false;
             } catch (error) {
                 if (error.name === 'AbortError' || requestGeneration !== generation) return;
@@ -164,7 +182,7 @@
             loading.hidden = true;
         });
         addButton.addEventListener('click', async () => {
-            if (pending || !selected) return;
+            if (pending || !selected || previewRows === null) return;
             pending = true;
             const variant = selected.variants.find(item => item.key === variantSelect.value);
             const controls = Array.from(dialog.querySelectorAll('button, input, select'));
@@ -174,7 +192,7 @@
             try {
                 await global.SBDashboardEditor.addWidget({
                         key: selected.key, variant_key: variant.key,
-                        column_span: Number(widthSelect.value), row_span: variant.default_height,
+                        column_span: Number(widthSelect.value), row_span: previewRows,
                 });
                 pending = false;
                 global.SBDialog.close(dialog, 'added');
@@ -190,4 +208,4 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
-})(window);
+})(typeof window !== 'undefined' ? window : globalThis);

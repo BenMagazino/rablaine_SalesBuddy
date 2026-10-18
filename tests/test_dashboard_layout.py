@@ -169,7 +169,7 @@ def test_display_choice_rejects_stale_changes_and_survives_older_layout_clients(
 @pytest.mark.parametrize('changes', [
     {'layout_column': -1}, {'layout_column': 1}, {'layout_row': -1},
     {'layout_row': 1000}, {'layout_row': 1.5}, {'column_span': True},
-    {'column_span': 5}, {'column_span': 3}, {'row_span': 4},
+    {'column_span': 5}, {'column_span': 3}, {'row_span': 1},
     {'row_span': 21}, {'row_span': None}, {'variant_key': 'invented'},
 ])
 def test_invalid_geometry_is_rejected_without_partial_changes(client, changes):
@@ -183,6 +183,24 @@ def test_invalid_geometry_is_rejected_without_partial_changes(client, changes):
     assert response.status_code == 400
     assert response.json['success'] is False
     assert layout_payload(client, dashboard_id) == before
+
+
+@pytest.mark.parametrize('variant', ['metric', 'detailed'])
+def test_content_fitted_sizes_save_without_resizing_other_widgets(client, variant):
+    """Compact legal insertions persist exactly while existing fixed placements stay put."""
+    dashboard_id = create_dashboard(client)
+    add_widget(client, dashboard_id)
+    before = layout_payload(client, dashboard_id)['widgets']
+    response = client.post(f'{BASE}/{dashboard_id}/widgets', json={
+        'key': 'fabric.capacity_pressure', 'variant_key': variant,
+        'column_span': 6, 'row_span': 2,
+    })
+    assert response.status_code == 200
+    payload = layout_payload(client, dashboard_id)
+    assert payload['widgets'][:-1] == before
+    assert payload['widgets'][-1]['row_span'] == 2
+    assert client.post(f'{BASE}/{dashboard_id}/layout', json=payload).status_code == 200
+    assert layout_payload(client, dashboard_id)['widgets'] == payload['widgets']
 
 
 def test_overlap_and_foreign_or_duplicate_instances_are_rejected_atomically(client):

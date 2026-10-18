@@ -2,6 +2,7 @@
 <div class="db-widget-body"{% if instance.requirements %} data-widget-requirements{% endif %}>
 {% if instance.data %}
     {% set widget_id_prefix = 'dw' ~ instance.id ~ '-' %}
+    {% if instance.key.startswith('connect_goals.') %}
     {% set widgets = {instance.data.key: instance.data} %}
     <div class="sb-connect-goals" data-widget-prefix="{{ widget_id_prefix }}" data-embedded="true">
         <p class="sb-goals-notice" id="{{ widget_id_prefix }}connectNavigationStatus" role="alert" hidden></p>
@@ -11,6 +12,9 @@
             'u2c': instance.data if instance.data.key == 'u2c' and instance.variant_key == 'detailed' else none
         }|tojson }}</script>
     </div>
+    {% else %}
+        {% include instance.template %}
+    {% endif %}
 {% elif instance.requirements %}
     <div class="db-widget-unavailable db-widget-requirements">
         <h2>{{ instance.title }}</h2>

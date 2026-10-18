@@ -305,6 +305,28 @@ def fabric_capacity_overview_data():
     return jsonify(success=True, **get_fabric_capacity_overview())
 
 
+@bp.route('/api/reports/fabric-capacity-pressure')
+@bp.route('/reports/fabric-capacity-pressure')
+def report_fabric_capacity_pressure():
+    """Investigate the full saved capacity population behind the compact widget."""
+    from app.services.fabric_consumption import (
+        PRESSURE_SIGNALS, get_fabric_capacity_pressure_report,
+    )
+
+    try:
+        data = get_fabric_capacity_pressure_report(
+            signal=request.args.get('signal', 'attention'),
+            search=request.args.get('q', ''),
+        )
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    if request.path.startswith('/api/'):
+        return jsonify(success=True, **data)
+    return render_template(
+        'report_fabric_capacity_pressure.html', data=data, signal_labels=PRESSURE_SIGNALS,
+    )
+
+
 @bp.route('/api/reports/fabric-consumption')
 def fabric_consumption_data():
     """Read a saved Fabric snapshot without contacting the remote report."""
@@ -744,6 +766,16 @@ def reports_hub():
                     ),
                     'icon': 'bi-pie-chart',
                     'url': url_for('reports.report_fabric_consumption'),
+                },
+                {
+                    'id': 'fabric-capacity-pressure',
+                    'name': 'Fabric Capacity Pressure',
+                    'description': (
+                        'Investigate saved capacity throttling, high utilization, '
+                        'historical peaks, and incomplete measurements.'
+                    ),
+                    'icon': 'bi-speedometer2',
+                    'url': url_for('reports.report_fabric_capacity_pressure'),
                 },
                 {
                     'id': 'marketing-insights',
@@ -1471,61 +1503,9 @@ def report_hygiene():
     Shows engagements without milestones and milestones without
     engagements so gaps can be identified and annotated quickly.
     """
-    from app.services.seller_mode import get_seller_mode_seller_id
-    seller_mode_sid = get_seller_mode_seller_id()
+    from app.services.hygiene import get_hygiene_report_data
 
-    # --- Engagements without milestones ---
-    eng_q = (
-        Engagement.query
-        .filter(
-            Engagement.status == 'Active',
-            ~Engagement.milestones.any(),
-        )
-        .options(db.joinedload(Engagement.customer))
-        .order_by(Engagement.estimated_acr.desc(), Engagement.title)
-    )
-    if seller_mode_sid:
-        eng_q = eng_q.join(
-            Customer, Engagement.customer_id == Customer.id
-        ).filter(Customer.seller_id == seller_mode_sid)
-    engagements_no_ms = eng_q.all()
-
-    # --- Milestones without engagements (active statuses, all team status) ---
-    ms_q = (
-        Milestone.query
-        .filter(
-            Milestone.customer_id.isnot(None),
-            Milestone.msx_status.in_(['On Track', 'At Risk', 'Blocked']),
-            ~Milestone.engagements.any(),
-        )
-        .options(
-            db.joinedload(Milestone.customer).joinedload(Customer.seller),
-        )
-        .order_by(Milestone.monthly_usage.desc(), Milestone.title)
-    )
-    if seller_mode_sid:
-        ms_q = ms_q.join(
-            Customer, Milestone.customer_id == Customer.id
-        ).filter(Customer.seller_id == seller_mode_sid)
-    milestones_no_eng = ms_q.all()
-
-    # Load reason notes for displayed engagements.
-    eng_ids = [e.id for e in engagements_no_ms]
-
-    eng_notes = {}
-    if eng_ids:
-        for hn in HygieneNote.query.filter(
-            HygieneNote.entity_type == 'engagement',
-            HygieneNote.entity_id.in_(eng_ids),
-        ).all():
-            eng_notes[hn.entity_id] = hn.note
-
-    return render_template(
-        'report_hygiene.html',
-        engagements_no_ms=engagements_no_ms,
-        milestones_no_eng=milestones_no_eng,
-        eng_notes=eng_notes,
-    )
+    return render_template('report_hygiene.html', **get_hygiene_report_data())
 
 
 @bp.route('/api/hygiene-note', methods=['POST'])

@@ -11,6 +11,12 @@ from typing import Any
 
 from app.models import Dashboard, DashboardWidget, db, utc_now
 from app.services import connect_goals
+from app.services.activity_coverage import get_meeting_activity_coverage_widget
+from app.services.fabric_consumption import get_fabric_capacity_pressure_widget
+from app.services.hygiene import get_hygiene_gaps_widget
+from app.services.manager_one_on_one import get_initiative_tracker_widget
+from app.services.ptof import get_ptof_renewals_widget
+from app.services.revenue_analysis import get_revenue_attention_widget
 
 logger = logging.getLogger(__name__)
 MAX_DASHBOARD_NAME = 200
@@ -22,6 +28,7 @@ GRID_ROW_HEIGHT = 64
 GRID_GAP = 12
 GRID_PADDING = 16
 MAX_LAYOUT_ROWS = 1000
+MIN_WIDGET_HEIGHT = 2
 MAX_WIDGET_HEIGHT = 20
 
 
@@ -46,9 +53,17 @@ def _connect_variants(template: str) -> tuple[WidgetVariant, ...]:
     return (
         WidgetVariant(
             'metric', 'Metric', 'partials/widgets/connect_metric.html',
-            (3, 4, 6, 12), 3, 4,
+            (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 4,
         ),
-        WidgetVariant('detailed', 'Detailed', template, (6, 12), 5, 8),
+        WidgetVariant('detailed', 'Detailed', template, (6, 12), MIN_WIDGET_HEIGHT, 8),
+    )
+
+
+def _report_variants(template: str) -> tuple[WidgetVariant, ...]:
+    """Offer compact summaries and full investigative queues using the same report data."""
+    return (
+        WidgetVariant('metric', 'Summary', template, (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 4),
+        WidgetVariant('detailed', 'Details', template, (6, 12), MIN_WIDGET_HEIGHT, 8),
     )
 
 
@@ -63,6 +78,7 @@ class WidgetDefinition:
     variants: tuple[WidgetVariant, ...]
     provider: Callable[[date | None], dict[str, Any]]
     requirements: tuple[str, ...] = ()
+    scope: str = 'FY27 Data'
 
 
 WIDGET_REQUIREMENTS = {
@@ -115,6 +131,58 @@ WIDGET_DEFINITIONS = {
             connect_goals.get_whitespace_widget,
             ('compensation_buckets',),
         ),
+        WidgetDefinition(
+            'initiative_tracker.overview', 'Initiative Tracker',
+            'Initiatives with combined monthly ACR from engagements and directly added milestones, '
+            'plus seller subtotals in the detailed view.',
+            'Initiative Tracker', (
+                WidgetVariant(
+                    'metric', 'Summary', 'partials/widgets/initiative_tracker.html',
+                    (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 5,
+                ),
+                WidgetVariant(
+                    'detailed', 'By seller', 'partials/widgets/initiative_tracker.html',
+                    (6, 12), MIN_WIDGET_HEIGHT, 8,
+                ),
+            ),
+            get_initiative_tracker_widget, scope='All initiatives',
+        ),
+        WidgetDefinition(
+            'hygiene.gaps', 'Hygiene gaps',
+            'Active engagements without milestones and active milestones without engagements, '
+            'with a queue for resolving missing links.',
+            'Hygiene', _report_variants('partials/widgets/hygiene_gaps.html'),
+            get_hygiene_gaps_widget, scope='Active work',
+        ),
+        WidgetDefinition(
+            'activity_coverage.meetings', 'Meeting activity coverage',
+            'Fiscal-year meeting coverage, linked activities, HVA coverage, and meetings '
+            'ready for the existing activity-logging workflow.',
+            'Activity Coverage', _report_variants('partials/widgets/meeting_activity_coverage.html'),
+            get_meeting_activity_coverage_widget, scope='Fiscal year to date',
+        ),
+        WidgetDefinition(
+            'revenue.attention', 'Revenue risk / opportunity',
+            'Monthly revenue at risk and expansion opportunity across the complete '
+            'unreviewed priority-20+ analysis queue.',
+            'Revenue Analyzer', _report_variants('partials/widgets/revenue_attention.html'),
+            get_revenue_attention_widget, scope='Saved unreviewed analysis',
+        ),
+        WidgetDefinition(
+            'ptof.upcoming_renewals', 'Upcoming P-to-F renewals',
+            'Subscription expirations in the next 90 days, annual SA expiration amounts, '
+            'and source account-level renewal assessments.',
+            'P to F', _report_variants('partials/widgets/ptof_renewals.html'),
+            get_ptof_renewals_widget, scope='Next 90 days',
+        ),
+        WidgetDefinition(
+            'fabric.capacity_pressure', 'Fabric capacity pressure',
+            'Pressure counts and a top-five attention shortlist, linked to the full '
+            'Fabric Capacity Pressure report.',
+            'Fabric Capacity Pressure',
+            _report_variants('partials/widgets/fabric_capacity_pressure.html'),
+            get_fabric_capacity_pressure_widget, scope='Saved capacity measurements',
+        ),
     )
 }
 
@@ -126,7 +194,7 @@ def get_widget_catalog() -> list[dict[str, Any]]:
             'key': definition.key,
             'title': definition.title,
             'description': definition.description,
-            'scope': 'FY27 Data',
+            'scope': definition.scope,
             'report': definition.report,
             'requirements': definition.requirements,
             'variants': [

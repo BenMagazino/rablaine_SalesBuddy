@@ -258,7 +258,41 @@ standalone UI iterations using entirely fictional data. See the
   without moving it; Escape cancels a drag. Quarter, third, half, and full-width metric
   variations and half/full-width detailed variations share the four Connect Goals
   calculations. The searchable widget-library dialog shows actual-size previews using
-  current synced data, with report, width, and variation filters.
+  current synced data, with report, width, and variation filters. New widgets start at
+  a content-fitted height for the selected width, snapped to grid rows and capped at
+  the variant's normal starting height for long queues. The preview and inserted size
+  match. After insertion, sizes stay fixed until you resize them; data refreshes and
+  this sizing behavior never resize existing widgets.
+  **Initiative Tracker** also has Summary and By seller widgets. Summary supports
+  quarter, third, half, and full widths; By seller supports half and full widths,
+  placing seller subtotals beside each initiative when the widget has enough room.
+  Both use the tracker's live saved work. ACR/month combines engagement ACR and
+  ACR from milestones added directly to the initiative. Missing amounts remain explicit, and shared work
+  is not rolled into a misleading cross-initiative grand total. Internal projects
+  have no revenue amount. Open an initiative to continue its tracker workflow.
+  This widget does not require compensation-bucket setup.
+  The library also includes **Hygiene gaps**, **Meeting activity coverage**,
+  **Revenue risk / opportunity**, **Upcoming P-to-F renewals**, and
+  **Fabric capacity pressure**, each with compact Summary and detailed views.
+  They read the same saved data as their reports and link back to existing workflows;
+  opening a dashboard never starts an external refresh. Revenue totals cover the complete
+  unreviewed priority-20+ queue, rather than just the report's first page.
+  Source timestamps and missing measurements remain available in the reports instead of implying
+  that an empty or outdated snapshot means everything is healthy.
+  P-to-F shows subscription expirations in the next 90 days and annual SA expiration
+  amounts, not monthly ACR; renewal assessments remain account-level context.
+  Capacity pressure flags recorded throttling, latest-hour utilization at 80% or higher
+  (100% or higher for overload), and 30-second peaks within that hour at 100% or higher.
+  The latest-hour peak is not a peak across the full 15-day average's reporting period.
+  These are monitoring heuristics over saved measurements, not live service alerts.
+  Signals can overlap; capacity utilization percentages are never added together.
+  **Fabric Capacity Pressure** has its own report under Reports, with the complete
+  capacity population, signal/search filters, sortable measurements including
+  15-day average utilization, and export.
+  Its dashboard widget keeps attention and throttling counts and, in Details, only
+  the five highest-priority capacities needing attention. Counts remain portfolio-wide.
+  One Open report link provides the full investigation view, including measurement
+  dates, utilization thresholds, and incomplete-data context.
   Widgets declare their own shared setup requirements. If compensation buckets have
   not been confirmed, each affected widget offers **Select compensation buckets**
   in the saved dashboard, editor, and library preview. Confirming once refreshes all

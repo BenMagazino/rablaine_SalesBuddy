@@ -1,0 +1,47 @@
+{% set hygiene = instance.data %}
+<section class="db-report-widget" aria-labelledby="{{ widget_id_prefix }}hygieneTitle">
+    <header class="db-report-heading">
+        <h2 id="{{ widget_id_prefix }}hygieneTitle">Hygiene gaps</h2>
+        <a href="{{ hygiene.destination }}">Open report <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    </header>
+    <p class="db-report-caption">Active engagements and active, customer-matched milestones, all teams{% if hygiene.seller_id %}, selected seller only{% endif %}. Saved reasons do not close gaps.</p>
+    <dl class="db-report-metrics">
+        <div><dt>Engagement gaps</dt><dd>{{ hygiene.engagement_count }}</dd></div>
+        <div><dt>Milestone gaps</dt><dd>{{ hygiene.milestone_count }}</dd></div>
+        <div><dt>On-team milestone gaps</dt><dd>{{ hygiene.on_team_count }}</dd></div>
+        <div><dt>Reasons saved</dt><dd>{{ hygiene.annotated_count }}</dd></div>
+    </dl>
+    {% if hygiene.milestone_sync.state != 'complete' %}
+    <p class="db-report-notice">Saved local records only. Milestone sync: {{ hygiene.milestone_sync.state|replace('_', ' ') }}. Review sync status before treating this as a complete MSX inventory.</p>
+    {% elif hygiene.milestone_sync.completed_at %}
+    <p class="db-report-caption">Milestones last synced {{ hygiene.milestone_sync.completed_at[:10] }}. Local engagement links are current.</p>
+    {% endif %}
+    {% if not hygiene.total %}
+    <p class="db-report-empty">No gaps in the saved active records for this scope. Open Hygiene to review links and sync completeness.</p>
+    {% elif instance.variant_key == 'detailed' %}
+    <table class="db-report-table" data-sb-sortable data-sb-sort-key="{{ widget_id_prefix }}hygiene-gaps">
+        <caption class="sb-visually-hidden">Complete hygiene repair queue</caption>
+        <thead><tr>
+            <th scope="col" data-sb-sort-type="text">Work item</th>
+            <th scope="col" data-sb-sort-type="text">Customer / seller</th>
+            <th scope="col" data-sb-sort-type="number">ACR/mo</th>
+            <th scope="col" data-sb-sort-type="text">Repair</th>
+        </tr></thead>
+        <tbody>{% for row in hygiene.rows %}
+            <tr>
+                <th scope="row" data-sb-sort-value="{{ row.title }}"><a href="{{ row.destination }}">{{ row.title }}</a> <small>{{ row.kind }}{% if row.kind == 'Milestone' %} · {{ 'On team' if row.on_my_team else 'Off team' }}{% endif %}</small></th>
+                <td data-sb-sort-value="{{ row.customer.name if row.customer else '' }}">
+                    {% if row.customer %}
+                    <a href="{{ url_for('customers.customer_view', id=row.customer.id) }}">{{ row.customer.nickname or row.customer.name }}</a>
+                    {% if row.customer.seller %}
+                    <a class="badge bg-primary text-decoration-none db-report-seller" href="{{ url_for('sellers.seller_view', id=row.customer.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ row.customer.seller.name }}</a>
+                    {% endif %}
+                    {% else %}<span>No customer</span>{% endif %}
+                </td>
+                <td data-sb-sort-value="{{ row.amount if row.amount is not none else '' }}">{{ '${:,.0f}'.format(row.amount) if row.amount is not none else 'Not set' }}</td>
+                <td data-sb-sort-value="{{ row.action }}"><a href="{{ hygiene.destination }}">{{ row.action }}</a>{% if row.note %} <small title="{{ row.note }}">Reason saved</small>{% endif %}</td>
+            </tr>
+        {% endfor %}</tbody>
+    </table>
+    {% endif %}
+</section>

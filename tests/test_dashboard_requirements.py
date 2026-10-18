@@ -33,8 +33,10 @@ def test_widget_requirements_are_actionable_in_saved_and_editor_views(
     """Every blocked widget offers setup in place, not navigation to another report."""
     dashboard_id = create_dashboard(client)
     for key in dashboards.WIDGET_DEFINITIONS:
-        add_widget(client, dashboard_id, key)
         spec = dashboards.WIDGET_DEFINITIONS[key]
+        if not spec.requirements:
+            continue
+        add_widget(client, dashboard_id, key)
         monkeypatch.setitem(dashboards.WIDGET_DEFINITIONS, key, replace(
             spec, provider=Mock(side_effect=AssertionError('Blocked calculation')),
         ))
@@ -50,7 +52,8 @@ def test_widget_requirements_are_actionable_in_saved_and_editor_views(
     assert any('ui-dashboard-requirements.js' in script['src']
                for script in page.select('script[src]'))
     for spec in dashboards.WIDGET_DEFINITIONS.values():
-        spec.provider.assert_not_called()
+        if spec.requirements:
+            spec.provider.assert_not_called()
 
 
 def test_confirmation_unblocks_all_widgets_and_builtin_without_publishing(
@@ -84,7 +87,9 @@ def test_confirmation_unblocks_all_widgets_and_builtin_without_publishing(
             'width': current['column_span'], 'instance_id': current['id'],
         }).json
         assert 'data-widget-requirement=' not in preview['html']
-        assert 'sb-goals-section' in preview['html']
+        assert BeautifulSoup(preview['html'], 'html.parser').select_one(
+            '.sb-goals-section, .db-initiative-widget, .db-report-widget',
+        )
     with app.app_context():
         assert connect_goals.get_setup_state()['selected_buckets'] == ['Fabric']
         assert db.session.get(Dashboard, dashboard_id).layout_revision == before['layout_revision']

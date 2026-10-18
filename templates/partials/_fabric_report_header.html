@@ -11,6 +11,7 @@
        {% if request.args.get('view') != 'overview' %}aria-current="page"{% endif %}>Customer detail</a>
     <a href="{{ url_for('reports.report_fabric_consumption', view='overview') }}"
        {% if request.args.get('view') == 'overview' %}aria-current="page"{% endif %}>Capacity overview</a>
+    <a href="{{ url_for('reports.report_fabric_capacity_pressure') }}">Capacity pressure</a>
 </nav>
     <p class="sb-fabric-inline-status" data-fabric-progress role="status"
        aria-live="polite">Checking import status...</p>

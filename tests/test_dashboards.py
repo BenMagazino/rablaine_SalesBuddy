@@ -60,7 +60,7 @@ def test_empty_hub_and_catalog(client):
     payload = client.get(BASE).json
     assert payload['dashboards'] == []
     assert [item['key'] for item in payload['catalog']] == list(dashboards.WIDGET_DEFINITIONS)
-    assert len(payload['catalog']) == 4
+    assert len(payload['catalog']) == 10
 
 
 def test_create_rename_multiple_dashboards_and_reload(client, app):
@@ -191,7 +191,7 @@ def test_widgets_reuse_shared_calculations_once_per_definition(app, monkeypatch)
             connect_goals.get_whitespace_widget(reference),
         ]
         assert [widget['data'] for widget in data['widgets'][:4]] == expected
-        assert data['widgets'][1]['data'] == data['widgets'][4]['data']
+        assert data['widgets'][1]['data'] == data['widgets'][-1]['data']
         provider.assert_called_once_with(reference)
 
 
@@ -411,7 +411,7 @@ def test_read_tool_uses_shared_dashboard_data(client, app):
         listing = execute_tool('get_dashboards', {})
         result = execute_tool('get_dashboards', {'dashboard_id': dashboard_id})
         assert listing['dashboards'][0]['id'] == dashboard_id
-        assert len(listing['catalog']) == 4
+        assert len(listing['catalog']) == 10
         assert result['widgets'][0]['id'] == widget_id
         assert result['setup']['ready'] is False
         assert result['url'].endswith(f'/reports/dashboards/{dashboard_id}')

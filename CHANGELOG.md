@@ -8,11 +8,11 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/17/2026
+## 10/18/2026
 
-- Build fixed-layout dashboards from a previewable widget library, with Cards or layout-aware Dividers and optional subtitles. Resume and preview local drafts, with undo/redo and click-away deselection while editing; choose Save when the dashboard is ready.
-- Choose the compensation buckets that apply to your business, directly from a widget that needs them. Confirm once to refresh all affected widgets without leaving your dashboard or publishing your draft.
-- Connect Goals is now an editable starter dashboard instead of a separate report. Add a fresh copy from Manage Dashboards whenever you want; deleting or customizing it is respected across restarts. Dashboards now comes before Reports in the navigation.
+- Create multiple custom dashboards with resizable report widgets, content-fitted library previews, and locally saved drafts. Choose Cards or Dividers, undo changes, and preview your dashboard before publishing.
+- Customize or delete the Connect Goals starter dashboard and recreate it with Add from template. Set up compensation buckets once to update all widgets that need them. Dashboards now appears before Reports in the navigation.
+- Track initiatives and combined monthly ACR, hygiene gaps, meeting coverage, revenue risk and opportunity, upcoming P-to-F renewals, and Fabric capacity pressure with new widgets. Investigate capacity utilization in the dedicated Fabric Capacity Pressure report.
 
 ## 10/16/2026 - d325c465
 

@@ -1,6 +1,7 @@
 """Persistent initiatives and live work data for Initiative Tracker."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from typing import Any
 
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -48,12 +49,39 @@ def get_manager_section_payload(section: ManagerInitiativeSection) -> dict:
         group['seller_name'].casefold(),
         group['seller_id'] or 0,
     ))
+    for group in seller_groups:
+        group['summary'] = summarize_initiative_items(group['items'])
     return {
         'id': section.id,
         'name': section.name,
         'description': section.description,
         'items': items,
         'seller_groups': seller_groups,
+        'summary': summarize_initiative_items(items),
+    }
+
+
+def summarize_initiative_items(items: list[dict[str, Any]]) -> dict[str, Any]:
+    """Sum engagement ACR and milestone ACR from work added directly to an initiative."""
+    amounts = [
+        item['acr'] for item in items if item['item_type'] in ('milestone', 'engagement')
+    ]
+    known = [amount for amount in amounts if amount is not None]
+    return {
+        'item_count': len(items),
+        'unavailable_count': sum(not item['available'] for item in items),
+        'acr': sum(known) if known else None,
+        'acr_count': len(amounts),
+        'acr_missing_count': len(amounts) - len(known),
+    }
+
+
+def get_initiative_tracker_widget(reference: date | None = None) -> dict[str, Any]:
+    """Reuse the tracker's live sections and seller summaries without fiscal setup."""
+    return {
+        'key': 'initiatives',
+        'sections': get_manager_one_on_one_report()['sections'],
+        'destination': '/reports/initiative-tracker',
     }
 
 
