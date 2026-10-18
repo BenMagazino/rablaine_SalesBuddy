@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/18/2026
+## 10/18/2026 - 5e50cb39
 
 - Open seller pages by name from Quick Launcher.
 
