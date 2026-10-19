@@ -161,19 +161,23 @@ def _utc_timestamp(value: datetime | None) -> str | None:
 
 def get_manager_u2c_candidates(
     search: str = '', existing_ids: set[int] | None = None, workload_prefix: str = '',
+    workloads: list[str] | None = None,
 ) -> dict:
     """Offer this quarter's remaining snapshot milestones without changing the report."""
     from app.services.u2c_snapshot import current_fiscal_quarter, get_attainment
+    from app.services.workload_filters import normalize_workloads
 
+    workloads = normalize_workloads(workloads)
     quarter = current_fiscal_quarter()
     snapshot = U2CSnapshot.query.filter_by(fiscal_quarter=quarter).first()
     if snapshot is None:
         return {
             'snapshot': None, 'fiscal_quarter': quarter, 'results': [],
             'workload_prefix': workload_prefix,
+            'workloads': workloads or [],
             'message': f'No {quarter} U2C snapshot is available. Open U2C to refresh it.',
         }
-    attainment = get_attainment(snapshot.id)
+    attainment = get_attainment(snapshot.id, workloads=workloads)
     if not attainment['success']:
         raise ValueError(attainment['error'])
     rows = [
@@ -232,4 +236,5 @@ def get_manager_u2c_candidates(
         },
         'fiscal_quarter': quarter, 'results': results, 'message': '',
         'workload_prefix': workload_prefix,
+        'workloads': workloads or [],
     }

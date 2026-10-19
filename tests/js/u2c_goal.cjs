@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const native = require('../../static/js/ui-u2c.js');
+const workloadFilter = require('../../static/js/ui-workload-filter.js');
 
 const scripts = JSON.parse(fs.readFileSync(0, 'utf8'));
 const elements = {};
@@ -35,6 +36,7 @@ const context = vm.createContext({
         muted: 'rgb(150, 150, 150)', grid: 'rgb(70, 70, 70)', text: 'rgb(220, 220, 220)',
         committed: 'rgb(90, 170, 130)', goal: 'rgb(130, 180, 220)'
     })},
+    SBWorkloadFilter: workloadFilter,
     getComputedStyle: () => ({getPropertyValue: () => ''}),
     Chart: class {
         constructor(canvas, config) {
@@ -47,8 +49,8 @@ const context = vm.createContext({
     },
 });
 scripts.forEach(script => vm.runInContext(script, context));
-elements.workloadFilter.value = 'Data';
-vm.runInContext("renderU2cTrend('Data')", context);
+vm.runInContext(`workloadPicker = {getSelected: () => ['Data']};
+    renderU2cTrend(workloadPicker.getSelected());`, context);
 assert.equal(chart.data.datasets.length, 4);
 assert.equal(chart.data.datasets[1].label, 'Total pipeline (starting uncommitted)');
 assert.equal(chart.data.datasets[2].label, '40% goal');
@@ -78,9 +80,8 @@ assert.equal(tooltip({datasetIndex: 3, raw: chart.data.datasets[3].data[0]}),
 assert.match(chart.options.plugins.tooltip.callbacks.title([{
     raw: chart.data.datasets[3].data[0],
 }]), /Today/);
-for (const prefix of ['Infra', '']) {
-    elements.workloadFilter.value = prefix;
-    vm.runInContext(`renderU2cTrend('${prefix}')`, context);
+for (const selected of [['Infra'], []]) {
+    vm.runInContext(`renderU2cTrend(${JSON.stringify(selected)})`, context);
     chart.data.datasets[1].data.forEach((point, index) => {
         assert.equal(chart.data.datasets[2].data[index].y, point.y * 40 / 100);
     });
@@ -88,7 +89,7 @@ for (const prefix of ['Infra', '']) {
 function row(acr) {
     return {style: {}, dataset: {workload: 'Data: Fabric', acr: String(acr), liveAcr: '0'}};
 }
-elements.workloadFilter.value = 'Data';
+vm.runInContext("workloadPicker = {getSelected: () => ['Data']}", context);
 for (const percentage of [0, 39.9, 40, 48, 100]) {
     remaining = [row(100 - percentage)];
     committed = [row(percentage)];

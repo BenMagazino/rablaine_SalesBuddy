@@ -132,9 +132,7 @@
             <select id="msOppFilter" class="msx-input" aria-label="Milestone opportunity">
                 <option value="">All Opportunities</option>
             </select>
-            <select id="msWorkloadFilter" class="msx-input" aria-label="Workload area">
-                <option value="">All Areas</option>
-            </select>
+            <div id="msWorkloadFilter"></div>
         </div>
         <div class="msx-reading" id="msReading" tabindex="0" aria-label="Milestones reading region">
             <table class="msx-table" id="msTable">
@@ -282,6 +280,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-workload-filter.js') }}"></script>
 <script>
 window.addEventListener('DOMContentLoaded', function() {
     'use strict';
@@ -312,6 +311,10 @@ window.addEventListener('DOMContentLoaded', function() {
     const msTeamFilter = document.getElementById('msTeamFilter');
     const msOppFilter = document.getElementById('msOppFilter');
     const msWorkloadFilter = document.getElementById('msWorkloadFilter');
+    const workloadPicker = SBWorkloadFilter.create(msWorkloadFilter, {
+        storageKey: 'salesbuddy_msx_workspace_workload_prefixes',
+        onChange: () => { renderMilestones(); updateCounts(); },
+    });
     const sorts = new Map();
     const headers = new Map(['oppsTable', 'msTable', 'tasksTable'].map(id =>
         [id, document.getElementById(id).tHead.cloneNode(true)]));
@@ -442,7 +445,7 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 
     const fields = ['filterSeller', 'filterCustomer', 'filterSearch', 'oppStatusFilter',
-        'oppTeamFilter', 'msTeamFilter', 'msOppFilter', 'msWorkloadFilter'];
+        'oppTeamFilter', 'msTeamFilter', 'msOppFilter'];
     const FILTER_STORAGE_KEY = 'msxWorkspaceFilters';
     function readSavedFilters() {
         try {
@@ -789,23 +792,13 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 
     function populateWorkloadFilter() {
-        const areas = new Set();
-        msData.forEach(m => { if (m.workload_area) areas.add(m.workload_area); });
-        const current = restoredFilters?.msWorkloadFilter ?? (msWorkloadFilter.value ||
-            localStorage.getItem('msxWsMsWorkload') || '');
-        if (current) areas.add(current);
-        msWorkloadFilter.innerHTML = '<option value="">All Areas</option>';
-        [...areas].sort((a, b) => a.localeCompare(b)).forEach(a => {
-            msWorkloadFilter.innerHTML += `<option value="${escHtml(a)}">${escHtml(a)}</option>`;
-        });
-        msWorkloadFilter.value = current;
+        workloadPicker.setChoices(msData.map(m => m.workload || ''));
     }
 
     function renderMilestones() {
         const tbody = document.getElementById('msBody');
-        // Client-side workload area filter
-        const areaFilter = msWorkloadFilter.value || localStorage.getItem('msxWsMsWorkload') || '';
-        const filtered = areaFilter ? msData.filter(m => m.workload_area === areaFilter) : msData;
+        const filtered = msData.filter(m =>
+            SBWorkloadFilter.matches(m.workload, workloadPicker.getSelected()));
         document.getElementById('msCount').textContent = filtered.length;
         if (!filtered.length) {
             tbody.innerHTML = '<tr data-sb-sort-fixed><td colspan="10" class="msx-message">No milestones found. Change your scope or Clear the filters.</td></tr>';
@@ -1140,13 +1133,12 @@ window.addEventListener('DOMContentLoaded', function() {
         updateMsStatusBtnLabel();
         msTeamFilter.value = '';
         msOppFilter.value = '';
-        msWorkloadFilter.value = '';
+        workloadPicker.setSelected([]);
         // Reset sort state to defaults
         oppSortField = OPP_SORT_DEFAULT.f; oppSortDir = OPP_SORT_DEFAULT.d;
         msSortField = MS_SORT_DEFAULT.f; msSortDir = MS_SORT_DEFAULT.d;
         localStorage.removeItem('msxWsOppSort');
         localStorage.removeItem('msxWsMsSort');
-        localStorage.removeItem('msxWsMsWorkload');
         sorts.clear();
         const saved = {...history.state?.sbTableSort};
         ['oppsTable', 'msTable', 'tasksTable'].forEach(id => delete saved[`msx-${id}`]);
@@ -1178,13 +1170,6 @@ window.addEventListener('DOMContentLoaded', function() {
     });
     msTeamFilter.addEventListener('change', () => reloadFiltered(loadMilestones));
     msOppFilter.addEventListener('change', () => reloadFiltered(loadMilestones));
-    msWorkloadFilter.addEventListener('change', () => {
-        if (msWorkloadFilter.value) localStorage.setItem('msxWsMsWorkload', msWorkloadFilter.value);
-        else localStorage.removeItem('msxWsMsWorkload');
-        renderMilestones();
-        persistFilters();
-        saveView();
-    });
 
     // Enter key in search
     filterSearch.addEventListener('keydown', e => { if (e.key === 'Enter') applyAll(); });
@@ -1252,9 +1237,6 @@ window.addEventListener('DOMContentLoaded', function() {
                     if (el && view.values[id] !== undefined) el.value = view.values[id];
                 });
                 filterCustomerBySeller(filterSeller?.value || '');
-                if (view.values.msWorkloadFilter) {
-                    localStorage.setItem('msxWsMsWorkload', view.values.msWorkloadFilter);
-                } else localStorage.removeItem('msxWsMsWorkload');
                 msStatusFilter.querySelectorAll('.ms-status-cb').forEach(cb =>
                     cb.checked = view.statuses.includes(cb.value));
                 updateMsStatusBtnLabel();

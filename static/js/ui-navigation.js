@@ -3,6 +3,21 @@
     'use strict';
 
     const bar = document.querySelector('.sb-app-bar');
+    function syncFlyoutTop() {
+        const bottom = bar ? Math.max(0, bar.getBoundingClientRect().bottom) : 0;
+        document.documentElement.style.setProperty('--sb-ui-flyout-top', `${bottom}px`);
+    }
+    syncFlyoutTop();
+    if (bar) {
+        // Electron inserts its window title and menu above the web navbar.
+        const chromeObserver = new MutationObserver(syncFlyoutTop);
+        chromeObserver.observe(document.body, {childList: true});
+        const sizeObserver = new ResizeObserver(syncFlyoutTop);
+        sizeObserver.observe(bar);
+        sizeObserver.observe(document.body);
+        window.addEventListener('resize', syncFlyoutTop);
+        window.addEventListener('scroll', syncFlyoutTop, {passive: true});
+    }
     const triggers = [...document.querySelectorAll('[data-sb-menu]')];
     if (!triggers.length) return;
     let active = null;

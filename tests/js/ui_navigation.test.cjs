@@ -14,11 +14,19 @@ test('header customer search keeps one field focus indicator without an inner in
     assert.match(css, /\.sb-app-bar :is\(button, a, input\):focus-visible\s*\{[^}]*outline:\s*2px/);
 });
 
-function navigation({embedded = false, missingMenu = false, pageMenu = false} = {}) {
+function navigation({
+    embedded = false, missingMenu = false, pageMenu = false, headerBottom = 46,
+} = {}) {
     const listeners = new Map();
+    const windowListeners = new Map();
+    const properties = new Map();
+    const observers = {};
     const timers = new Map();
     let timerId = 0;
-    const document = {activeElement: null};
+    const document = {
+        activeElement: null, body: {},
+        documentElement: {style: {setProperty: (key, value) => properties.set(key, value)}},
+    };
     function element(kind) {
         const attributes = new Map();
         const handlers = new Map();
@@ -48,15 +56,28 @@ function navigation({embedded = false, missingMenu = false, pageMenu = false} = 
     triggers.forEach((trigger, index) => { trigger.dataset.sbMenu = `menu-${index}`; });
     if (pageMenu) triggers[1].dataset.sbMenuAnchor = 'trigger';
     const bar = element('bar');
-    bar.getBoundingClientRect = () => ({bottom: 46});
+    bar.getBoundingClientRect = () => ({bottom: headerBottom});
     bar.querySelectorAll = () => triggers;
     document.querySelector = () => embedded ? null : bar;
     document.querySelectorAll = () => embedded && !pageMenu ? [] : triggers;
     document.getElementById = id => missingMenu ? null : menus[Number(id.slice(-1))];
     document.addEventListener = (name, callback) => listeners.set(name, callback);
-    const window = {innerWidth: 1000, innerHeight: 800, addEventListener() {}};
+    const window = {innerWidth: 1000, innerHeight: 800,
+        addEventListener(name, callback) {
+            if (!windowListeners.has(name)) windowListeners.set(name, []);
+            windowListeners.get(name).push(callback);
+        },
+    };
     vm.runInNewContext(script, {
         document, window,
+        MutationObserver: class {
+            constructor(callback) { observers.chrome = callback; }
+            observe() {}
+        },
+        ResizeObserver: class {
+            constructor(callback) { observers.size = callback; }
+            observe() {}
+        },
         setTimeout: callback => { timers.set(++timerId, callback); return timerId; },
         clearTimeout: id => timers.delete(id),
     });
@@ -67,9 +88,38 @@ function navigation({embedded = false, missingMenu = false, pageMenu = false} = 
         listeners.get(name)?.(event);
         return event;
     }
-    return {document, triggers, menus, emit,
+    return {document, triggers, menus, emit, properties, observers,
+        moveHeader(bottom) { headerBottom = bottom; },
+        windowEvent(name) { windowListeners.get(name)?.forEach(callback => callback()); },
         flushTimers() { const pending = [...timers.values()]; timers.clear(); pending.forEach(fn => fn()); }};
 }
+
+test('flyouts use the actual navbar bottom including desktop title and menu chrome', () => {
+    const nav = navigation({headerBottom: 106});
+    assert.equal(nav.properties.get('--sb-ui-flyout-top'), '106px');
+    nav.triggers[0].emit('click');
+    assert.equal(nav.menus[0].style.top, '106px');
+});
+
+test('flyout docking follows chrome insertion, header resizing, window resizing and scrolling', () => {
+    const nav = navigation();
+    assert.equal(nav.properties.get('--sb-ui-flyout-top'), '46px');
+    for (const [bottom, refresh] of [
+        [106, nav.observers.chrome], [116, nav.observers.size],
+        [120, () => nav.windowEvent('resize')], [46, () => nav.windowEvent('scroll')],
+        [-10, () => nav.windowEvent('scroll')],
+    ]) {
+        nav.moveHeader(bottom);
+        refresh();
+        assert.equal(nav.properties.get('--sb-ui-flyout-top'), `${Math.max(0, bottom)}px`);
+    }
+});
+
+test('headerless embeds do not reserve navbar space for flyouts', () => {
+    const nav = navigation({embedded: true});
+    assert.equal(nav.properties.get('--sb-ui-flyout-top'), '0px');
+    assert.deepEqual(nav.observers, {});
+});
 
 test('click opens only one native menu and positions it below the header', () => {
     const nav = navigation();

@@ -194,7 +194,11 @@ function harness(workloadFilter = null) {
             getSelection: () => ({toString: () => ''}),
         },
         localStorage: {
-            getItem(key) { return key === 'u2c_workload_filter' ? workloadFilter : null; },
+            getItem(key) {
+                return ['salesbuddy_u2c_workload_prefixes',
+                    'salesbuddy_msx_workspace_workload_prefixes'].includes(key)
+                    ? JSON.stringify(workloadFilter) : null;
+            },
         },
         setTimeout(callback) { timers.set(++nextTimer, callback); return nextTimer; },
         clearTimeout: id => timers.delete(id),
@@ -264,7 +268,7 @@ function harness(workloadFilter = null) {
         window: context.window,
         changeSavedWorkload(value) {
             workloadFilter = value;
-            windowEvents.storage({key: 'u2c_workload_filter'});
+            windowEvents.storage?.({key: 'salesbuddy_u2c_workload_prefixes'});
         },
         picker() {
             const parts = {
@@ -814,34 +818,35 @@ test('the picker enforces the exact 75-item selection limit', () => {
     assert.match(picker.parts['.selected-count'].textContent, /76 selected.*75/);
 });
 
-test('From U2C sends the workload saved by the U2C page and names that scope', async () => {
-    const ui = harness('Data');
+test('From U2C does not inherit workload filters from another report', async () => {
+    const ui = harness(['Data', 'Apps']);
     const picker = ui.picker();
     picker.source('u2c');
-    assert.match(ui.requests[0].url, /workload_prefix=Data/);
-    ui.requests[0].finish(true, undefined, {...u2cPayload(), workload_prefix: 'Data'});
+    assert.deepEqual(new URL(ui.requests[0].url, 'http://localhost')
+        .searchParams.getAll('workload'), []);
+    ui.requests[0].finish(true, undefined, u2cPayload());
     await settle();
-    assert.match(picker.parts['.picker-status'].textContent, /Data workloads \(U2C filter\)/);
+    assert.match(picker.parts['.picker-status'].textContent, /All workloads/);
 });
 
 test('All workloads stays unfiltered, and regular search ignores the U2C selection', () => {
-    const ui = harness('Data');
+    const ui = harness(['Data']);
     const picker = ui.picker();
     picker.source('search');
-    assert.doesNotMatch(ui.requests[0].url, /workload_prefix/);
+    assert.doesNotMatch(ui.requests[0].url, /workload=/);
     picker.source('u2c');
-    assert.match(ui.requests[1].url, /workload_prefix=Data/);
+    assert.equal(new URL(ui.requests[1].url, 'http://localhost')
+        .searchParams.get('workload'), null);
     ui.changeSavedWorkload(null);
-    assert.doesNotMatch(ui.requests[2].url, /workload_prefix/);
-    assert.match(ui.requests[2].url, /source=u2c/);
+    assert.equal(ui.requests.length, 2);
+    assert.match(ui.requests[1].url, /source=u2c/);
 });
 
-test('changing the U2C filter in another tab refreshes an open assisted picker', () => {
+test('changing the U2C filter in another tab leaves an open assisted picker alone', () => {
     const ui = harness('Data');
     const picker = ui.picker();
     picker.source('u2c');
-    ui.changeSavedWorkload('Infra');
-    assert.equal(ui.requests.length, 2);
-    assert.match(ui.requests[1].url, /workload_prefix=Infra/);
-    assert.equal(ui.requests[0].options.signal.aborted, true);
+    ui.changeSavedWorkload(['Infra']);
+    assert.equal(ui.requests.length, 1);
+    assert.equal(ui.requests[0].options.signal.aborted, false);
 });

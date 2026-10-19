@@ -37,6 +37,13 @@ function fixture({savedFilters = null, initialHistory = {}, query = ''} = {}) {
             querySelector() { return null; },
             closest() { return this.parent || this; },
         };
+        Object.defineProperty(node, 'innerHTML', {
+            get() {
+                return this._html ?? this.textContent.replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            },
+            set(value) { this._html = value; },
+        });
         node.tHead = {cloneNode: () => element('head')};
         return node;
     }
@@ -85,6 +92,24 @@ function fixture({savedFilters = null, initialHistory = {}, query = ''} = {}) {
     let reply = async () => ({ok: true, json: async () =>
         ({tasks: [], milestones: [], opportunities: []})});
     const context = {window, document, history, URLSearchParams, AbortController,
+        SBWorkloadFilter: {
+            matches: require('../../static/js/ui-workload-filter.js').matches,
+            create(host, options) {
+                assert.equal(options.storageKey, 'salesbuddy_msx_workspace_workload_prefixes');
+                let selected = JSON.parse(storage.get(options.storageKey) || '[]');
+                const picker = {
+                    getSelected: () => selected,
+                    setChoices(values) { host.choices = values; },
+                    setSelected(values) {
+                        selected = values;
+                        storage.set(options.storageKey, JSON.stringify(values));
+                        options.onChange();
+                    },
+                };
+                host.picker = picker;
+                return picker;
+            },
+        },
         localStorage: {getItem: key => storage.get(key) ?? null,
             setItem: (key, value) => {
                 if (key === 'msxWorkspaceFilters' && storageError) throw storageError;
@@ -111,7 +136,8 @@ function fixture({savedFilters = null, initialHistory = {}, query = ''} = {}) {
     mountSort = () => {};
     window.hooks = {readRecords, renderOpportunities, renderTasks, showTab, saveView,
         openOppDetail,
-        restoreView, applyAll, loadOpportunities, loadTasks, allowContextChange, persistFilters,
+        restoreView, applyAll, loadOpportunities, loadMilestones, loadTasks,
+        allowContextChange, persistFilters,
         setScope: value => appliedScope = value,
         setOpps: value => oppsData = value,
         setTasks: value => tasksData = value,
@@ -203,7 +229,7 @@ function savedScope() {
     return {values: {
         filterSeller: '2', filterCustomer: '3', filterSearch: 'saved scope',
         oppStatusFilter: 'open', oppTeamFilter: 'on', msTeamFilter: 'on',
-        msOppFilter: '17', msWorkloadFilter: 'Data & AI',
+        msOppFilter: '17',
     }, statuses: ['At Risk', 'Blocked'], tab: 'ms-tab'};
 }
 
@@ -213,7 +239,6 @@ test('a fresh report window restores localStorage filters without history or pre
         await h.hooks.restoreView();
         assert.equal(h.get('filterSearch').value, 'saved scope');
         assert.equal(h.get('msOppFilter').value, '17');
-        assert.equal(h.get('msWorkloadFilter').value, 'Data & AI');
         assert.equal(h.get('ms-tab')['aria-selected'], 'true');
         assert.deepEqual(h.statuses.filter(cb => cb.checked).map(cb => cb.value),
             ['At Risk', 'Blocked']);
@@ -274,7 +299,7 @@ test('Clear persists the default scope and active milestone statuses', async () 
     const saved = JSON.parse(h.storage.get('msxWorkspaceFilters'));
     assert.deepEqual(saved.values, {
         filterSeller: '', filterCustomer: '', filterSearch: '', oppStatusFilter: 'open',
-        oppTeamFilter: '', msTeamFilter: '', msOppFilter: '', msWorkloadFilter: '',
+        oppTeamFilter: '', msTeamFilter: '', msOppFilter: '',
     });
     assert.deepEqual(saved.statuses, ['On Track', 'At Risk', 'Blocked']);
 });
@@ -284,16 +309,37 @@ test('immediate workload and empty status changes are persisted without applying
         const h = fixture({savedFilters: savedScope()});
         await h.hooks.restoreView();
         h.get('filterSearch').value = 'not applied';
-        h.get('msWorkloadFilter').value = '';
-        h.get('msWorkloadFilter').handlers.change();
+        h.get('msWorkloadFilter').picker.setSelected(['Apps', 'Sec']);
         let saved = JSON.parse(h.storage.get('msxWorkspaceFilters'));
-        assert.equal(saved.values.msWorkloadFilter, '');
+        assert.deepEqual(JSON.parse(h.storage.get('salesbuddy_msx_workspace_workload_prefixes')),
+            ['Apps', 'Sec']);
+        assert.equal(saved.values.msWorkloadFilter, undefined);
         assert.equal(saved.values.filterSearch, 'saved scope');
         h.get('msStatusNone').handlers.click();
         saved = JSON.parse(h.storage.get('msxWorkspaceFilters'));
         assert.deepEqual(saved.statuses, []);
         const lastRead = new URL(h.requests.at(-1).url, 'http://localhost');
         assert.equal(lastRead.searchParams.has('status'), false);
+    });
+
+test('MSX workload selection matches prefixes and leaves unavailable selections restrictive',
+    async () => {
+        const h = fixture();
+        const milestones = [
+            {id: 1, title: 'App work', workload: 'Apps: App Service'},
+            {id: 2, title: 'Defender work', workload: 'Sec: Defender'},
+            {id: 3, title: 'Unselected Infra work', workload: 'Infra: Networking'},
+        ];
+        h.reply(async () => ({ok: true, json: async () => ({milestones})}));
+        await h.hooks.loadMilestones();
+        h.get('msWorkloadFilter').picker.setSelected(['Apps', 'Sec']);
+        assert.match(h.get('msBody').innerHTML, /App work/);
+        assert.match(h.get('msBody').innerHTML, /Defender work/);
+        assert.doesNotMatch(h.get('msBody').innerHTML, /Unselected Infra work/);
+        assert.equal(h.get('msCount').textContent, 2);
+        h.get('msWorkloadFilter').picker.setSelected(['Unavailable']);
+        assert.match(h.get('msBody').innerHTML, /No milestones found/);
+        assert.equal(h.get('msCount').textContent, 0);
     });
 
 test('unreadable localStorage filters are reported and Apply can replace them', async () => {

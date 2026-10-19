@@ -1,7 +1,37 @@
 /** Native U2C report preferences, chart colors and owned reading history. */
 (function(root) {
     'use strict';
+    const workloadFilter = typeof module !== 'undefined' && module.exports
+        ? require('./ui-workload-filter.js') : root.SBWorkloadFilter;
     const columns = ['customer', 'milestone', 'workload', 'due_date', 'acr', 'status'];
+
+    function aggregateTrend(series, selected) {
+        if (!selected.length) return series[''] || [];
+        const points = new Map();
+        for (const [workload, trend] of Object.entries(series)) {
+            if (workload === '' || !workloadFilter.matches(JSON.parse(workload), selected)) continue;
+            for (const point of trend) {
+                const key = (point.version_id ?? point.date) + ':' + point.source;
+                if (!points.has(key)) points.set(key, {
+                    ...point, items: 0, starting_acr: 0, committed_acr: 0,
+                    msxi_converted_acr: point.source === 'live' ? null : 0,
+                });
+                const total = points.get(key);
+                for (const field of ['items', 'starting_acr', 'committed_acr']) {
+                    total[field] += point[field];
+                }
+                if (total.msxi_converted_acr !== null) {
+                    total.msxi_converted_acr += point.msxi_converted_acr;
+                }
+            }
+        }
+        return [...points.values()].sort((a, b) =>
+            a.date.localeCompare(b.date) || Number(a.source === 'live') - Number(b.source === 'live')
+        ).map(point => ({
+            ...point, u2c_pct: point.starting_acr
+                ? Math.round(point.committed_acr / point.starting_acr * 1000) / 10 : 0,
+        }));
+    }
 
     function validateSort(value) {
         if (!value || !columns.includes(value.column) ||
@@ -129,7 +159,7 @@
         root.addEventListener('pagehide', saveReading);
     }
 
-    const api = {validateSort, validateFilters, validateReading,
+    const api = {aggregateTrend, validateSort, validateFilters, validateReading,
         reportError, readPreference, writePreference, chartColors};
     root.SBU2c = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -20,6 +20,8 @@
 .oo-stat small { display: block; margin-top: 4px; color: var(--sb-ui-muted); font-size: 11px; }
 .oo-scope { display: flex; align-items: center; gap: 20px; padding: 8px 24px; border-bottom: 1px solid var(--sb-ui-line); }
 .oo-scope > span { color: var(--sb-ui-muted); font-size: 12px; }
+.oo-scope .oo-input { width: auto; }
+.oo-scope label { color: var(--sb-ui-muted); font-size: 12px; white-space: nowrap; }
 .oo-tabs { display: flex; gap: 4px; }
 .oo-tabs button { padding: 5px 9px; border: 1px solid transparent; border-radius: 3px; color: var(--sb-ui-muted); background: transparent; font: inherit; cursor: pointer; }
 .oo-tabs button:hover { background: var(--sb-ui-raised); }

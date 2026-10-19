@@ -41,7 +41,7 @@
 </div>
 {% endif %}
 
-<!-- Controls: Quarter selector, workload filter, official import -->
+<!-- Controls: Quarter selector, workload prefix selection, official import -->
 <div class="u2c-controls" data-sb-page-band>
     <div class="u2c-section-body">
         <form method="GET" action="{{ url_for('reports.report_u2c') }}" class="u2c-inline is-loose is-wrap">
@@ -62,17 +62,7 @@
                 <span class="u2c-muted u2c-caption">No snapshots yet</span>
                 {% endif %}
             </div>
-            {% if workload_prefixes %}
-            <div class="u2c-inline">
-                <label class="u2c-label" for="workloadFilter">Workload</label>
-                <select id="workloadFilter" class="u2c-select" >
-                    <option value="">All workloads</option>
-                    {% for prefix in workload_prefixes %}
-                    <option value="{{ prefix }}">{{ prefix }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% endif %}
+            <div id="workloadFilter" class="u2c-inline"></div>
             <div class="u2c-refresh u2c-inline is-loose">
                 {% if snapshot %}
                 <span class="u2c-caption u2c-muted" title="Sales Buddy checks MSXi daily. If no publication date matches, history is labeled observed.">
@@ -456,13 +446,12 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-workload-filter.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ui-u2c.js') }}"></script>
 {% if trend.get('', []) %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
 <script>
-// Attainment trend. One series per workload prefix plus '' for the whole
-// territory, all sent up front so switching follows the workload dropdown
-// instantly - the same client-side filtering the summary and tables use.
+// Combine frozen workload bases for selected prefixes, keeping history separate from live points.
 const TREND_SERIES = {{ trend|tojson }};
 const TREND_BOUNDS = {{ trend_bounds|tojson }};
 let u2cTrendChart = null;
@@ -474,7 +463,7 @@ function u2cTrendColors() {
 function resetU2cTrendTheme() {
     if (u2cTrendChart) u2cTrendChart.destroy();
     u2cTrendChart = null;
-    renderU2cTrend(document.getElementById('workloadFilter')?.value || '');
+    renderU2cTrend(workloadPicker?.getSelected() || []);
 }
 function u2cMoney(v) {
     return '$' + Math.round(v).toLocaleString();
@@ -498,19 +487,20 @@ function u2cTrendDate(value) {
     });
 }
 
-function renderU2cTrend(prefix) {
+function renderU2cTrend(workloads) {
     const canvas = document.getElementById('u2cTrendChart');
     if (!canvas) return;
 
-    const points = TREND_SERIES[prefix || ''] || [];
+    const points = SBU2c.aggregateTrend(TREND_SERIES, workloads);
     const history = points.filter(p => p.source !== 'live');
     const live = points.filter(p => p.source === 'live');
     const empty = document.getElementById('trendEmpty');
     const scope = document.getElementById('trendScope');
 
     if (scope) {
-        scope.textContent = prefix || '';
-        scope.classList.toggle('is-hidden', !prefix);
+        scope.textContent = workloads.length === 1 ? workloads[0] || '(No workload)' :
+            workloads.length + ' workloads';
+        scope.classList.toggle('is-hidden', !workloads.length);
     }
 
     const enough = points.length > 0;
@@ -645,7 +635,6 @@ function renderU2cTrend(prefix) {
 // ==========================================================================
 // Storage keys
 // ==========================================================================
-const WL_KEY = 'u2c_workload_filter';
 const SORT_KEY = 'u2c_sort';
 const FILTER_KEY = 'u2c_filters';
 const U2C_GOAL = {{ u2c_goal|tojson }};
@@ -655,6 +644,7 @@ const U2C_GOAL = {{ u2c_goal|tojson }};
 // ==========================================================================
 var currentSort = { column: 'acr', direction: 'desc' };
 var currentFilters = { seller: '', customer: '' };
+var workloadPicker = null;
 
 // ==========================================================================
 // Helper
@@ -807,17 +797,15 @@ function updateSortIndicators() {
 // 4) Apply all filters (seller + customer + workload) and update summaries
 // ==========================================================================
 function applyAllFilters() {
-    const workloadSel = el('workloadFilter');
     const sellerSel = el('filterSeller');
     const custSel = el('filterCustomer');
 
-    const wlPrefix = workloadSel ? workloadSel.value : '';
+    const workloads = workloadPicker?.getSelected() || [];
     const sellerId = sellerSel ? sellerSel.value : '';
     const customerId = custSel ? custSel.value : '';
     const hasSellerOrCustomerFilter = Boolean(sellerId || customerId);
 
     // Save filter state
-    SBU2c.writePreference(WL_KEY, wlPrefix || null);
     SBU2c.writePreference(FILTER_KEY, JSON.stringify({seller: sellerId, customer: customerId}));
 
     let remainingAcr = 0, remainingCount = 0;
@@ -827,7 +815,7 @@ function applyAllFilters() {
     // Filter remaining rows
     document.querySelectorAll('#remainingBody tr[data-workload]').forEach(row => {
         const wl = row.dataset.workload;
-        const wlMatch = !wlPrefix || wl.startsWith(wlPrefix + ':') || wl.startsWith(wlPrefix + ' ');
+        const wlMatch = SBWorkloadFilter.matches(wl, workloads);
         const sMatch = !sellerId || row.dataset.sellerId === sellerId;
         const cMatch = !customerId || row.dataset.customerId === customerId;
         const visible = wlMatch && sMatch && cMatch;
@@ -841,7 +829,7 @@ function applyAllFilters() {
     // Filter committed rows
     document.querySelectorAll('#committedBody tr[data-workload]').forEach(row => {
         const wl = row.dataset.workload;
-        const wlMatch = !wlPrefix || wl.startsWith(wlPrefix + ':') || wl.startsWith(wlPrefix + ' ');
+        const wlMatch = SBWorkloadFilter.matches(wl, workloads);
         const sMatch = !sellerId || row.dataset.sellerId === sellerId;
         const cMatch = !customerId || row.dataset.customerId === customerId;
         const visible = wlMatch && sMatch && cMatch;
@@ -912,12 +900,7 @@ function applyAllFilters() {
     if (el('committedBody')) applySortToBody(el('committedBody'));
 
     // Keep the attainment trend on the same workload as everything else.
-    if (typeof renderU2cTrend === 'function') renderU2cTrend(wlPrefix);
-}
-
-// Legacy wrapper for workload filter onchange
-function applyWorkloadFilter() {
-    applyAllFilters();
+    if (typeof renderU2cTrend === 'function') renderU2cTrend(workloads);
 }
 
 function clearMilestoneFilters() {
@@ -1023,14 +1006,12 @@ document.addEventListener('DOMContentLoaded', function() {
         SBU2c.reportError('Saved U2C filters are invalid. Using the current scope.', error);
     }
 
-    // --- Restore workload filter ---
-    const wlSel = el('workloadFilter');
-    if (wlSel) {
-        const savedWl = SBU2c.readPreference(WL_KEY);
-        if (savedWl && [...wlSel.options].some(o => o.value === savedWl)) {
-            wlSel.value = savedWl;
-        }
-    }
+    workloadPicker = SBWorkloadFilter.create(el('workloadFilter'), {
+        storageKey: 'salesbuddy_u2c_workload_prefixes',
+        choices: [...document.querySelectorAll('tr[data-workload]')]
+            .map(row => row.dataset.workload),
+        onChange: applyAllFilters,
+    });
 
     // Apply sort indicators, filters, and sort order
     updateSortIndicators();
@@ -1056,12 +1037,6 @@ document.addEventListener('DOMContentLoaded', function() {
         custSel.addEventListener('change', function() {
             applyAllFilters();
         });
-    }
-    if (wlSel) {
-        wlSel.addEventListener('change', function() {
-            applyAllFilters();
-        });
-        // Remove inline onchange since we wire it here
     }
     const clearBtn = el('clearMilestoneFilters');
     if (clearBtn) clearBtn.addEventListener('click', clearMilestoneFilters);

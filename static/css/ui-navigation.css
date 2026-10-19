@@ -1,4 +1,7 @@
-:root { --sb-navbar-height: var(--sb-ui-header-height); }
+:root {
+    --sb-navbar-height: var(--sb-ui-header-height);
+    --sb-ui-flyout-top: var(--sb-ui-header-height);
+}
 
 body:not(.sb-page-frame):has(> .sb-app-bar) {
     background: var(--sb-ui-canvas);

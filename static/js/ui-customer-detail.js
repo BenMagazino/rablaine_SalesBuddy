@@ -98,6 +98,13 @@
             reload() {
                 api.navigate(() => { submitted = true; window.location.reload(); });
             },
+            contactCreated(row) {
+                row.querySelectorAll('input').forEach(field => {
+                    initial.set(fieldKey(field), field.value);
+                    field.defaultValue = field.value;
+                });
+                save();
+            },
             contactsSaved() {
                 actions.clearDeletedContacts();
                 fields().filter(field => field.id !== 'contextTextarea').forEach(field => {
@@ -105,6 +112,8 @@
                     field.defaultValue = field.value;
                 });
                 root.querySelector('#contactsNewRows').replaceChildren();
+                actions.cancelContactEdit();
+                report('');
                 save();
             },
             contentReady(id) {

@@ -9,7 +9,7 @@
 {% if not request.args.get('embed') %}
 <footer class="sb-page-status" aria-label="1:1 preparation status">
     <span>Recent activity since {{ cutoff_date.strftime('%b %d') }} · Highlights include overdue milestones</span>
-    <span id="oneOnOneScopeStatus">Last 2 Weeks · {{ recent_customers|length }} customer{{ '' if recent_customers|length == 1 else 's' }}</span>
+    <span id="oneOnOneScopeStatus">{{ period_label }} · {{ recent_customers|length }} customer{{ '' if recent_customers|length == 1 else 's' }}</span>
 </footer>
 {% endif %}
 {% endblock %}
@@ -58,7 +58,7 @@
     </table>
 </div>
 {% else %}
-<p class="oo-empty">{{ 'No milestones committed in the last 2 weeks.' if committed else 'No milestones due this quarter on your team.' }}</p>
+<p class="oo-empty">{% if committed %}No milestones committed in the {{ period_label|lower }}.{% else %}No milestones due this quarter on your team.{% endif %}</p>
 {% endif %}
 {% endmacro %}
 
@@ -67,6 +67,10 @@
     <summary>
         <a href="{{ url_for('customers.customer_view', id=cdata.customer.id) }}">{{ cdata.customer.name }}</a>
         {% if not recent %}<small class="oo-muted">({{ cdata.engagements|length }})</small>{% endif %}
+        {% if cdata.estimated_acr %}<small class="oo-muted">${{ '{:,.0f}'.format(cdata.estimated_acr) }}/mo est. ACR</small>{% endif %}
+        {% if cdata.customer.seller %}
+        <a href="{{ url_for('sellers.seller_view', id=cdata.customer.seller.id) }}" class="oo-tag is-seller"><i class="bi bi-person"></i> {{ cdata.customer.seller.name }}</a>
+        {% endif %}
         {% if cdata.customer.territory %}
         <a href="{{ url_for('territories.territory_view', id=cdata.customer.territory.id) }}" class="oo-tag is-territory">
             <i class="bi bi-geo-alt"></i> {{ cdata.customer.territory.name }}
@@ -134,7 +138,7 @@
 {% endmacro %}
 
 {% block content %}
-<section class="sb-one-on-one{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}" aria-labelledby="oneOnOneTitle">
+<section class="sb-one-on-one{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}" data-period-label="{{ period_label }}" aria-labelledby="oneOnOneTitle">
     <header class="oo-header" data-sb-page-band>
         <div><h1 id="oneOnOneTitle">1:1 Report</h1><p>Meeting prep view showing active engagements and recent activity.</p></div>
         <div class="oo-commands">
@@ -142,22 +146,37 @@
             <button type="button" class="oo-command is-primary" data-sb-dialog="oneOnOneWorkspaceLauncher"><i class="bi bi-journal-text"></i> Open 1:1 Notes</button>
             {% set export_table_id = '.oo-table' %}
             {% set export_filename = 'one-on-one-report' %}
-            {% set export_title = '1:1 Report' %}
+            {% set export_title = '1:1 Report - ' ~ period_label %}
             {% include 'partials/_report_export.html' %}
         </div>
     </header>
+    <form class="oo-scope" method="get" action="{{ url_for('reports.report_one_on_one') }}" data-sb-page-band>
+        {% if request.args.get('embed') %}<input type="hidden" name="embed" value="{{ request.args.get('embed') }}">{% endif %}
+        <label for="oneOnOnePeriod">Reporting period</label>
+        <select class="oo-input" id="oneOnOnePeriod" name="days" onchange="this.form.requestSubmit()">
+            <option value="14"{% if period_days == 14 %} selected{% endif %}>Last 2 weeks</option>
+            <option value="30"{% if period_days == 30 %} selected{% endif %}>Last 30 days</option>
+        </select>
+        <label for="oneOnOneActivitySort">Sort customer activity</label>
+        <select class="oo-input" id="oneOnOneActivitySort" name="activity_sort" onchange="this.form.requestSubmit()">
+            {% for value, label in [('recent', 'Most recent first'), ('acr', 'Est. ACR (high to low)'), ('seller', 'Seller (A to Z)'), ('territory', 'Territory (A to Z)')] %}
+            <option value="{{ value }}"{% if activity_sort == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit" class="oo-command">Apply</button></noscript>
+    </form>
     <div class="oo-stats" data-sb-page-band>
-        <div class="oo-stat"><strong>{{ stats.recent_customer_count }}</strong><small>Customers (2w)</small></div>
-        <div class="oo-stat"><strong>{{ stats.recent_engagement_count }}</strong><small>Engagements (2w)</small></div>
-        <div class="oo-stat"><strong>{{ stats.recent_note_count }}</strong><small>Notes (2w)</small></div>
+        <div class="oo-stat"><strong>{{ stats.recent_customer_count }}</strong><small>Customers ({{ period_short }})</small></div>
+        <div class="oo-stat"><strong>{{ stats.recent_engagement_count }}</strong><small>Engagements ({{ period_short }})</small></div>
+        <div class="oo-stat"><strong>{{ stats.recent_note_count }}</strong><small>Notes ({{ period_short }})</small></div>
         <div class="oo-stat"><strong class="is-accent">{{ stats.open_engagement_count }}</strong><small>Open Engagements</small></div>
         <div class="oo-stat"><strong>{{ stats.open_customer_count }}</strong><small>Active Customers</small></div>
-        <div class="oo-stat"><strong class="is-success">${{ '{:,.0f}'.format(stats.commitments_acr) }}</strong><small>Committed ACR/mo (2w)</small></div>
+        <div class="oo-stat"><strong class="is-success">${{ '{:,.0f}'.format(stats.commitments_acr) }}</strong><small>Committed ACR/mo ({{ period_short }})</small></div>
     </div>
     <div class="oo-scope" data-sb-page-band>
         <span>Customer activity</span>
         <div class="oo-tabs" role="tablist" aria-label="Customer activity">
-            <button type="button" id="recent-tab" role="tab" aria-controls="recent" aria-selected="true"><i class="bi bi-clock-history"></i> Last 2 Weeks <span class="oo-tag">{{ recent_customers|length }}</span></button>
+            <button type="button" id="recent-tab" role="tab" aria-controls="recent" aria-selected="true"><i class="bi bi-clock-history"></i> {{ period_label }} <span class="oo-tag">{{ recent_customers|length }}</span></button>
             <button type="button" id="alltime-tab" role="tab" aria-controls="alltime" aria-selected="false" tabindex="-1"><i class="bi bi-list-check"></i> All Open Engagements <span class="oo-tag">{{ all_customers|length }}</span></button>
         </div>
         <span>Highlights remain the same in both views.</span>
@@ -175,7 +194,7 @@
                     {% if top_topics %}
                     <div class="oo-table-scroll" tabindex="0" aria-label="Topic trends reading region">
                         <table class="oo-table" id="oneOnOneTopics" data-sb-sortable data-sb-sort-key="oneOnOneTopics">
-                            <thead><tr><th data-sb-sort-type="text" data-export-label="Topic">Topic</th><th class="is-center" data-sb-sort-type="number" data-export-label="Trend">Trend</th><th class="is-right" data-sb-sort-type="number" data-export-label="2w">2w</th><th class="is-right" data-sb-sort-type="number" data-export-label="Cust">Cust</th></tr></thead>
+                            <thead><tr><th data-sb-sort-type="text" data-export-label="Topic">Topic</th><th class="is-center" data-sb-sort-type="number" data-export-label="Trend">Trend</th><th class="is-right" data-sb-sort-type="number" data-export-label="{{ period_short }}">{{ period_short }}</th><th class="is-right" data-sb-sort-type="number" data-export-label="Cust">Cust</th></tr></thead>
                             <tbody>{% for topic in top_topics %}
                                 {% set vals = topic.sparkline %}{% set mx = vals|max if vals|max > 0 else 1 %}
                                 <tr data-row-id="{{ topic.id }}">
@@ -217,7 +236,7 @@
                             {% endfor %}</tbody>
                         </table>
                     </div>
-                    {% else %}<p class="oo-empty">No revenue alerts reviewed in the last 2 weeks.</p>{% endif %}
+                    {% else %}<p class="oo-empty">No revenue alerts reviewed in the {{ period_label|lower }}.</p>{% endif %}
                 </section>
                 <section class="oo-section" aria-labelledby="ooQuarterTitle">
                     <div class="oo-section-heading"><h2 id="ooQuarterTitle"><i class="bi bi-flag-fill is-warning"></i> Due This Quarter <span class="oo-tag">{{ quarter_milestones|length }}</span></h2><small>{{ quarter_start.strftime('%b %d') }} - {{ quarter_end.strftime('%b %d, %Y') }}</small></div>
@@ -226,9 +245,9 @@
             </div>
         </div>
         <section class="oo-activity" id="recent" role="tabpanel" aria-labelledby="recent-tab">
-            <h2>Last 2 Weeks</h2>
+            <h2>{{ period_label }}</h2>
             {% for cdata in recent_customers %}{{ customer_activity(cdata, true) }}
-            {% else %}<p class="oo-empty"><i class="bi bi-info-circle"></i> No engagements or notes with call dates in the last 2 weeks.</p>{% endfor %}
+            {% else %}<p class="oo-empty"><i class="bi bi-info-circle"></i> No engagements or notes with call dates in the {{ period_label|lower }}.</p>{% endfor %}
         </section>
         <section class="oo-activity" id="alltime" role="tabpanel" aria-labelledby="alltime-tab" hidden>
             <h2>All Open Engagements</h2>

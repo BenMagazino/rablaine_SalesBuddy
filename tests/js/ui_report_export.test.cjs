@@ -14,6 +14,22 @@ function helper(name, context = {}) {
     return sandbox.invoke;
 }
 
+test('export titles come from report metadata, never hidden onboarding headings', () => {
+    for (const title of ['U2C Attainment', '1:1 Report', 'Workload Report']) {
+        const get = helper('getReportTitle', {CUSTOM_TITLE: '', document: {
+            title: title + ' - Sales Buddy',
+            querySelector() { throw Error('Hidden welcome headings are not report titles'); },
+        }});
+        assert.equal(get(), title);
+    }
+    assert.equal(helper('getReportTitle', {
+        CUSTOM_TITLE: '1:1 Report - Last 30 Days', document: {title: 'Unused'},
+    })(), '1:1 Report - Last 30 Days');
+    assert.equal(helper('getReportTitle', {CUSTOM_TITLE: '', document: {title: ''}})(), 'Report');
+    assert.equal((template.match(/const title = getReportTitle\(\)/g) || []).length, 2);
+    assert.doesNotMatch(template, /querySelector\(['"]h2['"]\)/);
+});
+
 test('native sort headers export their literal labels instead of losing button text', () => {
     const clean = helper('cleanCellText');
     const cell = label => ({

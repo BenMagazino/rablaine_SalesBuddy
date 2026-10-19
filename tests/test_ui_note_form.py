@@ -33,6 +33,27 @@ def test_note_editor_fits_available_shell_space_without_clipping_status() -> Non
             assert "100dvh" not in rule.group(1)
 
 
+def test_nonmodal_flyouts_share_the_measured_navbar_offset_and_scroll_below_their_headers() -> None:
+    """Desktop shell chrome shifts companion panes without changing modal positioning."""
+    root = Path(__file__).parents[1]
+    css = (root / "static" / "css" / "ui-note-form.css").read_text("utf-8")
+    chat = (root / "static" / "css" / "ui-chat.css").read_text("utf-8")
+    drawer = re.search(r"\.sb-nf-drawer\s*\{([^}]+)\}", css)
+    assert drawer is not None
+    assert "inset:var(--sb-ui-flyout-top) 0 0 auto" in drawer.group(1)
+    assert "height:calc(100dvh - var(--sb-ui-flyout-top))" in drawer.group(1)
+    assert "top: var(--sb-ui-flyout-top)" in chat
+    assert ".sb-nf-drawer > .sb-nf-offcanvas-header {flex-shrink:0;}" in css
+    assert ".sb-nf-drawer > .sb-nf-offcanvas-body {flex:1;min-height:0;}" in css
+    template = (root / "templates" / "note_form.html").read_text("utf-8")
+    assert "top: var(--sb-ui-header-height) !important" not in template
+    modal = (root / "static" / "css" / "ui-dialog.css").read_text("utf-8")
+    modal_rule = re.search(r"\.sb-dialog\s*\{([^}]+)\}", modal)
+    assert modal_rule is not None
+    assert "inset: 0" in modal_rule.group(1)
+    assert "--sb-ui-flyout-top" not in modal_rule.group(1)
+
+
 def test_autocomplete_rows_reset_native_button_borders_and_show_keyboard_selection() -> None:
     """Result rows must be full-width quiet options with a visible active match."""
     styles = Path(__file__).parents[1] / "static" / "css"
