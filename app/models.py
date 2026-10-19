@@ -450,6 +450,7 @@ class Dashboard(db.Model):
     content_width = db.Column(db.String(16), nullable=False, default='wide', server_default='wide')
     display_style = db.Column(db.String(16), nullable=False, default='cards', server_default='cards')
     layout_revision = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    filter_config = db.Column(db.JSON, nullable=False, default=dict, server_default='{}')
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
     widgets = db.relationship(
@@ -470,6 +471,7 @@ class DashboardWidget(db.Model):
         nullable=False, index=True,
     )
     widget_key = db.Column(db.String(100), nullable=False)
+    filters = db.Column(db.JSON, nullable=False, default=dict, server_default='{}')
     sort_order = db.Column(db.Integer, nullable=False, default=0)
     layout_column = db.Column(db.Integer, nullable=False, default=0, server_default='0')
     layout_row = db.Column(db.Integer, nullable=False, default=0)

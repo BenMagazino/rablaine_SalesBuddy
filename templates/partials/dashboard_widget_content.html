@@ -1,5 +1,11 @@
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 <div class="db-widget-body"{% if instance.requirements %} data-widget-requirements{% endif %}>
+{% if instance.filter_info is defined and instance.filter_info.ignored %}
+<p class="db-filter-exception">Portfolio-wide · Does not follow {{ instance.filter_info.ignored|join(' or ') }} filters.</p>
+{% elif instance.filter_info is defined and instance.filter_info.scoped %}
+{% set unfiltered_report = instance.data and instance.data.report_follows_scope is defined and not instance.data.report_follows_scope %}
+<p class="db-filter-scope" title="{{ instance.filter_info.widget_scope or 'Follows the dashboard and live filter selections' }}{% if unfiltered_report %}. Full report opens without dashboard filters.{% endif %}">{{ instance.filter_info.widget_scope or 'Filtered customer scope' }}{% if unfiltered_report %} · Full report unfiltered{% endif %}</p>
+{% endif %}
 {% if instance.data %}
     {% set widget_id_prefix = 'dw' ~ instance.id ~ '-' %}
     {% if instance.key.startswith('connect_goals.') %}

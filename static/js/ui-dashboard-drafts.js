@@ -3,6 +3,16 @@
 
     const PREFIX = 'sb.dashboard.draft.';
 
+    function validateFilters(filters) {
+        if (filters === undefined) return;
+        if (!filters || typeof filters !== 'object' || Array.isArray(filters)
+            || Object.keys(filters).some(key => !['customer_ids', 'seller_ids'].includes(key))
+            || Object.values(filters).some(ids => !Array.isArray(ids) || ids.length > 1000
+                || ids.some(id => !Number.isSafeInteger(id) || id <= 0))) {
+            throw new Error('This dashboard draft contains invalid filter selections.');
+        }
+    }
+
     function validate(draft) {
         if (!draft || draft.version !== 1 || !Number.isInteger(draft.revision)
             || draft.revision < 0 || !['name', 'subtitle', 'base_name', 'base_subtitle']
@@ -11,6 +21,16 @@
             || !['cards', 'dividers'].includes(draft.display_style)
             || !Array.isArray(draft.widgets)) {
             throw new Error('This dashboard draft is invalid or uses an unsupported format.');
+        }
+        if (draft.filter_config !== undefined) {
+            const config = draft.filter_config;
+            if (!config || typeof config !== 'object' || Array.isArray(config)
+                || Object.keys(config).some(key => !['scope', 'live_filters'].includes(key))
+                || !Array.isArray(config.live_filters)
+                || config.live_filters.some(key => !['customer_ids', 'seller_ids'].includes(key))) {
+                throw new Error('This dashboard draft contains invalid live filter controls.');
+            }
+            validateFilters(config.scope);
         }
         const ids = new Set();
         for (const item of draft.widgets) {
@@ -21,6 +41,7 @@
                 throw new Error('This dashboard draft contains an invalid widget.');
             }
             ids.add(item.id);
+            validateFilters(item.filters);
         }
         return draft;
     }

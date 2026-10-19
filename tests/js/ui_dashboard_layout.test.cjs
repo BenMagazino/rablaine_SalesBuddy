@@ -50,7 +50,7 @@ test('keyboard handles move one cell or step through supported footprints', () =
     assert.equal(keyboardGeometry(detailed, 'resize', 'ArrowUp', [6, 12], 5).row_span, 5);
 });
 
-function editorUI(withWidget = false, records = new Map()) {
+function editorUI(withWidget = false, records = new Map(), withFilters = false) {
     const node = () => ({
         disabled: false, hidden: false, style: {
             values: new Map(),
@@ -100,6 +100,10 @@ function editorUI(withWidget = false, records = new Map()) {
             }],
         }],
     };
+    if (withFilters) {
+        config.filterConfig = {scope: {customer_ids: [4]}, live_filters: ['seller_ids']};
+        config.catalog[0].supported_filters = ['customer_ids', 'seller_ids'];
+    }
     const body = node();
     const tile = {
         ...node(),
@@ -170,11 +174,99 @@ function editorUI(withWidget = false, records = new Map()) {
             },
         },
     };
+    if (withFilters) {
+        const {configuration, selections} = require('../../static/js/ui-dashboard-filters.js');
+        let current = configuration(config.filterConfig);
+        window.filterLive = {customer_ids: [], seller_ids: []};
+        window.SBDashboardFilters = {
+            configuration, selections,
+            context: filters => ({dashboard: current, widget: selections(filters),
+                live: window.filterLive}),
+            restore(value) { current = configuration(value); },
+            configure(items, disabled) { window.filtersDisabled = disabled; },
+            select() {},
+        };
+        window.fetch = async () => ({ok: true,
+            json: async () => ({success: true, html: '<div>Scoped</div>'})});
+        window.SBConnectGoals = {destroy() {}, init() {}};
+        body.remove = () => {};
+        tile.insertAdjacentHTML = () => {};
+    }
     vm.runInNewContext(fs.readFileSync(path.join(
         __dirname, '../../static/js/ui-dashboard-layout.js'), 'utf8'),
     {window, document, console, URLSearchParams});
     return {nodes, fields, actions, tile, resize, root, workspace, window, document, records, body};
 }
+
+test('widget filters and saved scope survive draft reload, undo, redo, and discard', () => {
+    const ui = editorUI(true, new Map(), true);
+    const editor = ui.window.SBDashboardEditor;
+    editor.setWidgetFilters(1, {seller_ids: [7]});
+    let saved = ui.window.SBDashboardDrafts.read(21);
+    assert.deepEqual(saved.widgets[0].filters, {customer_ids: [], seller_ids: [7]});
+    assert.deepEqual(saved.filter_config.scope, {customer_ids: [4], seller_ids: []});
+    ui.window.fetch = async () => ({ok: true,
+        json: async () => ({success: true, html: '<div>Scoped</div>'})});
+    ui.window.SBConnectGoals = {destroy() {}, init() {}};
+    ui.body.remove = () => {};
+    ui.tile.insertAdjacentHTML = () => {};
+    ui.nodes.undoDashboardEdit.click();
+    assert.equal(ui.window.SBDashboardDrafts.read(21), null);
+    ui.nodes.redoDashboardEdit.click();
+    saved = ui.window.SBDashboardDrafts.read(21);
+    assert.deepEqual(saved.widgets[0].filters.seller_ids, [7]);
+    const config = {scope: {customer_ids: [9]}, live_filters: ['customer_ids']};
+    editor.setFilterConfig(config);
+    assert.deepEqual(ui.window.SBDashboardDrafts.read(21).filter_config,
+        {scope: {customer_ids: [9], seller_ids: []}, live_filters: ['customer_ids']});
+    const reload = editorUI(true, ui.records, true);
+    assert.deepEqual(reload.window.SBDashboardDrafts.read(21).widgets[0].filters.seller_ids, [7]);
+    reload.nodes.cancelDashboardLayout.click();
+    assert.equal(reload.window.SBDashboardDrafts.read(21), null);
+    assert.match(reload.tile.dataset.loadedPresentation, /\"customer_ids\":\[4\]/);
+});
+
+test('live filters and preview never rewrite a local draft, but change refresh scope', async () => {
+    const ui = editorUI(true, new Map(), true);
+    ui.window.SBDashboardEditor.setWidgetFilters(1, {customer_ids: [4]});
+    const draft = ui.records.get(PREFIX + '21');
+    const requests = [];
+    ui.window.fetch = async url => {
+        requests.push(url);
+        return {ok: true, json: async () => ({success: true, html: '<div>Scoped</div>'})};
+    };
+    ui.window.SBConnectGoals = {destroy() {}, init() {}};
+    ui.body.remove = () => {};
+    ui.tile.insertAdjacentHTML = () => {};
+    ui.nodes.previewDashboardDraft.click();
+    assert.equal(ui.window.filtersDisabled, true);
+    ui.window.filterLive = {customer_ids: [], seller_ids: [7]};
+    await ui.window.SBDashboardEditor.refreshFilters();
+    const query = new URL(requests[0], 'http://localhost').searchParams;
+    const scope = JSON.parse(query.get('filter_context'));
+    assert.deepEqual(scope.widget.customer_ids, [4]);
+    assert.deepEqual(scope.live.seller_ids, [7]);
+    assert.deepEqual(scope.dashboard.scope.customer_ids, [4]);
+    assert.equal(ui.records.get(PREFIX + '21'), draft);
+    ui.nodes.exitDashboardDraftPreview.click();
+    assert.equal(ui.window.filtersDisabled, false);
+    assert.equal(ui.records.get(PREFIX + '21'), draft);
+});
+
+test('failed filter refresh is retryable without leaving a generic reload-only error', async () => {
+    const ui = editorUI(true, new Map(), true);
+    ui.nodes.dashboardError.hidden = true;
+    ui.window.filterLive = {customer_ids: [], seller_ids: [7]};
+    ui.window.fetch = async () => { throw new Error('Offline'); };
+    await assert.rejects(ui.window.SBDashboardEditor.refreshFilters(), /selected scope/);
+    assert.equal(ui.nodes.dashboardError.hidden, true);
+    ui.window.fetch = async () => ({ok: true,
+        json: async () => ({success: true, html: '<div>Scoped</div>'})});
+    await ui.window.SBDashboardEditor.refreshFilters();
+    assert.equal(ui.nodes.dashboardError.hidden, true);
+    assert.match(ui.tile.dataset.loadedPresentation, /\"seller_ids\":\[7\]/);
+    assert.equal(ui.window.SBDashboardDrafts.read(21), null);
+});
 
 test('draft preview uses the unsaved state without rewriting the draft or publishing', () => {
     const ui = editorUI(true);

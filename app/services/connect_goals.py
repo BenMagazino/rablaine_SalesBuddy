@@ -141,7 +141,9 @@ def _goal_status(value: float, target: float) -> tuple[str, str, float]:
     return 'danger', 'Needs attention', ratio
 
 
-def get_u2c_widget(reference: date | None = None) -> dict[str, Any]:
+def get_u2c_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict[str, Any]:
     """Return FY27 Data U2C attainment and trend."""
     reference = reference or date.today()
     fiscal_quarter = current_fiscal_quarter(reference)
@@ -155,10 +157,11 @@ def get_u2c_widget(reference: date | None = None) -> dict[str, Any]:
             'destination': '/reports/u2c',
         }
 
-    attainment = get_attainment(snapshot.id, FY27_DATA_SCOPE['workload_prefix'])
+    scope = {'customer_ids': customer_ids} if customer_ids is not None else {}
+    attainment = get_attainment(snapshot.id, FY27_DATA_SCOPE['workload_prefix'], **scope)
     trend = get_attainment_trend(
         snapshot.id, FY27_DATA_SCOPE['workload_area'],
-        include_live=True, reference=reference)
+        include_live=True, reference=reference, **scope)
     quarter_start, quarter_end = fiscal_quarter_date_range(fiscal_quarter)
     trend = [
         point for point in trend
@@ -173,7 +176,8 @@ def get_u2c_widget(reference: date | None = None) -> dict[str, Any]:
 
     return {
         'key': 'u2c',
-        'available': True,
+        'available': bool(attainment['total_in_scope']) if customer_ids is not None else True,
+        'message': 'No snapshotted Data milestones match this customer scope.',
         'title': 'Quarterly U2C progression',
         'value': attainment['u2c_pct'],
         'unit': '%',
@@ -200,11 +204,13 @@ def get_u2c_widget(reference: date | None = None) -> dict[str, Any]:
     }
 
 
-def _milestone_scope(reference: date | None = None):
+def _milestone_scope(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+):
     """Return the provisional active FY27 Data milestone query."""
     fiscal_start, fiscal_end = fiscal_year_bounds(reference)
     next_fiscal_end = date(fiscal_end.year + 1, 6, 30)
-    return (
+    query = (
         Milestone.query
         .filter(Milestone.msx_milestone_id.isnot(None))
         .filter(Milestone.customer_id.isnot(None))
@@ -214,11 +220,16 @@ def _milestone_scope(reference: date | None = None):
         .filter(Milestone.due_date <= datetime.combine(next_fiscal_end, datetime.max.time()))
         .filter(Milestone.workload.like(f"{FY27_DATA_SCOPE['workload_prefix']}%"))
     )
+    if customer_ids is not None:
+        query = query.filter(Milestone.customer_id.in_(customer_ids))
+    return query
 
 
-def get_team_coverage_widget(reference: date | None = None) -> dict[str, Any]:
+def get_team_coverage_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict[str, Any]:
     """Return ACR-weighted milestone team coverage."""
-    milestones = _milestone_scope(reference).all()
+    milestones = _milestone_scope(reference, customer_ids=customer_ids).all()
     total_acr = sum(max(milestone.monthly_usage or 0.0, 0.0) for milestone in milestones)
     on_team = [milestone for milestone in milestones if milestone.on_my_team]
     on_team_acr = sum(max(milestone.monthly_usage or 0.0, 0.0) for milestone in on_team)
@@ -270,11 +281,13 @@ def _task_date(task: MsxTask) -> date:
     return (task.due_date or task.created_at).date()
 
 
-def get_hva_coverage_widget(reference: date | None = None) -> dict[str, Any]:
+def get_hva_coverage_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict[str, Any]:
     """Return current-FY HVA coverage for the provisional milestone scope."""
     reference = reference or date.today()
     fiscal_start, fiscal_end = fiscal_year_bounds(reference)
-    milestones = _milestone_scope(reference).filter(
+    milestones = _milestone_scope(reference, customer_ids=customer_ids).filter(
         Milestone.on_my_team.is_(True)
     ).all()
     milestone_ids = [milestone.id for milestone in milestones]
@@ -370,18 +383,22 @@ def _current_half(reference: date) -> tuple[date, date, str]:
     )
 
 
-def get_whitespace_widget(reference: date | None = None) -> dict[str, Any]:
+def get_whitespace_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict[str, Any]:
     """Return sustained whitespace wins and ramping candidates for the half."""
     reference = reference or date.today()
     half_start, half_end, half_label = _current_half(reference)
     buckets = FY27_DATA_SCOPE['revenue_buckets']
-    rows = (
+    query = (
         CustomerRevenueData.query
         .filter(CustomerRevenueData.customer_id.isnot(None))
         .filter(CustomerRevenueData.bucket.in_(buckets))
         .order_by(CustomerRevenueData.month_date)
-        .all()
     )
+    if customer_ids is not None:
+        query = query.filter(CustomerRevenueData.customer_id.in_(customer_ids))
+    rows = query.all()
     global_months = {
         month
         for (month,) in db.session.query(CustomerRevenueData.month_date).distinct().all()

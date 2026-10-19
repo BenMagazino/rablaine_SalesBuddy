@@ -8,7 +8,7 @@
     {% if data.snapshot_state == 'not_imported' %}
     <p class="db-report-empty">No saved renewal snapshot. Import Fabric 360 data from the report to see upcoming expirations.</p>
     {% else %}
-    <p class="db-report-caption">{{ data.reference_date }} to {{ data.window_end }}, inclusive. All local accounts.</p>
+    <p class="db-report-caption">{{ data.reference_date }} to {{ data.window_end }}, inclusive. {{ 'Selected customer scope' if instance.filter_info is defined and instance.filter_info.scoped else 'All local accounts' }}.</p>
     <dl class="db-report-metrics">
         <div><dt>Expirations</dt><dd>{{ data.counts.upcoming }}</dd></div>
         <div><dt>Customers</dt><dd>{{ data.counts.customers }}</dd></div>

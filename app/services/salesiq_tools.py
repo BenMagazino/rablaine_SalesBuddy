@@ -1029,10 +1029,20 @@ def list_action_items(
                 'minimum': 1,
                 'description': 'Optional saved dashboard ID. Omit to list dashboards.',
             },
+            'live_filters': {
+                'type': 'object',
+                'description': 'Optional customer_ids and seller_ids arrays. Requires a dashboard '
+                'with those live controls enabled; only narrows saved scope.',
+                'properties': {
+                    'customer_ids': {'type': 'array', 'items': {'type': 'integer', 'minimum': 1}},
+                    'seller_ids': {'type': 'array', 'items': {'type': 'integer', 'minimum': 1}},
+                },
+                'additionalProperties': False,
+            },
         },
     },
 )
-def get_dashboards(dashboard_id: int | None = None) -> dict:
+def get_dashboards(dashboard_id: int | None = None, live_filters: dict | None = None) -> dict:
     """Read the same saved dashboard definitions and values used by the UI."""
     from app.models import Dashboard, db
     from app.services.dashboards import (
@@ -1040,6 +1050,8 @@ def get_dashboards(dashboard_id: int | None = None) -> dict:
     )
 
     if dashboard_id is None:
+        if live_filters is not None:
+            raise ValueError('Choose a dashboard before applying live filters.')
         from app.services.dashboard_templates import list_dashboard_templates
 
         return {'dashboards': list_dashboards(), 'catalog': get_widget_catalog(),
@@ -1050,7 +1062,8 @@ def get_dashboards(dashboard_id: int | None = None) -> dict:
     dashboard = db.session.get(Dashboard, dashboard_id)
     if dashboard is None:
         raise ValueError('Dashboard not found.')
-    result = get_dashboard_data(dashboard)
+    result = (get_dashboard_data(dashboard, live_filters=live_filters)
+              if live_filters is not None else get_dashboard_data(dashboard))
     result['url'] = f'{_BASE}{result["url"]}'
     return result
 
@@ -1064,19 +1077,35 @@ def get_dashboards(dashboard_id: int | None = None) -> dict:
     'and drill-through destinations alongside each signal. Shared prerequisites are preserved.',
     {'type': 'object', 'properties': {
         'widget_key': {'type': 'string', 'description': 'Registered widget key.'},
+        'filters': {
+            'type': 'object',
+            'description': 'Optional Customer/Seller scope for a widget that supports it.',
+            'properties': {
+                'customer_ids': {'type': 'array', 'items': {'type': 'integer', 'minimum': 1}},
+                'seller_ids': {'type': 'array', 'items': {'type': 'integer', 'minimum': 1}},
+            },
+            'additionalProperties': False,
+        },
     }, 'required': ['widget_key']},
 )
-def report_dashboard_signals(widget_key: str) -> dict:
+def report_dashboard_signals(widget_key: str, filters: dict | None = None) -> dict:
     """Reuse the catalog provider rather than duplicating a widget's analytical rules."""
-    from app.services.dashboards import WIDGET_DEFINITIONS, get_widget_requirements
+    from app.services.dashboards import (
+        WIDGET_DEFINITIONS, get_widget_requirements, validate_widget_filters,
+    )
+    from app.services.dashboard_filters import resolve_customer_scope, scope_report_destination
 
     definition = WIDGET_DEFINITIONS.get(widget_key)
     if definition is None:
         raise ValueError('Choose a registered dashboard widget key from get_dashboards.')
+    selected = validate_widget_filters(widget_key, filters)
+    customer_ids = resolve_customer_scope(selected)
     requirements = get_widget_requirements(definition)
     if requirements:
         return {'requirements': requirements}
-    return definition.provider(None)
+    data = (definition.provider(None, customer_ids=customer_ids) if customer_ids is not None
+            else definition.provider(None))
+    return scope_report_destination(data, widget_key, customer_ids)
 
 
 @tool(

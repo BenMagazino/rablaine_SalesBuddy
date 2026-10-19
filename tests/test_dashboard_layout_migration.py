@@ -48,13 +48,25 @@ def test_migration_preserves_widget_ids_order_and_existing_geometry():
         assert saved['subtitle'] == ''
         assert saved['content_width'] == 'wide' and saved['layout_revision'] == 0
         assert saved['display_style'] == 'cards'
+        assert saved['filter_config'] == {}
+        assert all(row['filters'] == {} for row in rows)
         session.execute(dashboard.update().where(dashboard.c.id == 1).values(
             subtitle='Keep my subtitle', display_style='dividers',
+            filter_config={'scope': {'customer_ids': [123]}},
+        ))
+        session.execute(widgets.update().where(widgets.c.id == 10).values(
+            filters={'seller_ids': [456]},
         ))
         session.commit()
         _migrate_dashboard_layout(database)
         assert session.execute(select(dashboard.c.subtitle)).scalar_one() == 'Keep my subtitle'
         assert session.execute(select(dashboard.c.display_style)).scalar_one() == 'dividers'
+        assert session.execute(select(dashboard.c.filter_config)).scalar_one() == {
+            'scope': {'customer_ids': [123]},
+        }
+        assert session.execute(select(widgets.c.filters).where(widgets.c.id == 10)).scalar_one() == {
+            'seller_ids': [456],
+        }
         assert {'layout_column', 'layout_row', 'column_span', 'row_span', 'variant_key'} <= {
             column['name'] for column in inspect(engine).get_columns('dashboard_widgets')
         }

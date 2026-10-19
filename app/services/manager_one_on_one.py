@@ -12,7 +12,9 @@ from app.models import (
 from app.services.agenda_candidates import candidate_payload
 
 
-def get_manager_one_on_one_report() -> dict:
+def get_manager_one_on_one_report(
+    *, customer_ids: tuple[int, ...] | None = None,
+) -> dict:
     """Return all sections and current linked details, including unavailable records."""
     sections = ManagerInitiativeSection.query.options(
         selectinload(ManagerInitiativeSection.items)
@@ -25,17 +27,45 @@ def get_manager_one_on_one_report() -> dict:
         selectinload(ManagerInitiativeSection.items)
         .selectinload(ManagerInitiativeItem.discussed_points),
     ).order_by(ManagerInitiativeSection.id).all()
+    payloads = [
+        get_manager_section_payload(section) if customer_ids is None
+        else get_manager_section_payload(section, customer_ids=customer_ids)
+        for section in sections
+    ]
     return {
         'sections': [
-            get_manager_section_payload(section)
-            for section in sections
+            section for section in payloads
+            if customer_ids is None or section['items']
         ],
     }
 
 
-def get_manager_section_payload(section: ManagerInitiativeSection) -> dict:
+def get_manager_section_payload(
+    section: ManagerInitiativeSection, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict:
     """Keep the flat item inventory and group the same items by their current seller."""
-    items = [get_manager_item_payload(item) for item in section.items]
+    items = []
+    for item in section.items:
+        if customer_ids is not None:
+            entity = getattr(item, item.item_type)
+            if (
+                item.item_type == 'project' or entity is None or entity.customer is None
+                or entity.customer_id not in customer_ids
+            ):
+                continue
+        items.append(get_manager_item_payload(item))
+    return {
+        'id': section.id,
+        'name': section.name,
+        'description': section.description,
+        'items': items,
+        'seller_groups': _group_initiative_items(items),
+        'summary': summarize_initiative_items(items),
+    }
+
+
+def _group_initiative_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Group the selected live items and calculate each seller's scoped totals."""
     groups = {}
     for item in items:
         group = groups.setdefault(item['seller_id'], {
@@ -51,14 +81,7 @@ def get_manager_section_payload(section: ManagerInitiativeSection) -> dict:
     ))
     for group in seller_groups:
         group['summary'] = summarize_initiative_items(group['items'])
-    return {
-        'id': section.id,
-        'name': section.name,
-        'description': section.description,
-        'items': items,
-        'seller_groups': seller_groups,
-        'summary': summarize_initiative_items(items),
-    }
+    return seller_groups
 
 
 def summarize_initiative_items(items: list[dict[str, Any]]) -> dict[str, Any]:
@@ -76,11 +99,17 @@ def summarize_initiative_items(items: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def get_initiative_tracker_widget(reference: date | None = None) -> dict[str, Any]:
+def get_initiative_tracker_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict[str, Any]:
     """Reuse the tracker's live sections and seller summaries without fiscal setup."""
+    report = (
+        get_manager_one_on_one_report() if customer_ids is None
+        else get_manager_one_on_one_report(customer_ids=customer_ids)
+    )
     return {
         'key': 'initiatives',
-        'sections': get_manager_one_on_one_report()['sections'],
+        'sections': report['sections'],
         'destination': '/reports/initiative-tracker',
     }
 

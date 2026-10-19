@@ -278,6 +278,39 @@ standalone UI iterations using entirely fictional data. See the
   They read the same saved data as their reports and link back to existing workflows;
   opening a dashboard never starts an external refresh. Revenue totals cover the complete
   unreviewed priority-20+ queue, rather than just the report's first page.
+  Open the **Filters** tab on the editor's right edge to configure the side panel.
+  The tab and expanded panel attach to the dashboard frame; the dashboard and filters
+  are centered together without shrinking the fixed canvas. Closing the panel
+  collapses it back to that tab. **Always include**
+  sets the dashboard's saved Customer/Seller restrictions. **Available viewer filters**
+  chooses which temporary filters viewers can use, and **Try in preview** lets you
+  test them before publishing. Select a widget and choose **Widget filters** for
+  additional restrictions on that widget only. Without extra restrictions, it
+  inherits the dashboard filters. Widget filters are also available in the library.
+  Multiple selections within a filter are OR; Customer and Seller, dashboard scope,
+  widget scope, and live selections intersect. Empty selections mean unrestricted;
+  conflicting selections produce an empty result, never a wider portfolio.
+  Viewing and preview use the same right-edge **Filters** tab, with only the temporary
+  controls enabled by the author and read-only saved restrictions. The collapsed tab
+  highlights and counts active filter dimensions, not individual selected records.
+  Dashboards without enabled viewer filters have no viewer tab.
+  Live filters update calculations without changing widget sizes and never publish
+  changes to the saved dashboard. **Reset filters**
+  clears only the live selections, not saved boundaries or individual widget filters.
+  Initiative Tracker, Hygiene, Meeting coverage, Revenue attention, P-to-F renewals,
+  Fabric pressure, and all four Connect Goals widgets support both filters.
+  U2C scope follows the customer captured on each starting-snapshot milestone, not
+  a milestone's current customer. Starting and committed snapshot ACR, remaining items,
+  and published/live trend points all use that scope. New milestones outside the
+  snapshot never join its denominator. Historical weeks without per-milestone details
+  are omitted instead of substituting portfolio-wide totals.
+  Team/HVA coverage recomputes both sides of the ratio; whitespace scopes customer
+  revenue histories before counting wins and ramping accounts.
+  The panel calls out widgets that do not follow all active filters. Fabric pressure and Hygiene
+  report links retain the effective scope; other full-report links explicitly warn that
+  they open without dashboard filters. Unmatched/customerless records are excluded
+  under active Customer/Seller scope. Filter settings participate in local drafts,
+  undo/redo, preview, and atomic Save.
   Source timestamps and missing measurements remain available in the reports instead of implying
   that an empty or outdated snapshot means everything is healthy.
   P-to-F shows subscription expirations in the next 90 days and annual SA expiration
@@ -291,7 +324,8 @@ standalone UI iterations using entirely fictional data. See the
   capacity population, signal/search filters, sortable measurements including
   15-day average utilization, and export.
   Its dashboard widget keeps attention and throttling counts and, in Details, only
-  the five highest-priority capacities needing attention. Counts remain portfolio-wide.
+  the five highest-priority capacities needing attention. Counts cover the full effective
+  customer scope, not just the shortlist.
   One Open report link provides the full investigation view, including measurement
   dates, utilization thresholds, and incomplete-data context.
   Widgets declare their own shared setup requirements. If compensation buckets have

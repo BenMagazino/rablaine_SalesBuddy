@@ -129,9 +129,16 @@ def test_dashboard_grid_fills_fixed_shared_report_frame() -> None:
         for selector, declarations in re.findall(r"([^{}]+)\{([^{}]*)\}", source)
     }
     assert "min-width: var(--db-canvas-width);" in rules[".db-dashboard"]
-    assert "overflow-x: auto;" in rules[
-        ".sb-page-frame #main-content:has(> .db-dashboard)"
-    ]
+    workspace = rules[".db-dashboard-workspace"]
+    assert "overflow-x: auto;" in workspace
+    assert "justify-content: safe center;" in workspace
+    assert "flex: 0 0 auto;" in rules[".db-dashboard-viewport"]
+    assert "min-width: 0;" in rules[".db-dashboard-viewport"]
+    frame = rules[".db-dashboard-viewport > .db-dashboard"]
+    assert "width: var(--db-canvas-width);" in frame
+    assert "flex-shrink: 0;" in frame
+    assert "margin: 0;" in frame
+    assert "flex: 0 0 332px;" in rules[".db-filters-panel"]
     assert "width: 100%;" in rules[".db-canvas"]
     assert "--db-canvas-width" not in rules[".db-canvas"]
 

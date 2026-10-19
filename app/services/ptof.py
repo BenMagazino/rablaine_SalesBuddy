@@ -116,11 +116,15 @@ def sync_ptof(progress: Callable | None = None) -> dict:
         raise
 
 
-def get_ptof_report(customer_id: int | None = None) -> dict:
+def get_ptof_report(
+    customer_id: int | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict:
     """Join source TPIDs to current customer names without making remote queries."""
     customers = Customer.query.filter(Customer.tpid > 0)
     if customer_id is not None:
         customers = customers.filter(Customer.id == customer_id)
+    if customer_ids is not None:
+        customers = customers.filter(Customer.id.in_(customer_ids))
     mapping = {int(customer.tpid): customer for customer in customers.order_by(Customer.id)}
     snapshot = PToFImport.query.order_by(PToFImport.imported_at.desc(), PToFImport.id.desc()).first()
     result = {"snapshot": None, "summary": [], "details": []}
@@ -148,7 +152,9 @@ def get_ptof_report(customer_id: int | None = None) -> dict:
     return result
 
 
-def get_ptof_renewals_widget(reference: date | None = None) -> dict:
+def get_ptof_renewals_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict:
     """Read subscription expirations in an inclusive 90-day saved-snapshot window.
 
     Account assessments are context only. Subscription rows remain a separate
@@ -156,7 +162,10 @@ def get_ptof_renewals_widget(reference: date | None = None) -> dict:
     """
     reference = reference or date.today()
     end = reference + timedelta(days=90)
-    report = get_ptof_report()
+    report = (
+        get_ptof_report() if customer_ids is None
+        else get_ptof_report(customer_ids=customer_ids)
+    )
     rows = []
     counts = {"upcoming": 0, "past": 0, "undated": 0, "later": 0}
     for index, source in enumerate(report["details"]):
