@@ -90,16 +90,20 @@
         const [nameInput, subtitleInput] = detailControls;
         const detailsState = document.getElementById('dashboardDetailsState');
         const drafts = global.SBDashboardDrafts;
+        const filtering = global.SBDashboardFilters;
         const tiles = new Map(Array.from(canvas.querySelectorAll('[data-widget-id]'),
             tile => [Number(tile.dataset.widgetId), tile]));
         const saved = Array.from(tiles, ([id, tile]) => ({
             id, key: tile.dataset.widgetKey, variant_key: tile.dataset.variant,
             layout_column: Number(tile.dataset.column), layout_row: Number(tile.dataset.row),
             column_span: Number(tile.dataset.columnSpan), row_span: Number(tile.dataset.rowSpan),
+            ...(filtering ? {filters: filtering.selections(
+                JSON.parse(tile.dataset.widgetFilters || '{}'))} : {}),
         }));
         let entries = saved.map(item => ({...item}));
         let contentWidth = config.contentWidth;
         let displayStyle = config.displayStyle;
+        let filterConfig = filtering?.configuration(config.filterConfig);
         let dirty = false;
         let pending = false;
         let selectedId = null;
@@ -124,16 +128,19 @@
             return {
                 name: nameInput.value, subtitle: subtitleInput.value,
                 content_width: contentWidth, display_style: displayStyle,
+                ...(filtering ? {filter_config: filterConfig} : {}),
                 widgets: entries.map(item => ({
                     id: item.id, key: item.key, variant_key: item.variant_key,
                     layout_column: item.layout_column, layout_row: item.layout_row,
                     column_span: item.column_span, row_span: item.row_span,
+                    ...(filtering ? {filters: filtering.selections(item.filters)} : {}),
                 })),
             };
         }
         const originalState = {
             name: config.name, subtitle: config.subtitle,
             content_width: config.contentWidth, display_style: config.displayStyle,
+            ...(filtering ? {filter_config: filterConfig} : {}),
             widgets: saved,
         };
 
@@ -161,6 +168,9 @@
             redoButton.disabled = unavailable || !redoStack.length;
         }
         function markDirty(group = null) {
+            filtering?.configure(entries.map(item => ({
+                supported: definition(item)?.supported_filters || [],
+            })), previewing || pending || published || blocked);
             const state = editableState();
             if (historyState && !initializing && !blocked && !published
                 && JSON.stringify(state) !== JSON.stringify(historyState)) {
@@ -237,6 +247,8 @@
             subtitleInput.value = state.subtitle;
             contentWidth = state.content_width;
             displayStyle = state.display_style;
+            filterConfig = filtering?.configuration(state.filter_config);
+            filtering?.restore(filterConfig);
             entries = state.widgets.map(item => ({...item}));
             widthSelect.value = contentWidth;
             styleSelect.value = displayStyle;
@@ -262,6 +274,10 @@
             if (gesture) finishGesture(false);
             select(null);
             previewing = value;
+            filtering?.setPreview?.(value);
+            filtering?.configure(entries.map(item => ({
+                supported: definition(item)?.supported_filters || [],
+            })), previewing || pending || published || blocked);
             updateHistoryButtons();
             detailControls.forEach(control => {
                 control.disabled = previewing || pending || published || blocked;
@@ -352,7 +368,9 @@
         }
         async function loadContent(item, reportError = true) {
             const tile = ensureTile(item);
-            const signature = item.variant_key + ':' + item.column_span;
+            const context = filtering?.context(item.filters);
+            const signature = item.variant_key + ':' + item.column_span
+                + (context ? ':' + JSON.stringify(context) : '');
             if (tile.dataset.loadedPresentation === signature) {
                 contentRequests.delete(item.id);
                 return;
@@ -364,6 +382,7 @@
                     key: item.key, variant: item.variant_key,
                     width: String(item.column_span), instance_id: String(item.id),
                 });
+                if (context) query.set('filter_context', JSON.stringify(context));
                 const response = await global.fetch('/api/reports/dashboards/widget-preview?' + query);
                 const data = await response.json();
                 if (!response.ok || data.success !== true || typeof data.html !== 'string') {
@@ -416,6 +435,8 @@
         }
         function updateInspector() {
             const item = entries.find(entry => entry.id === selectedId);
+            filtering?.select(item, definition(item || {})?.supported_filters || [],
+                previewing || pending || published || blocked);
             inspectorFields.querySelectorAll('input, select, button').forEach(
                 control => { control.disabled = !item || pending || published || blocked; });
             inspectorFields.hidden = !item;
@@ -494,6 +515,8 @@
             entries = saved.map(item => ({...item}));
             contentWidth = config.contentWidth;
             displayStyle = config.displayStyle;
+            filterConfig = filtering?.configuration(config.filterConfig);
+            filtering?.restore(filterConfig);
             nameInput.value = config.name;
             subtitleInput.value = config.subtitle;
             renderEntries();
@@ -521,6 +544,8 @@
         function updateWidgetField(event) {
             if (previewing || pending || published || blocked) return;
             const field = event.target.name;
+            if (!['variant_key', 'layout_column', 'layout_row', 'column_span', 'row_span']
+                .includes(field)) return;
             const origin = entries.find(item => item.id === selectedId);
             if (!origin) return;
             const item = {...origin};
@@ -545,7 +570,10 @@
         });
         tiles.forEach((tile, id) => {
             bindTile(tile, id);
-            tile.dataset.loadedPresentation = tile.dataset.variant + ':' + tile.dataset.columnSpan;
+            const item = saved.find(entry => entry.id === id);
+            const context = filtering?.context(item.filters);
+            tile.dataset.loadedPresentation = tile.dataset.variant + ':' + tile.dataset.columnSpan
+                + (context ? ':' + JSON.stringify(context) : '');
         });
         canvas.addEventListener('click', event => {
             if (!event.target.closest('[data-widget-id]')) select(null);
@@ -707,6 +735,9 @@
             if (event.defaultPrevented || event.isComposing || event.altKey
                 || document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]')) return;
             const target = event.target;
+            if (target.closest?.('#dashboardFiltersPanel, #openDashboardFilters, #openWidgetFilters')) {
+                return;
+            }
             const tag = target.tagName?.toLowerCase();
             if (['input', 'textarea', 'select'].includes(tag) || target.isContentEditable) return;
             const key = event.key.toLowerCase();
@@ -755,6 +786,25 @@
         });
         global.SBDashboardEditor = Object.freeze({
             getSettings: () => ({contentWidth, displayStyle}),
+            setFilterConfig(value) {
+                if (previewing || pending || published || blocked) return;
+                filterConfig = filtering.configuration(value);
+                filtering.restore(filterConfig);
+                markDirty();
+            },
+            setWidgetFilters(id, value) {
+                if (previewing || pending || published || blocked) return;
+                entries = entries.map(item => item.id === id
+                    ? {...item, filters: filtering.selections(value)} : item);
+                markDirty();
+                updateInspector();
+            },
+            async refreshFilters() {
+                const results = await Promise.allSettled(entries.map(item => loadContent(item, false)));
+                if (results.some(result => result.status === 'rejected')) {
+                    throw new Error('One or more widgets could not load the selected scope.');
+                }
+            },
             async refreshRequirement(key) {
                 tiles.forEach((tile, id) => {
                     const spec = config.catalog.find(item => item.key === tile.dataset.widgetKey);
@@ -778,6 +828,7 @@
                     id: Math.min(0, ...tiles.keys()) - 1, key: spec.key,
                     variant_key: spec.variant_key, column_span: spec.column_span,
                     row_span: spec.row_span, layout_column: 0,
+                    ...(filtering ? {filters: filtering.selections(spec.filters)} : {}),
                     layout_row: Math.max(0, ...entries.map(entry => entry.layout_row + entry.row_span)),
                 };
                 const type = variant(item);
@@ -812,6 +863,8 @@
                 entries = lastDraft.widgets.map(item => ({...item}));
                 contentWidth = lastDraft.content_width;
                 displayStyle = lastDraft.display_style;
+                filterConfig = filtering?.configuration(lastDraft.filter_config ?? config.filterConfig);
+                filtering?.restore(filterConfig);
                 nameInput.value = lastDraft.name;
                 subtitleInput.value = lastDraft.subtitle;
                 draftRevision = lastDraft.revision;

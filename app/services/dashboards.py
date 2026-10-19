@@ -17,6 +17,11 @@ from app.services.hygiene import get_hygiene_gaps_widget
 from app.services.manager_one_on_one import get_initiative_tracker_widget
 from app.services.ptof import get_ptof_renewals_widget
 from app.services.revenue_analysis import get_revenue_attention_widget
+from app.services.dashboard_filters import (
+    FILTER_LABELS, normalize_filters, normalize_filter_config, resolve_customer_scope,
+    scope_report_destination,
+    describe_widget_filters,
+)
 
 logger = logging.getLogger(__name__)
 MAX_DASHBOARD_NAME = 200
@@ -76,9 +81,10 @@ class WidgetDefinition:
     description: str
     report: str
     variants: tuple[WidgetVariant, ...]
-    provider: Callable[[date | None], dict[str, Any]]
+    provider: Callable[..., dict[str, Any]]
     requirements: tuple[str, ...] = ()
     scope: str = 'FY27 Data'
+    supported_filters: tuple[str, ...] = ()
 
 
 WIDGET_REQUIREMENTS = {
@@ -109,6 +115,7 @@ WIDGET_DEFINITIONS = {
             'U2C Attainment', _connect_variants('partials/widgets/connect_u2c.html'),
             connect_goals.get_u2c_widget,
             ('compensation_buckets',),
+            supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'connect_goals.team_coverage', 'Milestone team coverage',
@@ -116,6 +123,7 @@ WIDGET_DEFINITIONS = {
             'Milestone Tracker', _connect_variants('partials/widgets/connect_team_coverage.html'),
             connect_goals.get_team_coverage_widget,
             ('compensation_buckets',),
+            supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'connect_goals.hva_coverage', 'Milestone HVA coverage',
@@ -123,6 +131,7 @@ WIDGET_DEFINITIONS = {
             'Activity Coverage', _connect_variants('partials/widgets/connect_hva_coverage.html'),
             connect_goals.get_hva_coverage_widget,
             ('compensation_buckets',),
+            supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'connect_goals.whitespace', 'Fabric and database whitespace wins',
@@ -130,6 +139,7 @@ WIDGET_DEFINITIONS = {
             'Whitespace Analysis', _connect_variants('partials/widgets/connect_whitespace.html'),
             connect_goals.get_whitespace_widget,
             ('compensation_buckets',),
+            supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'initiative_tracker.overview', 'Initiative Tracker',
@@ -146,13 +156,14 @@ WIDGET_DEFINITIONS = {
                 ),
             ),
             get_initiative_tracker_widget, scope='All initiatives',
+            supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'hygiene.gaps', 'Hygiene gaps',
             'Active engagements without milestones and active milestones without engagements, '
             'with a queue for resolving missing links.',
             'Hygiene', _report_variants('partials/widgets/hygiene_gaps.html'),
-            get_hygiene_gaps_widget, scope='Active work',
+            get_hygiene_gaps_widget, scope='Active work', supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'activity_coverage.meetings', 'Meeting activity coverage',
@@ -160,6 +171,7 @@ WIDGET_DEFINITIONS = {
             'ready for the existing activity-logging workflow.',
             'Activity Coverage', _report_variants('partials/widgets/meeting_activity_coverage.html'),
             get_meeting_activity_coverage_widget, scope='Fiscal year to date',
+            supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'revenue.attention', 'Revenue risk / opportunity',
@@ -167,13 +179,14 @@ WIDGET_DEFINITIONS = {
             'unreviewed priority-20+ analysis queue.',
             'Revenue Analyzer', _report_variants('partials/widgets/revenue_attention.html'),
             get_revenue_attention_widget, scope='Saved unreviewed analysis',
+            supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'ptof.upcoming_renewals', 'Upcoming P-to-F renewals',
             'Subscription expirations in the next 90 days, annual SA expiration amounts, '
             'and source account-level renewal assessments.',
             'P to F', _report_variants('partials/widgets/ptof_renewals.html'),
-            get_ptof_renewals_widget, scope='Next 90 days',
+            get_ptof_renewals_widget, scope='Next 90 days', supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'fabric.capacity_pressure', 'Fabric capacity pressure',
@@ -182,6 +195,7 @@ WIDGET_DEFINITIONS = {
             'Fabric Capacity Pressure',
             _report_variants('partials/widgets/fabric_capacity_pressure.html'),
             get_fabric_capacity_pressure_widget, scope='Saved capacity measurements',
+            supported_filters=tuple(FILTER_LABELS),
         ),
     )
 }
@@ -197,6 +211,7 @@ def get_widget_catalog() -> list[dict[str, Any]]:
             'scope': definition.scope,
             'report': definition.report,
             'requirements': definition.requirements,
+            'supported_filters': definition.supported_filters,
             'variants': [
                 {
                     'key': variant.key, 'title': variant.title,
@@ -255,10 +270,15 @@ def list_dashboards() -> list[dict[str, Any]]:
 
 def get_dashboard_data(
     dashboard: Dashboard, reference: date | None = None,
+    *, live_filters: object = None,
 ) -> dict[str, Any]:
     """Check each definition's prerequisites before calculating its saved instances."""
     states: dict[str, dict[str, Any]] = {}
-    values: dict[str, dict[str, Any]] = {}
+    values: dict[tuple, dict[str, Any]] = {}
+    filter_config = normalize_filter_config(dashboard.filter_config)
+    live = normalize_filters(live_filters)
+    if any(live[key] and key not in filter_config['live_filters'] for key in FILTER_LABELS):
+        raise ValueError('This dashboard has not enabled that live filter.')
     widgets = []
     for instance in sorted(dashboard.widgets, key=lambda item: (
         item.layout_row, item.layout_column, item.id,
@@ -270,8 +290,21 @@ def get_dashboard_data(
         requirements = get_widget_requirements(definition, reference, states) if definition else []
         if definition is None:
             logger.warning('Unknown dashboard widget %s: %s', instance.id, instance.widget_key)
-        elif variant and not requirements and definition.key not in values:
-            values[definition.key] = definition.provider(reference)
+        filters = normalize_filters(instance.filters)
+        layers = (filter_config['scope'], filters, live)
+        supported = definition.supported_filters if definition else ()
+        effective_layers = [
+            {key: layer[key] if key in supported else [] for key in FILTER_LABELS}
+            for layer in layers
+        ]
+        customer_ids = resolve_customer_scope(*effective_layers)
+        cache_key = (instance.widget_key, customer_ids)
+        if definition and variant and not requirements and cache_key not in values:
+            values[cache_key] = scope_report_destination(
+                definition.provider(reference, customer_ids=customer_ids)
+                if customer_ids is not None else definition.provider(reference),
+                definition.key, customer_ids,
+            )
         widgets.append({
             'id': instance.id,
             'key': instance.widget_key,
@@ -283,7 +316,17 @@ def get_dashboard_data(
             'column_span': instance.column_span,
             'row_span': instance.row_span,
             'template': variant.template if variant else None,
-            'data': values.get(instance.widget_key) if variant else None,
+            'data': values.get(cache_key) if variant else None,
+            'filters': filters,
+            'filter_info': {
+                'supported': supported,
+                'widget_scope': describe_widget_filters(filters),
+                'ignored': [
+                    FILTER_LABELS[key] for key in FILTER_LABELS
+                    if key not in supported and any(layer[key] for layer in layers)
+                ],
+                'scoped': customer_ids is not None,
+            },
             'requirements': requirements if variant else [],
             'message': (
                 'This widget is no longer in the catalog. Remove it in Manage Dashboards.'
@@ -304,6 +347,14 @@ def get_dashboard_data(
         'display_style': dashboard.display_style,
         'canvas_width': CANVAS_WIDTHS[dashboard.content_width],
         'layout_revision': dashboard.layout_revision,
+        'filter_config': filter_config,
+        'live_filters': live,
+        'supported_filters': [
+            key for key in FILTER_LABELS if any(
+                key in WIDGET_DEFINITIONS[item.widget_key].supported_filters
+                for item in dashboard.widgets if item.widget_key in WIDGET_DEFINITIONS
+            )
+        ],
         'canvas_rows': max(
             (item.layout_row + item.row_span for item in dashboard.widgets), default=4,
         ),
@@ -356,12 +407,14 @@ def advance_layout_revision(
 def add_dashboard_widget(
     dashboard: Dashboard, key: object, variant_key: object = 'detailed',
     column_span: object = None, row_span: object = None,
+    filters: object = None,
 ) -> DashboardWidget:
     """Append below existing widgets without packing holes or moving neighbors."""
     variant = get_variant(key, variant_key)
     width = 12 if column_span is None else column_span
     height = variant.default_height if row_span is None else row_span
     validate_footprint(variant, width, height)
+    filters = validate_widget_filters(key, filters)
     db.session.flush()
     row = max((item.layout_row + item.row_span for item in dashboard.widgets), default=0)
     if row + height > MAX_LAYOUT_ROWS:
@@ -369,6 +422,7 @@ def add_dashboard_widget(
     advance_layout_revision(dashboard, dashboard.layout_revision)
     instance = DashboardWidget(
         widget_key=key, variant_key=variant.key, column_span=width, row_span=height,
+        filters=filters,
         layout_row=row, layout_column=0,
         sort_order=max((widget.sort_order for widget in dashboard.widgets), default=-1) + 1,
     )
@@ -410,10 +464,15 @@ def _validate_dashboard_layout(
             or (not replace_widgets and set(ids) != set(saved))):
         raise ValueError('The layout must contain each widget on this dashboard exactly once.')
     for index, entry in enumerate(entries):
+        if 'filters' in entry and not isinstance(entry['filters'], dict):
+            raise ValueError('Provide valid widget filter selections.')
         instance = saved.get(entry['id'])
         if instance is None and entry['id'] > 0:
             raise ValueError('A widget does not belong to this dashboard.')
         key = instance.widget_key if instance is not None else entry.get('key')
+        validate_widget_filters(
+            key, entry.get('filters', instance.filters if instance is not None else None),
+        )
         if replace_widgets and instance is not None and entry.get('key') != key:
             raise ValueError('An existing widget cannot change its report.')
         if instance is None or key in WIDGET_DEFINITIONS:
@@ -437,14 +496,20 @@ def _assign_widget_layout(instance: DashboardWidget, entry: dict[str, Any]) -> N
     """Apply already validated placement fields to one widget."""
     for field in ('layout_column', 'layout_row', 'column_span', 'row_span', 'variant_key'):
         setattr(instance, field, entry[field])
+    if 'filters' in entry:
+        instance.filters = normalize_filters(entry['filters'])
 
 
 def save_dashboard_layout(dashboard: Dashboard, payload: object) -> None:
     """Save geometry for existing API callers without changing widget membership."""
     revision, width, display_style, entries, saved = _validate_dashboard_layout(dashboard, payload)
+    if 'filter_config' in payload and not isinstance(payload['filter_config'], dict):
+        raise ValueError('Provide a valid dashboard filter configuration.')
+    filters = normalize_filter_config(payload.get('filter_config', dashboard.filter_config))
     advance_layout_revision(dashboard, revision)
     dashboard.content_width = width
     dashboard.display_style = display_style
+    dashboard.filter_config = filters
     for entry in entries:
         _assign_widget_layout(saved[entry['id']], entry)
 
@@ -453,8 +518,11 @@ def save_dashboard_draft(dashboard: Dashboard, payload: object) -> None:
     """Publish metadata, membership, and geometry together with stale-draft protection."""
     if not isinstance(payload, dict):
         raise ValueError('Provide a complete dashboard draft.')
+    if 'filter_config' in payload and not isinstance(payload['filter_config'], dict):
+        raise ValueError('Provide a valid dashboard filter configuration.')
     name = validate_dashboard_name(payload.get('name'))
     subtitle = validate_dashboard_subtitle(payload.get('subtitle'))
+    filters = normalize_filter_config(payload.get('filter_config', dashboard.filter_config))
     if (payload.get('base_name') != dashboard.name
             or payload.get('base_subtitle') != dashboard.subtitle):
         raise LayoutConflict('The saved dashboard details changed. Your local draft was kept.')
@@ -466,6 +534,7 @@ def save_dashboard_draft(dashboard: Dashboard, payload: object) -> None:
     )
     dashboard.name, dashboard.subtitle = name, subtitle
     dashboard.content_width, dashboard.display_style = width, style
+    dashboard.filter_config = filters
     retained = {entry['id'] for entry in entries}
     for widget_id, instance in saved.items():
         if widget_id not in retained:
@@ -479,17 +548,55 @@ def save_dashboard_draft(dashboard: Dashboard, payload: object) -> None:
         _assign_widget_layout(instance, entry)
 
 
-def get_widget_preview(key: str, variant_key: str, width: int) -> dict[str, Any]:
+def validate_widget_filters(key: str, filters: object) -> dict[str, list[int]]:
+    """Reject unsupported instance filters instead of silently ignoring saved configuration."""
+    filters = normalize_filters(filters)
+    definition = WIDGET_DEFINITIONS.get(key) if isinstance(key, str) else None
+    supported = definition.supported_filters if definition else ()
+    if any(filters[name] and name not in supported for name in FILTER_LABELS):
+        raise ValueError('This widget does not support the selected filter.')
+    return filters
+
+
+def get_widget_preview(
+    key: str, variant_key: str, width: int, *, filter_context: object = None,
+) -> dict[str, Any]:
     """Use live saved data and the same template as a placed widget, never sample numbers."""
     variant = get_variant(key, variant_key)
     validate_footprint(variant, width, variant.default_height)
     definition = WIDGET_DEFINITIONS[key]
     requirements = get_widget_requirements(definition)
+    if filter_context is None:
+        filter_context = {}
+    if not isinstance(filter_context, dict) or set(filter_context) - {'dashboard', 'widget', 'live'}:
+        raise ValueError('Provide a valid widget filter context.')
+    config = normalize_filter_config(filter_context.get('dashboard'))
+    filters = validate_widget_filters(key, filter_context.get('widget'))
+    live = normalize_filters(filter_context.get('live'))
+    if any(live[name] and name not in config['live_filters'] for name in FILTER_LABELS):
+        raise ValueError('This dashboard has not enabled that live filter.')
+    layers = (config['scope'], filters, live)
+    ids = resolve_customer_scope(*[
+        {name: layer[name] if name in definition.supported_filters else [] for name in FILTER_LABELS}
+        for layer in layers
+    ])
     return {
         'id': 'preview', 'key': key, 'title': definition.title,
         'template': variant.template, 'variant_key': variant.key,
         'column_span': width, 'row_span': variant.default_height,
-        'data': definition.provider(None) if not requirements else None,
+        'data': scope_report_destination((
+            definition.provider(None, customer_ids=ids) if ids is not None
+            else definition.provider(None)
+        ), key, ids) if not requirements else None,
+        'filters': filters,
+        'filter_info': {
+            'supported': definition.supported_filters, 'scoped': ids is not None,
+            'widget_scope': describe_widget_filters(filters),
+            'ignored': [
+                FILTER_LABELS[name] for name in FILTER_LABELS
+                if name not in definition.supported_filters and any(layer[name] for layer in layers)
+            ],
+        },
         'requirements': requirements,
         'message': (
             'Confirm your compensation buckets to preview live values.'

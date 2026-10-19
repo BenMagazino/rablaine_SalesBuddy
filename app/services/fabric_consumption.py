@@ -854,6 +854,7 @@ PRESSURE_WIDGET_LIMIT = 5
 
 def get_fabric_capacity_pressure_report(
     reference: date | None = None, *, signal: str = "all", search: str = "",
+    customer_ids: tuple[int, ...] | None = None,
 ) -> dict:
     """Prioritize native saved capacity signals without implying live health.
 
@@ -872,6 +873,8 @@ def get_fabric_capacity_pressure_report(
     }
     seen = set()
     for source in overview["rows"]:
+        if customer_ids is not None and source["id"] not in customer_ids:
+            continue
         capacity = source["capacity"]
         if capacity is None:
             counts["customers_without_capacity"] += 1
@@ -962,9 +965,14 @@ def get_fabric_capacity_pressure_report(
     }
 
 
-def get_fabric_capacity_pressure_widget(reference: date | None = None) -> dict:
+def get_fabric_capacity_pressure_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict:
     """Show a bounded attention preview while keeping complete report counts."""
-    report = get_fabric_capacity_pressure_report(reference)
+    report = (
+        get_fabric_capacity_pressure_report(reference) if customer_ids is None
+        else get_fabric_capacity_pressure_report(reference, customer_ids=customer_ids)
+    )
     attention = [row for row in report["rows"] if row["attention"]]
     rows = attention[:PRESSURE_WIDGET_LIMIT]
     return {

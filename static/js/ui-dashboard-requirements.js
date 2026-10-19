@@ -21,6 +21,10 @@
                 key: tile.dataset.widgetKey, variant: tile.dataset.variant,
                 width: tile.dataset.columnSpan, instance_id: tile.dataset.widgetId,
             });
+            if (global.SBDashboardFilters) {
+                query.set('filter_context', JSON.stringify(global.SBDashboardFilters.context(
+                    JSON.parse(tile.dataset.widgetFilters || '{}'))));
+            }
             const response = await fetcher('/api/reports/dashboards/widget-preview?' + query);
             const data = await response.json();
             if (!response.ok || data.success !== true || typeof data.html !== 'string') {

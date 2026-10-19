@@ -742,7 +742,10 @@ def close_out_quarter(fq_label: str,
     }
 
 
-def get_attainment(snapshot_id: int, workload_prefix: str | None = None) -> dict:
+def get_attainment(
+    snapshot_id: int, workload_prefix: str | None = None, *,
+    customer_ids: tuple[int, ...] | None = None,
+) -> dict:
     """Calculate U2C attainment for a snapshot.
 
     Checks the current status of each snapshotted milestone to see if it
@@ -752,6 +755,9 @@ def get_attainment(snapshot_id: int, workload_prefix: str | None = None) -> dict
         snapshot_id: ID of the U2CSnapshot to analyze.
         workload_prefix: Optional workload prefix filter (e.g. 'Data:' to
                          filter to Data milestones only).
+        customer_ids: Optional customer IDs from the frozen snapshot population.
+            An empty tuple matches no items. Current milestone ownership never
+            changes which customer's baseline an item belongs to.
 
     Returns:
         Dict with attainment stats and item details.
@@ -761,6 +767,8 @@ def get_attainment(snapshot_id: int, workload_prefix: str | None = None) -> dict
         return {'success': False, 'error': 'Snapshot not found'}
 
     items_query = U2CSnapshotItem.query.filter_by(snapshot_id=snapshot_id)
+    if customer_ids is not None:
+        items_query = items_query.filter(U2CSnapshotItem.customer_id.in_(customer_ids))
     if workload_prefix:
         items_query = items_query.filter(
             U2CSnapshotItem.workload.like(f'{workload_prefix}%')
@@ -901,7 +909,8 @@ def get_attainment(snapshot_id: int, workload_prefix: str | None = None) -> dict
 def get_attainment_trend(snapshot_id: int,
                          workload_prefix: str | None = None, *,
                          include_live: bool = False,
-                         reference: date | None = None) -> list[dict]:
+                         reference: date | None = None,
+                         customer_ids: tuple[int, ...] | None = None) -> list[dict]:
     """Return a quarter's weekly attainment points, oldest first.
 
     Sourced from our own stored copies of MSXi's weekly versions, so the series
@@ -930,6 +939,9 @@ def get_attainment_trend(snapshot_id: int,
             to the current, non-final quarter. Every weekly publish is retained,
             including a publish on the same date as Today.
         reference: Date for the live endpoint, defaulting to today.
+        customer_ids: Optional frozen snapshot customer scope, applied through
+            milestone numbers to the stored per-version details. Totals-only
+            weeks are omitted because their customer breakdown is unknown.
 
     Returns:
         List of dicts with 'date', 'label', 'items', 'starting_acr',
@@ -960,10 +972,10 @@ def get_attainment_trend(snapshot_id: int,
     for version in versions:
         if not start <= version.version_date <= end:
             continue
-        if workload_prefix:
+        if workload_prefix or customer_ids is not None:
             if not version.items.count():
                 continue  # totals-only week: can't answer a filtered question
-            count, starting, committed, converted = (
+            query = (
                 db.session.query(
                     db.func.count(U2CSnapshotVersionItem.id),
                     db.func.coalesce(
@@ -974,10 +986,21 @@ def get_attainment_trend(snapshot_id: int,
                 )
                 .filter(
                     U2CSnapshotVersionItem.version_id == version.id,
+                )
+            )
+            if workload_prefix:
+                query = query.filter(
                     U2CSnapshotVersionItem.workload.like(f'{workload_prefix}%'),
                 )
-                .one()
-            )
+            if customer_ids is not None:
+                numbers = db.select(U2CSnapshotItem.milestone_number).where(
+                    U2CSnapshotItem.snapshot_id == snapshot_id,
+                    U2CSnapshotItem.customer_id.in_(customer_ids),
+                    U2CSnapshotItem.due_date >= datetime.combine(start, datetime.min.time()),
+                    U2CSnapshotItem.due_date <= datetime.combine(end, datetime.max.time()),
+                )
+                query = query.filter(U2CSnapshotVersionItem.milestone_number.in_(numbers))
+            count, starting, committed, converted = query.one()
         else:
             count = version.total_items
             starting = version.total_starting_acr
@@ -998,13 +1021,15 @@ def get_attainment_trend(snapshot_id: int,
             'u2c_pct': pct,
         })
     if include_live:
+        scope = {'customer_ids': customer_ids} if customer_ids is not None else {}
         return _append_live_attainment_point(
-            points, snapshot_id, workload_prefix, reference or date.today())
+            points, snapshot_id, workload_prefix, reference or date.today(), **scope)
     return points
 
 
 def _append_live_attainment_point(
     points: list[dict], snapshot_id: int, workload_prefix: str | None, reference: date,
+    *, customer_ids: tuple[int, ...] | None = None,
 ) -> list[dict]:
     """Append Today without replacing any published snapshot point."""
     snapshot = db.session.get(U2CSnapshot, snapshot_id)
@@ -1012,7 +1037,8 @@ def _append_live_attainment_point(
             or snapshot.fiscal_quarter != current_fiscal_quarter(reference)):
         return points
     live_date = reference.isoformat()
-    attainment = get_attainment(snapshot_id, workload_prefix)
+    attainment = (get_attainment(snapshot_id, workload_prefix, customer_ids=customer_ids)
+                  if customer_ids is not None else get_attainment(snapshot_id, workload_prefix))
     live_point = {
         'date': live_date,
         'label': f"Today ({reference.strftime('%b %d')}, live)",

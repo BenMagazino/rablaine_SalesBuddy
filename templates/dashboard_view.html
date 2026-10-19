@@ -92,6 +92,10 @@
                 <label>Height <input class="db-input" name="row_span" aria-label="Widget height in grid rows" type="number" min="3" max="20" disabled></label>
             </div>
             <button class="db-command is-danger is-quiet" id="removeSelectedWidget" type="button" disabled>Remove widget</button>
+            <button class="db-command" id="openWidgetFilters" type="button"
+                    aria-controls="dashboardFiltersPanel" disabled>
+                <i class="bi bi-funnel" aria-hidden="true"></i> Widget filters
+            </button>
         </div>
         <details class="db-editor-help" id="dashboardLayoutHelp">
             <summary>Layout help</summary>
@@ -112,6 +116,8 @@
     </form>
 </section>
 {% endif %}
+<div class="db-dashboard-workspace">
+<div class="db-dashboard-viewport">
 <section class="sb-dashboards db-dashboard sb-directory-frame{% if dashboard.content_width == 'wide' %} sb-directory-frame-wide{% endif %}{% if manage_dashboard %} is-editing{% endif %}"
          data-sb-page-surface style="--db-canvas-width: {{ dashboard.canvas_width }}px;"
          data-dashboard-id="{{ dashboard.id }}" data-display-style="{{ dashboard.display_style }}"
@@ -137,7 +143,9 @@
             {% if dashboard.subtitle %}<p class="db-subtitle">{{ dashboard.subtitle }}</p>{% endif %}
             {% endif %}
         </div>
+        <p class="db-saved-filter-summary" id="dashboardSavedScope" hidden></p>
     </header>
+    <p class="db-filter-status" id="dashboardFilterStatus" role="status" aria-live="polite" hidden></p>
     <div class="db-reading" id="dashboardReading" data-sb-page-body tabindex="0" role="region" aria-label="Dashboard canvas">
         <div class="db-canvas" id="dashboardCanvas"
              style="--db-rows: {{ dashboard.canvas_rows }};">
@@ -148,6 +156,7 @@
                      data-column="{{ instance.layout_column }}" data-row="{{ instance.layout_row }}"
                      data-column-span="{{ instance.column_span }}" data-row-span="{{ instance.row_span }}"
                      data-variant="{{ instance.variant_key }}"
+                     data-widget-filters='{{ instance.filters|tojson }}'
                      style="grid-column: {{ instance.layout_column + 1 }} / span {{ instance.column_span }}; grid-row: {{ instance.layout_row + 1 }} / span {{ instance.row_span }};">
                 {% include 'partials/dashboard_widget_content.html' %}
                 {% if manage_dashboard %}
@@ -178,6 +187,82 @@
         </div>
     </div>
 </section>
+</div>
+<aside class="sb-dashboards db-filters-panel" id="dashboardFiltersPanel" aria-labelledby="dashboardFiltersTitle" hidden>
+    <header class="db-filters-panel-header">
+        <div><h2 id="dashboardFiltersTitle" tabindex="-1">Filters</h2><p id="dashboardFiltersSubtitle">{{ 'Dashboard settings' if manage_dashboard else 'This view only' }}</p></div>
+        <button class="db-command is-quiet" type="button" id="closeDashboardFilters" aria-label="Collapse filters">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+    </header>
+    {% if manage_dashboard %}
+    <div class="db-filter-tabs" id="dashboardFilterTabs" role="tablist" aria-label="Filter settings">
+        <button type="button" role="tab" id="dashboardFilterTab" aria-controls="dashboardFilterSettings" aria-selected="true">Dashboard</button>
+        <button type="button" role="tab" id="widgetFilterTab" aria-controls="widgetFilterSettings" aria-selected="false" tabindex="-1" disabled>Selected widget</button>
+    </div>
+    {% endif %}
+    <div class="db-filters-panel-body">
+        {% if manage_dashboard %}
+        <section id="dashboardFilterSettings" role="tabpanel" aria-labelledby="dashboardFilterTab">
+            <section class="db-filter-section">
+                <h3>Always include</h3>
+                <p>Limit this dashboard to specific customers or sellers. Viewers can narrow these choices, not expand them.</p>
+                <div class="db-filter-row" id="dashboardScopeControls"></div>
+                <p class="db-filter-rule-hint" id="dashboardScopeHint">No restrictions. This dashboard includes all customers.</p>
+            </section>
+            <section class="db-filter-section">
+                <h3>Available viewer filters</h3>
+                <p>Choose which filters viewers can use in this panel.</p>
+                <fieldset class="db-live-options">
+                    <legend class="sb-visually-hidden">Available viewer filters</legend>
+                    <label><input type="checkbox" data-live-filter="customer_ids"><span>Customer<small>Switch between customer accounts.</small></span></label>
+                    <label><input type="checkbox" data-live-filter="seller_ids"><span>Seller<small>Focus on a seller's customers.</small></span></label>
+                </fieldset>
+                <p class="db-filter-rule-hint" id="dashboardViewerFilterHint"></p>
+                <button class="db-command" type="button" id="tryDashboardFilters" hidden>
+                    <i class="bi bi-eye" aria-hidden="true"></i> Try in preview
+                </button>
+            </section>
+        </section>
+        <section id="widgetFilterSettings" role="tabpanel" aria-labelledby="widgetFilterTab" hidden>
+            <section class="db-filter-section">
+                <div class="db-filter-section-heading"><span class="db-muted">Selected widget</span><h3 id="widgetFilterTitle"></h3></div>
+                <p class="db-filter-inheritance" id="widgetFilterInheritance">Inherits dashboard filters</p>
+                <h4>Additional restrictions</h4>
+                <p>Show a narrower set of customers in this widget. Other widgets are unchanged.</p>
+                <div class="db-filter-row" id="widgetFilterControls"></div>
+                <p class="db-filter-rule-hint" id="widgetFilterSupport"></p>
+            </section>
+        </section>
+        {% endif %}
+        <section class="db-filter-section" id="dashboardLiveFilters" aria-label="Temporary dashboard filters"{% if manage_dashboard %} hidden{% endif %}>
+            <h3>Filter dashboard</h3>
+            <p>Narrow the widgets in this view without changing the saved dashboard.</p>
+            <div class="db-filter-row" id="dashboardLiveControls"></div>
+            <p class="db-filter-rule-hint" id="dashboardFilterCoverage" hidden></p>
+            <section class="db-viewer-scope" id="dashboardViewerScope" hidden>
+                <h4>Dashboard restrictions</h4>
+                <p id="dashboardViewerScopeText"></p>
+            </section>
+        </section>
+    </div>
+    <footer class="db-filters-panel-footer">
+        {% if manage_dashboard %}
+        <p id="dashboardFilterDraftHint"><i class="bi bi-pencil" aria-hidden="true"></i> Kept in your draft. Use Save to publish.</p>
+        {% endif %}
+        <div class="db-viewer-filter-actions" id="dashboardViewerActions"{% if manage_dashboard %} hidden{% endif %}>
+            <p id="dashboardTemporaryFilterHint">Selections apply to this view only.</p>
+            <button class="db-command" type="button" id="resetDashboardFilters" disabled>Reset filters</button>
+        </div>
+    </footer>
+</aside>
+<button class="sb-dashboards db-filter-rail" type="button" id="openDashboardFilters"
+        aria-controls="dashboardFiltersPanel" aria-expanded="false" title="Open filters"
+        {% if not manage_dashboard and not dashboard.filter_config.live_filters|select('in', dashboard.supported_filters)|list %}hidden{% endif %}>
+    <i class="bi bi-funnel" aria-hidden="true"></i><span>Filters</span>
+    <span class="db-filter-count" id="dashboardFilterCount" hidden>0</span>
+</button>
+</div>
 <dialog class="sb-dialog sb-dialog-compact sb-dashboards"
         id="dashboardRequirementDialog" aria-labelledby="dashboardRequirementTitle">
     <form class="sb-dialog-shell" id="dashboardRequirementForm">
@@ -230,7 +315,7 @@
             </section>
         </div>
         <footer class="sb-dialog-footer">
-            <span class="db-muted">Actual-size previews. No custom seller or date filters yet.</span>
+            <span class="db-muted">Actual-size previews follow your dashboard scope and live filters.</span>
             <button class="db-command" type="button" data-sb-dialog-close>Cancel</button>
             <button class="db-command is-primary" type="button" id="addLibraryWidget" disabled>Add widget</button>
         </footer>
@@ -239,10 +324,18 @@
 <script id="dashboardConfig" type="application/json">{{ {
     'revision': dashboard.layout_revision, 'contentWidth': dashboard.content_width,
     'displayStyle': dashboard.display_style,
+    'filterConfig': dashboard.filter_config,
     'name': dashboard.name, 'subtitle': dashboard.subtitle,
     'widths': canvas_widths, 'grid': grid_config, 'catalog': catalog
 }|tojson }}</script>
 {% endif %}
+<script id="dashboardFilterConfig" type="application/json">{{ {
+    'config': dashboard.filter_config, 'live': dashboard.live_filters,
+    'choices': filter_choices, 'editing': manage_dashboard,
+    'widgets': dashboard.widgets|map(attribute='filter_info')|list,
+    'catalog': catalog,
+    'supported': dashboard.supported_filters
+}|tojson }}</script>
 {% endblock %}
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
@@ -251,6 +344,7 @@
 <script src="{{ url_for('static', filename='js/ui-dashboard-dividers.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboards.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboard-requirements.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-dashboard-filters.js') }}" defer></script>
 {% if manage_dashboard %}
 <script src="{{ url_for('static', filename='js/ui-dashboard-layout.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboard-library.js') }}" defer></script>

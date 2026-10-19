@@ -5,12 +5,21 @@
 :is(.sb-dashboards, .db-editor-toolbar) *,
 :is(.sb-dashboards, .db-editor-toolbar) *::before,
 :is(.sb-dashboards, .db-editor-toolbar) *::after { box-sizing: border-box; }
-:is(.sb-dashboards, .db-editor-toolbar) [hidden] { display: none; }
+:is(.sb-dashboards, .db-editor-toolbar) [hidden],
+.db-filters-panel[hidden], .db-filter-rail[hidden] { display: none; }
 :is(.sb-dashboards, .db-editor-toolbar) :focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: 2px; }
 :is(.sb-dashboards, .db-editor-toolbar) a { color: var(--sb-ui-accent); }
-.sb-page-frame #main-content:has(> .db-dashboard) { overflow-x: auto; }
-.sb-page-frame #main-content:has(> .db-editor-toolbar) { display: flex; flex-direction: column; }
-.sb-page-frame #main-content:has(> .db-editor-toolbar) > .db-dashboard { flex: 1; }
+.sb-page-frame #main-content:has(> .db-dashboard-workspace) { display: flex; flex-direction: column; }
+.db-dashboard-workspace {
+    display: flex; justify-content: safe center; flex: 1; min-height: 0; min-width: 0;
+    overflow-x: auto;
+}
+.db-dashboard-viewport { display: flex; flex: 0 0 auto; min-width: 0; min-height: 0; }
+.db-dashboard-viewport > .db-dashboard {
+    display: flex; flex-direction: column; flex-shrink: 0;
+    width: var(--db-canvas-width); height: 100%; min-height: 0; margin: 0;
+    border-inline: 1px solid var(--sb-ui-line); background: var(--sb-ui-surface);
+}
 .db-dashboard { min-width: var(--db-canvas-width); }
 .db-header, .db-section-heading, .db-form-row, .db-actions, .db-widget-commands {
     display: flex;
@@ -43,6 +52,105 @@
 .db-inline-input::placeholder { color: var(--sb-ui-muted); }
 .db-inline-input[aria-invalid="true"] { border-bottom-color: var(--sb-ui-danger); }
 .db-inline-input:disabled { opacity: .6; }
+.db-header:has(.db-saved-filter-summary:not([hidden])) { flex-wrap: wrap; gap: 8px; }
+.db-header .db-saved-filter-summary {
+    flex-basis: 100%; margin: 0; font-size: 11px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+}
+.db-filter-row { display: flex; align-items: center; gap: 8px; }
+.db-filter-picker { position: relative; min-width: 160px; max-width: 360px; }
+.db-filter-picker > summary {
+    padding: 4px 10px; border: 1px solid var(--sb-ui-line); cursor: pointer;
+    background: var(--sb-ui-surface); overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; min-height: 30px;
+}
+.db-filter-picker[open] { z-index: 30; }
+.db-filter-panel {
+    position: absolute; top: 100%; left: 0; width: 330px; z-index: 30;
+    padding: 10px; border: 1px solid var(--sb-ui-line);
+    background: var(--sb-ui-surface); color: var(--sb-ui-ink);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--sb-ui-ink) 12%, transparent);
+}
+.db-filter-panel > input {
+    width: 100%; padding: 5px 8px; font: inherit;
+    background: var(--sb-ui-surface); color: var(--sb-ui-ink);
+    border: 1px solid var(--sb-ui-line);
+}
+.db-filter-picker-actions { display: flex; justify-content: flex-end; margin: 4px 0; }
+.db-filter-choice-list { max-height: 240px; overflow-y: auto; }
+.db-filter-choice-list label { display: flex; align-items: flex-start; gap: 8px; padding: 5px; }
+.db-filter-choice-list label:hover { background: var(--sb-ui-raised); }
+.db-filter-choice-list input { margin-top: 4px; accent-color: var(--sb-ui-accent); }
+.db-live-options { border: 0; padding: 0; margin: 12px 0 0; }
+.db-live-options label { display: flex; align-items: flex-start; gap: 8px; padding: 10px 0; cursor: pointer; }
+.db-live-options label + label { border-top: 1px solid var(--sb-ui-grid-line); }
+.db-live-options input { margin: 4px 0 0; }
+.db-live-options small { display: block; color: var(--sb-ui-muted); font-size: 11px; }
+.db-live-options input { accent-color: var(--sb-ui-accent); }
+.db-filter-rail {
+    box-sizing: border-box; display: flex; flex-direction: column; align-items: center;
+    flex: 0 0 40px; gap: 8px; padding: 16px 8px;
+    border: 0; border-right: 1px solid var(--sb-ui-line);
+    background: var(--sb-ui-context); cursor: pointer;
+}
+.db-filter-rail span { writing-mode: vertical-rl; }
+.db-filter-rail.is-active { color: var(--sb-ui-accent); background: var(--sb-ui-selection); }
+.db-filter-rail .db-filter-count {
+    writing-mode: horizontal-tb; min-width: 20px; padding: 1px 4px;
+    background: var(--sb-ui-accent); color: var(--sb-ui-surface);
+    font-size: 11px; font-weight: 600; text-align: center;
+}
+.db-filter-rail:hover { background: var(--sb-ui-raised); color: var(--sb-ui-accent); }
+.db-filter-rail:focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: -3px; }
+.db-filters-panel {
+    display: flex; flex-direction: column; flex: 0 0 332px; min-width: 0; min-height: 0;
+    border-right: 1px solid var(--sb-ui-line); background: var(--sb-ui-surface);
+}
+.db-filters-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; }
+.db-filters-panel-header h2 { font-size: 16px; margin: 0; font-weight: 600; }
+.db-filters-panel-header p { margin: 2px 0 0; color: var(--sb-ui-muted); font-size: 11px; }
+.db-filter-tabs { display: flex; border-bottom: 1px solid var(--sb-ui-line); padding-inline: 12px; }
+.db-filter-tabs button {
+    flex: 1; padding: 8px; border: 0; border-bottom: 2px solid transparent;
+    font: inherit; color: var(--sb-ui-muted); background: transparent; cursor: pointer;
+}
+.db-filter-tabs [aria-selected="true"] { border-bottom-color: var(--sb-ui-accent); color: var(--sb-ui-ink); font-weight: 600; }
+.db-filter-tabs button:disabled { opacity: .5; cursor: default; }
+.db-filters-panel-body { flex: 1; min-height: 0; overflow-y: auto; }
+.db-filter-section { padding: 20px; }
+.db-filter-section + .db-filter-section { border-top: 1px solid var(--sb-ui-line); }
+.db-filter-section h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+.db-filter-section h4 { margin: 20px 0 6px; font-size: 12px; font-weight: 600; }
+.db-filter-section > p { color: var(--sb-ui-muted); margin: 0 0 12px; font-size: 12px; line-height: 1.5; }
+.db-filter-section .db-filter-rule-hint { margin-top: 10px; margin-bottom: 0; font-size: 11px; overflow-wrap: anywhere; }
+.db-filter-section-heading { margin-bottom: 10px; }
+.db-filter-section-heading > span { font-size: 11px; }
+.db-filter-section-heading h3 { margin-top: 4px; overflow-wrap: anywhere; }
+.db-filter-section .db-filter-inheritance { padding: 8px 10px; background: var(--sb-ui-context); color: var(--sb-ui-ink); }
+.db-filters-panel .db-filter-row { flex-direction: column; align-items: stretch; gap: 8px; }
+.db-filters-panel .db-filter-picker { width: 100%; max-width: none; min-width: 0; }
+.db-filters-panel .db-filter-panel { position: static; width: 100%; box-shadow: none; border-top: 0; }
+.db-filters-panel .db-filter-choice-list { max-height: 192px; }
+.db-filters-panel-footer {
+    flex-shrink: 0; padding: 12px 20px; border-top: 1px solid var(--sb-ui-line);
+    color: var(--sb-ui-muted); background: var(--sb-ui-context); font-size: 11px;
+}
+.db-filters-panel-footer p { margin: 0; }
+.db-viewer-filter-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.db-filters-panel-footer > p:not([hidden]) + .db-viewer-filter-actions { margin-top: 12px; }
+.db-viewer-scope { margin-top: 20px; border-top: 1px solid var(--sb-ui-line); }
+.db-viewer-scope p { margin: 0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.db-filter-section #tryDashboardFilters { margin-top: 12px; }
+.db-command[aria-expanded="true"] { background: var(--sb-ui-selection); border-color: var(--sb-ui-accent); }
+.db-filter-scope, .db-filter-exception {
+    margin: 0; padding: 5px 12px; border-bottom: 1px solid var(--sb-ui-line);
+    font-size: 11px; color: var(--sb-ui-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.db-filter-exception { background: var(--sb-ui-context); }
+.db-filter-status { margin: 0; padding: 6px 24px; color: var(--sb-ui-muted); }
+.db-filter-status.is-error { color: var(--sb-ui-danger); }
+.db-library-widget-filters { margin: 8px 0; }
 .db-subtitle { white-space: pre-wrap; overflow-wrap: anywhere; }
 .db-actions { flex-shrink: 0; gap: 6px; }
 .db-command {
@@ -117,7 +225,6 @@
     text-decoration: none;
     color: var(--sb-ui-ink);
 }
-.db-list-row:hover .db-list-title { color: var(--sb-ui-accent); text-decoration: underline; }
 .db-list-title { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
 .db-list-title p { margin: 2px 0 0; font-weight: 400; }
 .db-draft-indicator {

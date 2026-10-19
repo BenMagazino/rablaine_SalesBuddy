@@ -8,7 +8,9 @@ from app.models import Customer, Engagement, HygieneNote, Milestone, SyncStatus,
 from app.services.operational_widget_data import serialize_widget_value
 
 
-def get_hygiene_report_data(seller_id: int | None = None) -> dict[str, Any]:
+def get_hygiene_report_data(
+    seller_id: int | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict[str, Any]:
     """Return the report's active gaps, including off-team milestone gaps.
 
     An explicit seller scopes the same population as seller mode. Reason notes
@@ -34,6 +36,9 @@ def get_hygiene_report_data(seller_id: int | None = None) -> dict[str, Any]:
         .options(db.joinedload(Milestone.customer).joinedload(Customer.seller))
         .order_by(Milestone.monthly_usage.desc(), Milestone.title)
     )
+    if customer_ids is not None:
+        engagements = engagements.filter(Engagement.customer_id.in_(customer_ids))
+        milestones = milestones.filter(Milestone.customer_id.in_(customer_ids))
     if seller_id:
         engagements = engagements.join(
             Customer, Engagement.customer_id == Customer.id,
@@ -60,9 +65,14 @@ def get_hygiene_report_data(seller_id: int | None = None) -> dict[str, Any]:
     }
 
 
-def get_hygiene_gaps_widget(reference: date | None = None) -> dict[str, Any]:
+def get_hygiene_gaps_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict[str, Any]:
     """Read complete hygiene queues without syncing or modifying records."""
-    report = get_hygiene_report_data()
+    report = (
+        get_hygiene_report_data() if customer_ids is None
+        else get_hygiene_report_data(customer_ids=customer_ids)
+    )
     engagements = report['engagements_no_ms']
     milestones = report['milestones_no_eng']
     rows = [

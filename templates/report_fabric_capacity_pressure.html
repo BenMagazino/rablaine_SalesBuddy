@@ -19,20 +19,25 @@
         </div>
     </header>
     {% if data.snapshot %}
-    <dl class="sb-pressure-totals" data-sb-page-band aria-label="All saved capacities, before filtering">
+    <dl class="sb-pressure-totals" data-sb-page-band aria-label="{{ 'Saved capacities in dashboard scope, before signal/search filtering' if dashboard_customer_scope is defined and dashboard_customer_scope is not none else 'All saved capacities, before filtering' }}">
         {% for label, key in [('Need attention', 'attention'), ('Throttling', 'throttled'), ('Latest hour ≥100%', 'overloaded'), ('Near limit', 'near_limit'), ('Latest-hour peaks', 'historical_spike'), ('Incomplete', 'unknown')] %}
         <div><dt>{{ label }}</dt><dd>{{ data.counts[key] }}</dd></div>
         {% endfor %}
     </dl>
     {% endif %}
     <form class="sb-fabric-import-band" data-sb-page-band method="get">
+        {% if dashboard_customer_scope is defined and dashboard_customer_scope is not none %}
+        <input type="hidden" name="customer_scope" value="1">
+        {% for id in dashboard_customer_scope %}<input type="hidden" name="customer_ids" value="{{ id }}">{% endfor %}
+        <span>Dashboard scope · {{ dashboard_customer_scope|length }} customer{{ '' if dashboard_customer_scope|length == 1 else 's' }}</span>
+        {% endif %}
         <label>Find customer or capacity <input type="search" name="q" value="{{ data.filters.search }}" placeholder="Customer, seller, SKU, TPID or capacity ID"></label>
         <label>Signal <select name="signal">{% for key, label in signal_labels.items() %}<option value="{{ key }}"{% if data.filters.signal == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
         <button type="submit" class="sb-dialog-button primary">Apply filters</button>
-        <a href="{{ url_for('reports.report_fabric_capacity_pressure') }}">Reset</a>
+        <a href="{{ url_for('reports.report_fabric_capacity_pressure') }}{% if dashboard_scope_query %}?{{ dashboard_scope_query }}{% endif %}">Reset</a>
     </form>
     <div class="sb-pressure-explanation" data-sb-page-band>
-        <p>Measurements: <strong>{{ data.capacity_as_of_date or 'date unknown' }}</strong>{% if data.snapshot_age_days is not none %} · {{ data.snapshot_age_days }} days old{% endif %}. Saved snapshot, not live service health. Counts above cover all {{ data.counts.capacities }} saved capacities and can overlap.</p>
+        <p>Measurements: <strong>{{ data.capacity_as_of_date or 'date unknown' }}</strong>{% if data.snapshot_age_days is not none %} · {{ data.snapshot_age_days }} days old{% endif %}. Saved snapshot, not live service health. Counts above cover all {{ data.counts.capacities }} saved capacities{% if dashboard_customer_scope is defined and dashboard_customer_scope is not none %} in this dashboard scope{% endif %} and can overlap.</p>
         <details><summary>How pressure is identified</summary>
             <p>Investigation heuristics, not official alerts: throttling recorded &gt;0 seconds; latest-hour utilization ≥80% (near limit) or ≥100% (overload); peak 30-second utilization within that hour ≥100%. Missing metrics remain unknown. Utilization percentages are never summed.</p>
             <p>The 30-second peak covers the latest available hour, not the full 15-day period. It can be lower than the 15-day average.</p>

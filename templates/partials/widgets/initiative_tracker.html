@@ -62,10 +62,16 @@
     </div>
     {% else %}
     <div class="db-initiative-empty">
+        {% if instance.filter_info is defined and instance.filter_info.scoped %}
+        <h3>No initiatives match this scope</h3>
+        <p class="db-muted">No saved initiative items match these customers and sellers.
+            Adjust the filters or open the full tracker.</p>
+        {% else %}
         <h3>No initiatives yet</h3>
         <p class="db-muted">Create an initiative in the tracker and add milestones, engagements,
             or internal projects. Your saved initiatives will appear here.</p>
         <a href="{{ instance.data.destination }}">Create your first initiative</a>
+        {% endif %}
     </div>
     {% endif %}
 </section>

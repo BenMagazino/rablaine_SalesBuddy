@@ -401,7 +401,9 @@ def _serialize_meeting(meeting: PrefetchedMeeting) -> dict[str, Any]:
     }
 
 
-def _meeting_coverage_query(reference: date) -> Any:
+def _meeting_coverage_query(
+    reference: date, *, customer_ids: tuple[int, ...] | None = None,
+) -> Any:
     """Build the report's saved, non-dismissed FY-to-date meeting population."""
     from app.services.seller_mode import get_seller_mode_seller_id
 
@@ -415,6 +417,8 @@ def _meeting_coverage_query(reference: date) -> Any:
         db.joinedload(PrefetchedMeeting.customer).joinedload(Customer.seller),
         db.joinedload(PrefetchedMeeting.note),
     )
+    if customer_ids is not None:
+        query = query.filter(PrefetchedMeeting.customer_id.in_(customer_ids))
     seller_id = get_seller_mode_seller_id()
     if seller_id:
         query = query.join(
@@ -423,7 +427,9 @@ def _meeting_coverage_query(reference: date) -> Any:
     return query
 
 
-def get_meeting_coverage_data(reference: date | None = None) -> dict[str, Any]:
+def get_meeting_coverage_data(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict[str, Any]:
     """Return the shared meeting denominator and lightweight evidence rows.
 
     Any linked activity covers a meeting, including the report's note-linked
@@ -433,7 +439,11 @@ def get_meeting_coverage_data(reference: date | None = None) -> dict[str, Any]:
     today = reference or date.today()
     fiscal_start, fiscal_end = fiscal_year_bounds(today)
     rows = []
-    for meeting in _meeting_coverage_query(today).order_by(
+    query = (
+        _meeting_coverage_query(today) if customer_ids is None
+        else _meeting_coverage_query(today, customer_ids=customer_ids)
+    )
+    for meeting in query.order_by(
         PrefetchedMeeting.start_time.asc(), PrefetchedMeeting.id.asc(),
     ).all():
         task = _linked_task(meeting)
@@ -473,12 +483,17 @@ def get_meeting_coverage_data(reference: date | None = None) -> dict[str, Any]:
     }
 
 
-def get_meeting_activity_coverage_widget(reference: date | None = None) -> dict[str, Any]:
+def get_meeting_activity_coverage_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict[str, Any]:
     """Read meeting coverage and import completeness without starting any work."""
     from app.services.operational_widget_data import serialize_widget_value
     from app.services.seller_mode import get_seller_mode_seller_id
 
-    data = get_meeting_coverage_data(reference)
+    data = (
+        get_meeting_coverage_data(reference) if customer_ids is None
+        else get_meeting_coverage_data(reference, customer_ids=customer_ids)
+    )
     data.update({
         'destination': '/reports/activity-coverage?lens=meetings&view=all',
         'population': get_population_status(reference),

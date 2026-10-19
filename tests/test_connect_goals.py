@@ -142,7 +142,7 @@ def test_connect_goals_template_renders_action_metrics(client, app):
     assert page.select_one('.sb-goals-section.is-supporting')
     assert not page.select('.sb-connect-goals [data-bs-toggle], .sb-connect-goals .btn')
     assert page.select_one('body.sb-page-frame')
-    assert page.select_one('#main-content > [data-sb-page-surface]')
+    assert page.select_one('.db-dashboard-viewport > [data-sb-page-surface]')
     assert page.select_one('#dashboardReading[data-sb-page-body]')
     assert page.select_one('body > footer.sb-page-status')['aria-label'] == 'Dashboard status'
     assert not page.select('#main-content main')

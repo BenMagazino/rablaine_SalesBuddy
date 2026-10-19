@@ -13,10 +13,14 @@
 {% endblock %}
 {% block content %}
 <section class="sb-hygiene{% if not request.args.get('embed') %} sb-directory-frame{% endif %}" data-hygiene data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+         data-customer-scope="{{ dashboard_scope_query|default('') }}"
          data-sb-page-surface aria-labelledby="hygieneTitle">
     <header class="sb-hygiene-header" data-sb-page-band>
         <div><h1 id="hygieneTitle">Engagement / Milestone Hygiene</h1>
             <p>Identify and resolve gaps between engagements and milestones.</p></div>
+        {% if dashboard_customer_scope is defined and dashboard_customer_scope is not none %}
+        <span>Dashboard scope · {{ dashboard_customer_scope|length }} customer{{ '' if dashboard_customer_scope|length == 1 else 's' }}</span>
+        {% endif %}
         {% set export_table_id = '.sb-hygiene-table[data-export-visible=true]' %}
         {% set export_filename = 'hygiene-report' %}
         {% set export_title = 'Engagement / Milestone Hygiene' %}

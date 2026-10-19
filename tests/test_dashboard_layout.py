@@ -56,7 +56,8 @@ def test_dashboard_title_canvas_and_editor_use_shared_report_frame(
     assert client.post(f'{BASE}/{dashboard_id}/layout', json=payload).status_code == 200
     destination = f'/reports/dashboards/{dashboard_id}' + ('/edit' if editing else '')
     page = BeautifulSoup(client.get(destination).data, 'html.parser')
-    surface = page.select_one('#main-content > .db-dashboard.sb-directory-frame')
+    workspace = page.select_one('#main-content > .db-dashboard-workspace')
+    surface = workspace.select_one('.db-dashboard-viewport > .db-dashboard.sb-directory-frame')
     assert surface
     assert ('sb-directory-frame-wide' in surface['class']) is (width == 'wide')
     assert f'--db-canvas-width: {pixels}px' in surface['style']
@@ -81,7 +82,7 @@ def test_dashboard_title_canvas_and_editor_use_shared_report_frame(
         assert toolbar.select_one('#cancelDashboardLayout').get_text() == 'Discard draft'
         assert toolbar.select_one('#saveDashboardLayout').get_text() == 'Save'
         assert not any(field.has_attr('disabled') for field in title.select('[data-dashboard-field]'))
-        assert surface.find_previous_sibling() == toolbar
+        assert workspace.find_previous_sibling() == toolbar
         assert surface.select_one('#layoutEditor') is None
         row = toolbar.select_one(':scope > .db-editor-command-row')
         assert row.select_one('[aria-label="Canvas tools"] #canvasWidth')
@@ -121,7 +122,7 @@ def test_display_style_persists_in_report_editor_and_library_without_moving_widg
     for editing in (False, True):
         url = f'/reports/dashboards/{dashboard_id}' + ('/edit' if editing else '')
         page = BeautifulSoup(client.get(url).data, 'html.parser')
-        root = page.select_one('#main-content > .db-dashboard.sb-directory-frame')
+        root = page.select_one('.db-dashboard-viewport > .db-dashboard.sb-directory-frame')
         assert root['data-display-style'] == display_style
         assert ('sb-directory-frame-wide' in root['class']) is (width == 'wide')
         assert len(root.select('.db-widget-body')) == 2

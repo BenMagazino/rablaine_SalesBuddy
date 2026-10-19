@@ -900,12 +900,16 @@ def get_actionable_analysis_query(
     min_priority: int = 0,
     categories: list[str] | None = None,
     seller_name: str | None = None,
+    *,
+    customer_ids: tuple[int, ...] | None = None,
 ) -> Query[RevenueAnalysis]:
     """Share the analyzer's action and scope filters without truncating widget totals."""
     query = RevenueAnalysis.query.filter(
         RevenueAnalysis.recommended_action.notin_(["NO ACTION"]),
         RevenueAnalysis.priority_score >= min_priority,
     )
+    if customer_ids is not None:
+        query = query.filter(RevenueAnalysis.customer_id.in_(customer_ids))
     if categories:
         query = query.filter(RevenueAnalysis.category.in_(categories))
     if seller_name:
@@ -913,7 +917,9 @@ def get_actionable_analysis_query(
     return query
 
 
-def get_revenue_attention_widget(reference: date | None = None) -> dict:
+def get_revenue_attention_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict:
     """Read the complete unreviewed analyzer queue without running revenue analysis."""
     from app.services.seller_mode import get_seller_mode_seller_id
 
@@ -923,6 +929,8 @@ def get_revenue_attention_widget(reference: date | None = None) -> dict:
         raise ValueError('The selected seller no longer exists.')
     seller_name = seller.name if seller else None
     query = get_actionable_analysis_query(min_priority=20, seller_name=seller_name)
+    if customer_ids is not None:
+        query = query.filter(RevenueAnalysis.customer_id.in_(customer_ids))
     analyses = query.options(
         joinedload(RevenueAnalysis.customer).joinedload(Customer.seller),
     ).filter(RevenueAnalysis.review_status.in_(['new', 'to_be_reviewed'])).order_by(
@@ -930,6 +938,8 @@ def get_revenue_attention_widget(reference: date | None = None) -> dict:
     ).all()
     rows = [_attention_row(analysis) for analysis in analyses]
     coverage = RevenueAnalysis.query
+    if customer_ids is not None:
+        coverage = coverage.filter(RevenueAnalysis.customer_id.in_(customer_ids))
     if seller_name:
         coverage = coverage.filter(RevenueAnalysis.seller_name == seller_name)
     timestamps = [analysis.analyzed_at for analysis in analyses]

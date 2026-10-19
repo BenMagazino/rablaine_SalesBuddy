@@ -685,12 +685,14 @@ def _migrate_dashboard_layout(db) -> None:
     tables = set(inspector.get_table_names())
     for table, columns in (
         ('dashboards', (
+            ('filter_config', "JSON NOT NULL DEFAULT '{}'"),
             ('subtitle', "VARCHAR(500) NOT NULL DEFAULT ''"),
             ('content_width', "VARCHAR(16) NOT NULL DEFAULT 'wide'"),
             ('display_style', "VARCHAR(16) NOT NULL DEFAULT 'cards'"),
             ('layout_revision', 'INTEGER NOT NULL DEFAULT 0'),
         )),
         ('dashboard_widgets', (
+            ('filters', "JSON NOT NULL DEFAULT '{}'"),
             ('layout_column', 'INTEGER NOT NULL DEFAULT 0'),
             ('layout_row', 'INTEGER'),
             ('column_span', 'INTEGER NOT NULL DEFAULT 12'),

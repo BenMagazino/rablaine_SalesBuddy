@@ -341,7 +341,8 @@
             if (refreshing) return;
             refreshing = true;
             try {
-                const response = await fetch('/reports/hygiene?embed=1');
+                const scope = root.dataset.customerScope;
+                const response = await fetch('/reports/hygiene?embed=1' + (scope ? '&' + scope : ''));
                 if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) {
                     throw new Error('Gap refresh HTTP ' + response.status);
                 }

@@ -72,8 +72,14 @@ def dashboard_view(dashboard_id: int):
 
     dashboard = db.get_or_404(Dashboard, dashboard_id)
     manage_dashboard = request.endpoint == 'reports.dashboard_edit'
+    from app.services.dashboard_filters import get_filter_choices, filters_from_query
+
+    try:
+        data = get_dashboard_data(dashboard, live_filters=filters_from_query(request.args))
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
     return render_template(
-        'dashboard_view.html', dashboard=get_dashboard_data(dashboard),
+        'dashboard_view.html', dashboard=data, filter_choices=get_filter_choices(),
         manage_dashboard=manage_dashboard,
         catalog=get_widget_catalog() if manage_dashboard else [],
         canvas_widths=CANVAS_WIDTHS,
@@ -97,7 +103,13 @@ def dashboard_data(dashboard_id: int | None = None):
     dashboard = db.get_or_404(Dashboard, dashboard_id) if dashboard_id is not None else None
     if request.method == 'GET':
         if dashboard is not None:
-            return jsonify(success=True, dashboard=get_dashboard_data(dashboard))
+            from app.services.dashboard_filters import filters_from_query
+
+            try:
+                data = get_dashboard_data(dashboard, live_filters=filters_from_query(request.args))
+            except ValueError as exc:
+                return jsonify(success=False, error=str(exc)), 400
+            return jsonify(success=True, dashboard=data)
         return jsonify(success=True, dashboards=list_dashboards(), catalog=get_widget_catalog())
     if request.path.endswith('/delete'):
         db.session.delete(dashboard)
@@ -171,6 +183,7 @@ def dashboard_widget_edit(
                 data.get('variant_key', 'detailed') if isinstance(data, dict) else 'detailed',
                 data.get('column_span') if isinstance(data, dict) else None,
                 data.get('row_span') if isinstance(data, dict) else None,
+                data.get('filters') if isinstance(data, dict) else None,
             )
         elif action == 'remove':
             advance_layout_revision(dashboard, dashboard.layout_revision)
@@ -218,11 +231,13 @@ def dashboard_widget_preview():
     from app.services.dashboards import get_widget_preview
 
     try:
+        context = json.loads(request.args['filter_context']) if 'filter_context' in request.args else None
         instance = get_widget_preview(
             request.args.get('key', ''), request.args.get('variant', ''),
             request.args.get('width', type=int),
+            filter_context=context,
         )
-    except ValueError as exc:
+    except (ValueError, TypeError) as exc:
         return jsonify(success=False, error=str(exc)), 400
     instance_id = request.args.get('instance_id', type=int)
     if 'instance_id' in request.args and instance_id is None:
@@ -312,11 +327,15 @@ def report_fabric_capacity_pressure():
     from app.services.fabric_consumption import (
         PRESSURE_SIGNALS, get_fabric_capacity_pressure_report,
     )
+    from app.services.dashboard_filters import report_customer_scope, report_scope_query
 
     try:
+        customer_ids = report_customer_scope(request.args)
+        scope = {'customer_ids': customer_ids} if customer_ids is not None else {}
         data = get_fabric_capacity_pressure_report(
             signal=request.args.get('signal', 'attention'),
             search=request.args.get('q', ''),
+            **scope,
         )
     except ValueError as exc:
         return jsonify(success=False, error=str(exc)), 400
@@ -324,6 +343,8 @@ def report_fabric_capacity_pressure():
         return jsonify(success=True, **data)
     return render_template(
         'report_fabric_capacity_pressure.html', data=data, signal_labels=PRESSURE_SIGNALS,
+        dashboard_customer_scope=customer_ids,
+        dashboard_scope_query=report_scope_query(customer_ids) if customer_ids is not None else '',
     )
 
 
@@ -1504,8 +1525,18 @@ def report_hygiene():
     engagements so gaps can be identified and annotated quickly.
     """
     from app.services.hygiene import get_hygiene_report_data
+    from app.services.dashboard_filters import report_customer_scope, report_scope_query
 
-    return render_template('report_hygiene.html', **get_hygiene_report_data())
+    try:
+        customer_ids = report_customer_scope(request.args)
+    except ValueError as exc:
+        return jsonify(success=False, error=str(exc)), 400
+    data = (get_hygiene_report_data(customer_ids=customer_ids)
+            if customer_ids is not None else get_hygiene_report_data())
+    return render_template(
+        'report_hygiene.html', **data, dashboard_customer_scope=customer_ids,
+        dashboard_scope_query=report_scope_query(customer_ids) if customer_ids is not None else '',
+    )
 
 
 @bp.route('/api/hygiene-note', methods=['POST'])
