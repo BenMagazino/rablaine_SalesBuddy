@@ -8,6 +8,14 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/19/2026
+
+- Use a 30-day 1:1 Report for monthly reviews and sort customer activity by estimated ACR, seller, or territory.
+- Select multiple workload prefixes in U2C and MSX Workspace, with independent remembered selections for each report.
+- Clipboard and email exports now use the report title instead of the hidden welcome message.
+- Right-side flyouts stay below the navigation bar, including the desktop app's title and menu bars.
+- Customer contact editing now exits correctly after Done and keeps individually saved contacts visible after Cancel.
+
 ## 10/19/2026 - b57bd582
 
 - Save Customer and Seller filters for dashboards and individual widgets, including Connect Goals.
