@@ -1,27 +1,10 @@
 {% extends "base.html" %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 {% macro heading(label, kind='text') %}<th scope="col" data-sb-sort-type="{{ kind }}" data-export-label="{{ label }}">{{ label }}</th>{% endmacro %}
-{% block title %}{{ topic.name }} - Sales Buddy{% endblock %}
-{% block body_class %}sb-page-frame{% endblock %}
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-topic-detail.css') }}">
-{% endblock %}
-{% block content %}
-<section class="sb-topic-detail sb-directory-frame" data-topic-detail="{{ topic.id }}" data-sb-page-surface aria-labelledby="topicTitle">
-    <header class="topic-heading" data-sb-page-band>
-        <h1 id="topicTitle"><i class="bi bi-tag" aria-hidden="true"></i> {{ topic.name }}</h1>
-        <a class="sb-dialog-button" href="{{ url_for('topics.topic_edit', id=topic.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit Topic</a>
-        <button class="sb-dialog-button topic-danger" type="button" data-sb-dialog="deleteTopicDialog"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
-    </header>
-    {% if topic.description %}<div class="topic-description" data-sb-page-band><h2>Description</h2><p>{{ topic.description }}</p></div>{% endif %}
-    <header class="topic-band" data-sb-page-band><h2>Tagged notes <span>{{ notes|length }}</span></h2><span>All notes with this topic · Newest first by default</span></header>
-    <p class="topic-notice" role="alert" data-sb-page-band hidden></p>
-    <div class="topic-reading" data-sb-page-body tabindex="0" aria-label="Topic notes">
-        {% if notes %}
-        <table class="topic-table" data-sb-sortable data-sb-sort-key="topic-{{ topic.id }}-notes">
+{% macro note_table(items, key, label) %}
+        <table class="topic-table" data-sb-sortable data-sb-sort-key="{{ key }}" aria-label="{{ label }}">
             <thead><tr>{{ heading('Name') }}{{ heading('Note date', 'number') }}{{ heading('Seller') }}{{ heading('Territory') }}{{ heading('Topics') }}{{ heading('Partners') }}</tr></thead>
-            <tbody>{% for call in notes %}
+            <tbody>{% for call in items %}
                 <tr data-note-id="{{ call.id }}" data-topic-note-href="{{ url_for('notes.note_view', id=call.id) }}">
                     <td data-sb-sort-value="{{ call.customer.name if call.customer else '' }}">
                         <a class="topic-note-link" href="{{ url_for('notes.note_view', id=call.id) }}" aria-label="View note{% if call.customer %} for {{ call.customer.name }}{% endif %}"><i class="bi bi-journal-text" aria-hidden="true"></i> View note</a>
@@ -36,6 +19,49 @@
                 </tr>
             {% endfor %}</tbody>
         </table>
+{% endmacro %}
+{% block title %}{{ topic.name }} - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-topic-detail.css') }}">
+{% endblock %}
+{% block content %}
+<section class="sb-topic-detail sb-directory-frame" data-topic-detail="{{ topic.id }}" data-sb-page-surface aria-labelledby="topicTitle">
+    <header class="topic-heading" data-sb-page-band>
+        <h1 id="topicTitle"><i class="bi bi-tag" aria-hidden="true"></i> {{ topic.name }}</h1>
+        <a class="sb-dialog-button" href="{{ url_for('topics.topic_edit', id=topic.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit Topic</a>
+        <button class="sb-dialog-button topic-danger" type="button" data-sb-dialog="deleteTopicDialog"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
+    </header>
+    {% if topic.description %}<div class="topic-description" data-sb-page-band><h2>Description</h2><p>{{ topic.description }}</p></div>{% endif %}
+    <header class="topic-band" data-sb-page-band>
+        <h2>Tagged notes <span>{{ notes|length }} notes · {{ account_count }} {{ 'account' if account_count == 1 else 'accounts' }}</span></h2>
+        <label class="topic-view-label" for="topicView">View
+            <select id="topicView" data-topic-view>
+                <option value="account" selected>Group by account</option>
+                <option value="flat">All notes</option>
+            </select>
+        </label>
+        <span>All tagged notes · Newest first by default</span>
+    </header>
+    <p class="topic-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="topic-reading" data-sb-page-body tabindex="0" aria-label="Topic notes">
+        {% if notes %}
+        <div data-topic-accounts>
+            {% for customer_id, group_notes in account_groups.items() %}
+            {% set customer = group_notes[0].customer %}
+            <details class="topic-account" data-topic-account="{{ customer_id if customer_id is not none else 'unassigned' }}">
+                <summary>
+                    <i class="bi bi-chevron-down topic-account-chevron" aria-hidden="true"></i>
+                    <span class="topic-account-name">{% if customer %}{{ customer_favicon(customer) }} {{ customer.name }}{% else %}No Customer{% endif %}</span>
+                    <span class="topic-account-count">{{ group_notes|length }} {{ 'note' if group_notes|length == 1 else 'notes' }}</span>
+                </summary>
+                {% if customer %}<a class="topic-account-link" href="{{ url_for('customers.customer_view', id=customer.id) }}">Open account <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>{% endif %}
+                {{ note_table(group_notes, 'topic-' ~ topic.id ~ '-account-' ~ (customer_id if customer_id is not none else 'unassigned'), (customer.name if customer else 'No Customer') ~ ' tagged notes') }}
+            </details>
+            {% endfor %}
+        </div>
+        <div data-topic-flat hidden>{{ note_table(notes, 'topic-' ~ topic.id ~ '-notes', 'All tagged notes') }}</div>
         {% else %}<p class="topic-empty">No notes tagged with this topic yet.</p>{% endif %}
     </div>
     <dialog id="deleteTopicDialog" class="sb-dialog sb-dialog--compact" aria-labelledby="deleteTopicTitle" data-sb-backdrop-close="true">
@@ -48,6 +74,6 @@
 </section>
 {% endblock %}
 {% block footer %}
-<footer class="sb-page-status" aria-label="Topic status"><span>{{ notes|length }} notes</span><span>All tagged notes · No role or date restriction</span></footer>
+<footer class="sb-page-status" aria-label="Topic status"><span>{{ notes|length }} notes · {{ account_count }} {{ 'account' if account_count == 1 else 'accounts' }}</span><span>All tagged notes · No role or date restriction</span></footer>
 {% endblock %}
 {% block extra_js %}<script src="{{ url_for('static', filename='js/ui-topic-detail.js') }}"></script>{% endblock %}

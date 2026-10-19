@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/19/2026
+
+- Topic notes now group by account with expandable notes, per-account note counts and a unique account total. Switch to All notes any time; your view choice is remembered.
+
 ## 10/19/2026 - 4450b9ab
 
 - The 1:1 Report remembers your last selected reporting period for future visits.

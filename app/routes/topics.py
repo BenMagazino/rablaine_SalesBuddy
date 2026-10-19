@@ -8,7 +8,7 @@ from flask import (
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models import db, Topic, UserPreference
+from app.models import db, Note, Topic, UserPreference
 
 # Create blueprint
 topics_bp = Blueprint('topics', __name__)
@@ -92,7 +92,13 @@ def topic_view(id):
     topic = Topic.query.filter_by(id=id).first_or_404()
     # Sort notes in-memory since they're eager-loaded
     notes = sorted(topic.notes, key=lambda c: c.call_date, reverse=True)
-    return render_template('topic_view.html', topic=topic, notes=notes)
+    account_groups: dict[int | None, list[Note]] = {}
+    for note in notes:
+        account_groups.setdefault(note.customer_id, []).append(note)
+    return render_template(
+        'topic_view.html', topic=topic, notes=notes, account_groups=account_groups,
+        account_count=sum(customer_id is not None for customer_id in account_groups),
+    )
 
 
 @topics_bp.route('/topic/<int:id>/edit', methods=['GET', 'POST'])

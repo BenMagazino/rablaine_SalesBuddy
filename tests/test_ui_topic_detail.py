@@ -7,7 +7,7 @@ import pytest
 from bs4 import BeautifulSoup
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models import Note, Partner, Topic, UserPreference, db
+from app.models import Customer, Note, Partner, Topic, UserPreference, db
 
 
 def detail(client, topic_id):
@@ -35,9 +35,11 @@ def test_empty_native_detail_original_commands_and_missing(client, app):
     assert root.select_one("dialog [autofocus]").get_text() == "Cancel"
     assert not root.select(".topic-description,table,.card,.badge,.btn,[data-bs-toggle]")
     assert "0 notes" in soup.select_one(".sb-page-status").get_text()
+    assert "0 accounts" in soup.select_one(".sb-page-status").get_text()
+    assert not root.select("[data-topic-account]")
     assert "sb-page-frame" in soup.body["class"]
     for script in ("ui-topic-detail.js", "ui-table-sort.js", "ui-dialog.js"):
-        assert len(soup.select(f'script[src="/static/js/{script}"]')) == 1
+        assert len(soup.select(f'script[src^="/static/js/{script}"]')) == 1
     assert client.get("/topic/999999").status_code == 404
 
 
@@ -67,7 +69,8 @@ def test_original_fields_relationships_and_unrestricted_scope(app, client, sampl
         client.post(f'/api/seller-mode/activate/{sample_data["seller1_id"]}')
     root, soup = detail(client, topic_id)
     assert root.select_one(".topic-description p").get_text() == "Full description\n" * 30
-    rows = root.select("tbody tr")
+    flat = root.select_one("[data-topic-flat]")
+    rows = flat.select("tbody tr")
     assert [int(row["data-note-id"]) for row in rows] == [
         general_id, sample_data["call1_id"], sample_data["call2_id"],
     ]
@@ -91,14 +94,66 @@ def test_original_fields_relationships_and_unrestricted_scope(app, client, sampl
     assert rows[0].select("td")[0]["data-sb-sort-value"] == ""
     assert "No Customer" in rows[0].get_text()
     assert "AM" not in rows[0].select_one(".topic-date").get_text()
-    assert [th["data-export-label"] for th in root.select("th")] == [
+    assert [th["data-export-label"] for th in flat.select("th")] == [
         "Name", "Note date", "Seller", "Territory", "Topics", "Partners",
     ]
-    assert [th["data-sb-sort-type"] for th in root.select("th")] == [
+    assert [th["data-sb-sort-type"] for th in flat.select("th")] == [
         "text", "number", "text", "text", "text", "text",
     ]
     assert not root.select("script,.card,.badge,.btn,[onclick],[data-bs-toggle]")
     assert not root.select_one("table").has_attr("data-sb-sort-default-column")
+
+
+def test_given_repeated_accounts_when_grouped_then_counts_identity_and_order(app, client):
+    """Group by identity, retain unassigned notes and match the flat presentation."""
+    with app.app_context():
+        first = Customer(name='Same "<account>"', tpid=900001)
+        second = Customer(name='Same "<account>"', tpid=900002)
+        topic = Topic(name="Grouped")
+        notes = [
+            Note(customer=first, content="Older", call_date=datetime(2026, 1, 1)),
+            Note(customer=second, content="Other", call_date=datetime(2026, 2, 1)),
+            Note(content="Unassigned", call_date=datetime(2026, 3, 1)),
+            Note(customer=first, content="Newest", call_date=datetime(2026, 4, 1)),
+        ]
+        topic.notes.extend(notes)
+        db.session.add(topic)
+        db.session.commit()
+        topic_id, first_id, second_id = topic.id, first.id, second.id
+        expected = [notes[i].id for i in (3, 2, 1, 0)]
+
+    root, soup = detail(client, topic_id)
+    groups = root.select("[data-topic-account]")
+    assert [group["data-topic-account"] for group in groups] == [
+        str(first_id), "unassigned", str(second_id),
+    ]
+    assert [group.select_one(".topic-account-count").get_text() for group in groups] == [
+        "2 notes", "1 note", "1 note",
+    ]
+    assert all(not group.has_attr("open") and not group.has_attr("name") for group in groups)
+    assert 'Same "<account>"' in groups[0].summary.get_text()
+    assert groups[0].summary.select_one("account") is None
+    assert not groups[0].summary.select("a")
+    assert groups[0].select_one(".topic-account-link")["href"] == f"/customer/{first_id}"
+    assert not groups[1].select(".topic-account-link")
+    assert "4 notes" in soup.select_one(".sb-page-status").get_text()
+    assert "2 accounts" in soup.select_one(".sb-page-status").get_text()
+    assert "2 accounts" in root.select_one(".topic-band").get_text()
+    flat = root.select_one("[data-topic-flat]")
+    assert flat.has_attr("hidden")
+    assert root.select_one("[data-topic-view] option[selected]")["value"] == "account"
+    flat_rows = flat.select("[data-note-id]")
+    assert [int(row["data-note-id"]) for row in flat_rows] == expected
+    grouped_rows = root.select("[data-topic-accounts] [data-note-id]")
+    assert len(grouped_rows) == len(flat_rows)
+    assert {row["data-note-id"]: str(row) for row in grouped_rows} == {
+        row["data-note-id"]: str(row) for row in flat_rows
+    }
+    assert [int(row["data-note-id"]) for row in groups[0].select("[data-note-id]")] == [
+        expected[0], expected[-1],
+    ]
+    keys = [table["data-sb-sort-key"] for table in root.select("table")]
+    assert len(keys) == len(set(keys)) == 4
 
 
 @pytest.mark.parametrize("fail", [False, True])

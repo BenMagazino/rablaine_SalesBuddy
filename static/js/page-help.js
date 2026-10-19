@@ -374,9 +374,14 @@ const PageHelp = (function () {
     `},
     { pattern: /^\/topic\/\d+\/?$/, title: 'Topic Details', content: `
       <p>All notes tagged with this topic, across all dates and seller roles.
-      The full description and total tagged-note count remain available.</p>
+      The full description, total tagged-note count and unique account count remain available.</p>
       <ul>
-        <li>Newest first is the default. Sort Name, Note date, Seller, Territory,
+        <li>Group by account starts collapsed. Expand an account to see its tagged notes
+        and note count; multiple accounts can stay open. Accounts are ordered by their newest
+        tagged note. No Customer keeps unassigned notes outside the account count.</li>
+        <li>Choose All notes for the flat list. Your view choice is remembered across topics
+        and app restarts. Back restores your view, expanded accounts and reading position.</li>
+        <li>Newest first is the default within each account and the flat list. Sort Name, Note date, Seller, Territory,
         Topics or Partners in either direction. Back restores sorting and reading position.</li>
         <li>View note opens the original note reader. Customer and relationship links
         open their original details; note bodies and editing workflows are unchanged.</li>
