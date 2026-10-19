@@ -8,6 +8,12 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/19/2026
+
+- Save Customer and Seller filters for dashboards and individual widgets, including Connect Goals.
+  Use the Filters side panel to narrow published dashboards without changing saved settings.
+  U2C metrics and trends follow the selected customers' original snapshot milestones.
+
 ## 10/18/2026 - 5e50cb39
 
 - Open seller pages by name from Quick Launcher.
