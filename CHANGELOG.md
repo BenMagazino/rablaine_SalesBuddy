@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/19/2026
+
+- The 1:1 Report remembers your last selected reporting period for future visits.
+
 ## 10/19/2026 - 7bf5aa99
 
 - Use a 30-day 1:1 Report for monthly reviews and sort customer activity by estimated ACR, seller, or territory.

@@ -25,10 +25,13 @@ class Node {
     fire(type, event = {}) { this.events[type]?.(event); }
 }
 
-function harness({saved, embedded = false, rejectSave = false, period = 'Last 2 Weeks'} = {}) {
+function harness({saved, embedded = false, rejectSave = false, period = 'Last 2 Weeks',
+    periodDays = '14', storedPeriod = null, href = 'http://localhost/reports/one-on-one',
+    rejectStorageRead = false, rejectStorageWrite = false} = {}) {
     const ids = Object.fromEntries(['oneOnOneReading', 'oneOnOneScopeStatus',
         'oneOnOneNavigationStatus', 'oneOnOneLauncherStatus', 'openSellerOneOnOne',
-        'oneOnOneSellerSelect', 'recent', 'alltime'].map(id => [id, new Node(id)]));
+        'oneOnOneSellerSelect', 'oneOnOnePeriod', 'recent', 'alltime']
+        .map(id => [id, new Node(id)]));
     ids.oneOnOneSellerSelect.value = '7';
     ids.oneOnOneNavigationStatus.hidden = ids.oneOnOneLauncherStatus.hidden = true;
     ids.recent.querySelectorAll = () => [1];
@@ -56,7 +59,11 @@ function harness({saved, embedded = false, rejectSave = false, period = 'Last 2 
             throw new Error('Unexpected selector: ' + selector);
         },
     };
-    const events = {}, errors = [], locations = [];
+    const events = {}, errors = [], locations = [], replacements = [], submissions = [];
+    const storage = new Map(storedPeriod === null ? [] :
+        [['salesbuddy_one_on_one_period_days', storedPeriod]]);
+    ids.oneOnOnePeriod.value = periodDays;
+    ids.oneOnOnePeriod.form = {requestSubmit: () => submissions.push(ids.oneOnOnePeriod.value)};
     const root = {
         document: {readyState: 'complete', getElementById: id => ids[id],
             querySelector: selector => selector === '.sb-one-on-one' ? surface : null},
@@ -68,13 +75,89 @@ function harness({saved, embedded = false, rejectSave = false, period = 'Last 2 
             },
         },
         console: {error: (...args) => errors.push(args)},
-        location: {assign: url => locations.push(url)},
+        location: {href, assign: url => locations.push(url),
+            replace: url => replacements.push(url)},
+        localStorage: {
+            getItem(key) {
+                if (rejectStorageRead) throw new Error('Storage read unavailable');
+                return storage.get(key) ?? null;
+            },
+            setItem(key, value) {
+                if (rejectStorageWrite) throw new Error('Storage write unavailable');
+                storage.set(key, value);
+            },
+        },
         requestAnimationFrame: callback => callback(),
         addEventListener: (type, listener) => { events[type] = listener; },
     };
-    vm.runInNewContext(source, {window: root});
-    return {root, ids, buttons, customers, note, table, events, errors, locations};
+    vm.runInNewContext(source, {window: root, URL});
+    return {root, ids, buttons, customers, note, table, events, errors, locations,
+        replacements, storage, submissions};
 }
+
+test('reporting period changes persist both choices before submitting', () => {
+    const h = harness();
+    for (const days of ['30', '14']) {
+        h.ids.oneOnOnePeriod.value = days;
+        h.ids.oneOnOnePeriod.fire('change');
+        assert.equal(h.storage.get('salesbuddy_one_on_one_period_days'), days);
+    }
+    assert.deepEqual(h.submissions, ['30', '14']);
+});
+
+test('a bare visit restores the saved period and preserves other URL state', () => {
+    const h = harness({storedPeriod: '30', embedded: true,
+        href: 'http://localhost/reports/one-on-one?activity_sort=acr&embed=1#recent'});
+    const destination = new URL(h.replacements[0]);
+    assert.equal(destination.searchParams.get('days'), '30');
+    assert.equal(destination.searchParams.get('activity_sort'), 'acr');
+    assert.equal(destination.searchParams.get('embed'), '1');
+    assert.equal(destination.hash, '#recent');
+    assert.deepEqual(h.submissions, []);
+    assert.equal(h.root.history.state.sbOneOnOneReport, undefined);
+    const loaded = harness({storedPeriod: '30', periodDays: '30', href: destination.href});
+    assert.deepEqual(loaded.replacements, []);
+});
+
+test('explicit URL periods override storage without replacing the saved preference', () => {
+    for (const days of ['14', '30']) {
+        const storedPeriod = days === '14' ? '30' : '14';
+        const h = harness({storedPeriod, periodDays: days,
+            href: 'http://localhost/reports/one-on-one?days=' + days});
+        assert.deepEqual(h.replacements, []);
+        assert.equal(h.storage.get('salesbuddy_one_on_one_period_days'), storedPeriod);
+    }
+});
+
+test('fresh and already matching visits do not redirect or invent preferences', () => {
+    for (const storedPeriod of [null, '14']) {
+        const h = harness({storedPeriod});
+        assert.deepEqual(h.replacements, []);
+        assert.equal(h.storage.get('salesbuddy_one_on_one_period_days'), storedPeriod ?? undefined);
+        assert.deepEqual(h.errors, []);
+    }
+});
+
+test('invalid or unreadable stored periods report failure without blocking the report', () => {
+    for (const options of [{storedPeriod: '7'}, {storedPeriod: ''}, {rejectStorageRead: true}]) {
+        const h = harness(options);
+        assert.deepEqual(h.replacements, []);
+        assert.equal(h.ids.recent.hidden, false);
+        assert.equal(h.ids.oneOnOneNavigationStatus.hidden, false);
+        assert.match(h.ids.oneOnOneNavigationStatus.textContent, /Could not restore/);
+        assert.equal(h.errors.length, 1);
+    }
+});
+
+test('storage write failure does not prevent applying the chosen reporting period', () => {
+    const h = harness({rejectStorageWrite: true});
+    h.ids.oneOnOnePeriod.value = '30';
+    h.ids.oneOnOnePeriod.fire('change');
+    assert.deepEqual(h.submissions, ['30']);
+    assert.equal(h.ids.oneOnOneNavigationStatus.hidden, false);
+    assert.match(h.ids.oneOnOneNavigationStatus.textContent, /Could not remember/);
+    assert.equal(h.errors.length, 1);
+});
 
 test('seller navigation keeps its existing numeric destination and rejects invalid selection', () => {
     assert.equal(sellerWorkspaceUrl('7'), '/seller/7/one-on-one');
