@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/19/2026
+## 10/19/2026 - 7bf5aa99
 
 - Use a 30-day 1:1 Report for monthly reviews and sort customer activity by estimated ACR, seller, or territory.
 - Select multiple workload prefixes in U2C and MSX Workspace, with independent remembered selections for each report.
