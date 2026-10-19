@@ -152,10 +152,26 @@ def get_ptof_report(
     return result
 
 
+def _renewal_metrics(rows: list[dict]) -> dict:
+    """Summarize subscription rows without mixing account assessment amounts."""
+    amounts = [row.get("sa_expiration_amount") for row in rows]
+    known = [amount for amount in amounts if amount is not None]
+    return {
+        "rows": rows,
+        "counts": {
+            "upcoming": len(rows),
+            "customers": len({row["customer_id"] for row in rows}),
+            "missing_sa_amount": len(amounts) - len(known),
+        },
+        "sa_expiration_amount": sum(known) if known else None,
+        "sa_amount_complete": len(amounts) == len(known),
+    }
+
+
 def get_ptof_renewals_widget(
     reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
 ) -> dict:
-    """Read subscription expirations in an inclusive 90-day saved-snapshot window.
+    """Read a 90-day summary and all future saved subscription expirations.
 
     Account assessments are context only. Subscription rows remain a separate
     grain, with no inferred renewal completion or summary/detail dollar mixing.
@@ -166,7 +182,7 @@ def get_ptof_renewals_widget(
         get_ptof_report() if customer_ids is None
         else get_ptof_report(customer_ids=customer_ids)
     )
-    rows = []
+    future_rows = []
     counts = {"upcoming": 0, "past": 0, "undated": 0, "later": 0}
     for index, source in enumerate(report["details"]):
         raw_date = source.get("expiration_date")
@@ -178,33 +194,31 @@ def get_ptof_renewals_widget(
             counts["undated"] += 1
         elif expiration < reference:
             counts["past"] += 1
-        elif expiration > end:
-            counts["later"] += 1
         else:
-            rows.append({
+            if expiration > end:
+                counts["later"] += 1
+            future_rows.append({
                 **source, "row_key": f"ptof-{source['customer_id']}-{index}",
                 "days_until_expiration": (expiration - reference).days,
                 "destination": f"/reports/p-to-f?customer_id={source['customer_id']}",
             })
-    rows.sort(key=lambda row: (
+    future_rows.sort(key=lambda row: (
         row["expiration_date"], row["customer_name"].casefold(), row["row_key"],
     ))
-    counts["upcoming"] = len(rows)
-    counts["customers"] = len({row["customer_id"] for row in rows})
-    amounts = [row.get("sa_expiration_amount") for row in rows]
-    known = [amount for amount in amounts if amount is not None]
-    counts["missing_sa_amount"] = len(amounts) - len(known)
+    summary = _renewal_metrics([
+        row for row in future_rows if row["days_until_expiration"] <= 90
+    ])
     snapshot = report["snapshot"]
     return {
+        **summary,
         "snapshot": snapshot,
         "snapshot_state": (
             "not_imported" if snapshot is None else "available" if report["details"] else "empty"
         ),
         "scope": "all_local_accounts", "destination": "/reports/p-to-f",
         "reference_date": reference.isoformat(), "window_end": end.isoformat(),
-        "window_days": 90, "rows": rows, "counts": counts,
-        "sa_expiration_amount": sum(known) if known else None,
-        "sa_amount_complete": not counts["missing_sa_amount"],
+        "window_days": 90, "counts": {**counts, **summary["counts"]},
+        "future": _renewal_metrics(future_rows),
         "amount_basis": "Annual SA expiration amount, not monthly ACR",
         "status_basis": (
             "Renewal assessment is account-level source context, not subscription status"

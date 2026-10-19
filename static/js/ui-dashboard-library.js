@@ -105,6 +105,7 @@
                 article.insertAdjacentHTML('beforeend', data.html);
                 preview.append(article);
                 global.SBConnectGoals.init(preview);
+                global.SBPToF?.mountStatuses(preview);
                 global.SBTableSort?.mount(preview);
                 previewRows = fitPreviewRows(article.getBoundingClientRect().height,
                     variant, config.grid);

@@ -393,14 +393,30 @@
 .db-report-metrics dt { color: var(--sb-ui-muted); font-size: 12px; font-weight: 400; }
 .db-report-metrics dd { margin: 0; text-align: right; font-size: 14px; font-weight: 600; }
 .db-report-metrics dd small { display: block; color: var(--sb-ui-warning); font-size: 11px; font-weight: 400; }
-.db-report-table { width: 100%; margin-top: 12px; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+.db-report-table { width: 100%; margin-top: 12px; border: 1px solid var(--sb-ui-grid-line); border-collapse: collapse; table-layout: fixed; font-size: 12px; }
 .db-report-table :is(th, td) { padding: 8px 6px; text-align: right; vertical-align: top; overflow-wrap: anywhere; border-bottom: 1px solid var(--sb-ui-grid-line); }
 .db-report-table :is(th, td):first-child { width: 40%; text-align: left; }
 .db-report-table thead th { color: var(--sb-ui-muted); font-size: 11px; font-weight: 500; }
 .db-report-table tbody th { font-weight: 500; }
+.db-report-table tbody tr:nth-child(odd) {
+    background: color-mix(in oklch, var(--sb-ui-context) 40%, var(--sb-ui-surface));
+}
 .db-report-table small { display: block; margin-top: 4px; color: var(--sb-ui-muted); font-size: 11px; font-weight: 400; }
 .db-report-table .sb-table-sort-button { justify-content: flex-end; }
 .db-report-table th:first-child .sb-table-sort-button { justify-content: flex-start; }
+.db-report-table .sb-ptof-status-cell { text-align: left; }
+.db-report-table td.sb-ptof-status-cell { padding: 0; }
+.db-report-table .sb-ptof-status-cell .sb-table-sort-button { justify-content: flex-start; }
+.db-report-table .sb-ptof-status { padding: 8px 6px; white-space: normal; }
+.db-report-table .sb-ptof-status:focus-visible {
+    outline: 2px solid var(--sb-ui-accent); outline-offset: -2px;
+}
+.db-ptof-renewals :is(th, td) { text-align: left; }
+.db-ptof-renewals :is(th, td):first-child { width: auto; }
+.db-ptof-renewals th:nth-child(2) { width: 48px; }
+.db-ptof-renewals th:nth-child(3) { width: 156px; }
+.db-ptof-renewals th:last-child { width: 140px; }
+.db-ptof-renewals .sb-table-sort-button { justify-content: flex-start; }
 .db-report-empty { margin: 16px 0 0; color: var(--sb-ui-muted); font-size: 12px; line-height: 1.5; }
 .db-report-notice { margin: 12px 0; color: var(--sb-ui-warning); font-size: 11px; line-height: 1.5; }
 .db-pressure-preview { list-style: none; margin: 12px 0 0; padding: 0; }

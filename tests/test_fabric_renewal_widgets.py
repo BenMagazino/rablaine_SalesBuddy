@@ -101,6 +101,108 @@ def test_renewals_inclusive_window_and_separate_source_grains(monkeypatch):
     assert result["destination"] == "/reports/p-to-f"
 
 
+def test_renewal_details_include_all_future_rows_with_independent_totals(monkeypatch):
+    """Details extend beyond day 90 without widening the Summary totals."""
+    set_renewals(monkeypatch, [
+        renewal_row((REFERENCE + timedelta(days=900)).isoformat(),
+                    customer_id=9, sa_expiration_amount=-50),
+        renewal_row(REFERENCE.isoformat()),
+        renewal_row((REFERENCE + timedelta(days=90)).isoformat(), sa_expiration_amount=0),
+        renewal_row((REFERENCE + timedelta(days=91)).isoformat(),
+                    customer_id=8, sa_expiration_amount=2500),
+        renewal_row((REFERENCE + timedelta(days=365)).isoformat(),
+                    customer_id=8, sa_expiration_amount=None),
+        renewal_row((REFERENCE - timedelta(days=1)).isoformat()),
+        renewal_row(None),
+        renewal_row("malformed"),
+    ], {"imported_at": "2026-10-01"})
+    result = ptof.get_ptof_renewals_widget(REFERENCE)
+    assert [row["days_until_expiration"] for row in result["rows"]] == [0, 90]
+    assert result["sa_expiration_amount"] == 1200
+    assert result["sa_amount_complete"]
+    future = result["future"]
+    assert [row["days_until_expiration"] for row in future["rows"]] == [0, 90, 91, 365, 900]
+    assert future["counts"] == {"upcoming": 5, "customers": 3, "missing_sa_amount": 1}
+    assert future["sa_expiration_amount"] == 3650
+    assert not future["sa_amount_complete"]
+    assert result["counts"]["past"] == 1
+    assert result["counts"]["undated"] == 2
+    assert result["counts"]["later"] == 3
+    details = BeautifulSoup(render_widget("ptof_renewals", result), "html.parser")
+    summary = BeautifulSoup(render_widget("ptof_renewals", result, "metric"), "html.parser")
+    assert not details.select(".db-report-metrics, .db-report-caption, caption")
+    assert [value.text for value in summary.select(".db-report-metrics dd")] == [
+        "2", "1", "$1,200",
+    ]
+    assert len(details.select("tbody tr")) == 5
+    assert len(details.select("th[data-sb-sort-type]")) == 4
+    assert "Annual SA" not in details.text
+    assert "missing an SA amount" not in details.text
+    assert "All dated renewals from" not in details.text
+    assert "All future" not in details.text
+    assert "Saved 2026" not in details.text
+    assert details.select_one("table")["aria-label"].startswith("Future subscription renewals.")
+    assert summary.select(".db-report-metrics, .db-report-caption")
+    assert "90-day window" not in details.text
+    assert not summary.find("table")
+
+
+@pytest.mark.parametrize("status", [
+    None, "Pending Renewal", "P-to-F Renewed", "Pending Renewal; P-to-F Renewed",
+    "<script>bad()</script>",
+])
+def test_renewal_details_show_only_source_renewal_status(monkeypatch, status):
+    """Widget status keeps the report value and a raw sort key, without subscription text."""
+    set_renewals(monkeypatch, [
+        renewal_row(REFERENCE.isoformat(), renewal_status=status),
+    ], {"imported_at": "2026-10-01"})
+    result = ptof.get_ptof_renewals_widget(REFERENCE)
+    soup = BeautifulSoup(render_widget("ptof_renewals", result), "html.parser")
+    assert soup.select("thead th")[-1].text == "Status"
+    cell = soup.select_one("td[data-ptof-renewal-status]")
+    assert cell.text == (status or "Not supplied")
+    assert cell["data-ptof-renewal-status"] == (status or "")
+    assert cell["data-sb-sort-value"] == (status or "")
+    assert "Anniversary" not in soup.text
+    assert "account assessment:" not in soup.text
+    assert not soup.find("script")
+
+
+@pytest.mark.parametrize(("product", "label"), [
+    ("Power BI Premium P1", "P1"),
+    ("Power BI Premium P2", "P2"),
+    ("Power BI Premium P3", "P3"),
+    ("Other product", "Other product"),
+    (None, None),
+])
+def test_renewal_widget_shortens_premium_product_labels(monkeypatch, product, label):
+    """Shorten the widget label without changing source products or customer names."""
+    set_renewals(monkeypatch, [
+        renewal_row(REFERENCE.isoformat(), product_family=product),
+    ], {"imported_at": "2026-10-01"})
+    data = ptof.get_ptof_renewals_widget(REFERENCE)
+    soup = BeautifulSoup(render_widget("ptof_renewals", data), "html.parser")
+    cells = soup.select("tbody td")
+    assert cells[0].text.strip() == "Renewal customer"
+    assert cells[1].text.strip() == (label or "Not supplied")
+    assert soup.select("th")[1].text == "SKU"
+    assert soup.select("th")[1]["data-sb-sort-type"] == "text"
+    assert data["future"]["rows"][0]["product_family"] == product
+
+
+def test_renewal_details_show_later_customers_when_summary_is_empty(monkeypatch):
+    """An empty 90-day window must not hide future subscriptions from Details."""
+    set_renewals(monkeypatch, [
+        renewal_row((REFERENCE + timedelta(days=180)).isoformat()),
+    ], {"imported_at": "2026-10-01"})
+    result = ptof.get_ptof_renewals_widget(REFERENCE)
+    details = BeautifulSoup(render_widget("ptof_renewals", result), "html.parser")
+    summary = BeautifulSoup(render_widget("ptof_renewals", result, "metric"), "html.parser")
+    assert len(details.select("tbody tr")) == 1
+    assert not details.select(".db-report-empty")
+    assert "No dated expirations in this 90-day window." in summary.text
+
+
 @pytest.mark.parametrize(("snapshot", "state"), [(None, "not_imported"), ({}, "empty")])
 def test_renewals_snapshot_empty_states(monkeypatch, snapshot, state):
     """Distinguish never imported from a saved snapshot with no subscription rows."""
@@ -113,15 +215,22 @@ def test_renewals_snapshot_empty_states(monkeypatch, snapshot, state):
     assert "live" not in html
 
 
-def test_renewals_no_silent_row_cap_and_unknown_amount(monkeypatch):
+@pytest.mark.parametrize("days", [0, 365])
+def test_renewals_no_silent_row_cap_and_unknown_amount(monkeypatch, days):
     """Show every qualifying source subscription, including unknown dollar amounts."""
     set_renewals(monkeypatch, [
-        renewal_row(REFERENCE.isoformat(), sa_expiration_amount=None) for _ in range(125)
+        renewal_row((REFERENCE + timedelta(days=days)).isoformat(), sa_expiration_amount=None)
+        for _ in range(125)
     ], {"imported_at": None})
     result = ptof.get_ptof_renewals_widget(REFERENCE)
-    assert len(result["rows"]) == 125
+    assert len(result["rows"]) == (125 if days == 0 else 0)
     assert result["sa_expiration_amount"] is None
-    assert result["counts"]["missing_sa_amount"] == 125
+    assert result["counts"]["missing_sa_amount"] == (125 if days == 0 else 0)
+    assert len(result["future"]["rows"]) == 125
+    assert result["future"]["sa_expiration_amount"] is None
+    assert result["future"]["counts"]["missing_sa_amount"] == 125
+    html = BeautifulSoup(render_widget("ptof_renewals", result), "html.parser")
+    assert len(html.select("tbody tr")) == 125
 
 
 def test_pressure_native_signals_priority_overlap_and_tenant_identity(monkeypatch):
@@ -214,7 +323,11 @@ def test_widget_details_raw_sort_values_unique_ids_and_safe_text(monkeypatch):
     assert len(tables) == 2
     assert len({table["data-sb-sort-key"] for table in tables}) == 2
     assert len({heading["id"] for heading in soup.select("h2")}) == 2
-    assert soup.select_one('td[data-sb-sort-value="1200"]')
+    assert soup.select_one(f'td[data-sb-sort-value="{REFERENCE.isoformat()}"]')
+    assert [header.text for header in tables[0].select("th")] == [
+        "Customer", "SKU", "Expires", "Status",
+    ]
+    assert all(len(row.select("td")) == 4 for row in soup.select("tbody tr"))
     assert not BeautifulSoup(render_widget(widget, data, "metric"), "html.parser").find("table")
 
 

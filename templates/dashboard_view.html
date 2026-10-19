@@ -4,6 +4,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-goals.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-ptof.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-dashboards.css') }}">
 {% endblock %}
 {% block footer %}
@@ -340,6 +341,7 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ui-connect-goals.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-ptof.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboard-drafts.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboard-dividers.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboards.js') }}" defer></script>

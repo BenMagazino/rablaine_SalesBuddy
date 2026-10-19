@@ -183,10 +183,11 @@ WIDGET_DEFINITIONS = {
         ),
         WidgetDefinition(
             'ptof.upcoming_renewals', 'Upcoming P-to-F renewals',
-            'Subscription expirations in the next 90 days, annual SA expiration amounts, '
-            'and source account-level renewal assessments.',
+            'A next-90-days summary or all future subscription details, with annual SA '
+            'expiration amounts and source account-level renewal assessments.',
             'P to F', _report_variants('partials/widgets/ptof_renewals.html'),
-            get_ptof_renewals_widget, scope='Next 90 days', supported_filters=tuple(FILTER_LABELS),
+            get_ptof_renewals_widget, scope='90-day summary / all future details',
+            supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'fabric.capacity_pressure', 'Fabric capacity pressure',

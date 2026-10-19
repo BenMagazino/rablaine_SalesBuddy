@@ -274,6 +274,7 @@
                         tile.querySelector('.db-widget-body').remove();
                         tile.insertAdjacentHTML('afterbegin', html);
                         global.SBConnectGoals.init(tile);
+                        global.SBPToF?.mountStatuses(tile);
                         global.SBTableSort?.mount(tile);
                     }
                 }

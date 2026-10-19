@@ -85,3 +85,27 @@ the four summary metrics, rolling-window caption, or expandable workload tables;
 those remain on the standalone Fabric report.
 Use the standalone reports or Sync Status to refresh data.
 The `report_ptof` SalesIQ tool reuses the same read service.
+
+## Dashboard widget
+
+**Upcoming P-to-F renewals** has two scopes:
+
+- **Summary** retains subscription expirations from today through 90 days ahead,
+  inclusive.
+- **Details** lists every dated subscription expiration from today onward in the
+  saved report, without the 90-day cutoff or a preview row limit.
+
+Summary displays expiration and customer counts and the annual SA total.
+Details keeps only the heading, report link, and renewal table, without summary
+metrics, date-range copy, or the saved-snapshot footer. Data-quality notices remain
+visible when applicable. Past and undated subscriptions are excluded; missing SA
+amounts remain explicit. Details sorts by expiration date initially, with sortable
+Customer, SKU, Expires, and Status columns. SKU uses compact labels such as P1
+and P2 rather than repeating Power BI Premium. Annual SA amounts remain in
+Summary and the full report, not the Details table. Status shows only
+the account renewal assessment, using the report's same colors, icons, and
+hover/focus explanations. Multiple assessments remain separate status indicators;
+missing assessments show Not supplied.
+Customer/Seller dashboard and widget filters apply to both scopes.
+The full future list is still bounded by the saved source snapshot, not a claim
+that all future subscriptions outside the report's fiscal window were imported.

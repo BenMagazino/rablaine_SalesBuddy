@@ -53,6 +53,29 @@ def payload(tpids: list[int]) -> dict:
     }
 
 
+def test_renewal_widget_future_scope_respects_customer_selection(accounts, monkeypatch):
+    """The full future list keeps scoped and explicitly empty selections restrictive."""
+    customer, other, _ = accounts
+    source = payload([customer.tpid, other.tpid])
+    source["details"][0]["expiration_date"] = "2027-06-01"
+    source["details"].append({
+        **source["details"][0], "tpid": other.tpid, "expiration_date": "2028-01-01",
+    })
+    monkeypatch.setattr(ptof, "pull_ptof", lambda tpids, progress: source)
+    ptof.sync_ptof()
+    reference = date(2026, 10, 19)
+    all_accounts = ptof.get_ptof_renewals_widget(reference)
+    assert all_accounts["counts"]["upcoming"] == 0
+    assert all_accounts["future"]["counts"]["customers"] == 2
+    selected = ptof.get_ptof_renewals_widget(reference, customer_ids=(customer.id,))
+    assert selected["future"]["counts"]["customers"] == 1
+    assert selected["future"]["rows"][0]["customer_id"] == customer.id
+    assert selected["future"]["sa_expiration_amount"] == 100
+    empty = ptof.get_ptof_renewals_widget(reference, customer_ids=())
+    assert empty["future"]["rows"] == []
+    assert empty["future"]["counts"]["customers"] == 0
+
+
 def test_queries_preserve_visual_grains_and_scope():
     """The source already contains full dates; do not recreate status thresholds locally."""
     summary = ptof_pull.build_query([123], ['FY27'], detail=False)

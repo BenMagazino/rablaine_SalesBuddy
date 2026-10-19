@@ -275,6 +275,8 @@ standalone UI iterations using entirely fictional data. See the
   The library also includes **Hygiene gaps**, **Meeting activity coverage**,
   **Revenue risk / opportunity**, **Upcoming P-to-F renewals**, and
   **Fabric capacity pressure**, each with compact Summary and detailed views.
+  P-to-F Summary covers the next 90 days; Details lists all dated future renewals
+  in the saved report, with counts and annual SA amounts for that full date scope.
   They read the same saved data as their reports and link back to existing workflows;
   opening a dashboard never starts an external refresh. Revenue totals cover the complete
   unreviewed priority-20+ queue, rather than just the report's first page.

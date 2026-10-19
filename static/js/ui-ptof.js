@@ -80,10 +80,16 @@
             'Renewal percentages are source assessments, not capacity utilization.';
         indicator.tabIndex = 0;
         indicator.setAttribute('aria-describedby', tooltip.id);
+        indicator.setAttribute('data-sb-dialog-escape-owner', '');
+        indicator.setAttribute('aria-expanded', 'false');
         indicator.append(tooltip);
-        const hide = () => tooltip.hidePopover();
+        const hide = () => {
+            tooltip.hidePopover();
+            indicator.setAttribute('aria-expanded', 'false');
+        };
         const show = () => {
             tooltip.showPopover();
+            indicator.setAttribute('aria-expanded', 'true');
             const anchor = indicator.getBoundingClientRect();
             const bounds = tooltip.getBoundingClientRect();
             tooltip.style.left = `${Math.max(8,
@@ -96,7 +102,34 @@
         indicator.addEventListener('focus', show);
         indicator.addEventListener('blur', hide);
         indicator.addEventListener('keydown', event => {
-            if (event.key === 'Escape') hide();
+            if (event.key === 'Escape' && tooltip.matches(':popover-open')) {
+                event.preventDefault();
+                event.stopPropagation();
+                hide();
+            }
+        });
+    }
+
+    function renewalIndicator(status) {
+        const style = renewalStyle(status);
+        const indicator = document.createElement('span');
+        indicator.className = `sb-ptof-status is-${style.tone}`;
+        const icon = document.createElement('i');
+        icon.className = `bi ${style.icon}`;
+        icon.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = status;
+        indicator.append(icon, label);
+        addRenewalHelp(indicator, status);
+        return indicator;
+    }
+
+    function mountStatuses(root) {
+        root.querySelectorAll('[data-ptof-renewal-status]').forEach(cell => {
+            if (cell.dataset.ptofStatusMounted) return;
+            cell.dataset.ptofStatusMounted = 'true';
+            const value = cell.dataset.ptofRenewalStatus;
+            if (value) cell.replaceChildren(...value.split('; ').map(renewalIndicator));
         });
     }
 
@@ -161,17 +194,7 @@
                         td.classList.add('sb-ptof-status-cell');
                         td.replaceChildren();
                         for (const status of value.split('; ')) {
-                            const style = renewalStyle(status);
-                            const indicator = document.createElement('span');
-                            indicator.className = `sb-ptof-status is-${style.tone}`;
-                            const icon = document.createElement('i');
-                            icon.className = `bi ${style.icon}`;
-                            icon.setAttribute('aria-hidden', 'true');
-                            const label = document.createElement('span');
-                            label.textContent = status;
-                            indicator.append(icon, label);
-                            addRenewalHelp(indicator, status);
-                            td.append(indicator);
+                            td.append(renewalIndicator(status));
                         }
                     }
                     tr.append(td);
@@ -256,5 +279,7 @@
         }
         if (!panel?.hidden) load();
     }
+    window.SBPToF = Object.freeze({mountStatuses});
+    mountStatuses(document);
     document.querySelectorAll('[data-ptof]').forEach(mount);
 })();
