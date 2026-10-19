@@ -214,13 +214,19 @@ def report_manager_one_on_one() -> dict:
             'type': 'string',
             'description': 'U2C workload group, such as Data or Infra. Empty means all workloads.',
         },
+        'workloads': {
+            'type': 'array', 'items': {'type': 'string'},
+            'description': 'Exact detailed workload names, OR within the selection. Empty means all.',
+        },
     }},
 )
-def get_manager_u2c_candidates(search: str = '', workload_prefix: str = '') -> dict:
+def get_manager_u2c_candidates(
+    search: str = '', workload_prefix: str = '', workloads: list[str] | None = None,
+) -> dict:
     """Use Initiative Tracker's shared U2C-assisted selection service."""
     from app.services.manager_one_on_one import get_manager_u2c_candidates as get_candidates
 
-    return get_candidates(search, workload_prefix=workload_prefix)
+    return get_candidates(search, workload_prefix=workload_prefix, workloads=workloads)
 
 
 @tool(
@@ -1780,7 +1786,7 @@ def get_analytics_summary(days: int = 30) -> dict:
 @tool(
     'report_one_on_one',
     'Get 1:1 manager prep data: recent customer activity, open engagements, '
-    'and milestone updates in the last 2 weeks.',
+    'and milestone updates in a configurable rolling window (14 days by default; 30 for MBRs).',
     {
         'type': 'object',
         'properties': {
@@ -1797,14 +1803,13 @@ def get_analytics_summary(days: int = 30) -> dict:
 )
 def report_one_on_one(days: int = 14, seller_id: int | None = None) -> dict:
     """Return 1:1 prep data."""
-    from datetime import datetime, timedelta, timezone
     from app.models import Note, Engagement, Milestone, Customer
+    from app.services.one_on_one_report import get_activity_cutoffs
 
-    days = max(1, min(days, 90))
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff, call_date_cutoff = get_activity_cutoffs(days)
 
     # Recent notes
-    note_q = Note.query.filter(Note.call_date >= cutoff)
+    note_q = Note.query.filter(Note.call_date >= call_date_cutoff)
     if seller_id:
         cust_ids = [c.id for c in Customer.query.filter_by(seller_id=seller_id).all()]
         note_q = note_q.filter(Note.customer_id.in_(cust_ids))
@@ -2133,6 +2138,10 @@ def get_msx_workspace_opportunities(**kwargs: Any) -> Any:
                 'type': 'string',
                 'description': 'Filter by team: on, off, or empty for all.',
             },
+            'workloads': {
+                'type': 'array', 'items': {'type': 'string'},
+                'description': 'Exact detailed workload OR selection. Empty means all.',
+            },
             'search': {
                 'type': 'string',
                 'description': (
@@ -2147,8 +2156,14 @@ def get_msx_workspace_milestones(**kwargs: Any) -> Any:
     """Return milestones matching the given filters."""
     from app.models import Customer, Milestone, db
     from app.services.milestone_search import get_milestone_search_text
+    from app.services.workload_filters import normalize_workloads
 
     query = Milestone.query.filter(Milestone.customer_id.isnot(None))
+    workloads = normalize_workloads(kwargs.get('workloads'))
+    if workloads is not None:
+        query = query.filter(
+            db.func.trim(db.func.coalesce(Milestone.workload, '')).in_(workloads),
+        )
 
     customer_id = kwargs.get('customer_id')
     if customer_id:
@@ -2308,12 +2323,17 @@ def get_marketing_insights(customer_id: int | None = None) -> dict:
                 'type': 'string',
                 'description': 'Workload prefix filter, e.g. "Data" or "Infra".',
             },
+            'workloads': {
+                'type': 'array', 'items': {'type': 'string'},
+                'description': 'Exact detailed workload OR selection. Empty means all.',
+            },
         },
     },
 )
 def get_u2c_attainment(
     fiscal_quarter: str | None = None,
     workload: str | None = None,
+    workloads: list[str] | None = None,
 ) -> dict:
     """Return U2C attainment data for a fiscal quarter."""
     from app.models import U2CSnapshot
@@ -2326,7 +2346,7 @@ def get_u2c_attainment(
     if not snapshot:
         return {'fiscal_quarter': fq, 'message': f'No U2C snapshot exists for {fq}.'}
 
-    result = get_attainment(snapshot.id, workload or None)
+    result = get_attainment(snapshot.id, workload or None, workloads=workloads)
     # Trim item details for tool response (keep top 10 remaining)
     if result.get('remaining_items'):
         result['remaining_items'] = result['remaining_items'][:10]
@@ -2351,10 +2371,16 @@ def get_u2c_attainment(
                 'type': 'string',
                 'description': 'Fiscal quarter label, e.g. "FY27 Q1". Defaults to current quarter.',
             },
+            'workloads': {
+                'type': 'array', 'items': {'type': 'string'},
+                'description': 'Exact detailed workload OR selection. Empty means all.',
+            },
         },
     },
 )
-def get_u2c_attainment_trend(fiscal_quarter: str | None = None) -> dict:
+def get_u2c_attainment_trend(
+    fiscal_quarter: str | None = None, workloads: list[str] | None = None,
+) -> dict:
     """Return saved publications, observations, and a separate current-quarter Today point."""
     from app.models import U2CSnapshot
     from app.services.u2c_snapshot import (
@@ -2366,7 +2392,7 @@ def get_u2c_attainment_trend(fiscal_quarter: str | None = None) -> dict:
     if not snapshot:
         return {'fiscal_quarter': fq, 'message': f'No U2C snapshot exists for {fq}.'}
 
-    points = get_attainment_trend(snapshot.id, include_live=True)
+    points = get_attainment_trend(snapshot.id, include_live=True, workloads=workloads)
     if not points:
         return {
             'fiscal_quarter': fq,

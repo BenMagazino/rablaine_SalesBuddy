@@ -2,7 +2,9 @@
 import json
 import logging
 from datetime import datetime, timedelta, timezone, date
-from flask import Blueprint, Response, current_app, render_template, url_for, jsonify, request, redirect
+from flask import (
+    Blueprint, Response, abort, current_app, render_template, url_for, jsonify, request, redirect,
+)
 from app.models import (
     db, Customer, Engagement, Note, Milestone, MilestoneAudit, Opportunity, Seller,
     SolutionEngineer, SyncStatus, MsxTask, PrefetchedMeeting,
@@ -481,6 +483,7 @@ def manager_one_on_one_candidates(section_id: int):
         return jsonify(success=True, **get_manager_u2c_candidates(
             request.args.get('q', '').strip(), existing_ids=excluded,
             workload_prefix=request.args.get('workload_prefix', '').strip(),
+            workloads=request.args.getlist('workload'),
         ))
     return jsonify(success=True, results=get_agenda_candidates(
         item_type, request.args.get('q', '').strip(), excluded_ids=excluded,
@@ -1103,17 +1106,23 @@ def report_one_on_one():
     """1:1 Manager / SE meeting prep report.
 
     Two views:
-    - Last 2 weeks: engagements with recent note activity, plus standalone notes
+    - Recent activity: engagements and notes in a rolling 14- or 30-day window
     - All time: all open engagements grouped by customer
     """
-    now = datetime.now(timezone.utc)
-    two_weeks_ago = now - timedelta(days=14)
+    from app.services.one_on_one_report import get_activity_cutoffs, sort_customer_activity
 
-    # --- Recent activity (last 2 weeks) ---
-    # Notes with call_date in last 2 weeks are the source of truth for activity
+    days = request.args.get('days', '14')
+    activity_sort = request.args.get('activity_sort', 'recent')
+    if days not in {'14', '30'} or activity_sort not in {'recent', 'acr', 'seller', 'territory'}:
+        abort(400, description='Choose a valid reporting period and customer activity order.')
+    days = int(days)
+    timestamp_cutoff, call_date_cutoff = get_activity_cutoffs(days)
+    period_label = 'Last 2 Weeks' if days == 14 else 'Last 30 Days'
+
+    # Note call dates, not edit timestamps, define activity in the chosen window.
     recent_notes = (
         Note.query
-        .filter(Note.call_date >= two_weeks_ago)
+        .filter(Note.call_date >= call_date_cutoff)
         .order_by(desc(Note.call_date))
         .all()
     )
@@ -1151,15 +1160,7 @@ def report_one_on_one():
         if cust:
             recent_customers[cust.id]['notes'].append(note)
 
-    # Sort recent customers by most recent note call_date
-    recent_sorted = sorted(
-        recent_customers.values(),
-        key=lambda c: max(
-            [n.call_date for n in c['notes'] if n.call_date] +
-            [datetime.min]
-        ),
-        reverse=True,
-    )
+    recent_sorted = sort_customer_activity(list(recent_customers.values()), activity_sort)
 
     # --- All open engagements ---
     open_engagements = (
@@ -1180,25 +1181,17 @@ def report_one_on_one():
         if cust:
             all_customers[cust.id]['engagements'].append(eng)
 
-    # Sort all-open by most recent linked note call_date
-    all_sorted = sorted(
-        all_customers.values(),
-        key=lambda c: max(
-            [eng.last_note_date or datetime.min for eng in c['engagements']] +
-            [datetime.min]
-        ),
-        reverse=True,
-    )
+    all_sorted = sort_customer_activity(list(all_customers.values()), activity_sort)
 
     # --- Milestone highlights (on_my_team only) ---
-    # Recently committed milestones (last 2 weeks)
+    # Recently committed milestones in the selected window.
     # Uses committed_at date set by sync change detection
     milestone_commitments = (
         Milestone.query
         .filter(
             Milestone.customer_id.isnot(None),
             Milestone.on_my_team == True,  # noqa: E712
-            Milestone.committed_at >= two_weeks_ago,
+            Milestone.committed_at >= timestamp_cutoff,
         )
         .options(
             db.joinedload(Milestone.customer).joinedload(Customer.seller),
@@ -1248,8 +1241,7 @@ def report_one_on_one():
         .all()
     )
 
-    # --- Topic trends (last 2 weeks + FY sparkline) ---
-    # Current 2-week counts for the card
+    # --- Topic trends (selected window + FY sparkline) ---
     topic_counts = {}
     for note in recent_notes:
         for topic in note.topics:
@@ -1291,7 +1283,7 @@ def report_one_on_one():
                 topic_monthly[topic.name] = {}
             topic_monthly[topic.name][key] = topic_monthly[topic.name].get(key, 0) + 1
 
-    # Sort by 2-week frequency, attach sparkline data
+    # Sort by selected-period frequency, attach sparkline data.
     top_topics = sorted(
         [
             {
@@ -1309,12 +1301,12 @@ def report_one_on_one():
         reverse=True,
     )[:10]
 
-    # --- Revenue alerts reviewed in last 2 weeks ---
+    # --- Revenue alerts reviewed in the selected window ---
     reviewed_alerts = (
         RevenueAnalysis.query
         .filter(
             RevenueAnalysis.review_status.in_(['reviewed', 'actioned']),
-            RevenueAnalysis.reviewed_at >= two_weeks_ago,
+            RevenueAnalysis.reviewed_at >= timestamp_cutoff,
         )
         .order_by(desc(RevenueAnalysis.reviewed_at))
         .all()
@@ -1348,7 +1340,11 @@ def report_one_on_one():
         recent_customers=recent_sorted,
         all_customers=all_sorted,
         stats=stats,
-        cutoff_date=two_weeks_ago,
+        cutoff_date=call_date_cutoff,
+        period_days=days,
+        period_label=period_label,
+        period_short='2w' if days == 14 else '30d',
+        activity_sort=activity_sort,
         milestone_commitments=milestone_commitments,
         quarter_milestones=quarter_milestones,
         quarter_start=quarter_start,
@@ -2362,7 +2358,7 @@ def report_u2c():
     from app.services.u2c_snapshot import (
         U2C_TARGET,
         current_fiscal_quarter, fiscal_quarter_date_range, get_attainment,
-        get_attainment_trend_by_workload, get_workload_prefixes,
+        get_attainment_trend_by_workload,
     )
 
     # Get all snapshots for the dropdown
@@ -2378,7 +2374,6 @@ def report_u2c():
 
     snapshot = None
     attainment = None
-    workload_prefixes = []
     trend = {}
     trend_bounds = None
 
@@ -2393,10 +2388,9 @@ def report_u2c():
     if snapshot:
         from app.services.one_on_one import add_agenda_state_to_milestone_rows
 
-        workload_prefixes = get_workload_prefixes(snapshot.id)
         attainment = get_attainment(snapshot.id)
         add_agenda_state_to_milestone_rows(attainment['remaining_items'])
-        trend = get_attainment_trend_by_workload(snapshot.id, include_live=True)
+        trend = get_attainment_trend_by_workload(snapshot.id, include_live=True, detailed=True)
         quarter_start, quarter_end = fiscal_quarter_date_range(
             snapshot.fiscal_quarter)
         trend_bounds = {
@@ -2426,7 +2420,6 @@ def report_u2c():
         snapshots=snapshots,
         snapshot=snapshot,
         attainment=attainment,
-        workload_prefixes=workload_prefixes,
         current_fq=current_fq,
         territory_count=territory_count,
         last_checked=u2c_sync_status.get('completed_at'),

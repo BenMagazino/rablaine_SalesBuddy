@@ -2,6 +2,60 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const u2c = require('../../static/js/ui-u2c.js');
 
+test('multi-workload trends sum frozen dollar bases, not percentages or live ACR', () => {
+    const point = (starting, committed, source = 'published') => ({
+        date: '2026-10-19', label: source, source, items: 1, starting_acr: starting,
+        committed_acr: committed, msxi_converted_acr: source === 'live' ? null : committed * 2,
+        u2c_pct: committed / starting * 100,
+    });
+    const series = {
+        '': [point(10000, 9000)],
+        '"Apps: App Service"': [point(100, 100), point(100, 0, 'live')],
+        '"Sec: Defender"': [point(900, 0), point(900, 900, 'live')],
+    };
+    assert.equal(u2c.aggregateTrend(series, []), series['']);
+    const points = u2c.aggregateTrend(series, ['Apps', 'Sec']);
+    assert.equal(points.length, 2);
+    assert.equal(points[0].starting_acr, 1000);
+    assert.equal(points[0].committed_acr, 100);
+    assert.equal(points[0].u2c_pct, 10);
+    assert.equal(points[1].source, 'live');
+    assert.equal(points[1].u2c_pct, 90);
+    assert.equal(points[1].msxi_converted_acr, null);
+    assert.deepEqual(u2c.aggregateTrend(series, ['Unavailable']), []);
+    assert.equal(u2c.aggregateTrend(series, ['Sec', 'Sec'])[0].starting_acr, 900);
+});
+
+test('multiple publications on the same day retain their identities when combining workloads', () => {
+    const make = (version_id, committed_acr) => ({
+        version_id, date: '2026-10-19', source: 'published', items: 1,
+        starting_acr: 100, committed_acr, msxi_converted_acr: committed_acr,
+    });
+    const points = u2c.aggregateTrend({
+        '"Apps: App Service"': [make(1, 10), make(2, 20)],
+        '"Sec: Defender"': [make(1, 30), make(2, 40)],
+    }, ['Apps', 'Sec']);
+    assert.equal(points.length, 2);
+    assert.deepEqual(points.map(point => point.version_id), [1, 2]);
+    assert.deepEqual(points.map(point => point.starting_acr), [200, 200]);
+    assert.deepEqual(points.map(point => point.committed_acr), [40, 60]);
+});
+
+test('one prefix combines every detailed workload without matching another prefix', () => {
+    const point = starting_acr => ({
+        date: '2026-10-19', source: 'published', items: 1, starting_acr,
+        committed_acr: 0, msxi_converted_acr: 0,
+    });
+    const points = u2c.aggregateTrend({
+        '"Data: SQL"': [point(100)],
+        '"Data: Cosmos DB"': [point(200)],
+        '"Database: Other"': [point(900)],
+    }, ['Data']);
+    assert.equal(points.length, 1);
+    assert.equal(points[0].items, 2);
+    assert.equal(points[0].starting_acr, 300);
+});
+
 test('all existing data sorts retain both directions', () => {
     for (const column of ['customer', 'milestone', 'workload', 'due_date', 'acr', 'status']) {
         for (const direction of ['asc', 'desc']) {

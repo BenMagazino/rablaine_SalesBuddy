@@ -8,7 +8,7 @@
         export_filename  - base filename for CSV download (e.g. "workload-report")
 
     Optional variables:
-        export_title     - title shown in the copied HTML (defaults to page <h2> text)
+        export_title     - title shown in copied HTML (defaults to the document's report title)
 #}
 
 <div class="sb-revenue-export" role="group" aria-label="Export report" id="reportExportBtnGroup">
@@ -38,6 +38,10 @@
     const TABLE_SELECTOR = {{ export_table_id|tojson }};
     const FILENAME = {{ export_filename|default("report", true)|tojson }};
     const CUSTOM_TITLE = {{ export_title|default("", true)|tojson }};
+
+    function getReportTitle() {
+        return CUSTOM_TITLE || document.title.replace(/\s* - Sales Buddy$/, '').trim() || 'Report';
+    }
 
     /**
      * Find all target tables. Excludes tables inside modals or popovers
@@ -205,7 +209,7 @@
         const tables = getTables();
         if (tables.length === 0) return null;
 
-        const title = CUSTOM_TITLE || document.querySelector('h2')?.textContent?.trim() || 'Report';
+        const title = getReportTitle();
 
         let html = '<div style="font-family: Segoe UI, Calibri, Arial, sans-serif; font-size: 14px;">';
         html += '<p style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">' + escapeHtml(title) + '</p>';
@@ -314,7 +318,7 @@
         const csv = rowsToCSV(allRows);
         const csvBase64 = btoa(unescape(encodeURIComponent('\ufeff' + csv)));
 
-        const title = CUSTOM_TITLE || document.querySelector('h2')?.textContent?.trim() || 'Report';
+        const title = getReportTitle();
         const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const subject = title + ' - ' + today;
         const boundary = 'boundary_' + Date.now();

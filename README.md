@@ -142,10 +142,10 @@ standalone UI iterations using entirely fictional data. See the
 
 - **Native desktop workbench** - application-owned layouts, browser defaults, controls and Graphite, Midnight, Harbor and Carbon dark/light themes replace the Bootstrap UI framework. Choose your theme in Settings > Appearance; the palette saves independently of the Light/Dark switch and follows you across pages and restarts. Independent Bootstrap Icons remain. Shared shortcuts respect guarded editors and dialogs, and closed overlays do not consume the reading area. Ctrl+Enter saves notes from the rich-text editor through the normal Save button, including validation and pending-save guards.
 - **SE specialty preference** - Settings > SE Mode lets you choose Data SE, Infra SE, Apps and AI SE, or Other. The choice saves immediately, defaults to Data SE, and survives backups and switching modes. Data SE enables the customer Fabric tab and weekly Fabric 360 refreshes.
-- **Customer dossier** - native Engagements, Notes, Opportunities and Revenue tabs keep full account identity, ownership, contacts, relationships and rich notes. Commands and counts stay visible, data headings sort raw values both ways, and Back restores the selected tab, pipeline search and reading context. Account context and contact edits remain manual with protected drafts; original photo paste and Auto-fill saves remain explicit.
+- **Customer dossier** - native Engagements, Notes, Opportunities and Revenue tabs keep full account identity, ownership, contacts, relationships and rich notes. Commands and counts stay visible, data headings sort raw values both ways, and Back restores the selected tab, pipeline search and reading context. Account context and contact edits remain manual with protected drafts; original photo paste and Auto-fill saves remain explicit. Done saves and exits contact editing. A new contact's Save persists it immediately, so Cancel discards only unsaved entries and edits, not contacts already saved.
 - **Opportunity detail** - native standalone and MSX Workspace previews share complete cached/fresh details, linked milestones and original forecast editors. Read-only opening updates the local MSX-detail cache, not remote team or business records. Milestone headings sort raw values; Back retains reading and sorting. Comment/team/favorite writes remain explicit, with protected drafts, pending guards and honest failures.
 - **Notes directory** - a native chronological stream keeps original customer identity, local call dates, excerpts and every relationship link. All/Customer/General filters retain seller scope; page size is remembered locally and pagination preserves scope. Commands, displayed range and total stay visible, and Back restores reading position. Shared previews retain the canonical rich note body.
-- **Native note workspace** - customer and general editors retain Quill, calendar imports, linked work and explicit saving. Edit drafts use separate note keys, and unchanged editor navigation does not replace creation drafts. Nonmodal context drawers work alongside SalesIQ; nested reviews remain modal. Standalone reading uses the shared wider frame while previews stay shell-free.
+- **Native note workspace** - customer and general editors retain Quill, calendar imports, linked work and explicit saving. Edit drafts use separate note keys, and unchanged editor navigation does not replace creation drafts. Nonmodal context drawers work alongside SalesIQ; both dock below the navbar's measured position, including desktop title and menu bars. Flyout bodies scroll independently while their headers remain visible; nested reviews remain modal above the application. Standalone reading uses the shared wider frame while previews stay shell-free.
 - **Fill My Day** - select a date and explicitly fetch external meetings, customer matches, WorkIQ summaries and AI enrichment. The native review keeps note HTML, topic toggles, matched milestone context, task fields and per-note saves. Task creation writes to MSX immediately; note saving remains separate. Back restores the review without repeating requests, unmatched meetings sort in their disclosure, and failed requests retain review entries for retry.
 - **Note Templates** - create and edit reusable rich-text content in native manual forms with persistent formatting and save commands. Original name/content fields, formatting and Settings/default associations remain intact. Cancel protects drafts, Back restores content and editor context, and failed saves retain entries for retry. Note insertion still supports Replace or Add to top; executable markup is removed at display boundaries without rewriting saved template HTML.
 - **Search Notes** - persistent native controls keep the original note-content substring search and customer, seller, territory and any-selected-topic filters. Results retain seller/customer grouping, excerpts and links; empty searches retain recent history, and Back restores controls and reading position. Search submits explicitly by GET, Clear Filters preserves seller-mode scope, and no date filters, relevance ranking, paging or exports are added.
@@ -407,11 +407,25 @@ standalone UI iterations using entirely fictional data. See the
   preserves the previous quarter's last saved data if MSXi no longer serves it.
   If the new quarter is not available yet, the previous quarter stays visible.
 - **1:1 Preparation** - review recent activity and all open engagements in the native
-  report frame. Sort highlight columns, scroll long milestone tables independently,
+  report frame. Choose a rolling **Last 2 weeks** or **Last 30 days** period for
+  customer activity, commitments, reviewed revenue alerts and topic counts.
+  Sort customer activity by recency, estimated engagement ACR (highest first),
+  seller or territory; ACR uses the engagements shown for each customer.
+  Quarter milestones and fiscal-year sparklines retain their existing scope.
+  Sort highlight columns, scroll long milestone tables independently,
   and open existing records without losing your view or reading position on Back.
   Open 1:1 Notes keeps existing workspaces and explicit Manager/Other creation.
   CSV, clipboard and email exports include all highlight rows, including offscreen
   rows and original milestone URLs; customer activity lists remain separate.
+  Shared clipboard and email exports use the report's title, never hidden onboarding copy.
+- **Multi-workload filtering** - U2C and MSX Workspace offer a searchable
+  multi-select of prefixes such as Apps, Data, Infra and Sec. Each prefix includes
+  all its detailed workloads, without assuming an SE specialty or compensation mapping.
+  No selection means all. Each report remembers its own selection via localStorage
+  on the current device; changing one report never changes another report's filters.
+  Existing Area pickers retain their separate purposes. Prefixes missing from a view
+  stay selected and restrictive until cleared. U2C uses frozen snapshot workloads
+  and recalculates trend percentages from combined dollar bases.
 - **1:1 Workspaces** - the existing hub uses a native directory with sortable person,
   type, standing context, queue/history counts and update dates. Seller quick starts
   retain their customer-book scope. Back restores the seller filter, table order,
@@ -443,7 +457,7 @@ standalone UI iterations using entirely fictional data. See the
   item; existing blocks created before date tracking show that instead of an invented
   creation timestamp. In **Add work > Milestones**, choose **From U2C** to select
   this quarter's still-uncommitted snapshot milestones. The picker identifies its
-  snapshot and follows the workload filter saved on the U2C page. It
+  snapshot independently of the workload filters on other reports. It
   uses U2C's remaining list without imposing the normal search's active-status
   restriction, so Hygiene/Duplicate and other remaining statuses are visible. It
   marks work already added and shows unsynced records without creating

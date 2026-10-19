@@ -935,6 +935,33 @@ def test_u2c_picker_workload_scope_matches_baseline_not_changed_live_workload(
     assert tool_data == {key: value for key, value in payload.items() if key != 'success'}
 
 
+def test_u2c_picker_accepts_explicit_detailed_workload_selection(client, app, manager_u2c_data):
+    """Cross-area OR selection uses frozen workloads, not renamed live classifications."""
+    with app.app_context():
+        blocked = U2CSnapshotItem.query.filter_by(
+            milestone_id=manager_u2c_data['blocked'],
+        ).one()
+        blocked.workload = 'Sec: Defender for Cloud'
+        db.session.get(Milestone, manager_u2c_data['blocked']).workload = 'AI: Changed locally'
+        db.session.commit()
+    section = create_section(client)
+    url = f"{API}/sections/{section['id']}/candidates"
+    query = [
+        ('type', 'milestone'), ('source', 'u2c'),
+        ('workload', 'Sec: Defender for Cloud'), ('workload', 'Apps: App Service'),
+    ]
+    payload = client.get(url, query_string=query).json
+    assert [row['title'] for row in payload['results']] == ['Live blocked']
+    assert payload['workloads'] == ['Apps: App Service', 'Sec: Defender for Cloud']
+    with app.test_request_context():
+        tool = execute_tool('get_manager_u2c_candidates', {'workloads': payload['workloads']})
+    assert tool == {key: value for key, value in payload.items() if key != 'success'}
+    empty = client.get(url, query_string={
+        'type': 'milestone', 'source': 'u2c', 'workload': 'Missing: Workload',
+    }).json
+    assert empty['results'] == []
+    assert empty['workloads'] == ['Missing: Workload']
+
 def test_u2c_picker_offers_hygiene_and_cancelled_rows_from_remaining_list(
     client, app, manager_u2c_data,
 ):

@@ -81,8 +81,8 @@ def test_native_frame_and_sort_contract(
     assert bool(soup.select("body > footer.sb-page-status")) is not embedded
     assert len(surface.select("[data-sb-page-body]")) == 1
     assert not surface.select(".card, .badge, .btn, .modal, [data-bs-toggle]")
-    assert soup.select_one("script[src$='ui-one-on-one-report.js']")
-    assert len(soup.select("script[src$='ui-table-sort.js']")) == 1
+    assert soup.select_one("script[src^='/static/js/ui-one-on-one-report.js']")
+    assert len(soup.select("script[src^='/static/js/ui-table-sort.js']")) == 1
     tables = surface.select("table[data-sb-sortable]")
     assert len(tables) == 4
     assert len({table["data-sb-sort-key"] for table in tables}) == 4

@@ -1119,12 +1119,6 @@
 
 <!-- Flyout stacking: multiple flyouts shift left so they don't overlap -->
 <style>
-    /* Native drawers begin below the app command band. */
-    #partnerFlyout, #engagementFlyout, #contactsFlyout,
-    #customerInfoFlyout, #projectFlyout {
-        top: var(--sb-ui-header-height) !important;
-        height: calc(100% - var(--sb-ui-header-height)) !important;
-    }
     .sb-nf-drawer.sb-note-drawer-shift-1 {
         transform: translateX(-399px) !important;
         z-index: 1044 !important;

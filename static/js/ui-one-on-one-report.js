@@ -69,7 +69,7 @@
             if (status) {
                 const panel = document.getElementById(tab);
                 const count = panel.querySelectorAll('.oo-customer').length;
-                status.textContent = (tab === 'recent' ? 'Last 2 Weeks' : 'All Open Engagements')
+                status.textContent = (tab === 'recent' ? surface.dataset.periodLabel : 'All Open Engagements')
                     + ' · ' + count + ' customer' + (count === 1 ? '' : 's');
             }
         }

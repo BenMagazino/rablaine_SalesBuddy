@@ -64,10 +64,14 @@
 .sb-nf-modal .sb-nf-modal-content {max-height:calc(100dvh - 104px);}
 .sb-nf-drawer {
     position:fixed;z-index:1045;
+    inset:var(--sb-ui-flyout-top) 0 0 auto;
+    height:calc(100dvh - var(--sb-ui-flyout-top));
     padding:0;margin:0 0 0 auto;max-height:none;border-radius:0;
     color:var(--sb-ui-ink);background:var(--sb-ui-surface);
 }
 .sb-nf-drawer[open] {display:flex;flex-direction:column;}
+.sb-nf-drawer > .sb-nf-offcanvas-header {flex-shrink:0;}
+.sb-nf-drawer > .sb-nf-offcanvas-body {flex:1;min-height:0;}
 body.copilot-chat-open .sb-nf-drawer[open] {right:var(--sb-chat-context-inset,0px);}
 .sb-nf-drawer::backdrop {background:transparent;}
 .sb-nf-drawer :is(input,select,textarea) {box-sizing:border-box;}

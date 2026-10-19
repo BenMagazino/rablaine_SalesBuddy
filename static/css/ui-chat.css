@@ -1,6 +1,6 @@
 /* SalesIQ is a persistent workbench pane, not a blocking dialog. */
 body.copilot-chat-open { --sb-chat-context-inset: 500px; }
-.sb-chat { position: fixed; top: var(--sb-ui-header-height, 46px); right: 0; bottom: 0; z-index: 1040; width: 500px; display: flex; flex-direction: column; border-left: 1px solid var(--sb-ui-line); background: var(--sb-ui-surface); color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); box-sizing: border-box; }
+.sb-chat { position: fixed; top: var(--sb-ui-flyout-top); right: 0; bottom: 0; z-index: 1040; width: 500px; display: flex; flex-direction: column; border-left: 1px solid var(--sb-ui-line); background: var(--sb-ui-surface); color: var(--sb-ui-ink); font: 13px/1.5 var(--sb-ui-font); box-sizing: border-box; }
 .sb-chat[hidden] { display: none; }
 .sb-chat *, .sb-chat *::before, .sb-chat *::after { box-sizing: border-box; }
 .sb-chat-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); }

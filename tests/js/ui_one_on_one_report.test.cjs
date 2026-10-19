@@ -25,7 +25,7 @@ class Node {
     fire(type, event = {}) { this.events[type]?.(event); }
 }
 
-function harness({saved, embedded = false, rejectSave = false} = {}) {
+function harness({saved, embedded = false, rejectSave = false, period = 'Last 2 Weeks'} = {}) {
     const ids = Object.fromEntries(['oneOnOneReading', 'oneOnOneScopeStatus',
         'oneOnOneNavigationStatus', 'oneOnOneLauncherStatus', 'openSellerOneOnOne',
         'oneOnOneSellerSelect', 'recent', 'alltime'].map(id => [id, new Node(id)]));
@@ -45,7 +45,7 @@ function harness({saved, embedded = false, rejectSave = false} = {}) {
     table.parentElement = new Node('quarterScroll');
     ids[table.id] = table;
     const surface = {
-        dataset: {embedded: String(embedded)},
+        dataset: {embedded: String(embedded), periodLabel: period},
         querySelectorAll(selector) {
             if (selector === '[role="tab"]') return buttons;
             if (selector === '.oo-customer') return customers;
@@ -102,6 +102,14 @@ test('initial view owns only the selected panel, with roving tab focus', () => {
     assert.equal(buttons[0].tabIndex, 0);
     assert.equal(buttons[1].tabIndex, -1);
     assert.equal(ids.oneOnOneScopeStatus.textContent, 'Last 2 Weeks · 1 customer');
+});
+
+test('switching lenses retains the chosen 30-day period in the status', () => {
+    const {ids, buttons} = harness({period: 'Last 30 Days'});
+    assert.equal(ids.oneOnOneScopeStatus.textContent, 'Last 30 Days · 1 customer');
+    buttons[1].fire('click');
+    buttons[0].fire('click');
+    assert.equal(ids.oneOnOneScopeStatus.textContent, 'Last 30 Days · 1 customer');
 });
 
 test('switching and keyboard navigation preserve each lens reading offset', () => {

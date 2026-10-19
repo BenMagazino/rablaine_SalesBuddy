@@ -845,8 +845,7 @@ function saveNewContactRow(rowId) {
     });
 }
 
-// Replace the new-row editing card with a display card matching the read-only
-// contact list, including a clickable avatar wrap.
+// Move a persisted contact into the normal editor and read-only list.
 function renderSavedNewContact(card, c) {
     const safeName = _escContactHtml(c.name || '');
     const safeTitle = c.title ? _escContactHtml(c.title) : '';
@@ -877,6 +876,33 @@ function renderSavedNewContact(card, c) {
                 '</div>' +
             '</div>' +
         '</div>';
+    const display = document.getElementById('contactsDisplay');
+    document.getElementById('contactsEmpty')?.remove();
+    const contact = card.querySelector('.cd-contact');
+    const photo = contact.querySelector('.contact-photo-wrap');
+    display.appendChild(contact.cloneNode(true));
+    card.id = 'contact-edit-' + c.id;
+    card.innerHTML = `
+        <div>
+            <div class="cd-section-header">
+                <strong><i class="bi bi-person-circle"></i> Edit Contact</strong>
+                <button type="button" class="sb-dialog-button cd-danger">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+            <div><input type="text" data-field="name" aria-label="Contact name" placeholder="Name *"></div>
+            <div><input type="text" data-field="title" aria-label="Contact title" placeholder="Title"></div>
+            <div><input type="email" data-field="email" aria-label="Contact email" placeholder="Email"></div>
+        </div>`;
+    card.querySelector('.cd-section-header').prepend(photo);
+    const remove = card.querySelector('.cd-danger');
+    remove.setAttribute('onclick', 'deleteContactEdit(' + c.id + ')');
+    remove.setAttribute('aria-label', 'Delete ' + c.name);
+    card.querySelectorAll('input').forEach(field => {
+        field.value = c[field.dataset.field] || '';
+    });
+    document.getElementById('contactsEditList').appendChild(card);
+    root._customerDetail.contactCreated(card);
 }
 
 function _escContactHtml(s) {
@@ -933,8 +959,7 @@ async function saveAllContacts() {
         });
     }
 
-    // Create new contacts
-    // (rows that have already been saved per-row no longer have a name input)
+    // Create contacts that have not already been saved individually.
     const newRows = document.querySelectorAll('#contactsNewRows > div');
     for (const row of newRows) {
         const nameField = row.querySelector('[data-field="name"]');

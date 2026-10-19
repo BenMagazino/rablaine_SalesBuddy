@@ -9,6 +9,7 @@ publications. Daily refreshes preserve published history and explicitly dated
 observations when the publication date is unknown. Historical source access is
 not guaranteed, so rollover preserves the last saved quarter when necessary.
 """
+import json
 import logging
 from datetime import date, datetime, timedelta, timezone
 
@@ -745,6 +746,7 @@ def close_out_quarter(fq_label: str,
 def get_attainment(
     snapshot_id: int, workload_prefix: str | None = None, *,
     customer_ids: tuple[int, ...] | None = None,
+    workloads: list[str] | None = None,
 ) -> dict:
     """Calculate U2C attainment for a snapshot.
 
@@ -758,10 +760,15 @@ def get_attainment(
         customer_ids: Optional customer IDs from the frozen snapshot population.
             An empty tuple matches no items. Current milestone ownership never
             changes which customer's baseline an item belongs to.
+        workloads: Exact detailed workload names, OR within the selection.
+            None or an empty list means all workloads.
 
     Returns:
         Dict with attainment stats and item details.
     """
+    from app.services.workload_filters import normalize_workloads
+
+    workloads = normalize_workloads(workloads)
     snapshot = U2CSnapshot.query.get(snapshot_id)
     if not snapshot:
         return {'success': False, 'error': 'Snapshot not found'}
@@ -772,6 +779,10 @@ def get_attainment(
     if workload_prefix:
         items_query = items_query.filter(
             U2CSnapshotItem.workload.like(f'{workload_prefix}%')
+        )
+    if workloads is not None:
+        items_query = items_query.filter(
+            db.func.trim(db.func.coalesce(U2CSnapshotItem.workload, '')).in_(workloads),
         )
     items = items_query.all()
     milestone_ids = {item.milestone_id for item in items if item.milestone_id}
@@ -910,7 +921,8 @@ def get_attainment_trend(snapshot_id: int,
                          workload_prefix: str | None = None, *,
                          include_live: bool = False,
                          reference: date | None = None,
-                         customer_ids: tuple[int, ...] | None = None) -> list[dict]:
+                         customer_ids: tuple[int, ...] | None = None,
+                         workloads: list[str] | None = None) -> list[dict]:
     """Return a quarter's weekly attainment points, oldest first.
 
     Sourced from our own stored copies of MSXi's weekly versions, so the series
@@ -942,12 +954,16 @@ def get_attainment_trend(snapshot_id: int,
         customer_ids: Optional frozen snapshot customer scope, applied through
             milestone numbers to the stored per-version details. Totals-only
             weeks are omitted because their customer breakdown is unknown.
+        workloads: Exact detailed workload OR selection; empty means unrestricted.
 
     Returns:
         List of dicts with 'date', 'label', 'items', 'starting_acr',
         'committed_acr', 'msxi_converted_acr' and 'u2c_pct'. The live point has
         source='live' and no historical MSXi converted-pipeline measure.
     """
+    from app.services.workload_filters import normalize_workloads
+
+    workloads = normalize_workloads(workloads)
     versions = (
         U2CSnapshotVersion.query
         .filter_by(snapshot_id=snapshot_id)
@@ -972,7 +988,7 @@ def get_attainment_trend(snapshot_id: int,
     for version in versions:
         if not start <= version.version_date <= end:
             continue
-        if workload_prefix or customer_ids is not None:
+        if workload_prefix or customer_ids is not None or workloads is not None:
             if not version.items.count():
                 continue  # totals-only week: can't answer a filtered question
             query = (
@@ -992,6 +1008,12 @@ def get_attainment_trend(snapshot_id: int,
                 query = query.filter(
                     U2CSnapshotVersionItem.workload.like(f'{workload_prefix}%'),
                 )
+            if workloads is not None:
+                query = query.filter(
+                    db.func.trim(db.func.coalesce(
+                        U2CSnapshotVersionItem.workload, '',
+                    )).in_(workloads),
+                )
             if customer_ids is not None:
                 numbers = db.select(U2CSnapshotItem.milestone_number).where(
                     U2CSnapshotItem.snapshot_id == snapshot_id,
@@ -1007,29 +1029,38 @@ def get_attainment_trend(snapshot_id: int,
             committed = version.total_committed_acr
             converted = version.total_converted_acr
 
-        pct = round((committed / starting) * 100, 1) if starting else 0.0
-        observed = version.msxi_version.startswith(OBSERVED_VERSION_PREFIX)
-        label = version.version_date.strftime('%b %d')
-        points.append({
-            'date': version.version_date.isoformat(),
-            'label': f'{label} (observed)' if observed else label,
-            'source': 'observed' if observed else 'published',
-            'items': count,
-            'starting_acr': round(starting, 2),
-            'committed_acr': round(committed, 2),
-            'msxi_converted_acr': round(converted, 2),
-            'u2c_pct': pct,
-        })
+        points.append(_historical_attainment_point(version, count, starting, committed, converted))
     if include_live:
-        scope = {'customer_ids': customer_ids} if customer_ids is not None else {}
+        scope: dict = {'customer_ids': customer_ids} if customer_ids is not None else {}
+        if workloads is not None:
+            scope['workloads'] = workloads
         return _append_live_attainment_point(
             points, snapshot_id, workload_prefix, reference or date.today(), **scope)
     return points
 
 
+def _historical_attainment_point(
+    version: U2CSnapshotVersion, count: int, starting: float, committed: float, converted: float,
+) -> dict:
+    """Keep weekly labels and percentage calculations identical for every workload scope."""
+    observed = version.msxi_version.startswith(OBSERVED_VERSION_PREFIX)
+    label = version.version_date.strftime('%b %d')
+    return {
+        'version_id': version.id,
+        'date': version.version_date.isoformat(),
+        'label': f'{label} (observed)' if observed else label,
+        'source': 'observed' if observed else 'published',
+        'items': count,
+        'starting_acr': round(starting, 2),
+        'committed_acr': round(committed, 2),
+        'msxi_converted_acr': round(converted, 2),
+        'u2c_pct': round((committed / starting) * 100, 1) if starting else 0.0,
+    }
+
+
 def _append_live_attainment_point(
     points: list[dict], snapshot_id: int, workload_prefix: str | None, reference: date,
-    *, customer_ids: tuple[int, ...] | None = None,
+    *, customer_ids: tuple[int, ...] | None = None, workloads: list[str] | None = None,
 ) -> list[dict]:
     """Append Today without replacing any published snapshot point."""
     snapshot = db.session.get(U2CSnapshot, snapshot_id)
@@ -1037,8 +1068,12 @@ def _append_live_attainment_point(
             or snapshot.fiscal_quarter != current_fiscal_quarter(reference)):
         return points
     live_date = reference.isoformat()
-    attainment = (get_attainment(snapshot_id, workload_prefix, customer_ids=customer_ids)
-                  if customer_ids is not None else get_attainment(snapshot_id, workload_prefix))
+    scope: dict = {}
+    if customer_ids is not None:
+        scope['customer_ids'] = customer_ids
+    if workloads is not None:
+        scope['workloads'] = workloads
+    attainment = get_attainment(snapshot_id, workload_prefix, **scope)
     live_point = {
         'date': live_date,
         'label': f"Today ({reference.strftime('%b %d')}, live)",
@@ -1053,18 +1088,79 @@ def _append_live_attainment_point(
 
 
 def get_attainment_trend_by_workload(
-    snapshot_id: int, *, include_live: bool = False,
+    snapshot_id: int, *, include_live: bool = False, detailed: bool = False,
 ) -> dict[str, list[dict]]:
-    """Return the trend for every workload prefix plus the overall series.
+    """Return the trend per workload plus the overall series.
 
-    Keyed by workload prefix, with ``''`` holding the unfiltered series, so the
-    report can switch the chart as the workload dropdown changes without a
-    round trip - the same way its cards and tables already filter client-side.
+    Prefix mode serves existing grouped consumers. Detailed mode scopes each
+    full workload independently so multi-selection can sum dollar bases, not percentages.
+    ``''`` holds the unfiltered series. Detailed series use JSON-encoded keys to
+    distinguish a missing workload from that overall series.
     """
     series = {'': get_attainment_trend(snapshot_id, include_live=include_live)}
+    if detailed:
+        return _get_detailed_workload_trends(snapshot_id, series)
     for prefix in get_workload_prefixes(snapshot_id):
         series[prefix] = get_attainment_trend(
             snapshot_id, prefix, include_live=include_live)
+    return series
+
+
+def _get_detailed_workload_trends(snapshot_id: int, series: dict[str, list[dict]]) -> dict:
+    """Batch full-workload history and live totals without one calculation per workload."""
+    snapshot = db.session.get(U2CSnapshot, snapshot_id)
+    if snapshot is None:
+        return series
+    start, end = fiscal_quarter_date_range(snapshot.fiscal_quarter)
+    versions = U2CSnapshotVersion.query.filter(
+        U2CSnapshotVersion.snapshot_id == snapshot_id,
+        U2CSnapshotVersion.version_date >= start,
+        U2CSnapshotVersion.version_date <= end,
+    ).order_by(U2CSnapshotVersion.version_date).all()
+    details = U2CSnapshotVersionItem.query.filter(
+        U2CSnapshotVersionItem.version_id.in_([version.id for version in versions]),
+    ).all()
+    names = {
+        (name or '').strip() for name, in db.session.query(U2CSnapshotItem.workload)
+        .filter(U2CSnapshotItem.snapshot_id == snapshot_id).distinct()
+    }
+    history: dict[int, dict[str, tuple[int, float, float, float]]] = {}
+    for item in details:
+        name = (item.workload or '').strip()
+        names.add(name)
+        version_totals = history.setdefault(item.version_id, {})
+        count, starting, committed, converted = version_totals.get(name, (0, 0.0, 0.0, 0.0))
+        committed_delta = item.starting_acr if item.is_committed else 0.0
+        version_totals[name] = (
+            count + 1, starting + item.starting_acr,
+            committed + committed_delta, converted + item.converted_acr,
+        )
+    live_template = next((point for point in series[''] if point['source'] == 'live'), None)
+    live_totals: dict[str, tuple[int, float, float]] = {}
+    if live_template is not None:
+        attainment = get_attainment(snapshot_id)
+        for row in attainment['remaining_items'] + attainment['committed_items']:
+            name = (row['workload'] or '').strip()
+            count, starting, committed = live_totals.get(name, (0, 0.0, 0.0))
+            live_totals[name] = (
+                count + 1, starting + row['monthly_acr'],
+                committed + (row['monthly_acr'] if row['is_committed'] else 0.0),
+            )
+    for name in sorted(names):
+        points = [
+            _historical_attainment_point(
+                version, *history[version.id].get(name, (0, 0.0, 0.0, 0.0)),
+            )
+            for version in versions if version.id in history
+        ]
+        if live_template is not None:
+            count, starting, committed = live_totals.get(name, (0, 0.0, 0.0))
+            points.append({
+                **live_template, 'items': count,
+                'starting_acr': round(starting, 2), 'committed_acr': round(committed, 2),
+                'u2c_pct': round(committed / starting * 100, 1) if starting else 0.0,
+            })
+        series[json.dumps(name, ensure_ascii=False)] = points
     return series
 
 

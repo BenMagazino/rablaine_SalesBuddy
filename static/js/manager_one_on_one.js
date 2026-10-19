@@ -405,7 +405,9 @@
         const missing = payload.results.filter(item => !item.available).length;
         return [
             snapshot.fiscal_quarter, date,
-            payload.workload_prefix ? `${payload.workload_prefix} workloads (U2C filter)` : 'All workloads',
+            payload.workloads?.length
+                ? `${payload.workloads.length} selected workloads`
+                : payload.workload_prefix ? `${payload.workload_prefix} workloads` : 'All workloads',
             'Live details; quarter based on snapshot dates',
             payload.results.length ? `${available} available` : 'No matching uncommitted milestones',
             added ? `${added} already added` : '',
@@ -432,10 +434,6 @@
         status.classList.remove('is-danger');
         try {
             const params = new URLSearchParams({type, source, q: form.elements.q.value.trim()});
-            if (source === 'u2c') {
-                const workload = localStorage.getItem('u2c_workload_filter');
-                if (workload) params.set('workload_prefix', workload);
-            }
             const payload = await request(
                 `${api}/sections/${picker.dataset.sectionId}/candidates?${params}`,
                 'GET', undefined, controller.signal,
@@ -687,13 +685,6 @@
                 && !formDrafts.size && !window.SBOneOnOneWorkspace?.hasPendingEdits()) return;
         event.preventDefault();
         event.returnValue = '';
-    });
-
-    window.addEventListener('storage', event => {
-        if (event.key !== 'u2c_workload_filter' && event.key !== null) return;
-        for (const picker of root.querySelectorAll('.work-picker:not(.sb-hidden)')) {
-            if (picker.dataset.source === 'u2c') search(picker);
-        }
     });
 
     const formDrafts = new Set();

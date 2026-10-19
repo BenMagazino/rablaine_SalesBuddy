@@ -1536,6 +1536,8 @@ class TestLiveAttainmentTrend:
         other_ms = db.session.get(Milestone, u2c_data['ms2_id'])
         data_ms.monthly_usage = 7378.0
         other_ms.monthly_usage = 8000.0
+        data_ms.workload = 'Data: Fabric'
+        other_ms.workload = 'Data: SQL'
         make_snapshot()
         snapshot = U2CSnapshot.query.first()
         reference = date.today()
@@ -1553,6 +1555,50 @@ class TestLiveAttainmentTrend:
         data_ms.monthly_usage = 8289.0
         db.session.commit()
         return snapshot, reference, rows
+
+    def test_detailed_workloads_match_cards_history_and_tools(self, app, u2c_data):
+        """Full-name OR scopes share the frozen baseline and preserve separate live amounts."""
+        from app.services.salesiq_tools import execute_tool
+        from app.services.u2c_snapshot import (
+            get_attainment_trend, get_attainment_trend_by_workload,
+        )
+        from app.services.workload_filters import normalize_workloads
+
+        with app.app_context():
+            snapshot, _, _ = self._seed(u2c_data)
+            selected = ['Data: Fabric', 'Infra: AVD (Native AVD)']
+            cards = get_attainment(snapshot.id, workloads=selected)
+            assert cards['target_total'] == 9378
+            assert cards['committed_total'] == 7378
+            assert cards['attainment_total'] == 8289
+            points = get_attainment_trend(snapshot.id, include_live=True, workloads=selected)
+            assert points[-1]['starting_acr'] == cards['target_total']
+            assert points[-1]['committed_acr'] == cards['committed_total']
+            assert points[-1]['u2c_pct'] == cards['u2c_pct']
+            assert points[0]['starting_acr'] == 7378
+            assert points[0]['committed_acr'] == 0
+            detailed = get_attainment_trend_by_workload(
+                snapshot.id, include_live=True, detailed=True,
+            )
+            assert json.dumps('Data: Fabric') in detailed
+            assert detailed[json.dumps('Data: Fabric')][-1]['starting_acr'] == 7378
+            for key, workload_points in detailed.items():
+                if key:
+                    expected = get_attainment_trend(
+                        snapshot.id, workloads=[json.loads(key)], include_live=True,
+                    )
+                    assert workload_points == expected
+            unavailable = get_attainment(snapshot.id, workloads=['Data: Not in this quarter'])
+            assert unavailable['total_in_scope'] == 0
+            assert get_attainment(snapshot.id, workloads=[]) == get_attainment(snapshot.id)
+            tool = execute_tool('get_u2c_attainment', {'workloads': selected})
+            assert tool['target_total'] == cards['target_total']
+            trend_tool = execute_tool('get_u2c_attainment_trend', {'workloads': selected})
+            assert trend_tool['points'] == points
+            assert normalize_workloads([' Data: SQL ', 'Data: SQL']) == ['Data: SQL']
+            for invalid in ['Infra', [None], [2]]:
+                with pytest.raises(ValueError):
+                    normalize_workloads(invalid)
 
     def test_live_endpoint_matches_48_percent_cards(self, app, u2c_data):
         """Use current status but baseline ACR, not the 53.9% live ACR measure."""
@@ -1679,7 +1725,18 @@ class TestLiveAttainmentTrend:
             self._seed(u2c_data)
         response = client.get('/reports/u2c')
         assert response.status_code == 200
-        assert b'"u2c_pct": 48.0' in response.data
+        soup = BeautifulSoup(response.data, 'html.parser')
+        script = next(
+            script.get_text() for script in soup.find_all('script', src=False)
+            if 'const TREND_SERIES' in script.get_text()
+        )
+        encoded = script.split('const TREND_SERIES = ', 1)[1].split(';\n', 1)[0]
+        series = json.loads(encoded)
+        data = [series[json.dumps(name)][-1] for name in ['Data: Fabric', 'Data: SQL']]
+        assert round(
+            sum(point['committed_acr'] for point in data)
+            / sum(point['starting_acr'] for point in data) * 100, 1,
+        ) == 48.0
         assert b'"source": "live"' in response.data
         assert b'Today (live commitment status, snapshot ACR)' in response.data
 
@@ -1710,7 +1767,7 @@ class TestLiveAttainmentTrend:
         scripts = [
             script.get_text()
             for script in soup.find_all('script', src=False)
-            if 'const TREND_SERIES' in script.get_text() or 'const WL_KEY' in script.get_text()
+            if 'const TREND_SERIES' in script.get_text() or 'const SORT_KEY' in script.get_text()
         ]
         assert len(scripts) == 2
         assert 'Total Pipeline ACR' in soup.get_text()
