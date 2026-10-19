@@ -2,6 +2,7 @@
 (function(root) {
     'use strict';
     const tabs = ['recent', 'alltime'];
+    const periodStorageKey = 'salesbuddy_one_on_one_period_days';
 
     function record(value) {
         return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -53,6 +54,34 @@
             const notice = document.getElementById('oneOnOneNavigationStatus');
             notice.textContent = message;
             notice.hidden = false;
+        }
+
+        const period = document.getElementById('oneOnOnePeriod');
+        if (period) {
+            period.addEventListener('change', () => {
+                try {
+                    root.localStorage.setItem(periodStorageKey, period.value);
+                } catch (error) {
+                    warn('Could not remember your reporting period for future visits.', error);
+                }
+                period.form.requestSubmit();
+            });
+            const url = new URL(root.location.href);
+            if (!url.searchParams.has('days')) {
+                try {
+                    const saved = root.localStorage.getItem(periodStorageKey);
+                    if (saved !== null && !['14', '30'].includes(saved)) {
+                        throw new Error('Invalid saved 1:1 reporting period.');
+                    }
+                    if (saved && saved !== period.value) {
+                        url.searchParams.set('days', saved);
+                        root.location.replace(url.href);
+                        return;
+                    }
+                } catch (error) {
+                    warn('Could not restore your saved reporting period.', error);
+                }
+            }
         }
 
         function selectTab(tab, restore = false) {

@@ -153,7 +153,7 @@
     <form class="oo-scope" method="get" action="{{ url_for('reports.report_one_on_one') }}" data-sb-page-band>
         {% if request.args.get('embed') %}<input type="hidden" name="embed" value="{{ request.args.get('embed') }}">{% endif %}
         <label for="oneOnOnePeriod">Reporting period</label>
-        <select class="oo-input" id="oneOnOnePeriod" name="days" onchange="this.form.requestSubmit()">
+        <select class="oo-input" id="oneOnOnePeriod" name="days">
             <option value="14"{% if period_days == 14 %} selected{% endif %}>Last 2 weeks</option>
             <option value="30"{% if period_days == 30 %} selected{% endif %}>Last 30 days</option>
         </select>
