@@ -257,7 +257,13 @@ standalone UI iterations using entirely fictional data. See the
   on a 12-column grid by dragging anywhere on a widget, using its bottom-right resize
   handle, or setting explicit position and size controls. Focus a widget and use arrow
   keys to move it, or focus its resize handle to resize with arrow keys. A click selects
-  without moving it; Escape cancels a drag. Quarter, third, half, and full-width metric
+  without moving it. Dropping onto an occupied position swaps widgets when both fit;
+  otherwise overlapping neighbors shift down, including any affected chain. The full
+  result previews while dragging. Escape restores every previewed position, and one
+  Undo reverses the entire drop. Resizing still leaves neighbors in place.
+  Downward drag scrolling stops at the existing list plus room to append the widget,
+  rather than extending the canvas indefinitely.
+  Quarter, third, half, and full-width metric
   variations and half/full-width detailed variations share the four Connect Goals
   calculations. The searchable widget-library dialog shows actual-size previews using
   current synced data, with report, width, and variation filters. New widgets start at

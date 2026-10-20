@@ -10,6 +10,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/20/2026
 
+- Rearrange dashboard widgets by dropping onto occupied space: swap when both fit, otherwise shift neighbors down, with a live preview, bounded drag scrolling and one-step Undo.
 - Sellers receive specialty-specific features, including the customer Fabric tab and automatic weekly Fabric and P-to-F refreshes.
 - Add Fabric Acquisition to Whitespace Analysis, with report-backed dashboard widgets for covered AI, Database and non-Fabric Analytics customers without positive Fabric ACR. Widgets focus on customers with at least $2,000/month combined spend; the report retains smaller customers.
 - Group Whitespace Grid and Fabric Acquisition customers by seller, with sorting within each group.

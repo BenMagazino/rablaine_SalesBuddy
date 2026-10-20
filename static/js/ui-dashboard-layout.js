@@ -23,6 +23,41 @@
             && !entries.some(other => other.id !== item.id && overlaps(item, other));
     }
 
+    function resolveMove(item, entries, maxRows = 1000) {
+        const origin = entries.find(entry => entry.id === item.id);
+        if (!origin || item.column_span !== origin.column_span
+            || item.row_span !== origin.row_span || !canPlace(item, [], maxRows)) return null;
+        const collisions = entries.filter(entry => entry.id !== item.id && overlaps(item, entry));
+        const replace = changes => entries.map(entry => ({...entry,
+            ...changes.find(change => change.id === entry.id)}));
+        if (!collisions.length) return {kind: 'move', entries: replace([item])};
+        if (collisions.length === 1) {
+            const target = collisions[0];
+            const swapped = replace([
+                {...item, layout_column: target.layout_column, layout_row: target.layout_row},
+                {...target, layout_column: origin.layout_column, layout_row: origin.layout_row},
+            ]);
+            if (swapped.every(entry => canPlace(entry, swapped, maxRows))) {
+                return {kind: 'swap', entries: swapped};
+            }
+        }
+        const pushed = replace([item]);
+        const queue = [pushed.find(entry => entry.id === item.id)];
+        for (let index = 0; index < queue.length; index++) {
+            const blocker = queue[index];
+            for (const other of pushed) {
+                if (other.id === item.id || other.id === blocker.id || !overlaps(blocker, other)) {
+                    continue;
+                }
+                other.layout_row = blocker.layout_row + blocker.row_span;
+                if (other.layout_row + other.row_span > maxRows) return null;
+                queue.push(other);
+            }
+        }
+        return pushed.every(entry => canPlace(entry, pushed, maxRows))
+            ? {kind: 'push', entries: pushed} : null;
+    }
+
     function pointerGeometry(origin, mode, dx, dy, stepX, stepY, widths, minHeight,
         maxRows = 1000) {
         if (mode === 'move') return {...origin,
@@ -59,7 +94,7 @@
     }
 
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = {overlaps, canPlace, pointerGeometry, keyboardGeometry};
+        module.exports = {overlaps, canPlace, resolveMove, pointerGeometry, keyboardGeometry};
     }
     if (!global.document) return;
 
@@ -306,8 +341,8 @@
         }
         previewButton.addEventListener('click', () => setPreview(true));
         exitPreviewButton.addEventListener('click', () => setPreview(false));
-        function sizeCanvas(extra) {
-            const items = extra ? entries.map(item => item.id === extra.id ? extra : item) : entries;
+        function sizeCanvas(extra, layout = entries) {
+            const items = extra ? layout.map(item => item.id === extra.id ? extra : item) : layout;
             const bottom = Math.max(items.length ? 0 : 4,
                 ...items.map(item => item.layout_row + item.row_span));
             canvas.style.setProperty('--db-rows', Math.min(config.grid.maxRows,
@@ -471,9 +506,15 @@
         reading.addEventListener('blur', () => {
             reading.classList.toggle('is-quiet-focus', false);
         });
-        function apply(item) {
-            if (!canPlace(item, entries, config.grid.maxRows)) {
-                showError('That position is occupied or outside the grid. Other widgets were not moved.');
+        function apply(item, moving = false) {
+            const plan = moving ? resolveMove(item, entries, config.grid.maxRows)
+                : canPlace(item, entries, config.grid.maxRows)
+                    ? {kind: 'resize', entries: entries.map(entry => entry.id === item.id ? item : entry)}
+                    : null;
+            if (!plan) {
+                showError(moving
+                    ? 'There is not enough room for that move. No widgets were changed.'
+                    : 'That size or position is occupied or outside the grid. No widgets were changed.');
                 updateInspector();
                 return false;
             }
@@ -484,9 +525,10 @@
                 updateInspector();
                 return false;
             }
-            entries = entries.map(entry => entry.id === item.id ? item : entry);
+            entries = plan.entries;
+            item = entries.find(entry => entry.id === item.id);
             errorBox.hidden = true;
-            paint(item);
+            entries.forEach(entry => paint(entry));
             sizeCanvas();
             updateInspector();
             markDirty();
@@ -494,6 +536,8 @@
                 // Layout edits remain usable if live report data is temporarily unavailable.
             });
             status.textContent += ` Row ${item.layout_row + 1}, column ${item.layout_column + 1}, ${WIDTH_LABELS[item.column_span]} width, ${item.row_span} rows high.`;
+            if (plan.kind === 'swap') status.textContent += ' Widgets swapped.';
+            if (plan.kind === 'push') status.textContent += ' Neighbors shifted down.';
             return true;
         }
 
@@ -562,7 +606,7 @@
                 item[field] = Number(event.target.value)
                     - (['layout_column', 'layout_row'].includes(field) ? 1 : 0);
             }
-            apply(item);
+            apply(item, ['layout_column', 'layout_row'].includes(field));
         }
         inspector.addEventListener('change', updateWidgetField);
         inspector.addEventListener('input', event => {
@@ -593,13 +637,32 @@
             const type = variant(gesture.origin);
             return pointerGeometry(gesture.origin, gesture.mode, dx, dy, stepX,
                 config.grid.rowHeight + config.grid.gap, type.widths, type.min_height,
-                config.grid.maxRows);
+                gesture.mode === 'move' ? gesture.moveMaxRows : config.grid.maxRows);
         }
         function updateGesture() {
             if (!gesture) return;
             gesture.candidate = pointerCandidate();
-            paint(gesture.candidate, !canPlace(gesture.candidate, entries, config.grid.maxRows));
-            sizeCanvas(gesture.candidate);
+            gesture.plan = gesture.mode === 'move'
+                ? resolveMove(gesture.candidate, entries, config.grid.maxRows) : null;
+            const preview = gesture.plan?.entries || entries;
+            preview.forEach(item => {
+                paint(item);
+                const origin = entries.find(entry => entry.id === item.id);
+                tiles.get(item.id).classList.toggle('is-displaced', item.id !== gesture.origin.id
+                    && (item.layout_column !== origin.layout_column
+                        || item.layout_row !== origin.layout_row));
+            });
+            if (!gesture.plan) {
+                paint(gesture.candidate, !canPlace(
+                    gesture.candidate, entries, config.grid.maxRows));
+            }
+            sizeCanvas(gesture.plan ? null : gesture.candidate, preview);
+            if (gesture.mode === 'move') {
+                status.textContent = gesture.plan?.kind === 'swap' ? 'Release to swap widgets.'
+                    : gesture.plan?.kind === 'push' ? 'Release to place here and shift neighbors down.'
+                        : gesture.plan ? 'Release to move here.'
+                            : 'Not enough room here. Release to keep the original layout.';
+            }
         }
         function autoScroll() {
             if (!gesture) return;
@@ -607,7 +670,17 @@
             if (gesture.x < rect.left + 40) reading.scrollLeft -= 12;
             if (gesture.x > rect.right - 40) reading.scrollLeft += 12;
             if (gesture.y < rect.top + 40) reading.scrollTop -= 12;
-            if (gesture.y > rect.bottom - 40) reading.scrollTop += 12;
+            if (gesture.y > rect.bottom - 40) {
+                if (gesture.mode === 'move') {
+                    const canvasTop = canvas.getBoundingClientRect().top - rect.top
+                        + reading.scrollTop;
+                    const bottom = canvasTop + gesture.moveMaxRows
+                        * (config.grid.rowHeight + config.grid.gap)
+                        + config.grid.padding * 2 - config.grid.gap;
+                    reading.scrollTop = Math.min(reading.scrollTop + 12,
+                        Math.max(0, bottom - reading.clientHeight));
+                } else reading.scrollTop += 12;
+            }
             updateGesture();
             frame = global.requestAnimationFrame(autoScroll);
         }
@@ -617,7 +690,14 @@
             gesture = null;
             global.cancelAnimationFrame(frame);
             current.tile.classList.toggle('is-dragging', false);
-            if (current.started && (!commit || !apply(current.candidate))) paint(current.origin);
+            if (current.started) {
+                if (commit) apply(current.candidate, current.mode === 'move');
+                else status.textContent = current.statusBefore;
+            }
+            entries.forEach(item => {
+                paint(item);
+                tiles.get(item.id).classList.toggle('is-displaced', false);
+            });
             sizeCanvas();
             if (current.handle.hasPointerCapture(current.pointerId)) {
                 current.handle.releasePointerCapture(current.pointerId);
@@ -632,10 +712,14 @@
             select(id);
             handle.focus();
             const origin = {...entries.find(item => item.id === id)};
+            // Keep scrolling from extending the destination that scrolling itself creates.
             gesture = {
                 origin, candidate: origin, handle, tile: tiles.get(id),
                 pointerId: event.pointerId, started: false,
                 mode: handle.hasAttribute('data-drag-handle') ? 'move' : 'resize',
+                moveMaxRows: Math.min(config.grid.maxRows, origin.row_span
+                    + Math.max(...entries.map(item => item.layout_row + item.row_span))),
+                statusBefore: status.textContent,
                 startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY,
                 rect: canvas.getBoundingClientRect(),
             };
@@ -674,9 +758,9 @@
             select(id);
             const origin = entries.find(item => item.id === id);
             const type = variant(origin);
-            apply(keyboardGeometry(origin,
-                handle.hasAttribute('data-drag-handle') ? 'move' : 'resize',
-                event.key, type.widths, type.min_height, config.grid.maxRows));
+            const moving = handle.hasAttribute('data-drag-handle');
+            apply(keyboardGeometry(origin, moving ? 'move' : 'resize',
+                event.key, type.widths, type.min_height, config.grid.maxRows), moving);
         });
         global.addEventListener('beforeunload', event => {
             if (!dirty || storageHealthy) return;

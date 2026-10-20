@@ -3,7 +3,7 @@ const test = require('node:test');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const {overlaps, canPlace, pointerGeometry, keyboardGeometry} =
+const {overlaps, canPlace, resolveMove, pointerGeometry, keyboardGeometry} =
     require('../../static/js/ui-dashboard-layout.js');
 const {createStore, PREFIX} = require('../../static/js/ui-dashboard-drafts.js');
 
@@ -30,6 +30,104 @@ test('dragging snaps coordinates without modifying a neighbor or its own size', 
     assert.equal(pointerGeometry(metric, 'move', 5000, 0, 100, 76, widths, 3).layout_column, 9);
 });
 
+test('moving onto one occupied slot swaps positions without resizing either widget', () => {
+    const other = {...metric, id: 2, layout_column: 6, column_span: 6, row_span: 5};
+    const entries = [metric, other];
+    const result = resolveMove({...metric, layout_column: 6}, entries);
+    assert.equal(result.kind, 'swap');
+    assert.deepEqual(result.entries, [
+        {...metric, layout_column: 6},
+        {...other, layout_column: 0},
+    ]);
+    assert.equal(entries[1].layout_column, 6);
+    assert.ok(result.entries.every(item => canPlace(item, result.entries)));
+});
+
+test('an empty drop preserves holes, neighbors and the requested grid location', () => {
+    const other = {...metric, id: 2, layout_column: 6};
+    const result = resolveMove({...metric, layout_row: 10}, [metric, other]);
+    assert.equal(result.kind, 'move');
+    assert.deepEqual(result.entries, [{...metric, layout_row: 10}, other]);
+});
+
+test('multi-widget collisions shift down recursively without moving unrelated columns', () => {
+    const source = {...metric, id: -1, column_span: 6, layout_row: 12};
+    const entries = [
+        source, {...metric, id: 2}, {...metric, id: 3, layout_column: 3},
+        {...metric, id: 4, column_span: 6, layout_row: 4},
+        {...metric, id: 5, layout_column: 9},
+    ];
+    const before = structuredClone(entries);
+    const result = resolveMove({...source, layout_row: 0}, entries);
+    assert.equal(result.kind, 'push');
+    assert.deepEqual(result.entries.map(item => item.layout_row), [0, 4, 4, 8, 0]);
+    assert.ok(result.entries.every(item => canPlace(item, result.entries)));
+    assert.deepEqual(entries, before);
+});
+
+test('a swap blocked by a third widget falls back to pushing, retaining every size', () => {
+    const source = {...metric, column_span: 6};
+    const entries = [
+        source, {...source, id: 2, layout_column: 6, row_span: 5},
+        {...source, id: 3, layout_row: 4},
+        {...source, id: 4, layout_column: 6, layout_row: 5},
+    ];
+    const result = resolveMove({...source, layout_column: 6}, entries);
+    assert.equal(result.kind, 'push');
+    assert.deepEqual(result.entries.map(item => item.layout_row), [0, 4, 4, 9]);
+    assert.ok(result.entries.every(item => canPlace(item, result.entries)));
+    result.entries.forEach((item, index) => {
+        assert.equal(item.column_span, entries[index].column_span);
+        assert.equal(item.row_span, entries[index].row_span);
+    });
+});
+
+test('swapping cannot move a wider target outside the grid', () => {
+    const source = {...metric, layout_column: 9};
+    const target = {...metric, id: 2, column_span: 6};
+    const result = resolveMove({...source, layout_column: 0}, [source, target]);
+    assert.equal(result.kind, 'push');
+    assert.deepEqual(result.entries[1], {...target, layout_row: 4});
+    assert.ok(result.entries.every(item => canPlace(item, result.entries)));
+});
+
+test('overflow and invalid move dimensions fail atomically', () => {
+    const source = {...metric, column_span: 6, layout_column: 6, layout_row: 6};
+    const entries = [
+        source, {...metric, id: 2}, {...metric, id: 3, layout_column: 3},
+        {...metric, id: 4, column_span: 6, layout_row: 4},
+    ];
+    const before = structuredClone(entries);
+    assert.equal(resolveMove({...source, layout_column: 0, layout_row: 0}, entries, 10), null);
+    for (const change of [
+        {layout_column: 10}, {layout_row: -1}, {layout_row: 1.5},
+        {column_span: 3}, {row_span: 5}, {id: 999},
+    ]) assert.equal(resolveMove({...source, ...change}, entries, 10), null);
+    assert.deepEqual(entries, before);
+});
+
+test('dense grid moves preserve identity, metadata and valid non-overlapping footprints', () => {
+    const entries = Array.from({length: 24}, (_, index) => ({
+        id: index, layout_column: index % 4 * 3, layout_row: Math.floor(index / 4) * 4,
+        column_span: 3, row_span: 4, filters: {customer_ids: [index + 1]},
+    }));
+    const before = structuredClone(entries);
+    for (const source of entries) {
+        for (let row = 0; row < 25; row += 3) {
+            const result = resolveMove({...source, layout_column: 3, layout_row: row}, entries);
+            assert.ok(result);
+            assert.ok(result.entries.every(item => canPlace(item, result.entries)));
+            assert.deepEqual(result.entries.map(item => item.id), entries.map(item => item.id));
+            result.entries.forEach((item, index) => {
+                assert.equal(item.column_span, entries[index].column_span);
+                assert.equal(item.row_span, entries[index].row_span);
+                assert.deepEqual(item.filters, entries[index].filters);
+            });
+        }
+    }
+    assert.deepEqual(entries, before);
+});
+
 test('resizing snaps only to supported spans and respects height and right-edge bounds', () => {
     assert.equal(pointerGeometry(metric, 'resize', 100, 0, 100, 76, widths, 3).column_span, 4);
     assert.equal(pointerGeometry(metric, 'resize', 300, 0, 100, 76, widths, 3).column_span, 6);
@@ -50,7 +148,7 @@ test('keyboard handles move one cell or step through supported footprints', () =
     assert.equal(keyboardGeometry(detailed, 'resize', 'ArrowUp', [6, 12], 5).row_span, 5);
 });
 
-function editorUI(withWidget = false, records = new Map(), withFilters = false) {
+function editorUI(withWidget = false, records = new Map(), withFilters = false, neighbors = []) {
     const node = () => ({
         disabled: false, hidden: false, style: {
             values: new Map(),
@@ -127,7 +225,17 @@ function editorUI(withWidget = false, records = new Map(), withFilters = false) 
     nodes.dashboardCanvas.getBoundingClientRect = () => ({
         left: 0, top: 0, right: 1344, bottom: 760,
     });
-    nodes.dashboardCanvas.querySelectorAll = () => withWidget ? [tile] : [];
+    const neighborTiles = neighbors.map(item => ({
+        ...tile, ...node(),
+        getAttribute: tile.getAttribute, querySelector: tile.querySelector,
+        hasAttribute: tile.hasAttribute, closest: tile.closest,
+        dataset: {
+            ...tile.dataset, widgetId: String(item.id),
+            column: String(item.layout_column), row: String(item.layout_row),
+            columnSpan: String(item.column_span ?? 6), rowSpan: String(item.row_span ?? 4),
+        },
+    }));
+    nodes.dashboardCanvas.querySelectorAll = () => withWidget ? [tile, ...neighborTiles] : [];
     nodes.widgetInspector.elements = Object.fromEntries([
         'variant_key', 'column_span', 'layout_column', 'layout_row', 'row_span',
     ].map(name => [name, node()]));
@@ -164,7 +272,10 @@ function editorUI(withWidget = false, records = new Map(), withFilters = false) 
     };
     const window = {
         document, addEventListener(event, handler) { this[event] = handler; }, animationFrames: 0,
-        requestAnimationFrame() { return ++this.animationFrames; },
+        requestAnimationFrame(callback) {
+            this.animationCallback = callback;
+            return ++this.animationFrames;
+        },
         cancelAnimationFrame() {},
         confirm() { return true; },
         SBDashboardDrafts: {...createStore(storage), key: id => PREFIX + id},
@@ -195,7 +306,8 @@ function editorUI(withWidget = false, records = new Map(), withFilters = false) 
     vm.runInNewContext(fs.readFileSync(path.join(
         __dirname, '../../static/js/ui-dashboard-layout.js'), 'utf8'),
     {window, document, console, URLSearchParams});
-    return {nodes, fields, actions, tile, resize, root, workspace, window, document, records, body};
+    return {nodes, fields, actions, tile, resize, root, workspace, window, document, records, body,
+        neighborTiles};
 }
 
 test('widget filters and saved scope survive draft reload, undo, redo, and discard', () => {
@@ -449,6 +561,130 @@ test('dragging widget content moves it, while Escape restores its original place
     assert.equal(ui.nodes.widgetInspector.elements.layout_column.value, 2);
     assert.equal(ui.nodes.widgetInspector.elements.layout_row.value, 2);
     assert.equal(ui.nodes.saveDashboardLayout.disabled, false);
+});
+
+test('swap previews cancel fully and commit as one undoable, reloadable draft edit', () => {
+    const neighbors = [{id: 2, layout_column: 6, layout_row: 0}];
+    const ui = editorUI(true, new Map(), false, neighbors);
+    const canvas = ui.nodes.dashboardCanvas;
+    const other = ui.neighborTiles[0];
+    canvas.pointerdown(pointerEvent(ui.tile));
+    canvas.pointermove(pointerEvent(ui.tile, 762, 100));
+    assert.equal(ui.tile.style.gridColumn, '7 / span 6');
+    assert.equal(other.style.gridColumn, '1 / span 6');
+    assert.equal(other.classList.values.get('is-displaced'), true);
+    assert.equal(ui.window.SBDashboardDrafts.read(21), null);
+    canvas.pointercancel();
+    assert.equal(ui.tile.style.gridColumn, '1 / span 6');
+    assert.equal(other.style.gridColumn, '7 / span 6');
+    assert.equal(other.classList.values.get('is-displaced'), false);
+    assert.equal(ui.nodes.undoDashboardEdit.disabled, true);
+
+    canvas.pointerdown(pointerEvent(ui.tile));
+    canvas.pointermove(pointerEvent(ui.tile, 762, 100));
+    canvas.pointerup();
+    let draft = ui.window.SBDashboardDrafts.read(21);
+    assert.deepEqual(draft.widgets.map(item => item.layout_column), [6, 0]);
+    assert.equal(ui.nodes.widgetInspector.elements.layout_column.value, 7);
+    const reloaded = editorUI(true, new Map(ui.records), false, neighbors);
+    assert.equal(reloaded.tile.style.gridColumn, '7 / span 6');
+    assert.equal(reloaded.neighborTiles[0].style.gridColumn, '1 / span 6');
+    ui.nodes.undoDashboardEdit.click();
+    assert.equal(ui.window.SBDashboardDrafts.read(21), null);
+    assert.equal(ui.tile.style.gridColumn, '1 / span 6');
+    assert.equal(other.style.gridColumn, '7 / span 6');
+    assert.equal(ui.nodes.undoDashboardEdit.disabled, true);
+    ui.nodes.redoDashboardEdit.click();
+    draft = ui.window.SBDashboardDrafts.read(21);
+    assert.deepEqual(draft.widgets.map(item => item.layout_column), [6, 0]);
+});
+
+test('push chains preview and undo atomically while resize collisions still reject', () => {
+    const neighbors = [
+        {id: 2, layout_column: 6, layout_row: 0, row_span: 5},
+        {id: 3, layout_column: 0, layout_row: 4},
+        {id: 4, layout_column: 6, layout_row: 5},
+    ];
+    const ui = editorUI(true, new Map(), false, neighbors);
+    const canvas = ui.nodes.dashboardCanvas;
+    canvas.keydown({
+        target: ui.resize, key: 'ArrowRight', preventDefault() {}, stopPropagation() {},
+    });
+    assert.equal(ui.nodes.saveDashboardLayout.disabled, true);
+    assert.match(ui.nodes.dashboardError.textContent, /occupied/);
+    canvas.pointerdown(pointerEvent(ui.tile));
+    canvas.pointermove(pointerEvent(ui.tile, 762, 100));
+    assert.equal(ui.neighborTiles[0].style.gridRow, '5 / span 5');
+    assert.equal(ui.neighborTiles[2].style.gridRow, '10 / span 4');
+    assert.equal(ui.window.SBDashboardDrafts.read(21), null);
+    canvas.keydown({key: 'Escape', preventDefault() {}, stopPropagation() {}});
+    assert.equal(ui.neighborTiles[0].style.gridRow, '1 / span 5');
+    assert.equal(ui.neighborTiles[2].style.gridRow, '6 / span 4');
+    canvas.pointerdown(pointerEvent(ui.tile));
+    canvas.pointermove(pointerEvent(ui.tile, 762, 100));
+    canvas.pointerup();
+    const draft = ui.window.SBDashboardDrafts.read(21);
+    assert.deepEqual(draft.widgets.map(item => item.layout_row), [0, 4, 4, 9]);
+    ui.nodes.undoDashboardEdit.click();
+    assert.equal(ui.window.SBDashboardDrafts.read(21), null);
+    assert.equal(ui.nodes.undoDashboardEdit.disabled, true);
+    assert.equal(ui.tile.style.gridColumn, '1 / span 6');
+    assert.equal(ui.neighborTiles[0].style.gridRow, '1 / span 5');
+    assert.equal(ui.neighborTiles[2].style.gridRow, '6 / span 4');
+});
+
+test('keyboard moves and position fields use the same swap behavior', () => {
+    const ui = editorUI(true, new Map(), false, [
+        {id: 2, layout_column: 6, layout_row: 0},
+    ]);
+    ui.nodes.dashboardCanvas.keydown({
+        target: ui.tile, key: 'ArrowRight', preventDefault() {}, stopPropagation() {},
+    });
+    assert.equal(ui.tile.style.gridColumn, '7 / span 6');
+    assert.equal(ui.neighborTiles[0].style.gridColumn, '1 / span 6');
+    ui.nodes.undoDashboardEdit.click();
+    ui.tile.focus();
+    ui.nodes.widgetInspector.change({target: {name: 'layout_column', value: '7'}});
+    assert.equal(ui.tile.style.gridColumn, '7 / span 6');
+    assert.equal(ui.neighborTiles[0].style.gridColumn, '1 / span 6');
+});
+
+test('downward auto-scroll stops at the original widget list plus one append slot', () => {
+    for (const lastRow of [0, 40]) {
+        const ui = editorUI(true, new Map(), false,
+            lastRow ? [{id: 2, layout_column: 6, layout_row: lastRow}] : []);
+        const reading = ui.nodes.dashboardReading;
+        const canvas = ui.nodes.dashboardCanvas;
+        let scrollTop = 0;
+        reading.clientHeight = 300;
+        reading.scrollLeft = 0;
+        Object.defineProperty(reading, 'scrollHeight', {get() {
+            return Number(canvas.style.values.get('--db-rows')) * 76 + 20;
+        }});
+        Object.defineProperty(reading, 'scrollTop', {
+            get() { return scrollTop; },
+            set(value) { scrollTop = Math.max(0, Math.min(value,
+                reading.scrollHeight - reading.clientHeight)); },
+        });
+        reading.getBoundingClientRect = () => ({left: 0, top: 0, right: 1344, bottom: 300});
+        canvas.getBoundingClientRect = () => ({
+            left: 0, top: -scrollTop, right: 1344, bottom: reading.scrollHeight - scrollTop,
+        });
+        canvas.pointerdown(pointerEvent(ui.tile));
+        canvas.pointermove(pointerEvent(ui.tile, 100, 280));
+        for (let index = 0; index < 500; index++) ui.window.animationCallback();
+        const expectedBottom = lastRow + 8;
+        const maximumScroll = expectedBottom * 76 + 20 - reading.clientHeight;
+        assert.equal(reading.scrollTop, maximumScroll);
+        assert.equal(ui.tile.style.gridRow, `${lastRow + 5} / span 4`);
+        const canvasRows = canvas.style.values.get('--db-rows');
+        for (let index = 0; index < 500; index++) ui.window.animationCallback();
+        assert.equal(reading.scrollTop, maximumScroll);
+        assert.equal(canvas.style.values.get('--db-rows'), canvasRows);
+        assert.equal(ui.window.SBDashboardDrafts.read(21), null);
+        canvas.pointerup();
+        assert.equal(ui.window.SBDashboardDrafts.read(21).widgets[0].layout_row, lastRow + 4);
+    }
 });
 
 test('the resize corner changes dimensions instead of dragging the whole widget', () => {

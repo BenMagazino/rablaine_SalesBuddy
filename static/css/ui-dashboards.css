@@ -310,6 +310,7 @@
     outline-offset: -1px;
 }
 .is-editing .db-widget.is-dragging { cursor: grabbing; }
+.is-editing .db-widget.is-displaced { outline: 2px dashed var(--sb-ui-accent); outline-offset: -2px; }
 .is-editing .db-widget.is-selected { outline: 2px solid var(--sb-ui-accent); outline-offset: -2px; }
 .is-editing .db-widget.is-invalid { outline-color: var(--sb-ui-danger); }
 .is-editing .db-canvas {
