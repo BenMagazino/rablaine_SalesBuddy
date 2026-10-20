@@ -192,7 +192,7 @@ WIDGET_DEFINITIONS = {
         ),
         WidgetDefinition(
             'fabric.modernization', 'Fabric modernization',
-            'Customers whose recent Other Analytics spend exceeds their Fabric spend.',
+            'Average monthly ACR for customers whose Other Analytics spend exceeds Fabric.',
             'Fabric Modernization', (
                 WidgetVariant(
                     'metric', 'Summary', 'partials/widgets/fabric_modernization.html',
@@ -203,7 +203,7 @@ WIDGET_DEFINITIONS = {
                     (6, 12), MIN_WIDGET_HEIGHT, 5,
                 ),
             ),
-            get_fabric_modernization_widget, scope='Last 3 complete months',
+            get_fabric_modernization_widget, scope='Avg monthly ACR / last 3 complete months',
             supported_filters=(*FILTER_LABELS, 'group_by_seller'),
         ),
         WidgetDefinition(

@@ -9,10 +9,10 @@ Dashboard placement stays unchecked until you confirm it.
 
 ## Checklist
 
-### 1. [ ] Fabric modernization
+### 1. [x] Fabric modernization
 
-- [ ] Coded
-- [ ] Added to dashboard
+- [x] Coded
+- [x] Added to dashboard
 - **Starting scope:** Customers with positive Synapse, AAS, ADX, or Azure Databricks
   revenue over the last three complete calendar months, alongside Fabric spend
   for the same period.
@@ -20,14 +20,18 @@ Dashboard placement stays unchecked until you confirm it.
   Azure Databricks is not evidence of non-Azure Databricks.
 - **Report/widget:** Fabric Modernization report, replacing Synapse Customers.
   Summary and Details widgets show report-qualified customers whose Other Analytics spend
-  exceeds Fabric spend, with seller sorting and viewer-controlled seller grouping.
-  Summary includes their count and combined Other Analytics spend for the same period.
+  exceeds Fabric spend, with viewer-controlled seller grouping.
+  Dollar amounts display average monthly ACR (three-month totals divided by 3).
+  Summary includes the customer count and combined average monthly Other Analytics ACR.
 - **Revenue cutoffs:** Exclude Other Analytics totals below $50, or below $100 with positive
   Fabric spend, using unrounded three-month net totals.
 - **Notes / follow-up:** One row per customer, source-product columns and Fabric Capacity
-  revenue, grouped by current seller. Partial monthly coverage is explicit.
-  Report and widget validated against saved revenue; user review and dashboard placement
-  remain pending.
+  revenue, grouped by current seller. Incomplete coverage makes a customer's monthly
+  averages unavailable, not inflated by a shorter divisor. The combined widget average
+  is unavailable if any qualifying customer has incomplete coverage.
+  Dollar amounts represent existing consumption, not projected incremental Fabric benefit.
+  Report and widget validated against saved revenue. Added to the FY27 Data Motions
+  dashboard and confirmed complete for this scope.
 
 ### 2. [ ] Fabric acquisition
 

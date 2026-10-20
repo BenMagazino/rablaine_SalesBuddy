@@ -26,6 +26,10 @@ def modernization_report(monkeypatch):
             'source_revenue': 103.99,
             'coverage_complete': complete, 'row_key': str(index),
         }
+        row['monthly_spend'] = {
+            family: amount / 3 if complete else None for family, amount in row['spend'].items()
+        }
+        row['monthly_source_revenue'] = row['source_revenue'] / 3 if complete else None
         report['rows'].append(row)
         report['seller_groups'].append({
             'key': str(index), 'name': 'R&D <seller>' if complete else None,
@@ -68,16 +72,18 @@ def test_modernization_native_contract_and_exact_values(client, modernization_re
         assert 'Months observed' not in table.get_text()
         assert all(th.has_attr('data-export-label') for th in table.select('thead th'))
         assert table['data-sb-sort-default-column'] == '6'
-        assert table.select('thead th')[6]['data-export-label'] == 'Other Analytics'
+        assert table.select('thead th')[6]['data-export-label'] == 'Other Analytics avg monthly ACR'
     cells = root.select('tbody')[0].select('td')
-    assert [cell['data-sb-sort-value'] for cell in cells[1:]] == [
-        '100.49', '0', '-0.25', '3.75', '0', '103.99',
-    ]
+    assert [float(cell['data-sb-sort-value']) for cell in cells[1:]] == pytest.approx([
+        100.49 / 3, 0, -0.25 / 3, 3.75 / 3, 0, 103.99 / 3,
+    ])
+    assert 'Average monthly ACR across Jul 2026 through Sep 2026' in root.text
+    assert b'Fabric Modernization - Avg monthly ACR' in response.data
     assert cells[5].get_text(strip=True) == '$0'
     partial = root.select('tbody')[1].select('td')
     assert partial[2]['data-sb-sort-value'] == ''
-    assert partial[2].get_text(strip=True) == 'Unknown'
-    assert partial[5]['data-sb-sort-value'] == '1.49'
+    assert all(cell['data-sb-sort-value'] == '' for cell in partial[1:])
+    assert all(cell.get_text(strip=True) == 'Unavailable' for cell in partial[1:])
     assert b'const TABLE_SELECTOR = ".sb-modernization-table"' in response.data
 
 

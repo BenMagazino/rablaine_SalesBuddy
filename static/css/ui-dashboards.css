@@ -416,10 +416,14 @@
 :is(.db-trial-table-scroll, .db-expansion-table-scroll, .db-ptof-table-scroll, .db-modernization-table-scroll):focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: -2px; }
 .db-trial-table-scroll .db-trial-table { margin: 0; border: 0; }
 .db-trial-table thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); }
-.db-trial-details .db-trial-table :is(th, td):first-child { width: auto; }
-.db-trial-table th:nth-child(2) { width: 80px; }
-.db-trial-table th:nth-child(3) { width: 90px; }
-.db-trial-table th:last-child { width: 80px; }
+.db-trial-details .db-trial-table :is(th, td):first-child { width: 45%; }
+.db-trial-table th:nth-child(2) { width: 15%; }
+.db-trial-table :is(th, td):nth-child(2) { text-align: left; }
+.db-trial-table th:nth-child(2) .sb-table-sort-button { justify-content: flex-start; }
+.db-trial-table th:nth-child(3) { width: 25%; }
+.db-trial-table :is(th, td):nth-child(3) { text-align: center; }
+.db-trial-table th:nth-child(3) .sb-table-sort-button { justify-content: center; }
+.db-trial-table th:last-child { width: 15%; }
 .db-expansion-details .db-report-heading { flex-shrink: 0; align-items: center; }
 .db-expansion-details > :is(.db-report-caption, .db-report-notice) { flex-shrink: 0; }
 .db-expansion-table-scroll .db-expansion-table { margin: 0; border: 0; }
@@ -437,11 +441,16 @@
 .db-modernization-metrics > div + div { padding-left: 0; border-left: 0; }
 .db-modernization-metrics dd { order: 0; }
 .db-modernization-metrics dd.db-modernization-revenue { font-size: 24px; }
+.db-modernization-metrics dd.db-modernization-revenue.is-unavailable { color: var(--sb-ui-muted); font-size: 12px; }
 .db-modernization-table-scroll { margin-top: 12px; }
 .db-modernization-table-scroll .db-modernization-table { margin: 0; border: 0; }
 .db-modernization-table thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); }
-.db-modernization-table .db-modernization-seller { width: 24%; text-align: left; }
-.db-modernization-table .db-modernization-seller .sb-table-sort-button { justify-content: flex-start; }
+.db-modernization-details .db-modernization-table :is(th, td):first-child { width: auto; }
+.db-modernization-table th:nth-child(2) { width: 144px; }
+.db-modernization-table th:last-child { width: 144px; }
+:is(.db-trial-table, .db-modernization-table) :is(th, td):nth-child(n+2) { padding-inline: 10px; }
+:is(.db-trial-table, .db-modernization-table) :is(th, td):last-child { padding-right: 16px; }
+.db-trial-table :is(th, td):last-child { padding-right: 12px; }
 .db-report-table .db-report-seller-heading th { padding: 8px 6px; text-align: left; background: var(--sb-ui-context); }
 .db-report-seller-group tr:not([data-sb-sort-fixed]) { background: var(--sb-ui-surface); }
 .db-report-seller-group tr:not([data-sb-sort-fixed]):nth-child(even) { background: color-mix(in oklch, var(--sb-ui-context) 40%, var(--sb-ui-surface)); }

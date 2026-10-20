@@ -10,8 +10,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/20/2026
 
-- Replace Synapse Customers with Fabric Modernization, comparing recent Synapse, AAS, ADX and Azure Databricks revenue (Other Analytics) with Fabric spend over the last three complete months. Exclude Other Analytics totals below $50, or below $100 when Fabric spend is positive.
-- Add Fabric modernization widgets showing the count and total Other Analytics spend of customers whose Other Analytics spend exceeds Fabric spend, plus a full customer list with seller sorting and optional seller grouping.
+- Replace Synapse Customers with Fabric Modernization, comparing average monthly Other Analytics and Fabric ACR over the last three complete months. Eligibility still excludes three-month Other Analytics totals below $50, or below $100 with positive Fabric spend. Monthly averages are unavailable with incomplete coverage.
+- Add Fabric modernization widgets showing the count and average monthly Other Analytics ACR of customers whose Other Analytics spend exceeds Fabric spend, plus a full customer list with optional seller grouping.
 - Configure widget customer and seller restrictions in the Filters flyout after placing a widget, rather than in the widget library.
 - P-to-F renewal widget Details lists all future renewals with the report's status indicators and hover help. Summary keeps its 90-day window.
 - Add a Fabric trial conversion widget with customer counts and engagement queues, linked directly to Trial audit and customer Fabric details.

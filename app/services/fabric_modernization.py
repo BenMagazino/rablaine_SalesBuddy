@@ -16,6 +16,7 @@ PRODUCT_FAMILIES = (
 )
 MIN_SOURCE_REVENUE = 50
 MIN_SOURCE_REVENUE_WITH_FABRIC = 100
+REVENUE_WINDOW_MONTHS = 3
 
 
 def _product_family(product: str) -> str | None:
@@ -27,7 +28,7 @@ def _product_family(product: str) -> str | None:
 
 
 def get_fabric_modernization_report(reference: date | None = None) -> dict:
-    """Sum the last three complete calendar months, excluding low-value source footprints.
+    """Keep three-month eligibility totals and expose covered monthly averages for display.
 
     Linked rows roll up by customer ID across names and buckets. Unlinked imports
     remain separate by source name rather than guessing a customer match.
@@ -37,7 +38,7 @@ def get_fabric_modernization_report(reference: date | None = None) -> dict:
     month_index = end.year * 12 + end.month - 1
     months = [
         date(index // 12, index % 12 + 1, 1)
-        for index in range(month_index - 3, month_index)
+        for index in range(month_index - REVENUE_WINDOW_MONTHS, month_index)
     ]
     records = db.session.query(
         ProductRevenueData.customer_id, ProductRevenueData.customer_name,
@@ -90,6 +91,7 @@ def get_fabric_modernization_report(reference: date | None = None) -> dict:
             continue
         customer = customers.get(key[1]) if key[0] == 'id' else None
         seller = customer.seller if customer else None
+        coverage_complete = len(observed.get(key, set())) == REVENUE_WINDOW_MONTHS
         rows.append({
             'customer_id': customer.id if customer else None,
             'customer_name': customer.get_display_name() if customer else names[key],
@@ -99,8 +101,15 @@ def get_fabric_modernization_report(reference: date | None = None) -> dict:
                 source_sellers.get(names[key]) if customer is None else None,
             'spend': spend,
             'source_revenue': source_revenue,
+            'monthly_spend': {
+                family: amount / REVENUE_WINDOW_MONTHS if coverage_complete else None
+                for family, amount in spend.items()
+            },
+            'monthly_source_revenue': (
+                source_revenue / REVENUE_WINDOW_MONTHS if coverage_complete else None
+            ),
             'months_observed': len(observed.get(key, set())),
-            'coverage_complete': len(observed.get(key, set())) == 3,
+            'coverage_complete': coverage_complete,
             'row_key': f'{key[0]}-{key[1]}',
         })
     rows.sort(key=lambda row: (-row['source_revenue'], row['customer_name'].casefold(), row['row_key']))
@@ -152,12 +161,17 @@ def get_fabric_modernization_widget(
         members = [by_key[row['row_key']] for row in group['rows'] if row['row_key'] in by_key]
         if members:
             groups.append({**group, 'rows': members})
+    total_revenue = fsum(row['source_revenue'] for row in rows)
+    partial_count = sum(not row['coverage_complete'] for row in rows)
     return {
         'count': len(rows),
-        'other_analytics_revenue': fsum(row['source_revenue'] for row in rows),
+        'other_analytics_revenue': total_revenue,
+        'monthly_other_analytics_revenue': (
+            total_revenue / REVENUE_WINDOW_MONTHS if not partial_count else None
+        ),
         'details': {'rows': rows, 'seller_groups': groups},
         'period_label': report['period_label'],
         'has_revenue_data': report['has_revenue_data'],
-        'partial_customer_count': sum(not row['coverage_complete'] for row in rows),
+        'partial_customer_count': partial_count,
         'destination': report['url'],
     }

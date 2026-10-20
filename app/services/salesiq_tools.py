@@ -173,9 +173,11 @@ def report_fabric_consumption(customer_id: int | None = None, overview: bool = F
     'report_fabric_modernization',
     'Read Fabric Modernization: one row per customer with positive recent Synapse, '
     'Azure Analysis Services, Azure Data Explorer, or Azure Databricks revenue. '
-    'All source products and Fabric Capacity use the last three complete calendar months, '
-    'summed. Other Analytics combines the four non-Fabric products and must total at least '
-    '$50, or $100 with positive Fabric spend. '
+    'Displays average monthly ACR across the last three complete calendar months. '
+    'Other Analytics combines the four non-Fabric products. Eligibility still uses '
+    'three-month totals of at least $50, or $100 with positive Fabric spend. '
+    'Rows retain spend and source_revenue as three-month totals; monthly_spend and '
+    'monthly_source_revenue are display averages, unavailable with incomplete coverage. '
     'Includes seller groups and monthly coverage. Saved data only, not evidence of '
     'migration, readiness, or non-Azure Databricks inventory.',
     {'type': 'object', 'properties': {}},
@@ -191,8 +193,10 @@ def report_fabric_modernization() -> dict:
     'report_fabric_modernization_candidates',
     'Read the Fabric modernization widget: report-qualified customers whose last three '
     'complete months of Other Analytics (Synapse, AAS, ADX and Azure Databricks) strictly exceed '
-    'Fabric spend. Includes all matching customers, count, their total Other Analytics '
-    'spend, seller groups and coverage. '
+    'Fabric spend. Includes matching customers, count, seller groups and coverage. '
+    'monthly_other_analytics_revenue is their combined average monthly ACR, unavailable '
+    'if any qualifying customer has incomplete coverage. other_analytics_revenue retains '
+    'the three-month total for eligibility and reconciliation. '
     'Saved observations only, not proof of migration or readiness.',
     {'type': 'object', 'properties': {}},
 )

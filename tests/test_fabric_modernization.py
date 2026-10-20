@@ -66,6 +66,10 @@ def test_three_complete_months_and_independent_product_spend(revenue_rows):
     row = result['rows'][0]
     assert row['spend'] == {'synapse': 90, 'aas': 11, 'adx': -2, 'databricks': 4, 'fabric': 15}
     assert row['source_revenue'] == 103
+    assert row['monthly_source_revenue'] == pytest.approx(103 / 3)
+    assert row['monthly_spend'] == pytest.approx({
+        'synapse': 30, 'aas': 11 / 3, 'adx': -2 / 3, 'databricks': 4 / 3, 'fabric': 5,
+    })
     assert row['coverage_complete']
     assert row['months_observed'] == 3
     assert result['totals'] == row['spend']
@@ -108,6 +112,8 @@ def test_period_is_calendar_based_even_with_missing_months(revenue_rows):
     assert row['months_observed'] == 2
     assert not row['coverage_complete']
     assert row['spend']['fabric'] == 0
+    assert row['monthly_source_revenue'] is None
+    assert all(value is None for value in row['monthly_spend'].values())
     assert result['partial_customer_count'] == 1
 
 
@@ -215,5 +221,6 @@ def test_widget_preserves_report_cutoffs_before_strict_spend_comparison(revenue_
     ]
     assert result['count'] == 2
     assert result['other_analytics_revenue'] == pytest.approx(150.0001)
+    assert result['monthly_other_analytics_revenue'] is None
     assert result['has_revenue_data']
     assert result['period_label'] == 'Jul 2026 through Sep 2026'
