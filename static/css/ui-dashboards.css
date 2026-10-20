@@ -393,14 +393,18 @@
 .db-report-metrics dt { color: var(--sb-ui-muted); font-size: 12px; font-weight: 400; }
 .db-report-metrics dd { margin: 0; text-align: right; font-size: 14px; font-weight: 600; }
 .db-report-metrics dd small { display: block; color: var(--sb-ui-warning); font-size: 11px; font-weight: 400; }
-.db-trial-metrics { display: flex; gap: 16px; margin: 24px 0 16px; }
-.db-trial-metrics > div { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 8px; }
-.db-trial-metrics > div + div { padding-left: 16px; border-left: 1px solid var(--sb-ui-grid-line); }
-.db-trial-metrics dt { color: var(--sb-ui-muted); font-size: 12px; font-weight: 400; }
-.db-trial-metrics dd { order: -1; margin: 0; font-size: 28px; line-height: 1.2; font-weight: 600; }
-.db-widget-body:has(> .db-trial-details) { display: flex; flex-direction: column; overflow: hidden; scrollbar-gutter: auto; }
-.db-widget-body:has(> .db-trial-details) > :is(.db-filter-scope, .db-filter-exception) { flex-shrink: 0; }
-.db-trial-details { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.db-trial-metrics, .db-expansion-metrics { display: flex; gap: 16px; margin: 24px 0 16px; }
+:is(.db-trial-metrics, .db-expansion-metrics) > div { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 8px; }
+:is(.db-trial-metrics, .db-expansion-metrics) > div + div { padding-left: 16px; border-left: 1px solid var(--sb-ui-grid-line); }
+:is(.db-trial-metrics, .db-expansion-metrics) dt { color: var(--sb-ui-muted); font-size: 12px; font-weight: 400; }
+:is(.db-trial-metrics, .db-expansion-metrics) dd { order: -1; margin: 0; font-size: 28px; line-height: 1.2; font-weight: 600; }
+.db-widget-body:has(> :is(.db-trial-details, .db-expansion-details, .db-ptof-details)) { display: flex; flex-direction: column; overflow: hidden; scrollbar-gutter: auto; }
+.db-widget-body:has(> :is(.db-trial-details, .db-expansion-details, .db-ptof-details)) > :is(.db-filter-scope, .db-filter-exception) { flex-shrink: 0; }
+.db-trial-details, .db-expansion-details, .db-ptof-details { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.db-ptof-details > :is(.db-report-heading, .db-report-notice) { flex-shrink: 0; }
+.db-ptof-table-scroll { margin-top: 12px; }
+.db-ptof-table-scroll .db-ptof-renewals { margin: 0; border: 0; }
+.db-ptof-renewals thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); }
 .db-trial-details .db-report-heading { flex-shrink: 0; align-items: center; justify-content: flex-start; }
 .db-trial-details .db-report-heading > a { margin-left: 0; }
 .db-trial-details .db-trial-switch { margin-left: auto; }
@@ -414,14 +418,33 @@
 .db-trial-details:has(input[value="low"]:checked) [data-trial-cohort="high"],
 .db-trial-details:has(input[value="high"]:checked) [data-trial-cohort="low"] { display: none; }
 .db-trial-details [data-trial-cohort] { display: flex; flex-direction: column; flex: 1; min-height: 0; margin-top: 12px; }
-.db-trial-table-scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--sb-ui-grid-line); scrollbar-gutter: stable; }
-.db-trial-table-scroll:focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: -2px; }
+.db-trial-table-scroll, .db-expansion-table-scroll, .db-ptof-table-scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--sb-ui-grid-line); scrollbar-gutter: stable; }
+:is(.db-trial-table-scroll, .db-expansion-table-scroll, .db-ptof-table-scroll):focus-visible { outline: 2px solid var(--sb-ui-accent); outline-offset: -2px; }
 .db-trial-table-scroll .db-trial-table { margin: 0; border: 0; }
 .db-trial-table thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); }
 .db-trial-details .db-trial-table :is(th, td):first-child { width: auto; }
 .db-trial-table th:nth-child(2) { width: 80px; }
 .db-trial-table th:nth-child(3) { width: 90px; }
 .db-trial-table th:last-child { width: 80px; }
+.db-expansion-details .db-report-heading { flex-shrink: 0; align-items: center; }
+.db-expansion-details > :is(.db-report-caption, .db-report-notice) { flex-shrink: 0; }
+.db-expansion-table-scroll .db-expansion-table { margin: 0; border: 0; }
+.db-expansion-table thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); }
+.db-expansion-details .db-expansion-table :is(th, td):first-child { width: 36%; }
+.db-expansion-table th:nth-child(2) { width: 72px; }
+.db-expansion-table th:nth-child(3), .db-expansion-table th:nth-child(4) { width: 80px; }
+.db-expansion-table :is(th, td):nth-child(n+2):nth-child(-n+4) { padding-inline: 10px; }
+.db-expansion-table :is(th, td):last-child { text-align: left; }
+.db-expansion-table th:last-child .sb-table-sort-button { justify-content: flex-start; }
+.db-expansion-workload { display: inline-block; margin: 0 4px 4px 0; padding: 1px 4px; background: var(--sb-ui-context); color: var(--sb-ui-ink); font-size: 11px; }
+.db-report-table .db-report-seller-heading th { padding: 8px 6px; text-align: left; background: var(--sb-ui-context); }
+.db-report-seller-group tr:not([data-sb-sort-fixed]) { background: var(--sb-ui-surface); }
+.db-report-seller-group tr:not([data-sb-sort-fixed]):nth-child(even) { background: color-mix(in oklch, var(--sb-ui-context) 40%, var(--sb-ui-surface)); }
+.db-filter-row label.db-live-group-filter { display: flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; white-space: nowrap; cursor: pointer; }
+.db-live-group-filter input { accent-color: var(--sb-ui-accent); }
+.db-expansion-sku-context { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 2px; margin-top: 4px; font-size: 10px; }
+.db-expansion-sku-context > span { padding: 1px 4px; }
+.db-expansion-trial-sku { color: var(--sb-ui-warning); background: color-mix(in oklch, var(--sb-ui-warning) 14%, var(--sb-ui-surface)); font-weight: 600; }
 .db-trial-p-sku, .db-trial-f-sku { display: inline-block; padding: 1px 6px; font-weight: 600; }
 .db-trial-p-sku { color: var(--sb-ui-accent); background: var(--sb-ui-selection); }
 .db-trial-f-sku { color: var(--sb-ui-milestone-rail); background: color-mix(in oklch, var(--sb-ui-milestone-rail) 14%, var(--sb-ui-surface)); }

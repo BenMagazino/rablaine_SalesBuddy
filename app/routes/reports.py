@@ -74,10 +74,12 @@ def dashboard_view(dashboard_id: int):
 
     dashboard = db.get_or_404(Dashboard, dashboard_id)
     manage_dashboard = request.endpoint == 'reports.dashboard_edit'
-    from app.services.dashboard_filters import get_filter_choices, filters_from_query
+    from app.services.dashboard_filters import get_filter_choices, live_filters_from_query
 
     try:
-        data = get_dashboard_data(dashboard, live_filters=filters_from_query(request.args))
+        data = get_dashboard_data(
+            dashboard, live_filters=live_filters_from_query(request.args),
+        )
     except ValueError as exc:
         return jsonify(success=False, error=str(exc)), 400
     return render_template(
@@ -105,10 +107,10 @@ def dashboard_data(dashboard_id: int | None = None):
     dashboard = db.get_or_404(Dashboard, dashboard_id) if dashboard_id is not None else None
     if request.method == 'GET':
         if dashboard is not None:
-            from app.services.dashboard_filters import filters_from_query
+            from app.services.dashboard_filters import live_filters_from_query
 
             try:
-                data = get_dashboard_data(dashboard, live_filters=filters_from_query(request.args))
+                data = get_dashboard_data(dashboard, live_filters=live_filters_from_query(request.args))
             except ValueError as exc:
                 return jsonify(success=False, error=str(exc)), 400
             return jsonify(success=True, dashboard=data)

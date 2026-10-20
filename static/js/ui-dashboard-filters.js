@@ -2,6 +2,7 @@
     'use strict';
 
     const labels = {customer_ids: 'Customer', seller_ids: 'Seller'};
+    const liveLabels = {...labels, group_by_seller: 'Group by seller'};
     const empty = () => ({customer_ids: [], seller_ids: []});
 
     function selections(value = {}) {
@@ -28,15 +29,29 @@
         }
         const live = value.live_filters ?? [];
         if (!Array.isArray(live)
-            || live.some(key => typeof key !== 'string' || !Object.hasOwn(labels, key))) {
+            || live.some(key => typeof key !== 'string' || !Object.hasOwn(liveLabels, key))) {
             throw new Error('Invalid dashboard live filters.');
         }
-        return {scope: selections(value.scope), live_filters: Object.keys(labels)
+        return {scope: selections(value.scope), live_filters: Object.keys(liveLabels)
             .filter(key => live.includes(key))};
     }
 
+    function liveSelections(value = {}) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            throw new Error('Invalid live filter selections.');
+        }
+        const {group_by_seller: grouping = false, ...scope} = value;
+        if (typeof grouping !== 'boolean') throw new Error('Group by seller must be a boolean.');
+        return {...selections(scope), ...(grouping ? {group_by_seller: true} : {})};
+    }
+
+    function activeLiveKeys(value) {
+        return Object.keys(liveLabels).filter(key => key === 'group_by_seller'
+            ? value[key] === true : value[key].length > 0);
+    }
+
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = {selections, configuration};
+        module.exports = {selections, liveSelections, configuration};
     }
     if (!global.document) return;
 
@@ -45,7 +60,7 @@
         if (!node) return;
         const settings = JSON.parse(node.textContent);
         let config = configuration(settings.config);
-        let live = selections(settings.live);
+        let live = liveSelections(settings.live);
         let widgets = settings.widgets;
         let readOnly = false;
         let selected = null;
@@ -73,7 +88,7 @@
 
         function controls(host, filters, supported, onChange, options = {}) {
             host.replaceChildren();
-            return Object.keys(labels).filter(key => supported.includes(key)).map(key => {
+            const result = Object.keys(labels).filter(key => supported.includes(key)).map(key => {
                 const chosen = new Set(filters[key] || []);
                 const details = document.createElement('details');
                 details.className = 'db-filter-picker';
@@ -148,9 +163,11 @@
                 details.append(summary, panel);
                 host.append(details);
                 details.addEventListener('toggle', () => {
-                    if (!details.open) return;
+                    if (!details.open || details.closest('.db-filters-panel')) return;
                     document.querySelectorAll('.db-filter-picker[open]').forEach(other => {
-                        if (other !== details) other.open = false;
+                        if (other !== details && !other.closest('.db-filters-panel')) {
+                            other.open = false;
+                        }
                     });
                 });
                 details.addEventListener('keydown', event => {
@@ -168,6 +185,20 @@
                     },
                 };
             });
+            if (options.live && supported.includes('group_by_seller')) {
+                const label = document.createElement('label');
+                label.className = 'db-live-group-filter';
+                label.title = 'Group Details rows in supported widgets. Summary totals stay unchanged.';
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = filters.group_by_seller === true;
+                input.dataset.liveGrouping = 'seller';
+                input.addEventListener('change', () => onChange('group_by_seller', input.checked));
+                label.append(input, document.createTextNode('Group by seller'));
+                host.append(label);
+                result.push({disable(disabled) { input.disabled = disabled; }});
+            }
+            return result;
         }
 
         function showTab(widget = false) {
@@ -205,7 +236,7 @@
 
         function updatePanel() {
             const viewing = !settings.editing || previewing;
-            const count = Object.values(live).filter(ids => ids.length).length;
+            const count = viewing ? activeLiveKeys(live).length : 0;
             const countLabel = count ? ', ' + count + ' active' : '';
             const badge = document.getElementById('dashboardFilterCount');
             badge.textContent = String(count);
@@ -217,10 +248,7 @@
             viewerFilters.hidden = !viewing;
             document.getElementById('dashboardFiltersSubtitle').textContent =
                 viewing ? 'This view only' : 'Dashboard settings';
-            document.getElementById('dashboardViewerActions').hidden = !viewing && !count;
-            document.getElementById('dashboardTemporaryFilterHint').textContent = viewing
-                ? 'Selections apply to this view only.'
-                : 'Preview filters are still applied to these widgets.';
+            document.getElementById('dashboardViewerActions').hidden = !viewing;
             if (settings.editing) {
                 document.getElementById('dashboardFilterTabs').hidden = viewing;
                 document.getElementById('dashboardFilterDraftHint').hidden = viewing;
@@ -294,23 +322,24 @@
 
         function renderLive() {
             updateScopeLabel();
-            const supported = Object.keys(labels).filter(key =>
+            const supported = Object.keys(liveLabels).filter(key =>
                 widgets.some(widget => widget.supported.includes(key)));
             const keys = config.live_filters.filter(key => supported.includes(key));
             liveKeys = keys;
             for (const key of Object.keys(labels)) {
                 if (!keys.includes(key)) live[key] = [];
             }
+            if (!keys.includes('group_by_seller')) delete live.group_by_seller;
             const signature = JSON.stringify([keys, live, config.scope]);
             if (signature !== liveSignature) {
                 liveSignature = signature;
                 liveControls.splice(0, liveControls.length, ...controls(
                     document.getElementById('dashboardLiveControls'), live, keys, (key, ids) => {
-                        live = {...live, [key]: ids};
+                        live = liveSelections({...live, [key]: ids});
                         liveSignature = JSON.stringify([keys, live, config.scope]);
                         updateCoverage();
                         refresh();
-                    }, {emptyLabel: key => Object.values(config.scope).some(ids => ids.length)
+                    }, {live: true, emptyLabel: key => Object.values(config.scope).some(ids => ids.length)
                         ? 'All allowed ' + (key === 'customer_ids' ? 'customers' : 'sellers')
                         : 'All ' + (key === 'customer_ids' ? 'customers' : 'sellers')}));
             }
@@ -322,7 +351,7 @@
             if (settings.editing) {
                 const enabled = config.live_filters.filter(key => supported.includes(key));
                 document.getElementById('dashboardViewerFilterHint').textContent = enabled.length
-                    ? enabled.map(key => labels[key]).join(' and ')
+                    ? enabled.map(key => liveLabels[key]).join(' and ')
                         + ' filters will be available to viewers. Their choices are temporary.'
                     : 'No viewer controls enabled. Viewers will see the saved dashboard as-is.';
                 document.getElementById('tryDashboardFilters').hidden = !enabled.length;
@@ -332,12 +361,13 @@
 
         function updateCoverage() {
             const active = Object.keys(labels).filter(key => config.scope[key].length || live[key].length);
+            if (live.group_by_seller) active.push('group_by_seller');
             const matched = widgets.filter(widget => active.every(key => widget.supported.includes(key)));
             coverage.textContent = active.length && matched.length !== widgets.length
                 ? 'Applies to ' + matched.length + ' of ' + widgets.length + ' widgets' : '';
             coverage.hidden = !coverage.textContent;
             document.getElementById('resetDashboardFilters').disabled =
-                !Object.values(live).some(ids => ids.length);
+                activeLiveKeys(live).length === 0;
             updatePanel();
         }
 
@@ -388,7 +418,7 @@
                 || 'Unavailable widget';
             document.getElementById('widgetFilterTitle').textContent = title;
             const filters = selections(item.filters);
-            const restricted = Object.values(filters).some(ids => ids.length);
+            const restricted = Object.keys(labels).some(key => filters[key].length);
             document.getElementById('widgetFilterInheritance').textContent = restricted
                 ? 'Dashboard filters + widget restrictions' : 'Inherits dashboard filters';
             document.getElementById('widgetFilterSupport').textContent = supported.length
@@ -417,7 +447,7 @@
 
         global.SBDashboardFilters = Object.freeze({
             context, controls, restore, select, refresh,
-            configuration, selections,
+            configuration, selections, liveSelections,
             setPreview(value) {
                 if (value) panelWasOpen = !panel.hidden;
                 previewing = value;
@@ -465,12 +495,12 @@
         document.addEventListener('pointerdown', event => {
             if (event.target.closest('.db-filter-picker')) return;
             document.querySelectorAll('.db-filter-picker[open]').forEach(details => {
-                details.open = false;
+                if (!details.closest('.db-filters-panel')) details.open = false;
             });
         });
         document.querySelectorAll('[data-live-filter]').forEach(input => {
             input.addEventListener('change', () => {
-                config = {...config, live_filters: Object.keys(labels).filter(key =>
+                config = {...config, live_filters: Object.keys(liveLabels).filter(key =>
                     document.querySelector('[data-live-filter="' + key + '"]').checked)};
                 global.SBDashboardEditor.setFilterConfig(config);
                 renderLive();

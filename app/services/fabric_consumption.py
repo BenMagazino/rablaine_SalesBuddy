@@ -15,6 +15,7 @@ from flask import current_app
 from sqlalchemy.orm import joinedload
 
 from app.models import Customer, FabricConsumptionImport, FabricConsumptionRecord, SyncStatus, db
+from app.services.dashboard_filters import group_rows_by_seller
 from app.services.fabric_consumption_pull import (
     FabricPullError, pull_fabric_consumption, pull_fabric_revenue, validate_revenue_payload,
 )
@@ -843,6 +844,115 @@ def get_fabric_capacity_overview() -> dict:
     }
 
 
+EXPANSION_PBI_SHARE_PCT = 80
+EXPANSION_WORKLOAD_SHARE_PCT = 1
+WORKLOAD_LABELS = {
+    "Data Integration": "DI", "Data Warehousing Core": "DW", "DE and DS": "DE/DS",
+    "Real Time Intelligence": "RTI", "Power BI": "PBI", "SQLDb": "SQL", "Planning": "Plan",
+}
+
+
+def _expansion_workload_profile(shares: dict, names: list[str]) -> dict:
+    """Classify concentration only when the workload mix is complete and reconciled."""
+    values = {name: _number(shares.get(name)) for name in names}
+    complete = bool(values) and all(
+        value is not None and 0 <= value <= 100 for value in values.values()
+    ) and math.isclose(
+        math.fsum(value for value in values.values() if value is not None),
+        100, rel_tol=1e-6, abs_tol=0.1,
+    )
+    workloads = [
+        {"name": name, "label": WORKLOAD_LABELS.get(name, name), "share_pct": value}
+        for name, value in values.items()
+        if value is not None and value > EXPANSION_WORKLOAD_SHARE_PCT
+    ]
+    workloads.sort(key=lambda row: (-row["share_pct"], row["name"]))
+    pbi = values.get("Power BI")
+    return {
+        "is_pbi_led": complete and pbi is not None and pbi >= EXPANSION_PBI_SHARE_PCT,
+        "workload_mix_available": complete, "pbi_share_pct": pbi,
+        "above_threshold_workloads": workloads,
+    }
+
+
+def _get_expansion_sku_mix(members: list[dict]) -> dict:
+    """Find the largest paid F-SKU and retain P/trial context without conflating sizes."""
+    ranked = []
+    has_p_sku = False
+    has_trial_sku = False
+    for row in members:
+        sku = (row["capacity"].get("sku") or "").strip().upper()
+        fabric = re.fullmatch(r"F([1-9][0-9]*)", sku)
+        if fabric:
+            ranked.append((int(fabric[1]), sku))
+        has_p_sku |= bool(re.fullmatch(r"P[1-9][0-9]*", sku))
+        has_trial_sku |= sku in TRIAL_SKUS
+    largest = max(ranked) if ranked else None
+    return {
+        "largest_sku": largest[1] if largest else None,
+        "largest_sku_cu": largest[0] if largest else None,
+        "has_p_sku": has_p_sku, "has_trial_sku": has_trial_sku,
+    }
+
+
+def _summarize_expansion_customer(members: list[dict], names: list[str]) -> dict:
+    """Reuse customer-wide shares once and equally average known capacity utilization."""
+    source = members[0]
+    values = [
+        value for row in members
+        if (value := _number(row["capacity"].get("utilization_pct"))) is not None
+    ]
+    profile = _expansion_workload_profile(source["workload_shares"], names)
+    return {
+        "id": source["id"], "name": source["name"], "row_key": str(source["id"]),
+        "seller": source.get("seller"), **profile, **_get_expansion_sku_mix(members),
+        "average_utilization_pct": math.fsum(values) / len(values) if values else None,
+        "capacity_count": len(members), "measured_capacity_count": len(values),
+        "destination": "/reports/fabric-consumption?" + urlencode({"customer_id": source["id"]}),
+    }
+
+
+def get_fabric_expansion_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict:
+    """Surface Power BI-led paid Fabric customers as exploration, not readiness."""
+    overview = get_fabric_capacity_overview()
+    customers: dict[int, list[dict]] = defaultdict(list)
+    seen = set()
+    for row in overview["rows"]:
+        if (customer_ids is not None and row["id"] not in customer_ids) or not row["capacity"]:
+            continue
+        capacity = row["capacity"]
+        identity = (row["id"], capacity.get("tenant_id"), capacity.get("capacity_id"))
+        if identity not in seen:
+            seen.add(identity)
+            customers[row["id"]].append(row)
+    rows = [
+        _summarize_expansion_customer(members, overview["workloads"])
+        for members in customers.values()
+    ]
+    customers_with_f = [row for row in rows if row["largest_sku"] is not None]
+    rows = [row for row in customers_with_f if row["is_pbi_led"]]
+    rows.sort(key=lambda row: (
+        -row["pbi_share_pct"], row["name"].casefold(), row["id"],
+    ))
+    return {
+        "snapshot": overview["snapshot"],
+        "snapshot_state": "available" if overview["snapshot"] else "not_imported",
+        "scope": "all_local_accounts",
+        "destination": "/reports/fabric-consumption?view=overview&mode=f&customers=true",
+        "counts": {
+            "customers_with_capacities": len(customers_with_f), "pbi_led": len(rows),
+            "unknown": sum(not row["workload_mix_available"] for row in customers_with_f),
+        },
+        "details": {"rows": rows, "seller_groups": group_rows_by_seller(rows)},
+        "thresholds": {
+            "pbi_share_pct": EXPANSION_PBI_SHARE_PCT,
+            "workload_share_pct": EXPANSION_WORKLOAD_SHARE_PCT,
+        },
+    }
+
+
 TRIAL_SKUS = ("FTL4", "FTL64")
 TRIAL_UTILIZATION_CUTOFF = 0.1
 TRIAL_HISTORY_DAYS = 15
@@ -894,6 +1004,9 @@ def _get_trial_customer_details(
         ))
     return {
         "cohorts": cohorts, "counts": {key: len(rows) for key, rows in cohorts.items()},
+        "seller_groups": {
+            key: group_rows_by_seller(members) for key, members in cohorts.items()
+        },
         "window_start": start.isoformat() if start else None,
         "window_end": end.isoformat() if end else None,
         "window_days": TRIAL_HISTORY_DAYS, "cutoff_pct": TRIAL_UTILIZATION_CUTOFF,
@@ -914,6 +1027,7 @@ def _summarize_trial_customers(
         has_p, has_f = customer_id in families["p"], customer_id in families["f"]
         cohorts[cohort].append({
             "id": customer_id, "name": trials[0]["name"], "row_key": str(customer_id),
+            "seller": trials[0].get("seller"),
             "has_p_sku": has_p, "has_f_sku": has_f,
             "other_skus": "P + F" if has_p and has_f else
                           "P-SKU" if has_p else "F-SKU" if has_f else "Neither",

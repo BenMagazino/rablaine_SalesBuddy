@@ -170,6 +170,25 @@ def report_fabric_consumption(customer_id: int | None = None, overview: bool = F
 
 
 @tool(
+    'report_fabric_expansion',
+    'Read saved Power BI-led Fabric expansion signals for customers with paid F-SKUs. '
+    'One row per customer with the largest paid F-SKU by CU size, P/trial capacity flags, '
+    'equal-weight average capacity '
+    'utilization and customer-wide '
+    'rolling 28-day workload shares. Power BI-led means at least 80% Power BI. '
+    'Includes the same customer rows grouped by seller. Missing or unreconciled '
+    'workload mixes are excluded and counted separately. Includes known workloads above 1% for discovery '
+    'conversations, not validated workload fit or readiness. Does not import or refresh data.',
+    {'type': 'object', 'properties': {}},
+)
+def report_fabric_expansion() -> dict:
+    """Reuse the Capacity overview-backed dashboard expansion calculations."""
+    from app.services.fabric_consumption import get_fabric_expansion_widget
+
+    return get_fabric_expansion_widget()
+
+
+@tool(
     'report_fabric_trial_conversion',
     'Count distinct customers with saved Fabric trial SKUs (FTL4/FTL64), '
     'and trial customers also running P-SKU or F-SKU capacities. Groups may overlap. '
@@ -1096,7 +1115,8 @@ def get_dashboards(dashboard_id: int | None = None, live_filters: dict | None = 
     'Read a dashboard widget calculation without creating a dashboard or refreshing data. '
     'Use widget_key from the get_dashboards catalog. Includes hygiene.gaps, '
     'activity_coverage.meetings, revenue.attention, ptof.upcoming_renewals, and '
-    'fabric.capacity_pressure and fabric.trial_conversion. Returns saved-data scope, '
+    'fabric.capacity_pressure, fabric.trial_conversion, and fabric.expansion. '
+    'Returns saved-data scope, '
     'missing data, source timestamps, '
     'and drill-through destinations alongside each signal. Shared prerequisites are preserved.',
     {'type': 'object', 'properties': {

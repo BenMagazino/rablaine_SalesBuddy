@@ -67,7 +67,7 @@ test('trial-first numbering is per customer, stable within SKU groups, and does 
     assert.deepEqual(Array.from(ordered, row => row.capacity_total), [3, 3, 3, 2, 2]);
     assert.deepEqual(rows.map(row => row.capacity_index), [1, 2, 3, 1, 2]);
     assert.equal(rows[0].capacity.sku, 'F64');
-    assert.match(source, /trialsOnly \|\| pOnly \? orderMatchingCapacities\(report\.rows/);
+    assert.match(source, /trialsOnly \|\| pOnly \|\| fOnly \? orderMatchingCapacities\(report\.rows/);
 });
 
 test('P filter retains other capacities and excludes unrelated SKU families', () => {
@@ -99,6 +99,35 @@ test('P-first numbering uses stable capacity identities', () => {
     assert.match(styling, /index === 2/);
     assert.match(styling, /sb-fabric-p-sku/);
     assert.doesNotMatch(styling, /utilization|trial-color/);
+});
+
+test('paid F audit selects customers, preserves P/trial context, and numbers F capacities first', () => {
+    const rows = [
+        {id: 1, capacity_index: 1, capacity: {sku: 'P1'}},
+        {id: 1, capacity_index: 2, capacity: {sku: 'FTL64'}},
+        {id: 1, capacity_index: 3, capacity: {sku: ' f8 '}},
+        {id: 1, capacity_index: 4, capacity: {sku: 'F4'}},
+        {id: 2, capacity_index: 1, capacity: {sku: 'FTL4'}},
+        {id: 3, capacity_index: 1, capacity: {sku: 'P2'}},
+        ...['F0', 'F64X', 'FTL640', null].map((sku, index) =>
+            ({id: index + 4, capacity_index: 1, capacity: {sku}})),
+        {id: 9, capacity: null},
+    ];
+    const ids = vm.runInNewContext(`${helper}\ngetFCustomerIds(rows);`, {rows});
+    assert.deepEqual(Array.from(ids), [1]);
+    const scoped = rows.filter(row => ids.has(row.id));
+    assert.equal(scoped.length, 4);
+    const ordered = vm.runInNewContext(
+        `${helper}\norderMatchingCapacities(rows, isFCapacity);`, {rows: scoped});
+    assert.deepEqual(Array.from(ordered, row => row.capacity.sku), [' f8 ', 'F4', 'P1', 'FTL64']);
+    assert.deepEqual(Array.from(ordered, row => row.capacity_index), [1, 2, 3, 4]);
+    assert.equal(rows[0].capacity_index, 1);
+    const customers = vm.runInNewContext(`${helper}\ncustomerRows(rows, false);`, {rows: scoped});
+    assert.equal(customers.length, 1);
+    assert.equal(customers[0].capacityMix.length, 4);
+    assert.match(source, /modePreference\.value === 'f'/);
+    assert.match(source, /getFCustomerIds\(report\.rows\)/);
+    assert.match(source, /if \(fCustomers && !fCustomers\.has\(row\.id\)\) return false/);
 });
 
 test('trial utilization color progresses green to amber to red, capped at 50%', () => {

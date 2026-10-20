@@ -6,7 +6,10 @@ import math
 from datetime import date, datetime, timedelta, timezone
 from typing import Callable
 
+from sqlalchemy.orm import joinedload
+
 from app.models import Customer, PToFImport, PToFRecord, db
+from app.services.dashboard_filters import group_rows_by_seller
 from app.services.fabric_consumption import _current_tpids
 from app.services.ptof_pull import (
     DETAIL_COLUMNS, DETAIL_SUMS, SUMMARY_COLUMNS, SUMMARY_SUMS, pull_ptof,
@@ -120,7 +123,7 @@ def get_ptof_report(
     customer_id: int | None = None, *, customer_ids: tuple[int, ...] | None = None,
 ) -> dict:
     """Join source TPIDs to current customer names without making remote queries."""
-    customers = Customer.query.filter(Customer.tpid > 0)
+    customers = Customer.query.options(joinedload(Customer.seller)).filter(Customer.tpid > 0)
     if customer_id is not None:
         customers = customers.filter(Customer.id == customer_id)
     if customer_ids is not None:
@@ -142,6 +145,8 @@ def get_ptof_report(
         customer = mapping[record.tpid]
         result[record.kind].append({
             **record.data_json, "customer_id": customer.id, "customer_name": customer.name,
+            "seller": {"id": customer.seller.id, "name": customer.seller.name}
+            if customer.seller else None,
         })
     statuses: dict[int, set[str]] = {}
     for row in result["summary"]:
@@ -158,6 +163,7 @@ def _renewal_metrics(rows: list[dict]) -> dict:
     known = [amount for amount in amounts if amount is not None]
     return {
         "rows": rows,
+        "seller_groups": group_rows_by_seller(rows),
         "counts": {
             "upcoming": len(rows),
             "customers": len({row["customer_id"] for row in rows}),

@@ -215,12 +215,15 @@ test('widget filters and saved scope survive draft reload, undo, redo, and disca
     ui.nodes.redoDashboardEdit.click();
     saved = ui.window.SBDashboardDrafts.read(21);
     assert.deepEqual(saved.widgets[0].filters.seller_ids, [7]);
-    const config = {scope: {customer_ids: [9]}, live_filters: ['customer_ids']};
+    const config = {scope: {customer_ids: [9]}, live_filters: ['customer_ids', 'group_by_seller']};
     editor.setFilterConfig(config);
     assert.deepEqual(ui.window.SBDashboardDrafts.read(21).filter_config,
-        {scope: {customer_ids: [9], seller_ids: []}, live_filters: ['customer_ids']});
+        {scope: {customer_ids: [9], seller_ids: []},
+            live_filters: ['customer_ids', 'group_by_seller']});
     const reload = editorUI(true, ui.records, true);
     assert.deepEqual(reload.window.SBDashboardDrafts.read(21).widgets[0].filters.seller_ids, [7]);
+    assert.deepEqual(reload.window.SBDashboardDrafts.read(21).filter_config.live_filters,
+        ['customer_ids', 'group_by_seller']);
     reload.nodes.cancelDashboardLayout.click();
     assert.equal(reload.window.SBDashboardDrafts.read(21), null);
     assert.match(reload.tile.dataset.loadedPresentation, /\"customer_ids\":\[4\]/);
@@ -240,12 +243,13 @@ test('live filters and preview never rewrite a local draft, but change refresh s
     ui.tile.insertAdjacentHTML = () => {};
     ui.nodes.previewDashboardDraft.click();
     assert.equal(ui.window.filtersDisabled, true);
-    ui.window.filterLive = {customer_ids: [], seller_ids: [7]};
+    ui.window.filterLive = {customer_ids: [], seller_ids: [7], group_by_seller: true};
     await ui.window.SBDashboardEditor.refreshFilters();
     const query = new URL(requests[0], 'http://localhost').searchParams;
     const scope = JSON.parse(query.get('filter_context'));
     assert.deepEqual(scope.widget.customer_ids, [4]);
     assert.deepEqual(scope.live.seller_ids, [7]);
+    assert.equal(scope.live.group_by_seller, true);
     assert.deepEqual(scope.dashboard.scope.customer_ids, [4]);
     assert.equal(ui.records.get(PREFIX + '21'), draft);
     ui.nodes.exitDashboardDraftPreview.click();

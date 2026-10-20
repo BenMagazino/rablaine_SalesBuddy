@@ -13,6 +13,120 @@ from tests.test_dashboard_drafts import draft_payload
 from tests.test_dashboards import BASE, add_widget, create_dashboard
 
 
+GROUPING_WIDGETS = (
+    'ptof.upcoming_renewals', 'fabric.trial_conversion', 'fabric.expansion',
+)
+
+
+@pytest.mark.parametrize('key', GROUPING_WIDGETS)
+def test_live_grouping_never_changes_saved_widgets_or_customer_scope(
+    client, app, population, monkeypatch, key,
+):
+    """One enabled viewer choice groups each supported widget without changing saved filters."""
+    customers, _ = population
+    provider = Mock(return_value={'destination': '/reports/fabric-consumption'})
+    monkeypatch.setitem(dashboards.WIDGET_DEFINITIONS, key, replace(
+        dashboards.WIDGET_DEFINITIONS[key], provider=provider, requirements=(),
+    ))
+    dashboard_id = create_dashboard(client)
+    assert client.post(f'{BASE}/{dashboard_id}/widgets', json={
+        'key': key, 'filters': {'customer_ids': customers[:1]},
+    }).status_code == 200
+    payload = draft_payload(client, dashboard_id)
+    payload['filter_config'] = {'live_filters': ['group_by_seller']}
+    assert client.post(f'{BASE}/{dashboard_id}/save', json=payload).status_code == 200
+    before = client.get(f'{BASE}/{dashboard_id}').json['dashboard']
+    provider.reset_mock()
+    with app.app_context():
+        preview = dashboards.get_widget_preview(
+            key, 'detailed', 6, filter_context={
+                'dashboard': payload['filter_config'],
+                'widget': {'customer_ids': customers[:1]},
+                'live': {'group_by_seller': True},
+            },
+        )
+        assert preview['group_by_seller'] is True
+        assert preview['filters'] == filters.normalize_filters({'customer_ids': customers[:1]})
+        assert preview['filter_info']['scoped']
+        provider.assert_called_once_with(None, customer_ids=(customers[0],))
+    provider.reset_mock()
+    data = client.get(f'{BASE}/{dashboard_id}?group_by_seller=true').json['dashboard']
+    grouped = data['widgets'][0]
+    assert grouped['group_by_seller'] is True
+    assert grouped['filters'] == before['widgets'][0]['filters']
+    assert data['layout_revision'] == before['layout_revision']
+    provider.assert_called_once_with(None, customer_ids=(customers[0],))
+    assert client.get(f'{BASE}/{dashboard_id}?group_by_seller=false').json['dashboard'] == before
+    assert client.get(f'{BASE}/{dashboard_id}').json['dashboard'] == before
+
+
+@pytest.mark.parametrize('grouping', [None, 0, 1, 'true', [], {}])
+def test_live_grouping_rejects_non_booleans(grouping):
+    """Truthiness must not turn malformed live selections into grouped output."""
+    with pytest.raises(ValueError, match='boolean'):
+        filters.normalize_live_filters({'group_by_seller': grouping})
+
+
+def test_grouping_is_only_available_as_a_live_control():
+    """Permanent scope and per-widget restrictions cannot silently save viewer presentation."""
+    with pytest.raises(ValueError):
+        filters.normalize_filter_config({'scope': {'group_by_seller': True}})
+    assert filters.normalize_filter_config(
+        {'live_filters': ['group_by_seller']},
+    )['live_filters'] == ['group_by_seller']
+    with pytest.raises(ValueError):
+        dashboards.validate_widget_filters('fabric.expansion', {'group_by_seller': True})
+
+
+def test_live_grouping_shares_calculations_and_skips_unsupported_widgets(client, app, monkeypatch):
+    """Group supported instances only, without splitting shared provider calculations."""
+    key = 'fabric.expansion'
+    provider = Mock(return_value={'destination': '/reports/fabric-consumption'})
+    monkeypatch.setitem(dashboards.WIDGET_DEFINITIONS, key, replace(
+        dashboards.WIDGET_DEFINITIONS[key], provider=provider, requirements=(),
+    ))
+    dashboard_id = create_dashboard(client)
+    monkeypatch.setitem(dashboards.WIDGET_DEFINITIONS, 'hygiene.gaps', replace(
+        dashboards.WIDGET_DEFINITIONS['hygiene.gaps'], provider=provider, requirements=(),
+    ))
+    for widget_key in (key, key, 'hygiene.gaps'):
+        assert client.post(f'{BASE}/{dashboard_id}/widgets', json={
+            'key': widget_key,
+        }).status_code == 200
+    payload = draft_payload(client, dashboard_id)
+    payload['filter_config'] = {'live_filters': ['group_by_seller']}
+    assert client.post(f'{BASE}/{dashboard_id}/save', json=payload).status_code == 200
+    provider.reset_mock()
+    widgets = client.get(f'{BASE}/{dashboard_id}?group_by_seller=true').json['dashboard']['widgets']
+    assert [item['group_by_seller'] for item in widgets] == [True, True, False]
+    assert not any(item['filter_info']['scoped'] for item in widgets)
+    assert provider.call_count == 2
+
+
+@pytest.mark.parametrize('query', [
+    'group_by_seller=yes', 'group_by_seller=1', 'group_by_seller=',
+    'group_by_seller=true&group_by_seller=false',
+])
+def test_invalid_grouping_urls_fail_explicitly(client, query):
+    """Both dashboard read surfaces reject malformed grouping rather than showing flat success."""
+    dashboard_id = create_dashboard(client)
+    for base in (BASE, '/reports/dashboards'):
+        response = client.get(f'{base}/{dashboard_id}?{query}')
+        assert response.status_code == 400
+
+
+def test_disabled_grouping_is_rejected_in_view_and_preview(client, app):
+    """A viewer cannot activate a control that the dashboard has not enabled."""
+    dashboard_id = create_dashboard(client)
+    for base in (BASE, '/reports/dashboards'):
+        assert client.get(f'{base}/{dashboard_id}?group_by_seller=true').status_code == 400
+    with app.app_context(), pytest.raises(ValueError, match='not enabled'):
+        dashboards.get_widget_preview(
+            'fabric.expansion', 'detailed', 6,
+            filter_context={'live': {'group_by_seller': True}},
+        )
+
+
 @pytest.fixture
 def population(app):
     """Create independent account owners without relying on live data."""

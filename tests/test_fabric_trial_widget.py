@@ -72,7 +72,7 @@ def test_trial_widget_catalog_preview_and_read_tools(client, monkeypatch):
     catalog = client.get("/api/reports/dashboards").json["catalog"]
     definition = next(row for row in catalog if row["key"] == "fabric.trial_conversion")
     assert [variant["key"] for variant in definition["variants"]] == ["metric", "detailed"]
-    assert definition["supported_filters"] == ["customer_ids", "seller_ids"]
+    assert definition["supported_filters"] == ["customer_ids", "seller_ids", "group_by_seller"]
     response = client.get("/api/reports/dashboards/widget-preview", query_string={
         "key": "fabric.trial_conversion", "variant": "metric", "width": 6,
     })
@@ -121,6 +121,54 @@ def add_point(
         observed_at=stamp or snapshot.source_as_of,
         metrics_json={"tenant_id": tenant, "utilization_pct": value},
     ))
+
+
+def test_trial_grouping_preserves_both_queues_and_customer_seller_metadata(
+    trial_history, monkeypatch,
+):
+    """Group each engagement queue independently while keeping trial rollup and totals."""
+    customer, snapshot, source, header = trial_history
+    sources = [
+        {**source, "seller": {"id": 2, "name": "Alex"}},
+        {**source, "id": customer.id + 1, "name": "Second trial",
+         "seller": {"id": 1, "name": "Alex"}},
+        {**source, "id": customer.id + 2, "name": "Unassigned trial", "seller": None},
+        {**source, "id": customer.id + 3, "name": "Momentum trial",
+         "seller": {"id": 2, "name": "Alex"}},
+    ]
+    set_capacities(monkeypatch, sources, header)
+    for index, row in enumerate(sources):
+        other = customer if not index else Customer(
+            id=row["id"], name=row["name"], tpid=customer.tpid + index,
+        )
+        if index:
+            db.session.add(other)
+            db.session.flush()
+        add_point(other, snapshot, 0.2 if index == 3 else 0.05)
+    result = fabric_consumption.get_fabric_trial_conversion_widget()
+    assert next(
+        row for row in result["details"]["cohorts"]["low"] if row["id"] == customer.id
+    )["seller"]["id"] == 2
+    grouped = BeautifulSoup(render_widget(
+        "fabric_trial_conversion", result, group_by_seller=True,
+    ), "html.parser")
+    low = grouped.select_one('[data-trial-cohort="low"]')
+    high = grouped.select_one('[data-trial-cohort="high"]')
+    assert len(low.select("tbody")) == 3
+    assert len(high.select("tbody")) == 1
+    assert len(grouped.select("tr[data-row-key]")) == 4
+    assert len(grouped.select("tr[data-sb-sort-fixed]")) == 4
+    assert [node["href"] for node in low.select(".db-report-seller")] == [
+        "/seller/1", "/seller/2",
+    ]
+    assert "No seller assigned" in low.select("tbody")[-1].text
+    assert [node["value"] for node in grouped.select('input[type="radio"]')] == ["low", "high"]
+    assert render_widget("fabric_trial_conversion", result, "metric") == render_widget(
+        "fabric_trial_conversion", result, "metric", group_by_seller=True,
+    )
+    assert fabric_consumption.get_fabric_trial_conversion_widget(customer_ids=())[
+        "details"
+    ]["seller_groups"] == {"low": [], "high": [], "unknown": []}
     db.session.flush()
 
 

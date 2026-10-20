@@ -31,16 +31,22 @@ Dashboard placement stays unchecked until you confirm it.
 - **Report/widget:**
 - **Notes / follow-up:**
 
-### 3. [ ] Fabric expansion
+### 3. [x] Fabric expansion
 
-- [ ] Coded
-- [ ] Added to dashboard
+- [x] Coded
+- [x] Added to dashboard
 - **Starting scope:** Power BI-dominant or narrow-workload measured estates,
   with target workloads not observed in the available data.
 - **Boundary:** Usage mix does not establish workload fit or business readiness.
   The source summary combines Data Engineering and Data Science.
-- **Report/widget:**
-- **Notes / follow-up:**
+- **Report/widget:** Fabric expansion, Summary / Details. Links to Fabric Consumption
+  > Capacity overview > F-SKU audit, one row per customer.
+- **Notes / follow-up:** Single Power BI-led queue (80%+ Power BI consumption).
+  Only customers with paid F-SKUs qualify; Details shows their largest F-SKU
+  with P/Trial context, average capacity utilization, PBI share, and
+  known workloads above 1%, with optional seller grouping in the viewer Filters panel.
+  Incomplete mixes remain excluded. Added to the FY27 Data Motions dashboard
+  and confirmed complete for this scope.
 
 ### 4. [x] Fabric trial conversion
 
@@ -69,6 +75,7 @@ Dashboard placement stays unchecked until you confirm it.
 - **Report/widget:** Upcoming P-to-F renewals, Summary / Details.
 - **Notes:** Details covers all dated future renewals in the
   saved report and shows customer/product, expiration, and renewal status.
+  The table scrolls within the widget, keeping the title and column headings visible.
   Summary retains the next 90 days. Added to the FY27 Data Motions dashboard;
   future layout adjustments do not affect completion.
 

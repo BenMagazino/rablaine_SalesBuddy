@@ -1,11 +1,45 @@
-"""Shared, explicit Customer/Seller scope for reusable dashboards."""
+"""Explicit Customer/Seller scope and temporary grouping for reusable dashboards."""
 from typing import Any
 from urllib.parse import urlencode
 
 from app.models import Customer, Seller, db
 
 FILTER_LABELS = {'customer_ids': 'Customer', 'seller_ids': 'Seller'}
+LIVE_FILTER_LABELS = {**FILTER_LABELS, 'group_by_seller': 'Group by seller'}
 MAX_FILTER_ID = 2 ** 53 - 1
+
+
+def normalize_live_filters(value: object = None) -> dict[str, Any]:
+    """Keep temporary presentation choices separate from customer scope selections."""
+    if value is None:
+        value = {}
+    if not isinstance(value, dict):
+        raise ValueError('Provide valid live filters.')
+    grouping = value.get('group_by_seller', False)
+    if type(grouping) is not bool:
+        raise ValueError('Group by seller must be a boolean.')
+    result: dict[str, Any] = normalize_filters({
+        key: selected for key, selected in value.items() if key != 'group_by_seller'
+    })
+    if grouping:
+        result['group_by_seller'] = True
+    return result
+
+
+def group_rows_by_seller(rows: list[dict]) -> list[dict]:
+    """Keep same-name sellers distinct, source row order intact, and unassigned last."""
+    groups = {}
+    for row in rows:
+        seller = row.get('seller')
+        key = seller['id'] if seller else None
+        if key not in groups:
+            groups[key] = {'seller': seller, 'rows': []}
+        groups[key]['rows'].append(row)
+    return sorted(groups.values(), key=lambda group: (
+        group['seller'] is None,
+        group['seller']['name'].casefold() if group['seller'] else '',
+        group['seller']['id'] if group['seller'] else 0,
+    ))
 
 
 def normalize_filters(value: object = None) -> dict[str, list[int]]:
@@ -34,12 +68,12 @@ def normalize_filter_config(value: object = None) -> dict[str, Any]:
         raise ValueError('Provide valid dashboard scope selections.')
     live = value.get('live_filters', [])
     if not isinstance(live, list) or any(
-        not isinstance(key, str) or key not in FILTER_LABELS for key in live
+        not isinstance(key, str) or key not in LIVE_FILTER_LABELS for key in live
     ):
-        raise ValueError('Choose Customer or Seller live filter controls.')
+        raise ValueError('Choose supported live filter controls.')
     return {
         'scope': normalize_filters(value.get('scope')),
-        'live_filters': [key for key in FILTER_LABELS if key in live],
+        'live_filters': [key for key in LIVE_FILTER_LABELS if key in live],
     }
 
 
@@ -95,6 +129,17 @@ def filters_from_query(args: Any) -> dict[str, list[int]]:
             raise ValueError('Provide positive customer and seller IDs.')
         result[key] = [int(item) for item in raw]
     return normalize_filters(result)
+
+
+def live_filters_from_query(args: Any) -> dict[str, Any]:
+    """Parse explicit true/false grouping only on dashboard viewer URLs."""
+    result: dict[str, Any] = filters_from_query(args)
+    if 'group_by_seller' in args:
+        raw = args.getlist('group_by_seller')
+        if len(raw) != 1 or raw[0] not in ('true', 'false'):
+            raise ValueError('Group by seller must be true or false.')
+        result['group_by_seller'] = raw[0] == 'true'
+    return normalize_live_filters(result)
 
 
 def report_customer_scope(args: Any) -> tuple[int, ...] | None:

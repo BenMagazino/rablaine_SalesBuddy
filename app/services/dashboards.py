@@ -13,14 +13,17 @@ from app.models import Dashboard, DashboardWidget, db, utc_now
 from app.services import connect_goals
 from app.services.activity_coverage import get_meeting_activity_coverage_widget
 from app.services.fabric_consumption import (
-    get_fabric_capacity_pressure_widget, get_fabric_trial_conversion_widget,
+    get_fabric_capacity_pressure_widget, get_fabric_expansion_widget,
+    get_fabric_trial_conversion_widget,
 )
 from app.services.hygiene import get_hygiene_gaps_widget
 from app.services.manager_one_on_one import get_initiative_tracker_widget
 from app.services.ptof import get_ptof_renewals_widget
 from app.services.revenue_analysis import get_revenue_attention_widget
 from app.services.dashboard_filters import (
-    FILTER_LABELS, normalize_filters, normalize_filter_config, resolve_customer_scope,
+    FILTER_LABELS, LIVE_FILTER_LABELS, normalize_filters, normalize_live_filters,
+    normalize_filter_config,
+    resolve_customer_scope,
     scope_report_destination,
     describe_widget_filters,
 )
@@ -184,7 +187,23 @@ WIDGET_DEFINITIONS = {
             '90-day renewal summary or all future renewals.',
             'P to F', _report_variants('partials/widgets/ptof_renewals.html'),
             get_ptof_renewals_widget, scope='90-day summary / all future details',
-            supported_filters=tuple(FILTER_LABELS),
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'),
+        ),
+        WidgetDefinition(
+            'fabric.expansion', 'Fabric expansion',
+            'Power BI-led Fabric customers to explore beyond BI.',
+            'Fabric Consumption / Capacity overview', (
+                WidgetVariant(
+                    'metric', 'Summary', 'partials/widgets/fabric_expansion.html',
+                    (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 4,
+                ),
+                WidgetVariant(
+                    'detailed', 'Details', 'partials/widgets/fabric_expansion.html',
+                    (6, 12), MIN_WIDGET_HEIGHT, 5,
+                ),
+            ),
+            get_fabric_expansion_widget, scope='Paid F-SKU customers / 28-day workload mix',
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'),
         ),
         WidgetDefinition(
             'fabric.trial_conversion', 'Fabric trial conversion',
@@ -200,7 +219,7 @@ WIDGET_DEFINITIONS = {
                 ),
             ),
             get_fabric_trial_conversion_widget, scope='Saved Fabric 360 capacities',
-            supported_filters=tuple(FILTER_LABELS),
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'),
         ),
         WidgetDefinition(
             'fabric.capacity_pressure', 'Fabric capacity pressure',
@@ -289,8 +308,10 @@ def get_dashboard_data(
     states: dict[str, dict[str, Any]] = {}
     values: dict[tuple, dict[str, Any]] = {}
     filter_config = normalize_filter_config(dashboard.filter_config)
-    live = normalize_filters(live_filters)
-    if any(live[key] and key not in filter_config['live_filters'] for key in FILTER_LABELS):
+    live = normalize_live_filters(live_filters)
+    if any(
+        live.get(key) and key not in filter_config['live_filters'] for key in LIVE_FILTER_LABELS
+    ):
         raise ValueError('This dashboard has not enabled that live filter.')
     widgets = []
     for instance in sorted(dashboard.widgets, key=lambda item: (
@@ -331,6 +352,9 @@ def get_dashboard_data(
             'template': variant.template if variant else None,
             'data': values.get(cache_key) if variant else None,
             'filters': filters,
+            'group_by_seller': (
+                live.get('group_by_seller', False) and 'group_by_seller' in supported
+            ),
             'filter_info': {
                 'supported': supported,
                 'widget_scope': describe_widget_filters(filters),
@@ -363,7 +387,7 @@ def get_dashboard_data(
         'filter_config': filter_config,
         'live_filters': live,
         'supported_filters': [
-            key for key in FILTER_LABELS if any(
+            key for key in LIVE_FILTER_LABELS if any(
                 key in WIDGET_DEFINITIONS[item.widget_key].supported_filters
                 for item in dashboard.widgets if item.widget_key in WIDGET_DEFINITIONS
             )
@@ -515,7 +539,7 @@ def _assign_widget_layout(instance: DashboardWidget, entry: dict[str, Any]) -> N
     for field in ('layout_column', 'layout_row', 'column_span', 'row_span', 'variant_key'):
         setattr(instance, field, entry[field])
     if 'filters' in entry:
-        instance.filters = normalize_filters(entry['filters'])
+        instance.filters = validate_widget_filters(instance.widget_key, entry['filters'])
 
 
 def save_dashboard_layout(dashboard: Dashboard, payload: object) -> None:
@@ -590,8 +614,8 @@ def get_widget_preview(
         raise ValueError('Provide a valid widget filter context.')
     config = normalize_filter_config(filter_context.get('dashboard'))
     filters = validate_widget_filters(key, filter_context.get('widget'))
-    live = normalize_filters(filter_context.get('live'))
-    if any(live[name] and name not in config['live_filters'] for name in FILTER_LABELS):
+    live = normalize_live_filters(filter_context.get('live'))
+    if any(live.get(name) and name not in config['live_filters'] for name in LIVE_FILTER_LABELS):
         raise ValueError('This dashboard has not enabled that live filter.')
     layers = (config['scope'], filters, live)
     ids = resolve_customer_scope(*[
@@ -607,6 +631,10 @@ def get_widget_preview(
             else definition.provider(None)
         ), key, ids) if not requirements else None,
         'filters': filters,
+        'group_by_seller': (
+            live.get('group_by_seller', False)
+            and 'group_by_seller' in definition.supported_filters
+        ),
         'filter_info': {
             'supported': definition.supported_filters, 'scoped': ids is not None,
             'widget_scope': describe_widget_filters(filters),

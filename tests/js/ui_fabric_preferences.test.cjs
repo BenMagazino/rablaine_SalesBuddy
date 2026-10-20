@@ -55,7 +55,7 @@ test('invalid preference and blocked storage expose errors', () => {
 });
 
 function modeFixture(saved = null, failure = false, initialMode = null) {
-    const buttons = ['all', 'capacities', 'trials', 'p'].map(mode => ({
+    const buttons = ['all', 'capacities', 'trials', 'p', 'f'].map(mode => ({
         dataset: {mode}, pressed: String(mode === 'capacities'), events: {},
         getAttribute() { return this.pressed; },
         setAttribute(name, value) { this.pressed = value; },
@@ -82,13 +82,13 @@ test('view modes default to capacities, restore, and select exactly one audit at
     const h = modeFixture('trials');
     assert.equal(h.preference.value, 'trials');
     assert.equal(h.changes(), 0);
-    for (const mode of ['p', 'all', 'capacities', 'trials']) {
+    for (const mode of ['p', 'all', 'capacities', 'trials', 'f']) {
         h.buttons.find(button => button.dataset.mode === mode).events.click();
         assert.equal(h.preference.value, mode);
         assert.equal(h.stored(), mode);
         assert.equal(h.buttons.filter(button => button.pressed === 'true').length, 1);
     }
-    assert.equal(h.changes(), 4);
+    assert.equal(h.changes(), 5);
 });
 
 test('invalid or blocked view mode preferences show explicit errors without blocking selection', () => {
@@ -113,6 +113,10 @@ test('explicit audit links override saved mode without overwriting the preferenc
     const invalid = modeFixture('p', false, 'invalid');
     assert.equal(invalid.notice.hidden, false);
     assert.equal(invalid.errors.length, 1);
+    const expansion = modeFixture('trials', false, 'f');
+    assert.equal(expansion.preference.value, 'f');
+    assert.equal(expansion.stored(), 'trials');
+    assert.equal(modeFixture('f').preference.value, 'f');
 });
 
 test('customer-row checkbox honors explicit links without replacing saved preference', () => {

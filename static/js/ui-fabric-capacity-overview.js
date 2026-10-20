@@ -30,6 +30,12 @@
     function getPCustomerIds(rows) {
         return new Set(rows.filter(isPCapacity).map(row => row.id));
     }
+    function isFCapacity(row) {
+        return /^F[1-9]\d*$/.test(row.capacity?.sku?.trim().toUpperCase() ?? '');
+    }
+    function getFCustomerIds(rows) {
+        return new Set(rows.filter(isFCapacity).map(row => row.id));
+    }
     function orderMatchingCapacities(rows, matches) {
         const customers = new Map();
         for (const row of rows) {
@@ -123,13 +129,17 @@
         const query = find('search').value.trim().toLocaleLowerCase();
         const trialsOnly = modePreference.value === 'trials';
         const pOnly = modePreference.value === 'p';
+        const fOnly = modePreference.value === 'f';
         const trialCustomers = trialsOnly ? getTrialCustomerIds(report.rows) : null;
         const pCustomers = pOnly ? getPCustomerIds(report.rows) : null;
-        const orderedRows = trialsOnly || pOnly ? orderMatchingCapacities(report.rows,
-            row => (trialsOnly && isTrialCapacity(row)) || (pOnly && isPCapacity(row))) : report.rows;
+        const fCustomers = fOnly ? getFCustomerIds(report.rows) : null;
+        const orderedRows = trialsOnly || pOnly || fOnly ? orderMatchingCapacities(report.rows,
+            row => (trialsOnly && isTrialCapacity(row)) || (pOnly && isPCapacity(row)) ||
+                (fOnly && isFCapacity(row))) : report.rows;
         const scopedRows = orderedRows.filter(row =>
             (!trialCustomers || trialCustomers.has(row.id)) &&
             (!pCustomers || pCustomers.has(row.id)) &&
+            (!fCustomers || fCustomers.has(row.id)) &&
             (modePreference.value === 'all' || row.capacity));
         const onePerCustomer = find('customers').checked;
         const grouped = find('sellers').checked;
@@ -138,6 +148,7 @@
             const capacity = row.capacity;
             if (trialCustomers && !trialCustomers.has(row.id)) return false;
             if (pCustomers && !pCustomers.has(row.id)) return false;
+            if (fCustomers && !fCustomers.has(row.id)) return false;
             if (modePreference.value !== 'all' && !capacity) return false;
             if (!`${row.name} ${row.account_name} ${row.nickname ?? ''} ${row.tpid ?? ''} ${row.searchText ?? ''} ${capacity?.tenant_id ?? ''} ${capacity?.capacity_id ?? ''} ${capacity?.sku ?? ''}`
                 .toLocaleLowerCase().includes(query)) return false;

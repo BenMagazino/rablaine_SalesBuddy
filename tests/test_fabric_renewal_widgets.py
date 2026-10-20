@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from flask import Flask, render_template
 import pytest
 
+from app.models import Customer, PToFImport, PToFRecord, Seller, db
 from app.services import fabric_consumption, ptof
 
 
@@ -62,14 +63,72 @@ def set_capacities(monkeypatch: pytest.MonkeyPatch, rows: list, snapshot: dict |
 
 
 def render_widget(name: str, data: dict, variant: str = "detailed",
-                  prefix: str = "first-") -> str:
+                  prefix: str = "first-", group_by_seller: bool = False) -> str:
     """Render a widget directly without central dashboard registration or databases."""
     app = Flask(__name__, template_folder=str(Path(__file__).resolve().parents[1] / "templates"))
     with app.app_context():
         return render_template(
             f"partials/widgets/{name}.html",
-            instance=SimpleNamespace(data=data, variant_key=variant), widget_id_prefix=prefix,
+            instance=SimpleNamespace(data=data, variant_key=variant, group_by_seller=group_by_seller),
+            widget_id_prefix=prefix,
         )
+
+
+def test_renewal_report_joins_current_seller_ownership(app):
+    """Saved source data never overrides current local customer ownership."""
+    with app.app_context():
+        seller = Seller(name="Renewal owner")
+        customer = Customer(name="Owned renewal", seller=seller, tpid=990001)
+        unassigned = Customer(name="Unassigned renewal", tpid=990002)
+        snapshot = PToFImport(customer_count=2, summary_count=0, detail_count=2)
+        db.session.add_all([seller, customer, unassigned, snapshot])
+        db.session.flush()
+        for row in (customer, unassigned):
+            db.session.add(PToFRecord(
+                import_id=snapshot.id, tpid=row.tpid, kind="details",
+                data_json=renewal_row(REFERENCE.isoformat(), seller={"id": 999, "name": "Stale"}),
+            ))
+        db.session.commit()
+        rows = ptof.get_ptof_report()["details"]
+        assert rows[0]["seller"] == {"id": seller.id, "name": seller.name}
+        assert rows[1]["seller"] is None
+        assert ptof.get_ptof_report(customer_ids=(customer.id,))["details"] == rows[:1]
+
+
+def test_renewal_grouping_keeps_subscriptions_and_status_cells(monkeypatch):
+    """Group every future subscription, including later renewals, without changing Summary."""
+    set_renewals(monkeypatch, [
+        renewal_row(REFERENCE.isoformat(), seller={"id": 2, "name": "Alex"}),
+        renewal_row((REFERENCE + timedelta(days=400)).isoformat(),
+                    seller={"id": 1, "name": "Alex"}),
+        renewal_row((REFERENCE + timedelta(days=90)).isoformat(),
+                    seller={"id": 1, "name": "Alex"}),
+        renewal_row(REFERENCE.isoformat(), customer_id=8),
+    ], {"imported_at": "2026-10-01"})
+    result = ptof.get_ptof_renewals_widget(REFERENCE)
+    grouped = BeautifulSoup(render_widget(
+        "ptof_renewals", result, group_by_seller=True,
+    ), "html.parser")
+    assert len(grouped.select("tbody")) == 3
+    assert len(grouped.select("tr[data-row-key]")) == 4
+    assert [node["href"] for node in grouped.select(".db-report-seller")] == [
+        "/seller/1", "/seller/2",
+    ]
+    assert len(grouped.select("tr[data-sb-sort-fixed]")) == 3
+    assert len(grouped.select("[data-ptof-renewal-status]")) == 4
+    assert [node["data-sb-sort-value"] for node in
+            grouped.select("tbody:first-of-type td:nth-child(3)")] == [
+        (REFERENCE + timedelta(days=90)).isoformat(),
+        (REFERENCE + timedelta(days=400)).isoformat(),
+    ]
+    assert "No seller assigned" in grouped.select("tbody")[-1].text
+    flat = BeautifulSoup(render_widget("ptof_renewals", result), "html.parser")
+    assert len(flat.select("tbody")) == 1
+    assert not flat.select("[data-sb-sort-fixed]")
+    assert flat.table["data-sb-sort-key"] != grouped.table["data-sb-sort-key"]
+    assert render_widget("ptof_renewals", result, "metric") == render_widget(
+        "ptof_renewals", result, "metric", group_by_seller=True,
+    )
 
 
 def test_renewals_inclusive_window_and_separate_source_grains(monkeypatch):
@@ -148,6 +207,36 @@ def test_renewal_details_include_all_future_rows_with_independent_totals(monkeyp
     assert summary.select(".db-report-metrics, .db-report-caption")
     assert "90-day window" not in details.text
     assert not summary.find("table")
+
+
+@pytest.mark.parametrize("grouped", [False, True])
+def test_renewal_details_put_only_the_table_inside_a_focusable_scroll_region(monkeypatch, grouped):
+    """Keep the title and notices outside the table scroller in both row layouts."""
+    set_renewals(monkeypatch, [
+        renewal_row(REFERENCE.isoformat(), seller={"id": 1, "name": "Renewal owner"}),
+        renewal_row(None),
+    ], {"imported_at": "2026-10-01"})
+    result = ptof.get_ptof_renewals_widget(REFERENCE)
+    details = BeautifulSoup(render_widget(
+        "ptof_renewals", result, group_by_seller=grouped,
+    ), "html.parser")
+    assert details.select_one(".db-ptof-details")
+    scroller = details.select_one(".db-ptof-table-scroll")
+    assert scroller["tabindex"] == "0"
+    assert scroller["role"] == "region"
+    assert scroller["aria-label"] == "Future subscription renewals"
+    assert scroller.select_one("table[data-sb-sortable]")
+    assert not scroller.select(".db-report-heading, .db-report-notice")
+    assert details.select_one(".db-report-heading").parent == scroller.parent
+    assert details.select_one(".db-report-notice").parent == scroller.parent
+    assert len(scroller.select("tr[data-row-key]")) == 1
+    assert len(scroller.select("tr[data-sb-sort-fixed]")) == int(grouped)
+    summary = BeautifulSoup(render_widget("ptof_renewals", result, "metric"), "html.parser")
+    assert not summary.select(".db-ptof-details, .db-ptof-table-scroll")
+    result["future"]["rows"] = []
+    empty = BeautifulSoup(render_widget("ptof_renewals", result), "html.parser")
+    assert not empty.select(".db-ptof-table-scroll")
+    assert empty.select_one(".db-report-empty")
 
 
 @pytest.mark.parametrize("status", [
