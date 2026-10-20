@@ -38,12 +38,12 @@ def _redirect_revenue_dashboard():
 
 @revenue_bp.route('/revenue/reports/new-synapse-users')
 def _redirect_new_synapse_users():
-    return redirect(url_for('revenue.report_synapse_customers', mode='new'), code=301)
+    return redirect(url_for('reports.report_fabric_modernization'), code=301)
 
 
 @revenue_bp.route('/reports/new-synapse-users')
 def _redirect_new_synapse_users_short():
-    return redirect(url_for('revenue.report_synapse_customers', mode='new'), code=301)
+    return redirect(url_for('reports.report_fabric_modernization'), code=301)
 
 
 @revenue_bp.route('/revenue/reports')
@@ -935,11 +935,11 @@ def reports_list():
     """List of available bespoke reports."""
     reports = [
         {
-            'id': 'synapse-customers',
-            'name': 'Synapse Customers',
-            'description': 'New and current customers using Azure Synapse Analytics, grouped by seller.',
+            'id': 'fabric-modernization',
+            'name': 'Fabric Modernization',
+            'description': 'Recent Synapse, AAS, ADX and Azure Databricks revenue with Fabric spend.',
             'icon': 'bi-database-gear',
-            'url': url_for('revenue.report_synapse_customers')
+            'url': url_for('reports.report_fabric_modernization')
         },
     ]
     
@@ -948,73 +948,7 @@ def reports_list():
 
 @revenue_bp.route('/reports/synapse-customers')
 def report_synapse_customers():
-    """Report: New and current customers using Azure Synapse Analytics."""
-    mode = request.args.get('mode', 'new').lower()
-    if mode not in ('new', 'current'):
-        mode = 'new'
-
-    product_name = 'Azure Synapse Analytics'
-    from app.services.revenue_sync import has_revenue_data as _has_revenue
-    has_revenue_data = _has_revenue()
-
-    if not has_revenue_data:
-        return render_template(
-            'revenue_report_synapse_customers.html',
-            has_revenue_data=False,
-            mode=mode,
-            sellers={},
-            users=[],
-            total_count=0,
-            lookback_months=[],
-            product_name=product_name,
-        )
-
-    from app.services.revenue_import import (
-        get_new_product_users,
-        get_current_product_users,
-        get_months_in_database,
-    )
-
-    if mode == 'current':
-        users = get_current_product_users(product_name)
-    else:
-        users = get_new_product_users(product_name, months_lookback=6)
-
-    # Group by seller
-    sellers: dict = {}
-    for user in users:
-        seller = user['seller_name'] or '(No Seller Assigned)'
-        sellers.setdefault(seller, []).append(user)
-
-    # In current mode, sort each seller group by latest month revenue desc
-    if mode == 'current':
-        for seller_customers in sellers.values():
-            seller_customers.sort(
-                key=lambda c: c.get('latest_month_revenue') or 0,
-                reverse=True,
-            )
-
-    months = get_months_in_database()
-    # months is sorted newest -> oldest. Drop the current (in-progress) calendar
-    # month so "latest" means latest *complete* month (matches the service-side
-    # filter used to compute latest_month_revenue and avg_4mo_revenue).
-    from datetime import date as _date
-    _today = _date.today()
-    months_complete = [
-        m for m in months
-        if not (m['month_date'].year == _today.year and m['month_date'].month == _today.month)
-    ]
-    # Take the most recent 6 complete months in chronological order for the
-    # header range label (oldest -> newest).
-    lookback_months = list(reversed(months_complete[:6]))
-
-    return render_template(
-        'revenue_report_synapse_customers.html',
-        has_revenue_data=True,
-        mode=mode,
-        sellers=sellers,
-        users=users,
-        total_count=len(users),
-        lookback_months=lookback_months,
-        product_name=product_name,
-    )
+    """Keep existing report bookmarks pointed at the replacement report."""
+    return redirect(url_for(
+        'reports.report_fabric_modernization', embed=request.args.get('embed'),
+    ), code=301)

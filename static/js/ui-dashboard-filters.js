@@ -162,14 +162,6 @@
                 panel.append(search, actions, list, noMatches);
                 details.append(summary, panel);
                 host.append(details);
-                details.addEventListener('toggle', () => {
-                    if (!details.open || details.closest('.db-filters-panel')) return;
-                    document.querySelectorAll('.db-filter-picker[open]').forEach(other => {
-                        if (other !== details && !other.closest('.db-filters-panel')) {
-                            other.open = false;
-                        }
-                    });
-                });
                 details.addEventListener('keydown', event => {
                     if (event.key !== 'Escape' || !details.open) return;
                     event.preventDefault();
@@ -446,7 +438,7 @@
         }
 
         global.SBDashboardFilters = Object.freeze({
-            context, controls, restore, select, refresh,
+            context, restore, select, refresh,
             configuration, selections, liveSelections,
             setPreview(value) {
                 if (value) panelWasOpen = !panel.hidden;
@@ -492,12 +484,6 @@
                 }
             });
         }
-        document.addEventListener('pointerdown', event => {
-            if (event.target.closest('.db-filter-picker')) return;
-            document.querySelectorAll('.db-filter-picker[open]').forEach(details => {
-                if (!details.closest('.db-filters-panel')) details.open = false;
-            });
-        });
         document.querySelectorAll('[data-live-filter]').forEach(input => {
             input.addEventListener('change', () => {
                 config = {...config, live_filters: Object.keys(liveLabels).filter(key =>

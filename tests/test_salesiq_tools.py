@@ -158,6 +158,8 @@ class TestToolCoverage:
         assert 'report_fabric_capacity_pressure' in self._tool_names()
         assert 'report_fabric_trial_conversion' in self._tool_names()
         assert 'report_fabric_expansion' in self._tool_names()
+        assert 'report_fabric_modernization' in self._tool_names()
+        assert 'report_fabric_modernization_candidates' in self._tool_names()
 
     def test_ptof_report_tool_exists(self):
         """Renewal assessments and details must be queryable without refreshing."""

@@ -170,6 +170,40 @@ def report_fabric_consumption(customer_id: int | None = None, overview: bool = F
 
 
 @tool(
+    'report_fabric_modernization',
+    'Read Fabric Modernization: one row per customer with positive recent Synapse, '
+    'Azure Analysis Services, Azure Data Explorer, or Azure Databricks revenue. '
+    'All source products and Fabric Capacity use the last three complete calendar months, '
+    'summed. Other Analytics combines the four non-Fabric products and must total at least '
+    '$50, or $100 with positive Fabric spend. '
+    'Includes seller groups and monthly coverage. Saved data only, not evidence of '
+    'migration, readiness, or non-Azure Databricks inventory.',
+    {'type': 'object', 'properties': {}},
+)
+def report_fabric_modernization() -> dict:
+    """Reuse the report's recent-product revenue calculation."""
+    from app.services.fabric_modernization import get_fabric_modernization_report
+
+    return get_fabric_modernization_report()
+
+
+@tool(
+    'report_fabric_modernization_candidates',
+    'Read the Fabric modernization widget: report-qualified customers whose last three '
+    'complete months of Other Analytics (Synapse, AAS, ADX and Azure Databricks) strictly exceed '
+    'Fabric spend. Includes all matching customers, count, their total Other Analytics '
+    'spend, seller groups and coverage. '
+    'Saved observations only, not proof of migration or readiness.',
+    {'type': 'object', 'properties': {}},
+)
+def report_fabric_modernization_candidates() -> dict:
+    """Reuse the widget's report-backed candidate calculation."""
+    from app.services.fabric_modernization import get_fabric_modernization_widget
+
+    return get_fabric_modernization_widget()
+
+
+@tool(
     'report_fabric_expansion',
     'Read saved Power BI-led Fabric expansion signals for customers with paid F-SKUs. '
     'One row per customer with the largest paid F-SKU by CU size, P/trial capacity flags, '

@@ -8,8 +8,11 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/19/2026
+## 10/20/2026
 
+- Replace Synapse Customers with Fabric Modernization, comparing recent Synapse, AAS, ADX and Azure Databricks revenue (Other Analytics) with Fabric spend over the last three complete months. Exclude Other Analytics totals below $50, or below $100 when Fabric spend is positive.
+- Add Fabric modernization widgets showing the count and total Other Analytics spend of customers whose Other Analytics spend exceeds Fabric spend, plus a full customer list with seller sorting and optional seller grouping.
+- Configure widget customer and seller restrictions in the Filters flyout after placing a widget, rather than in the widget library.
 - P-to-F renewal widget Details lists all future renewals with the report's status indicators and hover help. Summary keeps its 90-day window.
 - Add a Fabric trial conversion widget with customer counts and engagement queues, linked directly to Trial audit and customer Fabric details.
 - Add Fabric expansion Summary and Details widgets for Power BI-led paid Fabric customers, with P/trial context and Capacity overview drill-throughs.

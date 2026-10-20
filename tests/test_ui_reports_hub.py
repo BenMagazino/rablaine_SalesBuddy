@@ -15,7 +15,8 @@ GROUPS = [
     ("Execution & Coverage", ["u2c-attainment", "milestone-tracker", "activity-coverage", "whitespace"]),
     ("Pipeline Health", ["hygiene-report", "msx-workspace", "whats-new"]),
     ("Account Insights", ["revenue-analyzer", "workload-report", "p-to-f",
-                          "fabric-consumption", "marketing-insights", "synapse-customers"]),
+                          "fabric-consumption", "fabric-capacity-pressure",
+                          "marketing-insights", "fabric-modernization"]),
 ]
 
 
@@ -54,8 +55,8 @@ def test_directory_preserves_order_accessibility_and_context(
             assert row.select_one("p").text.strip()
             assert all(icon["aria-hidden"] == "true" for icon in row.select("i"))
             assert link["href"].startswith("/reports/")
-    assert len(root.select("a.sb-reports-entry")) == 16
-    assert "16 reports across 4 groups" in soup.select_one("[data-sb-reports-count]").text
+    assert len(root.select("a.sb-reports-entry")) == 17
+    assert "17 reports across 4 groups" in soup.select_one("[data-sb-reports-count]").text
     search = root.select_one("#findReport")
     assert search["type"] == "search" and search["aria-controls"] == "reportsDirectory"
     assert root.select_one('label[for="findReport"]')
@@ -142,7 +143,7 @@ def test_report_reading_pane_overrides_shell_overflow(client: FlaskClient) -> No
     ("revenue_product_view.html", True),
     ("revenue_seller_product_view.html", True),
     ("revenue_reports_list.html", True),
-    ("revenue_report_synapse_customers.html", True),
+    ("report_fabric_modernization.html", True),
     ("report_connect_impact.html", True),
     ("revenue_bucket_products.html", False),
     ("revenue_customer_view.html", True),
@@ -169,7 +170,7 @@ def test_report_and_revenue_standalone_width_dispositions(
             "reports_hub.html", "report_msx_workspace.html",
             "report_one_on_one.html", "revenue_config.html", "report_connect_impact.html",
             "revenue_customer_view.html",
-            "report_manager_one_on_one.html",
+            "report_manager_one_on_one.html", "report_fabric_modernization.html",
             "revenue_import.html", "revenue_seller_alerts.html",
             "report_workload.html", "revenue_products_list.html", "revenue_product_view.html",
         }

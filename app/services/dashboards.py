@@ -17,6 +17,7 @@ from app.services.fabric_consumption import (
     get_fabric_trial_conversion_widget,
 )
 from app.services.hygiene import get_hygiene_gaps_widget
+from app.services.fabric_modernization import get_fabric_modernization_widget
 from app.services.manager_one_on_one import get_initiative_tracker_widget
 from app.services.ptof import get_ptof_renewals_widget
 from app.services.revenue_analysis import get_revenue_attention_widget
@@ -187,6 +188,22 @@ WIDGET_DEFINITIONS = {
             '90-day renewal summary or all future renewals.',
             'P to F', _report_variants('partials/widgets/ptof_renewals.html'),
             get_ptof_renewals_widget, scope='90-day summary / all future details',
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'),
+        ),
+        WidgetDefinition(
+            'fabric.modernization', 'Fabric modernization',
+            'Customers whose recent Other Analytics spend exceeds their Fabric spend.',
+            'Fabric Modernization', (
+                WidgetVariant(
+                    'metric', 'Summary', 'partials/widgets/fabric_modernization.html',
+                    (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 4,
+                ),
+                WidgetVariant(
+                    'detailed', 'Details', 'partials/widgets/fabric_modernization.html',
+                    (6, 12), MIN_WIDGET_HEIGHT, 5,
+                ),
+            ),
+            get_fabric_modernization_widget, scope='Last 3 complete months',
             supported_filters=(*FILTER_LABELS, 'group_by_seller'),
         ),
         WidgetDefinition(

@@ -15,6 +15,7 @@ from tests.test_dashboards import BASE, add_widget, create_dashboard
 
 GROUPING_WIDGETS = (
     'ptof.upcoming_renewals', 'fabric.trial_conversion', 'fabric.expansion',
+    'fabric.modernization',
 )
 
 

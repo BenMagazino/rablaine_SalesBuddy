@@ -2,6 +2,8 @@
     <th colspan="{{ seller_group_columns }}" scope="rowgroup">
         {% if group.seller %}
         <a href="/seller/{{ group.seller.id }}" class="badge bg-primary text-decoration-none db-report-seller"><i class="bi bi-person" aria-hidden="true"></i> {{ group.seller.name }}</a>
+        {% elif group.name|default(none) %}
+        <span class="badge bg-primary db-report-seller"><i class="bi bi-person" aria-hidden="true"></i> {{ group.name }}</span>
         {% else %}No seller assigned{% endif %}
     </th>
 </tr>

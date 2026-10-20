@@ -311,7 +311,7 @@ test('expanded seller list stays open when grouping is clicked, retaining search
     trigger(search, 'input');
     list.scrollTop = 36;
     const checkbox = nodes.dashboardLiveControls.children[1].children[0];
-    trigger(document, 'pointerdown', {target: checkbox});
+    assert.equal(document.pointerdown, undefined);
     assert.equal(seller.open, true);
     checkbox.checked = true;
     trigger(checkbox, 'change');
@@ -326,28 +326,14 @@ test('expanded seller list stays open when grouping is clicked, retaining search
     assert.equal(document.activeElement, seller.children[0]);
 });
 
-test('sidebar lists open independently while library dropdowns retain outside dismissal', () => {
-    const {api, nodes, document, trigger} = filterUI(false);
+test('sidebar lists stay open independently until explicitly collapsed', () => {
+    const {nodes, document, trigger} = filterUI(false);
     const [customer, seller] = nodes.dashboardLiveControls.children;
     customer.open = true;
-    trigger(customer, 'toggle');
     seller.open = true;
-    trigger(seller, 'toggle');
     assert.equal(customer.open, true);
     assert.equal(seller.open, true);
-    const library = document.createElement('div');
-    api.controls(library, selections(), ['customer_ids', 'seller_ids'], () => {});
-    const [first, second] = library.children;
-    first.open = true;
-    trigger(first, 'toggle');
-    assert.equal(customer.open, true);
-    assert.equal(seller.open, true);
-    second.open = true;
-    trigger(second, 'toggle');
-    assert.equal(first.open, false);
-    assert.equal(second.open, true);
-    trigger(document, 'pointerdown', {target: nodes.dashboardFiltersTitle});
-    assert.equal(second.open, false);
+    assert.equal(document.pointerdown, undefined);
     assert.equal(customer.open, true);
     assert.equal(seller.open, true);
     trigger(nodes.closeDashboardFilters, 'click');

@@ -24,7 +24,7 @@ REPORT_ENDPOINTS = {
     "reports.report_u2c",
     "reports.report_connect_impact",
     "revenue.reports_list",
-    "revenue.report_synapse_customers",
+    "reports.report_fabric_modernization",
 }
 
 HANDLED_ENDPOINTS = REPORT_ENDPOINTS | {

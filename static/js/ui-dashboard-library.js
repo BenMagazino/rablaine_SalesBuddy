@@ -34,11 +34,6 @@
         let generation = 0;
         let pending = false;
         let previewRows = null;
-        let widgetFilters = {};
-        const filterHost = document.createElement('div');
-        filterHost.id = 'libraryWidgetFilters';
-        filterHost.className = 'db-filter-row db-library-widget-filters';
-        document.getElementById('previewDimensions').before(filterHost);
 
         function eligibleVariants(definition) {
             return definition.variants.filter(variant =>
@@ -89,7 +84,7 @@
                 });
                 if (global.SBDashboardFilters) {
                     query.set('filter_context', JSON.stringify(
-                        global.SBDashboardFilters.context(widgetFilters)));
+                        global.SBDashboardFilters.context()));
                 }
                 const response = await global.fetch(
                     '/api/reports/dashboards/widget-preview?' + query, {signal: controller.signal});
@@ -127,15 +122,6 @@
         }
         function choose(definition) {
             selected = definition;
-            widgetFilters = global.SBDashboardFilters?.selections() || {};
-            global.SBDashboardFilters?.controls(filterHost, widgetFilters,
-                definition.supported_filters || [], (key, ids) => {
-                    widgetFilters = {...widgetFilters, [key]: ids};
-                    loadPreview();
-                });
-            if (global.SBDashboardFilters && !definition.supported_filters?.length) {
-                filterHost.textContent = 'Portfolio-wide. Customer and Seller filters are not supported.';
-            }
             results.querySelectorAll('button').forEach(button => {
                 button.setAttribute('aria-pressed', String(button.dataset.key === definition.key));
             });
@@ -212,7 +198,6 @@
                 await global.SBDashboardEditor.addWidget({
                         key: selected.key, variant_key: variant.key,
                         column_span: Number(widthSelect.value), row_span: previewRows,
-                        filters: widgetFilters,
                 });
                 pending = false;
                 global.SBDialog.close(dialog, 'added');

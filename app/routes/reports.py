@@ -22,6 +22,24 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('reports', __name__)
 
 
+@bp.route('/reports/fabric-modernization')
+def report_fabric_modernization():
+    """Compare recent modernization-source revenue with Fabric on the same period."""
+    from app.services.fabric_modernization import get_fabric_modernization_report
+
+    return render_template(
+        'report_fabric_modernization.html', report=get_fabric_modernization_report(),
+    )
+
+
+@bp.route('/api/reports/fabric-modernization')
+def api_fabric_modernization():
+    """Expose the report's saved-data calculation without a separate query implementation."""
+    from app.services.fabric_modernization import get_fabric_modernization_report
+
+    return jsonify(get_fabric_modernization_report())
+
+
 @bp.route('/reports/dashboards')
 def dashboards_hub():
     """Manage saved dashboards separately from their report views."""
@@ -815,14 +833,14 @@ def reports_hub():
                     'url': url_for('reports.report_marketing_insights'),
                 },
                 {
-                    'id': 'synapse-customers',
-                    'name': 'Synapse Customers',
+                    'id': 'fabric-modernization',
+                    'name': 'Fabric Modernization',
                     'description': (
-                        'New and current customers using Azure Synapse Analytics, '
-                        'grouped by seller.'
+                        'Recent Synapse, AAS, ADX and Azure Databricks revenue '
+                        'alongside Fabric spend, grouped by seller.'
                     ),
                     'icon': 'bi-database-gear',
-                    'url': url_for('revenue.report_synapse_customers'),
+                    'url': url_for('reports.report_fabric_modernization'),
                 },
             ],
         },

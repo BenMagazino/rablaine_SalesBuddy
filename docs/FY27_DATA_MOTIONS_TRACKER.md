@@ -13,12 +13,21 @@ Dashboard placement stays unchecked until you confirm it.
 
 - [ ] Coded
 - [ ] Added to dashboard
-- **Starting scope:** Synapse prospects, then AAS, ADX, and Azure Databricks
-  using observed product revenue. Add Fabric adoption and linked-work context.
+- **Starting scope:** Customers with positive Synapse, AAS, ADX, or Azure Databricks
+  revenue over the last three complete calendar months, alongside Fabric spend
+  for the same period.
 - **Boundary:** Consumption signals are not migration-readiness assessments.
   Azure Databricks is not evidence of non-Azure Databricks.
-- **Report/widget:**
-- **Notes / follow-up:**
+- **Report/widget:** Fabric Modernization report, replacing Synapse Customers.
+  Summary and Details widgets show report-qualified customers whose Other Analytics spend
+  exceeds Fabric spend, with seller sorting and viewer-controlled seller grouping.
+  Summary includes their count and combined Other Analytics spend for the same period.
+- **Revenue cutoffs:** Exclude Other Analytics totals below $50, or below $100 with positive
+  Fabric spend, using unrounded three-month net totals.
+- **Notes / follow-up:** One row per customer, source-product columns and Fabric Capacity
+  revenue, grouped by current seller. Partial monthly coverage is explicit.
+  Report and widget validated against saved revenue; user review and dashboard placement
+  remain pending.
 
 ### 2. [ ] Fabric acquisition
 

@@ -41,7 +41,6 @@ SURFACE_WIDTHS: dict[str, int | None | tuple[int, int | None]] = {
         "report_activity_coverage.html", "report_hygiene.html",
         "report_u2c.html", "dashboards.html",
         "revenue_seller_product_view.html", "revenue_reports_list.html",
-        "revenue_report_synapse_customers.html",
         "settings.html", "metrics.html", "connect_export.html", "admin_favicons.html",
     ], 1152),
     **dict.fromkeys([
@@ -53,7 +52,7 @@ SURFACE_WIDTHS: dict[str, int | None | tuple[int, int | None]] = {
         "report_one_on_one.html", "revenue_config.html",
         "partials/pod_view_content.html", "pod_form.html",
         "revenue_customer_view.html",
-        "report_manager_one_on_one.html",
+        "report_manager_one_on_one.html", "report_fabric_modernization.html",
         "revenue_seller_alerts.html", "revenue_import.html",
         "admin_panel.html", "analytics.html", "admin_ai_logs.html",
     ], 1344),

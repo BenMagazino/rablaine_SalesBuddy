@@ -886,13 +886,16 @@ const PageHelp = (function () {
       <p>Summary-only accounts remain selectable. Empty results and incomplete or failed syncs are explicit. Embedded reports stack the chooser and details without owning the page frame.</p>
     `},
     { pattern: /^\/reports\/revenue-reports/, title: 'Revenue Reports', content: `
-      <p>Open Synapse Customers to review adoption grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>
+      <p>Open Fabric Modernization to compare recent source-product and Fabric spend grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>
     `},
-    { pattern: /^\/reports\/synapse-customers/, title: 'Synapse Customers', content: `
-      <p>New shows customers whose first imported Synapse usage is within the last six complete imported months. Current includes customers with any Synapse spend in imported history.</p>
-      <p>The report remembers New or Current when you visit without an explicit mode. A mode supplied in the URL always wins.</p>
-      <p>Click any table heading to sort ascending or descending within its seller group. First Usage uses calendar dates, not fiscal-label text.</p>
-      <p>Total Revenue includes all imported history. Latest Month excludes the in-progress calendar month; Avg (Last 4mo) uses up to four complete imported months. A dash means no positive amount for that measure.</p>
+    { pattern: /^\/reports\/fabric-modernization/, title: 'Fabric Modernization', content: `
+      <p>One row per customer with positive net revenue in Synapse, Azure Analysis Services (AAS), Azure Data Explorer (ADX), or Azure Databricks over the last three complete calendar months.</p>
+      <p>Other Analytics combines Synapse, AAS, ADX and Azure Databricks revenue, excluding Fabric. Customers need at least $50 in Other Analytics spend, or at least $100 when Fabric revenue is positive. Cutoffs use unrounded net amounts, including credits.</p>
+      <p>Every product column and Other Analytics use the same summed period. The current partial month, future months and older history do not qualify customers.</p>
+      <p>Fabric revenue indicates an observed paid footprint, not proof of migration or readiness. No observed revenue is not proof of no adoption. Azure Databricks does not establish non-Azure Databricks inventory.</p>
+      <p>Partial monthly coverage is flagged; an unobserved product amount is Unknown rather than zero when months are missing.</p>
+      <p>The Fabric modernization dashboard widget includes only customers meeting these cutoffs whose Other Analytics spend is strictly greater than Fabric spend. Summary shows their count and combined Other Analytics spend; Details lists all of them. Both follow dashboard customer and seller scope. Use the dashboard's Group by seller viewer filter, or sort the Seller column in the flat list.</p>
+      <p>Click any table heading to sort ascending or descending within its seller group. Revenue sorts at source precision, not rounded display values.</p>
       <p>Customer links open matched Revenue pages. CSV, Clipboard and Email export all seller tables in their visible order; formatted exports retain account links.</p>
     `},
     { pattern: /^\/reports\/revenue\/?$/, title: 'Revenue Dashboard', content: `
