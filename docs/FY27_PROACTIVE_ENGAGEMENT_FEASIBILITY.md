@@ -300,7 +300,7 @@ large schema around data we have not established we can receive.
   measures. Never add them into a single dollar total.
 - **Show freshness per source.** Revenue, Fabric telemetry, renewal assessments,
   marketing, and cached MSX work refresh separately. Automatic Fabric/P-to-F refresh
-  is currently weekly for Data SEs; manual refresh remains available. Reading a
+  is currently weekly for Data SEs and sellers; manual refresh remains available. Reading a
   widget must not launch imports.
 - **Do not overstate history.** Use complete months for revenue comparisons and
   preserve unknown/gap states. Observed changes do not prove that an engagement

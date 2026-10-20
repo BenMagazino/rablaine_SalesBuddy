@@ -24,6 +24,19 @@
             .some(value => value != null && String(value).toLowerCase().includes(term))).slice(0, 15);
     }
 
+    function sellerGroups(items) {
+        const groups = new Map();
+        items.forEach(item => {
+            const key = item.seller?.id ?? null;
+            if (!groups.has(key)) groups.set(key, {seller: item.seller, rows: []});
+            groups.get(key).rows.push(item);
+        });
+        return [...groups.values()].sort((a, b) =>
+            (a.seller == null) - (b.seller == null)
+            || (a.seller?.name ?? '').localeCompare(b.seller?.name ?? '')
+            || (a.seller?.id ?? 0) - (b.seller?.id ?? 0));
+    }
+
     function createLatestReader(fetcher) {
         const requests = new Map();
         return {
@@ -71,6 +84,8 @@
         if (JSON.stringify(data.buckets) !== JSON.stringify(buckets)
             || data.customers.some(customer => !customer.buckets
                 || Array.isArray(customer.buckets)
+                || (customer.seller != null && (!Number.isInteger(customer.seller.id)
+                    || customer.seller.id <= 0 || typeof customer.seller.name !== 'string'))
                 || Object.entries(customer.buckets).some(([bucket, amount]) =>
                     !buckets.includes(bucket) || !Number.isFinite(amount)))) {
             throw new Error('Invalid whitespace grid response');
@@ -104,7 +119,7 @@
     }
 
     const helpers = {displayName, formatRevenue, visibleCustomers, matchingCustomers,
-        createLatestReader, requireGrid, parsePreferences};
+        createLatestReader, requireGrid, parsePreferences, sellerGroups};
     if (typeof module !== 'undefined' && module.exports) module.exports = helpers;
     if (!global.document) return;
     const root = document.querySelector('[data-sb-whitespace]');
@@ -119,6 +134,7 @@
     const frame = find('[data-bucket-frame]');
     const retries = {};
     const sorts = {};
+    const acquisitionTemplate = find('#fabricAcquisitionTable')?.cloneNode(true);
     let preferences = parsePreferences(null);
     const restoredReadings = new Set();
     let availableBuckets = [];
@@ -201,6 +217,10 @@
                 dimension: 'SuperStrategicPillar',
                 mode, buckets: selectedBuckets(),
                 showAll: find('#showAllCustomers').checked,
+                groupBySeller: {
+                    grid: find('#gridGroupBySeller').checked,
+                    acquisition: find('#acquisitionGroupBySeller')?.checked ?? false,
+                },
                 customer: selectedCustomer, query: search.value, scrolls,
                 sorts: Object.fromEntries(Object.entries(sorts).map(([key, sort]) =>
                     [key, sort.state])),
@@ -265,7 +285,40 @@
         }
     }
 
-    function makeTable(id, columns, host, rows) {
+    function setTableBodies(table, rows, grouped) {
+        const items = rows.map(row => ({
+            row,
+            seller: row.dataset.sellerId ? {
+                id: Number(row.dataset.sellerId), name: row.dataset.sellerName,
+            } : null,
+        }));
+        const groups = grouped ? sellerGroups(items) : [{rows: items}];
+        for (const group of groups) {
+            const body = table.createTBody();
+            if (grouped) {
+                const heading = element('tr', undefined, 'sb-whitespace-seller-heading');
+                heading.setAttribute('data-sb-sort-fixed', '');
+                const label = element('th');
+                label.colSpan = table.tHead.rows[0].cells.length;
+                label.scope = 'rowgroup';
+                if (group.seller) {
+                    const link = element('a', undefined,
+                        'badge bg-primary text-decoration-none');
+                    link.href = '/seller/' + group.seller.id;
+                    const icon = element('i', undefined, 'bi bi-person');
+                    icon.setAttribute('aria-hidden', 'true');
+                    link.append(icon, document.createTextNode(' ' + group.seller.name));
+                    label.append(link);
+                } else label.textContent = 'No seller assigned';
+                heading.append(label);
+                body.append(heading);
+            }
+            group.rows.forEach(item => body.append(item.row));
+        }
+        if (!table.tBodies.length) table.createTBody();
+    }
+
+    function makeTable(id, columns, host, rows, grouped = false) {
         const key = 'whitespace:' + id + ':' + JSON.stringify(columns);
         const previousSort = Object.hasOwn(preferences.sorts, key) ? preferences.sorts[key] :
             Object.hasOwn(sorts, key) ? sorts[key].state : saved.sorts?.[key];
@@ -281,8 +334,7 @@
             th.dataset.exportLabel = label;
             head.append(th);
         });
-        const body = table.createTBody();
-        rows.forEach(row => body.append(row));
+        setTableBodies(table, rows, grouped);
         host.replaceChildren(table);
         sorts[key] = global.SBTableSort.create(table);
         if (previousSort !== undefined) sorts[key].restore(previousSort);
@@ -290,6 +342,25 @@
             if (event.target.closest('[data-sb-table-sort]')) savePreferences();
         });
         return table;
+    }
+
+    function renderAcquisition() {
+        if (!acquisitionTemplate) return;
+        const previous = find('#fabricAcquisitionTable');
+        const state = global.SBTableSort.create(previous).state;
+        const table = acquisitionTemplate.cloneNode(true);
+        const rows = [...table.querySelectorAll('tr[data-row-key]')];
+        table.querySelectorAll('thead th').forEach(header => {
+            header.textContent = header.textContent.trim();
+        });
+        [...table.tBodies].forEach(body => body.remove());
+        setTableBodies(table, rows, find('#acquisitionGroupBySeller').checked);
+        table.dataset.exportVisible = String(mode === 'acquisition');
+        const reading = previous.closest('.sb-whitespace-reading');
+        const scrollTop = reading.scrollTop;
+        previous.replaceWith(table);
+        global.SBTableSort.create(table).restore(state);
+        reading.scrollTop = scrollTop;
     }
 
     function cell(row, text, value) {
@@ -315,6 +386,10 @@
         rows.map(customer => {
             const row = element('tr');
             row.dataset.customerId = customer.id;
+            if (customer.seller) {
+                row.dataset.sellerId = customer.seller.id;
+                row.dataset.sellerName = customer.seller.name;
+            }
             cell(row, '', customer.name).append(customerLink(customer));
             grid.buckets.forEach(bucket => {
                 const amount = customer.buckets[bucket];
@@ -334,8 +409,8 @@
             });
             cell(row, grid.buckets.length - Object.keys(customer.buckets).length);
             return row;
-        }));
-        table.dataset.exportVisible = String(rows.length > 0);
+        }), find('#gridGroupBySeller').checked);
+        table.dataset.exportVisible = String(rows.length > 0 && mode !== 'acquisition');
         host.hidden = rows.length === 0;
         find('#gridEmpty').hidden = rows.length > 0;
         find('#gridEmpty').textContent = 'No customers match this pillar scope.';
@@ -358,7 +433,7 @@
             find('#gridSummary').textContent = 'No pillar scope loaded.';
             find('[data-error="grid"]').hidden = true;
             setLoading('grid', false);
-            updateStatus('Choose pillars to begin');
+            if (mode === 'grid') updateStatus('Choose pillars to begin');
             return;
         }
         gridRequest = [...buckets];
@@ -367,7 +442,7 @@
         find('#gridResults table')?.setAttribute('data-export-visible', 'false');
         find('#gridEmpty').hidden = true;
         find('#gridSummary').textContent = 'Loading | ' + buckets.join(', ');
-        updateStatus('Loading whitespace grid');
+        if (mode === 'grid') updateStatus('Loading whitespace grid');
         retries.grid = () => loadGrid(gridRequest);
         return read('grid', '/api/reports/whitespace?buckets='
             + encodeURIComponent(buckets.join(',')) + '&show_all=1', data => {
@@ -620,7 +695,8 @@
     }
 
     function setMode(next, focus = false) {
-        if (!['grid', 'reverse', 'penetration'].includes(next)) next = 'grid';
+        const modes = Array.from(root.querySelectorAll('[data-mode]'), button => button.dataset.mode);
+        if (!modes.includes(next)) next = 'grid';
         mode = next;
         root.querySelectorAll('[data-mode]').forEach(button => {
             const active = button.dataset.mode === mode;
@@ -630,6 +706,15 @@
             if (active && focus) button.focus();
         });
         if (mode === 'penetration' && !penetrationLoaded) loadPenetration();
+        find('#fabricAcquisitionTable')?.setAttribute(
+            'data-export-visible', String(mode === 'acquisition'));
+        if (mode === 'acquisition') {
+            find('#gridTable')?.setAttribute('data-export-visible', 'false');
+            updateStatus(find('#acquisitionSummary').textContent);
+            restoreReading(mode);
+            return;
+        }
+        if (grid) renderGrid();
         if ((mode === 'grid' && grid) || (mode === 'penetration' && penetrationLoaded)
             || (mode === 'reverse' && !find('#reverseResults').hidden
                 && find('#reverseResults .sb-whitespace-reverse-section'))) {
@@ -644,13 +729,14 @@
     root.querySelectorAll('[data-mode]').forEach(button => {
         button.addEventListener('click', () => setMode(button.dataset.mode));
         button.addEventListener('keydown', event => {
-            const modes = ['grid', 'reverse', 'penetration'];
+            const modes = Array.from(root.querySelectorAll('[data-mode]'),
+                item => item.dataset.mode);
             const index = modes.indexOf(mode);
             let next;
             if (event.key === 'ArrowRight') next = modes[(index + 1) % modes.length];
-            if (event.key === 'ArrowLeft') next = modes[(index + 2) % modes.length];
+            if (event.key === 'ArrowLeft') next = modes[(index + modes.length - 1) % modes.length];
             if (event.key === 'Home') next = modes[0];
-            if (event.key === 'End') next = modes[2];
+            if (event.key === 'End') next = modes[modes.length - 1];
             if (next) { event.preventDefault(); setMode(next, true); }
         });
     });
@@ -664,6 +750,15 @@
         loadGrid();
     });
     find('#showAllCustomers').addEventListener('change', renderGrid);
+    find('#gridGroupBySeller').addEventListener('change', () => {
+        renderGrid();
+        saveView();
+    });
+    find('#acquisitionGroupBySeller')?.addEventListener('change', () => {
+        renderAcquisition();
+        saveView();
+    });
+    document.addEventListener('DOMContentLoaded', renderAcquisition);
     search.addEventListener('input', searchCustomers);
     search.addEventListener('keydown', event => {
         if (event.key === 'Escape') { ++searchVersion; hideMatches(); }
@@ -710,7 +805,11 @@
         selectedCustomer = saved.customer;
         loadReverse();
     }
-    setMode(saved.mode || 'grid');
+    find('#gridGroupBySeller').checked = saved.groupBySeller?.grid === true;
+    if (find('#acquisitionGroupBySeller')) {
+        find('#acquisitionGroupBySeller').checked = saved.groupBySeller?.acquisition === true;
+    }
+    setMode(saved.mode || root.dataset.initialMode || 'grid');
     restorePreferences();
     loadDefaults();
 })(typeof window === 'undefined' ? globalThis : window);

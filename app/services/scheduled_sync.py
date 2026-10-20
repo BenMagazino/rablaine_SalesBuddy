@@ -7,7 +7,7 @@ The sync time is randomly assigned per-user (stored in UserPreference) in
 Sales Buddy instances. If missed (server was off), catches up on startup.
 
 No environment variables needed - everything is stored in the database.
-Data SEs also receive independent weekly Fabric refreshes with startup catch-up.
+Data SEs and sellers receive independent weekly Fabric refreshes with startup catch-up.
 """                                                                          
 import random
 import time
@@ -154,7 +154,7 @@ FABRIC_RETRY_INTERVAL_HOURS = 1
 
 
 def _fabric_sync_due(now: datetime | None = None) -> bool:
-    """Refresh Fabric 360 when either source is missing or a week old, for Data SEs."""
+    """Refresh stale or missing Fabric 360 sources for Data SEs and sellers."""
     from app.models import Customer, FabricConsumptionImport, PToFImport, SyncStatus
     from app.services.fabric_consumption import SYNC_TYPE
     from app.services.se_specialty import is_data_se

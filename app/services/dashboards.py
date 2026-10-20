@@ -18,6 +18,8 @@ from app.services.fabric_consumption import (
 )
 from app.services.hygiene import get_hygiene_gaps_widget
 from app.services.fabric_modernization import get_fabric_modernization_widget
+from app.services.fabric_acquisition import get_fabric_acquisition_widget
+from app.services.se_specialty import has_specialty_access
 from app.services.manager_one_on_one import get_initiative_tracker_widget
 from app.services.ptof import get_ptof_renewals_widget
 from app.services.revenue_analysis import get_revenue_attention_widget
@@ -91,6 +93,7 @@ class WidgetDefinition:
     requirements: tuple[str, ...] = ()
     scope: str = 'FY27 Data'
     supported_filters: tuple[str, ...] = ()
+    specialty: str | None = None
 
 
 WIDGET_REQUIREMENTS = {
@@ -191,6 +194,23 @@ WIDGET_DEFINITIONS = {
             supported_filters=(*FILTER_LABELS, 'group_by_seller'),
         ),
         WidgetDefinition(
+            'fabric.acquisition', 'Fabric acquisition',
+            'At least $2,000/mo across AI, Databases and non-Fabric Analytics, '
+            'with no positive Fabric ACR.',
+            'Whitespace Analysis / Fabric Acquisition', (
+                WidgetVariant(
+                    'metric', 'Summary', 'partials/widgets/fabric_acquisition.html',
+                    (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 4,
+                ),
+                WidgetVariant(
+                    'detailed', 'Details', 'partials/widgets/fabric_acquisition.html',
+                    (6, 12), MIN_WIDGET_HEIGHT, 5,
+                ),
+            ),
+            get_fabric_acquisition_widget, scope='Avg monthly ACR / last 3 complete months',
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'), specialty='data',
+        ),
+        WidgetDefinition(
             'fabric.modernization', 'Fabric modernization',
             'Average monthly ACR for customers whose Other Analytics spend exceeds Fabric.',
             'Fabric Modernization', (
@@ -271,6 +291,7 @@ def get_widget_catalog() -> list[dict[str, Any]]:
             ],
         }
         for definition in WIDGET_DEFINITIONS.values()
+        if not definition.specialty or has_specialty_access(definition.specialty)
     ]
 
 

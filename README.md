@@ -141,7 +141,8 @@ standalone UI iterations using entirely fictional data. See the
 [archive guide](design-studies/README.md) for validation and capture instructions.
 
 - **Native desktop workbench** - application-owned layouts, browser defaults, controls and Graphite, Midnight, Harbor and Carbon dark/light themes replace the Bootstrap UI framework. Choose your theme in Settings > Appearance; the palette saves independently of the Light/Dark switch and follows you across pages and restarts. Independent Bootstrap Icons remain. Shared shortcuts respect guarded editors and dialogs, and closed overlays do not consume the reading area. Ctrl+Enter saves notes from the rich-text editor through the normal Save button, including validation and pending-save guards.
-- **SE specialty preference** - Settings > SE Mode lets you choose Data SE, Infra SE, Apps and AI SE, or Other. The choice saves immediately, defaults to Data SE, and survives backups and switching modes. Data SE enables the customer Fabric tab and weekly Fabric 360 refreshes.
+- **SE specialty preference** - Settings > SE Mode lets you choose Data SE, Infra SE, Apps and AI SE, or Other. The choice saves immediately, defaults to Data SE, and survives backups and switching modes. Sellers receive features for every SE specialty, regardless of their saved SE selection. Data SEs and sellers get the customer Fabric tab and weekly Fabric 360 refreshes.
+- **Fabric Acquisition** - Whitespace Analysis includes a Data SE/seller acquisition tab and shared dashboard Summary/Details widgets. Compare average monthly AI, Databases and Other Analytics ACR across the last three complete calendar months. Other Analytics excludes Fabric Capacity. The queue requires relevant positive spend, covered months, and no positive monthly net Fabric ACR. Widgets additionally require at least $2,000/month combined AI, Databases and Other Analytics ACR; the report retains smaller customers. Incomplete potential customers stay unknown rather than implying no adoption.
 - **Customer dossier** - native Engagements, Notes, Opportunities and Revenue tabs keep full account identity, ownership, contacts, relationships and rich notes. Commands and counts stay visible, data headings sort raw values both ways, and Back restores the selected tab, pipeline search and reading context. Account context and contact edits remain manual with protected drafts; original photo paste and Auto-fill saves remain explicit. Done saves and exits contact editing. A new contact's Save persists it immediately, so Cancel discards only unsaved entries and edits, not contacts already saved.
 - **Opportunity detail** - native standalone and MSX Workspace previews share complete cached/fresh details, linked milestones and original forecast editors. Read-only opening updates the local MSX-detail cache, not remote team or business records. Milestone headings sort raw values; Back retains reading and sorting. Comment/team/favorite writes remain explicit, with protected drafts, pending guards and honest failures.
 - **Notes directory** - a native chronological stream keeps original customer identity, local call dates, excerpts and every relationship link. All/Customer/General filters retain seller scope; page size is remembered locally and pagination preserves scope. Commands, displayed range and total stay visible, and Back restores reading position. Shared previews retain the canonical rich note body.
@@ -193,10 +194,10 @@ standalone UI iterations using entirely fictional data. See the
   includes capacities, throttling, utilization history, and customer-wide reserved-instance
   versus PAYG revenue with fiscal YTD totals and monthly splits. Revenue share is not
   per-capacity reservation coverage. Import uses customer
-  TPIDs and your corporate Azure sign-in. In SE Mode with Data SE selected, a full
+  TPIDs and your corporate Azure sign-in. For Data SEs and sellers, a full
   refresh runs weekly with on-boot catch-up, independently of milestone auto-sync.
   Failed or interrupted overdue imports retry after an hour, retaining the last good
-  snapshot. Other specialties and DSS Mode do not sync automatically. Data SEs also
+  snapshot. Non-Data SEs do not sync automatically. Data SEs and sellers also
   have a Fabric tab on each customer with the same workload, capacity and revenue
   details, loaded from saved data only when the tab is opened.
 - **P to F** - Reports > P to F imports Power BI Premium renewal details and the
@@ -205,7 +206,7 @@ standalone UI iterations using entirely fictional data. See the
   Fabric tab, even when that customer has no consumption snapshot. The report has
   a shared Fabric 360 refresh and progress indicator. One job updates workloads,
   capacities, revenue and renewals. Startup and weekly catch-up refresh both if
-  either snapshot is stale or missing, only in SE Mode with the Data SE specialty. Source statuses,
+  either snapshot is stale or missing, for Data SEs and sellers. Source statuses,
   blank amounts and percentages above 100% are preserved. See [P to F](docs/p_to_f.md).
 - **Milestone Tracker** - native desktop queue and calendar with MSX sync, task management, and AI matching from call notes. Search all saved milestone fields (including cached forecast comments) and use the searchable customer dropdown alongside the existing filters. Data headings sort both ways with raw values; CSV, Clipboard and Email preserve the filtered list. Back restores filters, view, calendar month, sorting and reading position.
 - **Milestones directory** - browse customer-linked records in the native desktop frame, preserving newest-added order, source URLs and linked-call counts. Sort each data heading both ways; Back restores sorting and reading position. Open the existing details, New Milestone or Milestone Tracker without changing the cached data.

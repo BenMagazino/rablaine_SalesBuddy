@@ -615,7 +615,7 @@ def operation_schedules() -> dict[str, dict[str, Any]]:
     }
     schedules['fabric'] = {
         'label': f'Every {FABRIC_SYNC_INTERVAL_DAYS} days' if is_data_se() else 'On demand',
-        'detail': 'Automatic refresh is for Data SEs only. Checked at startup and every '
+        'detail': 'Automatic refresh is for Data SEs and sellers. Checked at startup and every '
                   'five minutes; refreshes telemetry, revenue and P to F together when '
                   'either snapshot is stale or missing. Requires customer TPIDs. '
                   'Failed attempts wait one hour.',

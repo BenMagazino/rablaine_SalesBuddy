@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 import pytest
 
 from app.models import (
-    Customer, StrategicPillarRevenueData, RevenueImport, db,
+    Customer, Seller, StrategicPillarRevenueData, RevenueImport, db,
 )
 
 
@@ -55,7 +55,7 @@ def whitespace_data(app):
 
 @pytest.mark.parametrize("embedded", [False, True])
 def test_native_structure(client, embedded):
-    """Render three modes without legacy cards, tabs or injected page scraping."""
+    """Render the existing modes plus Data-specialty Fabric acquisition."""
     with patch("app.services.whitespace.has_pillar_data", return_value=True):
         response = client.get("/reports/whitespace" + ("?embed=1" if embedded else ""))
     assert response.status_code == 200
@@ -64,10 +64,12 @@ def test_native_structure(client, embedded):
     assert root["data-embedded"] == str(embedded).lower()
     assert ("sb-directory-frame" in root["class"]) is not embedded
     assert ("sb-directory-frame-wide" in root["class"]) is not embedded
-    assert len(root.select('[role="tab"]')) == 3
-    assert len(root.select('[role="tabpanel"]')) == 3
+    assert len(root.select('[role="tab"]')) == 4
+    assert len(root.select('[role="tabpanel"]')) == 4
     assert root.select_one("dialog.sb-dialog [data-bucket-frame]")
     assert root.select_one("#bucketCheckboxes")
+    assert root.select_one('#gridGroupBySeller[type="checkbox"]')
+    assert root.select_one('#acquisitionGroupBySeller[type="checkbox"]')
     assert not root.select(".sb-whitespace-tools button")
     assert root.select_one('[data-error="preferences"][hidden] [role="alert"]')
     assert root.select_one('[data-retry="preferences"]')
@@ -120,6 +122,23 @@ def test_recent_average_and_grid_scope(client, whitespace_data):
     assert client.get("/api/reports/whitespace").get_json() == {
         "customers": [], "buckets": [],
     }
+
+
+def test_grid_includes_current_seller_and_unassigned_customers(client, whitespace_data):
+    """Grouping metadata follows local ownership without changing spend or membership."""
+    seller = Seller(name='Whitespace owner')
+    db.session.add(seller)
+    customer = db.session.get(Customer, whitespace_data[0])
+    customer.seller = seller
+    db.session.commit()
+    rows = client.get(
+        '/api/reports/whitespace?buckets=Databases,Analytics&show_all=1',
+    ).get_json()['customers']
+    by_id = {row['id']: row for row in rows}
+    assert set(by_id) == set(whitespace_data[:2])
+    assert by_id[customer.id]['seller'] == {'id': seller.id, 'name': seller.name}
+    assert by_id[whitespace_data[1]]['seller'] is None
+    assert by_id[customer.id]['buckets'] == {'Databases': 200.12}
 
 
 def test_reverse_keeps_historical_bucket_and_product_meaning(client, whitespace_data):

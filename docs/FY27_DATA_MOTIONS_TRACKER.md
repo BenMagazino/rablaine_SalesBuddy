@@ -33,16 +33,25 @@ Dashboard placement stays unchecked until you confirm it.
   Report and widget validated against saved revenue. Added to the FY27 Data Motions
   dashboard and confirmed complete for this scope.
 
-### 2. [ ] Fabric acquisition
+### 2. [x] Fabric acquisition
 
-- [ ] Coded
-- [ ] Added to dashboard
+- [x] Coded
+- [x] Added to dashboard
 - **Starting scope:** Relevant Analytics/Data/AI footprint with no observed
   Fabric ACR in a defined, covered period.
 - **Boundary:** Missing coverage stays unknown. No observed Fabric ACR does not
   prove no Fabric adoption, and does not establish M365 licensing.
-- **Report/widget:**
-- **Notes / follow-up:**
+- **Report/widget:** Whitespace Analysis > Fabric Acquisition, with Summary and
+  Details widgets backed by the same source, with a widget-only $2,000/month minimum
+  combined AI, Databases and non-Fabric Analytics footprint. Available for Data SEs
+  and sellers. The report retains customers below that minimum.
+- **Notes / follow-up:** Display AI, Databases and Other Analytics (excluding Fabric) from the
+  source-defined strategic pillar feed. Require three complete covered calendar months
+  and no positive monthly net Fabric ACR. Show average monthly ACR, not period totals.
+  Incomplete potential customers remain unknown and are excluded from the queue.
+  Verified against saved revenue, including exact monthly amounts, specialty access,
+  scoped widgets and seller grouping. Added to the FY27 Data Motions dashboard
+  and confirmed complete for this scope.
 
 ### 3. [x] Fabric expansion
 

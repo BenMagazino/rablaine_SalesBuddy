@@ -1719,8 +1719,30 @@ def report_whats_new():
 def report_whitespace():
     """Whitespace report: find gaps in customer technology adoption."""
     from app.services.whitespace import has_pillar_data
+    from app.services.fabric_acquisition import get_fabric_acquisition_report
+    from app.services.se_specialty import has_specialty_access
+
+    acquisition_requested = request.args.get('view') == 'fabric-acquisition'
+    allowed = has_specialty_access('data')
+    if acquisition_requested and not allowed:
+        abort(403, description='Fabric Acquisition is available for Data SEs and sellers.')
     has_revenue_data_flag = has_pillar_data()
-    return render_template('report_whitespace.html', has_revenue_data=has_revenue_data_flag)
+    return render_template(
+        'report_whitespace.html', has_revenue_data=has_revenue_data_flag,
+        acquisition=get_fabric_acquisition_report() if allowed else None,
+        initial_mode='acquisition' if acquisition_requested else '',
+    )
+
+
+@bp.route('/api/reports/whitespace/fabric-acquisition')
+def api_fabric_acquisition() -> Response | tuple[Response, int]:
+    """Read the same covered acquisition queue as the tab and dashboard widget."""
+    from app.services.fabric_acquisition import get_fabric_acquisition_report
+
+    data = get_fabric_acquisition_report()
+    if not data['available']:
+        return jsonify(error='Fabric Acquisition is available for Data SEs and sellers.'), 403
+    return jsonify(data)
 
 
 @bp.route('/api/reports/whitespace/pillars')
@@ -1754,7 +1776,7 @@ def api_whitespace_grid():
         min_revenue: minimum recent average monthly revenue to count as spend (default 0)
 
     Returns JSON with:
-        customers: list of {id, name, nickname, buckets: {pillar: average_revenue}}
+        customers: list of {id, name, nickname, seller, buckets: {pillar: average_revenue}}
         buckets: list of selected strategic pillar names
     """
     bucket_param = request.args.get('buckets', '')
@@ -1816,7 +1838,7 @@ def api_whitespace_grid():
         return jsonify(customers=[], buckets=selected_buckets)
 
     # Fetch customer details
-    customers = Customer.query.filter(
+    customers = Customer.query.options(db.joinedload(Customer.seller)).filter(
         Customer.id.in_(target_ids)
     ).order_by(Customer.name).all()
 
@@ -1826,6 +1848,7 @@ def api_whitespace_grid():
             'id': c.id,
             'name': c.name,
             'nickname': c.nickname,
+            'seller': {'id': c.seller.id, 'name': c.seller.name} if c.seller else None,
             'buckets': customer_buckets.get(c.id, {}),
         })
 

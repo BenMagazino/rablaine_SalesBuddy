@@ -170,6 +170,25 @@ def report_fabric_consumption(customer_id: int | None = None, overview: bool = F
 
 
 @tool(
+    'report_fabric_acquisition',
+    'Read the Fabric Acquisition tab of Whitespace Analysis for Data SEs and sellers. '
+    'Returns covered customers with positive AI, Databases or Analytics excluding Fabric '
+    'and no positive monthly net Fabric ACR in the last three complete calendar months. '
+    'All displayed amounts are three-month totals divided by 3. Incomplete customers '
+    'are excluded and counted as unknown. Saved observations do not prove non-adoption.',
+    {'type': 'object', 'properties': {}},
+)
+def report_fabric_acquisition() -> dict:
+    """Reuse the report and dashboard acquisition queue without importing data."""
+    from app.services.fabric_acquisition import get_fabric_acquisition_report
+
+    data = get_fabric_acquisition_report()
+    if not data['available']:
+        return {'error': 'Fabric Acquisition is available for Data SEs and sellers.'}
+    return data
+
+
+@tool(
     'report_fabric_modernization',
     'Read Fabric Modernization: one row per customer with positive recent Synapse, '
     'Azure Analysis Services, Azure Data Explorer, or Azure Databricks revenue. '

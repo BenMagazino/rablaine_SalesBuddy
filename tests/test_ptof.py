@@ -200,15 +200,16 @@ def test_complete_empty_scope_can_remove_outdated_renewals(accounts, monkeypatch
     assert ptof.get_ptof_report()['snapshot'] is not None
 
 
-@pytest.mark.parametrize(('role', 'specialty'), [
-    ('se', 'infra'), ('se', 'apps_ai'), ('se', 'other'), ('dss', 'data'),
+@pytest.mark.parametrize(('role', 'specialty', 'due'), [
+    ('se', 'infra', False), ('se', 'apps_ai', False), ('se', 'other', False),
+    ('dss', 'data', True), ('dss', 'infra', True),
 ])
-def test_weekly_refresh_is_gated_to_current_data_se(accounts, role, specialty):
-    """Saved Data specialty cannot enable automation while running in DSS Mode."""
+def test_weekly_refresh_includes_data_ses_and_all_sellers(accounts, role, specialty, due):
+    """Non-Data SEs stay manual; sellers always receive the shared refresh schedule."""
     pref = accounts[2]
     pref.user_role, pref.se_specialty = role, specialty
     db.session.commit()
-    assert not scheduled_sync._fabric_sync_due()
+    assert scheduled_sync._fabric_sync_due() is due
 
 
 def test_renewals_share_the_fabric_schedule(accounts):

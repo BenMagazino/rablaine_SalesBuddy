@@ -61,6 +61,16 @@
 
 ## Coding Standards & Best Practices
 
+### Specialty Feature Access
+- Sellers (DSS Mode, `user_role == 'dss'`) receive features for **every** SE specialty.
+- Specialty gates select features for SEs; they must never exclude sellers.
+- Use `has_specialty_access(specialty)` from `app/services/se_specialty.py` for new gates.
+  The existing `is_data_se()` wrapper also includes sellers.
+- Apply this consistently to pages, tabs, APIs, widgets, automatic sync, and help text.
+- Keep specialty selection SE-only and preserve the stored specialty when roles change.
+- Test sellers with a different saved SE specialty, the matching SE specialty, and
+  nonmatching SE specialties. Seller access must not depend on their saved specialty.
+
 ### Code Style
 - Follow PEP 8 style guide for Python code
 - Use type hints for function parameters and return values

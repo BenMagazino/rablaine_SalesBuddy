@@ -18,6 +18,10 @@
 #bucketCheckboxes label, .sb-whitespace-scope label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
 .sb-whitespace input[type="checkbox"] { margin: 0; accent-color: var(--sb-ui-accent); }
 .sb-whitespace-scope { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 10px 24px; border-bottom: 1px solid var(--sb-ui-line); color: var(--sb-ui-muted); font-size: 12px; }
+.sb-whitespace-scope > span { margin-right: auto; }
+.sb-whitespace-scope label { white-space: nowrap; }
+.sb-whitespace .sb-whitespace-seller-heading th { position: static; text-align: left; background: var(--sb-ui-context); color: var(--sb-ui-ink); font-size: 0.875rem; font-weight: 600; }
+.sb-whitespace .sb-whitespace-seller-heading .badge { font-size: inherit; font-weight: inherit; }
 .sb-whitespace-reading { flex: 1; min-height: 0; overflow: auto; overflow-anchor: none; scrollbar-gutter: stable; }
 .sb-whitespace table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .sb-whitespace :is(th, td) { padding: 9px 16px; border-bottom: 1px solid var(--sb-ui-grid-line); vertical-align: top; }
@@ -60,3 +64,7 @@
 .sb-whitespace-dialog ul { list-style: none; padding: 0; margin: 0; }
 .sb-whitespace-dialog li { padding: 7px 0; border-bottom: 1px solid var(--sb-ui-grid-line); }
 .sb-whitespace[data-embedded="true"] .sb-whitespace-reading { overflow: visible; }
+.sb-acquisition-table { table-layout: fixed; }
+.sb-acquisition-table :is(th, td):first-child { width: 36%; overflow-wrap: anywhere; text-align: left; }
+.sb-acquisition-table .sb-table-sort-button { justify-content: flex-end; }
+.sb-acquisition-table th:first-child .sb-table-sort-button { justify-content: flex-start; }

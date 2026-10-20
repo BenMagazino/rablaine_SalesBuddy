@@ -61,9 +61,9 @@ P to F is part of the durable `fabric` sync. Refreshing from either the Fabric
 one progress indicator and no separate P to F operation in Sync Status.
 The weekly scheduler checks at startup and every five minutes. If either the
 Fabric or renewal snapshot is missing or at least seven days old, it queues the
-shared job. Automatic work requires the current Data SE specialty in SE Mode,
-including a recheck when a queued job executes. Other specialties and DSS Mode
-can refresh manually. Failed/interrupted overdue attempts wait an hour before
+shared job. Automatic work is available for Data SEs and sellers, regardless of a
+seller's saved SE specialty, including a recheck when a queued job executes.
+Non-Data SEs can refresh manually. Failed/interrupted overdue attempts wait an hour before
 the scheduler retries.
 
 The existing complete-pagination Power BI reader uses a report-isolated token

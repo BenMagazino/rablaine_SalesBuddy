@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.migrations import _migrate_se_specialty
 from app.models import UserPreference, db
-from app.services.se_specialty import SE_SPECIALTIES, is_data_se
+from app.services.se_specialty import SE_SPECIALTIES, has_specialty_access, is_data_se
 
 
 @pytest.fixture
@@ -159,6 +159,30 @@ def test_missing_preference_defaults_to_data_without_creating_a_row(app, monkeyp
         monkeypatch.setattr(UserPreference, 'query', query)
         assert is_data_se()
         query.add.assert_not_called()
+
+
+@pytest.mark.parametrize('specialty', SE_SPECIALTIES)
+def test_sellers_have_every_specialty_without_changing_saved_selection(
+    specialty_preference, specialty,
+):
+    """A seller's saved SE selection never limits specialty feature access."""
+    pref = specialty_preference
+    pref.user_role, pref.se_specialty = 'dss', 'infra'
+    db.session.commit()
+    assert has_specialty_access(specialty)
+    assert is_data_se()
+    db.session.refresh(pref)
+    assert pref.se_specialty == 'infra'
+
+
+@pytest.mark.parametrize('specialty', SE_SPECIALTIES)
+def test_se_access_matches_only_the_saved_specialty(specialty_preference, specialty):
+    """Future specialty gates keep SEs scoped without limiting seller mode."""
+    pref = specialty_preference
+    pref.se_specialty = specialty
+    db.session.commit()
+    for requested in SE_SPECIALTIES:
+        assert has_specialty_access(requested) is (requested == specialty)
 
 
 @pytest.mark.parametrize('existing_column', [False, True])

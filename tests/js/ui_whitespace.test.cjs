@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const {displayName, formatRevenue, visibleCustomers, matchingCustomers, createLatestReader,
-    requireGrid, parsePreferences} = require('../../static/js/ui-whitespace.js');
+    requireGrid, parsePreferences, sellerGroups} = require('../../static/js/ui-whitespace.js');
 
 const customers = [
     {id: 1, name: 'Beta', nickname: 'Nickname', tpid: 123456, buckets: {Databases: 1234.56}},
@@ -29,6 +29,22 @@ test('display rounding does not mutate raw revenue or rounded-zero coverage', ()
     assert.equal(visibleCustomers([customers[2]], ['Databases', 'Analytics'], false).length, 1);
 });
 
+test('seller grouping keeps distinct identities, unassigned last and input order intact', () => {
+    const rows = [
+        {id: 1, seller: null},
+        {id: 2, seller: {id: 3, name: 'Beta'}},
+        {id: 3, seller: {id: 2, name: 'Alpha'}},
+        {id: 4, seller: {id: 1, name: 'Alpha'}},
+        {id: 5, seller: {id: 2, name: 'Alpha'}},
+        {id: 6},
+    ];
+    const groups = sellerGroups(rows);
+    assert.deepEqual(groups.map(group => group.seller?.id ?? null), [1, 2, 3, null]);
+    assert.deepEqual(groups.map(group => group.rows.map(row => row.id)), [[4], [3, 5], [2], [1, 6]]);
+    assert.deepEqual(rows.map(row => row.id), [1, 2, 3, 4, 5, 6]);
+    assert.deepEqual(sellerGroups([]), []);
+});
+
 test('reverse search matches name, nickname and numeric TPID with bounded results', () => {
     for (const term of ['BE', ' nickname ', '3456']) {
         assert.deepEqual(matchingCustomers(customers, term), [customers[0]]);
@@ -47,6 +63,10 @@ test('grid responses must match the requested pillar selection', () => {
         buckets: {Databases: '1.2K'}}]}, response.buckets), /Invalid whitespace/);
     assert.throws(() => requireGrid({...response, customers: [{...customers[0],
         buckets: {Unexpected: 1}}]}, response.buckets), /Invalid whitespace/);
+    for (const seller of [{id: '1', name: 'Owner'}, {id: 0, name: 'Owner'}, {id: 1}]) {
+        assert.throws(() => requireGrid({...response, customers: [{...customers[0], seller}]},
+            response.buckets), /Invalid whitespace/);
+    }
 });
 
 test('latest read wins even when canceled transport returns late', async () => {

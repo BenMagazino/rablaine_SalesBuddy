@@ -45,10 +45,11 @@ def add_snapshot(imported_at: datetime) -> None:
 
 @pytest.mark.parametrize(('role', 'specialty', 'visible'), [
     ('se', 'data', True), (None, 'data', True), ('se', 'infra', False),
-    ('se', 'apps_ai', False), ('se', 'other', False), ('dss', 'data', False),
+    ('se', 'apps_ai', False), ('se', 'other', False), ('dss', 'data', True),
+    ('dss', 'infra', True),
 ])
 def test_customer_fabric_tab_visibility(client, fabric_user, monkeypatch, role, specialty, visible):
-    """Only Data SEs get a pinned, lazy-loaded tab; page rendering never imports."""
+    """Data SEs and all sellers get the pinned tab; page rendering never imports."""
     pref, customer = fabric_user
     pref.user_role, pref.se_specialty = role, specialty
     db.session.commit()
@@ -88,14 +89,17 @@ def test_non_data_specialties_never_start_automatic_import(app, fabric_user, mon
     sync.assert_not_called()
 
 
-def test_dss_does_not_sync_saved_data_specialty(app, fabric_user, monkeypatch):
-    """Switching to DSS pauses automation without erasing the saved Data specialty."""
+def test_dss_syncs_with_non_data_saved_specialty(app, fabric_user, monkeypatch):
+    """Sellers receive automatic Fabric refresh independently of the stored specialty."""
     pref, _ = fabric_user
     pref.user_role = 'dss'
+    pref.se_specialty = 'infra'
     db.session.commit()
     sync = Mock()
     monkeypatch.setattr(fabric_consumption, 'sync_fabric_360', sync)
-    assert scheduled_sync.run_fabric_sync_if_due(app) is None
+    assert scheduled_sync._fabric_sync_due()
+    result = scheduled_sync.run_fabric_sync_if_due(app)
+    assert result['accepted'] is True
     sync.assert_not_called()
 
 
@@ -121,7 +125,7 @@ def test_report_explains_current_sync_schedule(client, fabric_user, specialty):
                              'html.parser')
         footer = page.select_one('.sb-page-status').text
         assert ('Refreshes weekly' in footer) is (specialty == 'data')
-        assert ('available in SE Mode with the Data SE specialty' in footer) is (
+        assert ('available for Data SEs and sellers' in footer) is (
             specialty != 'data')
 
 

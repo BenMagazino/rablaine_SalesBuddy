@@ -221,7 +221,7 @@ def sync_fabric_360(progress: Callable | None = None) -> dict:
     job = db.session.get(Job, job_id) if job_id is not None else None
     if job is not None and job.initiator == "scheduled" and not is_data_se():
         return {"success": True, "skipped": True,
-                "message": "Automatic Fabric 360 refresh requires the Data SE specialty."}
+                "message": "Automatic Fabric 360 refresh is for Data SEs and sellers."}
 
     def report_stage(event: dict, source: str, offset: int, span: int) -> None:
         """Keep both source phases on the same progress scale and job."""
