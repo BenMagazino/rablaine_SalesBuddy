@@ -590,12 +590,18 @@ def api_customer_contact_photo(contact_id):
 
 @customers_bp.route('/api/customer/<int:customer_id>/info')
 def api_customer_info(customer_id):
-    """Return customer details for the note-form customer flyout."""
+    """Return account-info content as JSON or a read-only preview fragment."""
     customer = Customer.query.options(
         db.joinedload(Customer.territory),
         db.joinedload(Customer.seller),
         db.subqueryload(Customer.verticals),
     ).filter_by(id=customer_id).first_or_404()
+
+    if request.args.get('view') == 'preview':
+        return render_template(
+            'partials/customer_info_preview.html', customer=customer,
+            opportunities=sorted(customer.opportunities.all(), key=lambda opp: opp.name),
+        )
 
     opps = []
     for opp in customer.opportunities.all():

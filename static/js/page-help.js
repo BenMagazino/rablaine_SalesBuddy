@@ -376,15 +376,24 @@ const PageHelp = (function () {
       <p>All notes tagged with this topic, across all dates and seller roles.
       The full description, total tagged-note count and unique account count remain available.</p>
       <ul>
-        <li>Group by account starts collapsed. Expand an account to see its tagged notes
-        and note count; multiple accounts can stay open. Accounts are ordered by their newest
-        tagged note. No Customer keeps unassigned notes outside the account count.</li>
+        <li>Group by account starts collapsed. Use the arrow beside an account to expand
+        its notes; multiple accounts can stay open. Account headers show Seller, Territory
+        and note count, ordered by their newest tagged note. No Customer keeps unassigned
+        notes outside the account count.</li>
+        <li>Account names open focused account previews. Note dates open note-detail
+        previews. Close a preview to keep your place, or choose Full Page for the complete
+        record and editing. Modified clicks retain normal link navigation.</li>
+        <li>Note preview shows up to 250 characters across opening paragraphs, so short
+        greetings do not hide the substance. Topic matches are highlighted in both
+        excerpts and in the note modal. Topic context shows the first
+        paragraph containing the topic phrase, with matches highlighted. A message explains
+        when the topic is already in the opening preview or is tagged without matching text.</li>
         <li>Choose All notes for the flat list. Your view choice is remembered across topics
         and app restarts. Back restores your view, expanded accounts and reading position.</li>
         <li>Newest first is the default within each account and the flat list. Sort Name, Note date, Seller, Territory,
         Topics or Partners in either direction. Back restores sorting and reading position.</li>
-        <li>View note opens the original note reader. Customer and relationship links
-        open their original details; note bodies and editing workflows are unchanged.</li>
+        <li>In All notes, View note opens the original note reader. Seller, Territory,
+        Topics and Partners links open their original details; editing workflows are unchanged.</li>
         <li>Edit Topic opens the existing manual form. Delete asks for confirmation
         and removes the topic from associated notes without deleting the notes.
         Cancel or Escape leaves everything unchanged; failed deletion retains associations.</li>

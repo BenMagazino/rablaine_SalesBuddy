@@ -1,0 +1,14 @@
+{% from 'partials/customer_favicon.html' import customer_favicon %}
+<section class="topic-customer-preview" data-topic-customer-detail="{{ customer.id }}">
+    <h3>{{ customer_favicon(customer) }} {{ customer.name }}</h3>
+    <dl class="topic-customer-metadata">
+        <div><dt>TPID</dt><dd>{{ customer.tpid }}</dd></div>
+        {% if customer.nickname %}<div><dt>Nickname</dt><dd>{{ customer.nickname }}</dd></div>{% endif %}
+        {% if customer.seller %}<div><dt>Seller</dt><dd><a class="topic-seller" href="{{ url_for('sellers.seller_view', id=customer.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ customer.seller.name }}</a></dd></div>{% endif %}
+        {% if customer.territory %}<div><dt>Territory</dt><dd><a class="topic-territory" href="{{ url_for('territories.territory_view', id=customer.territory.id) }}"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ customer.territory.name }}</a></dd></div>{% endif %}
+        {% if customer.dae_name or customer.dae_alias %}<div><dt>Account executive</dt><dd>{{ customer.dae_name or customer.dae_alias }}</dd></div>{% endif %}
+        {% if customer.verticals %}<div><dt>Verticals</dt><dd>{{ customer.verticals|map(attribute='name')|sort|join(', ') }}</dd></div>{% endif %}
+    </dl>
+    <h3>Opportunities and milestones</h3>
+    {% if opportunities %}{% include 'partials/_customer_opportunities.html' %}{% else %}<p class="topic-muted">No opportunities for this account.</p>{% endif %}
+</section>

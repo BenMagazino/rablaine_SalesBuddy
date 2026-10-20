@@ -6,6 +6,10 @@
         if (!['account', 'flat'].includes(value)) throw new Error('Invalid Topic view.');
         return value;
     }
+    function plainClick(event) {
+        return !event.defaultPrevented && !(event.button > 0) && !event.ctrlKey
+            && !event.metaKey && !event.shiftKey && !event.altKey;
+    }
     function validateHistory(value, id) {
         if (!value || value.id !== id || !Number.isFinite(value.top) || value.top < 0
             || !Number.isFinite(value.left) || value.left < 0
@@ -20,7 +24,7 @@
         }
         return value;
     }
-    if (typeof module !== 'undefined') module.exports = {validateHistory, validateView};
+    if (typeof module !== 'undefined') module.exports = {validateHistory, validateView, plainClick};
     if (!window.document) return;
     function mount() {
         const root = window.document.querySelector('[data-topic-detail]');
@@ -38,17 +42,38 @@
         const status = form.querySelector('[data-topic-delete-status]');
         let pending = false;
         let restoring = false;
+        const previews = new Map();
         function warn(message, error) {
             window.console.error(error);
             const notice = root.querySelector('.topic-notice');
             notice.textContent = message;
             notice.hidden = false;
         }
+        function mountTables(container) {
+            if (!container) return;
+            container.querySelectorAll('[data-topic-sort-pending]').forEach(table => {
+                table.setAttribute('data-sb-sortable', '');
+                table.removeAttribute('data-topic-sort-pending');
+            });
+            window.SBTableSort.mount(container);
+        }
+        function setExpanded(group, expanded) {
+            group.dataset.expanded = String(expanded);
+            const button = group.querySelector('[data-topic-toggle]');
+            button.setAttribute('aria-expanded', String(expanded));
+            const name = group.querySelector('.topic-account-name').textContent.trim();
+            button.setAttribute('aria-label', `${expanded ? 'Collapse' : 'Expand'} notes for ${name}`);
+            group.querySelector('[data-topic-account-body]').hidden = !expanded;
+            if (expanded) mountTables(group);
+        }
         function applyView(view, expanded = []) {
             picker.value = validateView(view);
+            root.classList.toggle('sb-directory-frame-wide', view === 'account');
             if (accounts) accounts.hidden = view !== 'account';
             if (flat) flat.hidden = view !== 'flat';
-            groups.forEach(group => { group.open = expanded.includes(group.dataset.topicAccount); });
+            groups.forEach(group => setExpanded(group,
+                view === 'account' && expanded.includes(group.dataset.topicAccount)));
+            if (view === 'flat') mountTables(flat);
         }
         function save() {
             if (restoring) return;
@@ -57,7 +82,7 @@
                     id, top: reading.scrollTop, left: reading.scrollLeft,
                     description: description?.scrollTop || 0,
                     view: picker.value,
-                    expanded: groups.filter(group => group.open)
+                    expanded: groups.filter(group => group.dataset.expanded === 'true')
                         .map(group => group.dataset.topicAccount),
                 }}, '');
             } catch (error) {
@@ -74,13 +99,19 @@
                 warn('Could not restore your Topic view preference. You can still change views.',
                     error);
             }
-            applyView(view);
+            let saved;
             try {
-                window.SBTableSort.mount(root);
-                const saved = window.history.state?.sbTopicDetail;
+                saved = window.history.state?.sbTopicDetail;
                 if (saved && saved.id === id) {
                     validateHistory(saved, id);
-                    applyView(saved.view ?? view, saved.expanded ?? []);
+                } else saved = null;
+            } catch (error) {
+                saved = null;
+                warn('Could not restore Topic context for Back.', error);
+            }
+            try {
+                applyView(saved?.view ?? view, saved?.expanded ?? []);
+                if (saved) {
                     reading.scrollTop = saved.top;
                     reading.scrollLeft = saved.left;
                     if (description) description.scrollTop = saved.description;
@@ -99,13 +130,26 @@
             }
             save();
         });
-        groups.forEach(group => group.addEventListener('toggle', save));
+        groups.forEach(group => group.querySelector('[data-topic-toggle]')
+            .addEventListener('click', () => {
+                try {
+                    setExpanded(group, group.dataset.expanded !== 'true');
+                    save();
+                } catch (error) { warn("Could not sort this account's notes.", error); }
+            }));
         [reading, description].filter(Boolean).forEach(node =>
             node.addEventListener('scroll', save, {passive: true}));
         root.addEventListener('click', event => {
-            if (event.target.closest('a[href]')) {
+            const link = event.target.closest('a[href]');
+            if (link) {
                 if (pending) event.preventDefault();
-                else save();
+                else {
+                    save();
+                    if (link.dataset?.topicPreview && plainClick(event)) {
+                        event.preventDefault();
+                        openPreview(link);
+                    }
+                }
                 return;
             }
             if (event.defaultPrevented || event.button > 0 || event.ctrlKey || event.metaKey
@@ -114,6 +158,33 @@
             const row = event.target.closest('[data-topic-note-href]');
             if (row) { save(); window.location.assign(row.dataset.topicNoteHref); }
         });
+        function openPreview(link) {
+            const kind = link.dataset.topicPreview;
+            try {
+                if (!previews.has(kind)) {
+                    const note = kind === 'note';
+                    const label = note ? 'note' : 'account';
+                    previews.set(kind, window.SBRecordDialog.create(
+                        note ? 'topicNotePreview' : 'topicAccountPreview', {
+                            statusText: `Open the full page to edit this ${label}.`,
+                            errorText: `Unable to load this ${label}. Retry or open the full page.`,
+                            loadUrl: recordId => note ? `/api/note/${recordId}/detail?topic_id=${id}` :
+                                `/api/customer/${recordId}/info?view=preview`,
+                            fullUrl: recordId => `/${note ? 'note' : 'customer'}/${recordId}`,
+                            fragmentSelector: note ? '[data-sb-note-detail]' :
+                                '[data-topic-customer-detail]',
+                            identityAttribute: note ? 'data-sb-note-id' :
+                                'data-topic-customer-detail',
+                            mount: content => note ? window.SBNoteActions.mount(content) :
+                                {dispose() {}, isDirty: () => false, isBusy: () => false},
+                        }));
+                }
+                previews.get(kind).open({
+                    id: Number(link.dataset.recordId), title: link.dataset.recordTitle,
+                });
+            } catch (error) { warn(`Could not open the ${kind} preview. Use the full-page link.`,
+                error); }
+        }
         dialog.addEventListener('sb:dialog-before-close', event => {
             if (pending) event.preventDefault();
         });

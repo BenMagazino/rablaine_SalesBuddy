@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const {validateHistory, validateView} = require('../../static/js/ui-topic-detail.js');
+const {validateHistory, validateView, plainClick} = require('../../static/js/ui-topic-detail.js');
 const source = fs.readFileSync(require.resolve('../../static/js/ui-topic-detail.js'), 'utf8');
 
 test('Topic reading history validates identity and both axes', () => {
@@ -33,6 +33,7 @@ test('Back keeps sorts and reading; native deletion guards repeat submit and nav
     const dialog = {querySelector: () => form,
         addEventListener(type, fn) {this[type] = fn;}};
     const root = {dataset: {topicDetail: '4'},
+        classList: {toggle() {}},
         querySelector: selector => ({
             '.topic-reading': reading, '.topic-description': description,
             '#deleteTopicDialog': dialog, '.topic-notice': {},
@@ -80,7 +81,7 @@ test('Back keeps sorts and reading; native deletion guards repeat submit and nav
     dialog['sb:dialog-before-close'](event);
     assert.equal(prevented, 4);
     vm.runInNewContext(source, {window});
-    assert.equal(mounts, 3);
+    assert.equal(mounts, 0);
 });
 
 function mountTopic({stored = null, saved = null, storageFails = false} = {}) {
@@ -89,14 +90,34 @@ function mountTopic({stored = null, saved = null, storageFails = false} = {}) {
     function node(extra = {}) {
         return {...extra, addEventListener(type, fn) {this[type] = fn;}};
     }
+    function tableContainer(extra = {}) {
+        const table = {pending: true, sortable: false,
+            setAttribute(name) {if (name === 'data-sb-sortable') this.sortable = true;},
+            removeAttribute(name) {if (name === 'data-topic-sort-pending') this.pending = false;}};
+        return {...extra, table, querySelectorAll: () => table.pending ? [table] : []};
+    }
     const reading = node({scrollTop: 0, scrollLeft: 0});
     const picker = node({value: 'account'});
-    const groups = ['1', '2', 'unassigned'].map(key =>
-        node({dataset: {topicAccount: key}, open: false}));
-    const accounts = {}, flat = {};
+    const groups = ['1', '2', 'unassigned'].map(key => {
+        const button = node({setAttribute(name, value) {this[name] = value;}});
+        const body = {hidden: true};
+        const group = node(tableContainer({dataset: {topicAccount: key},
+            querySelector: selector => ({
+                '[data-topic-toggle]': button, '[data-topic-account-body]': body,
+                '.topic-account-name': {textContent: key},
+            })[selector],
+        }));
+        Object.defineProperty(group, 'open', {
+            get() {return group.dataset.expanded === 'true';},
+            set(value) {group.dataset.expanded = String(value);},
+        });
+        group.toggle = () => button.click();
+        return group;
+    });
+    const accounts = {}, flat = tableContainer();
     const form = node({querySelector: () => ({}), querySelectorAll: () => []});
     const dialog = node({querySelector: () => form});
-    const root = node({dataset: {topicDetail: '4'},
+    const root = node({dataset: {topicDetail: '4'}, classList: {toggle() {}},
         querySelector: selector => ({
             '.topic-reading': reading, '[data-topic-view]': picker,
             '[data-topic-accounts]': accounts, '[data-topic-flat]': flat,
@@ -122,7 +143,7 @@ function mountTopic({stored = null, saved = null, storageFails = false} = {}) {
         addEventListener(type, fn) {events[type] = fn;}};
     vm.runInNewContext(source, {window});
     function choose(view) {picker.value = view; picker.change();}
-    return {window, events, reading, picker, groups, accounts, flat, notice, errors, choose};
+    return {window, root, events, reading, picker, groups, accounts, flat, notice, errors, choose};
 }
 
 test('grouped default, independent disclosures and persistent flat choice across topics', () => {
@@ -131,13 +152,16 @@ test('grouped default, independent disclosures and persistent flat choice across
     assert.equal(page.accounts.hidden, false);
     assert.equal(page.flat.hidden, true);
     assert.ok(page.groups.every(group => !group.open));
-    page.groups[0].open = true;
+    assert.ok(page.groups.every(group => !group.table.sortable));
+    assert.equal(page.flat.table.sortable, false);
     page.groups[0].toggle();
-    page.groups[1].open = true;
+    assert.equal(page.groups[0].table.sortable, true);
+    assert.equal(page.groups[1].table.sortable, false);
     page.groups[1].toggle();
     assert.equal(JSON.stringify(page.window.history.state.sbTopicDetail.expanded), '["1","2"]');
     page.reading.scrollTop = 100;
     page.choose('flat');
+    assert.equal(page.flat.table.sortable, true);
     assert.equal(page.accounts.hidden, true);
     assert.equal(page.flat.hidden, false);
     assert.equal(page.reading.scrollTop, 0);
@@ -156,9 +180,10 @@ test('Back entry restores view, open groups and scroll over newer global prefere
     }});
     assert.equal(page.picker.value, 'account');
     assert.deepEqual(page.groups.map(group => group.open), [false, true, false]);
+    assert.equal(page.flat.table.sortable, false);
+    assert.deepEqual(page.groups.map(group => group.table.sortable), [false, true, false]);
     assert.equal(page.reading.scrollTop, 80);
     assert.equal(page.reading.scrollLeft, 15);
-    page.groups[0].open = true;
     page.groups[0].toggle();
     page.groups.forEach(group => {group.open = false;});
     page.events.pageshow();
@@ -169,6 +194,38 @@ test('Back entry restores view, open groups and scroll over newer global prefere
     }});
     assert.equal(legacy.picker.value, 'flat');
     assert.equal(legacy.reading.scrollTop, 45);
+});
+
+test('preview links preserve modified-click navigation and load controllers only on demand', () => {
+    for (const modifier of ['ctrlKey', 'metaKey', 'shiftKey', 'altKey']) {
+        assert.equal(plainClick({button: 0, [modifier]: true}), false);
+    }
+    assert.equal(plainClick({button: 1}), false);
+    assert.equal(plainClick({button: 0}), true);
+    const page = mountTopic();
+    const created = [], opened = [];
+    page.window.SBRecordDialog = {create(id, options) {
+        created.push({id, options});
+        return {open(selection) {opened.push(selection);}};
+    }};
+    const link = {dataset: {topicPreview: 'note', recordId: '7', recordTitle: 'Note date'}};
+    let prevented = 0;
+    const event = {button: 0, target: {closest: () => link},
+        preventDefault() {prevented++;}};
+    page.root.click({...event, ctrlKey: true});
+    assert.equal(created.length, 0);
+    page.root.click(event);
+    page.root.click(event);
+    assert.equal(prevented, 2);
+    assert.equal(created.length, 1);
+    assert.equal(opened.length, 2);
+    assert.equal(created[0].options.loadUrl(7), '/api/note/7/detail?topic_id=4');
+    assert.equal(created[0].options.fullUrl(7), '/note/7');
+    link.dataset = {topicPreview: 'customer', recordId: '8', recordTitle: 'Account'};
+    page.root.click(event);
+    assert.equal(created[1].id, 'topicAccountPreview');
+    assert.equal(created[1].options.loadUrl(8), '/api/customer/8/info?view=preview');
+    assert.equal(created[1].options.fullUrl(8), '/customer/8');
 });
 
 test('storage and invalid history errors are visible and do not disable view changes', () => {

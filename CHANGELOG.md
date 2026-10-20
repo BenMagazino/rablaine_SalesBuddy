@@ -10,7 +10,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/19/2026
 
-- Topic notes now group by account with expandable notes, per-account note counts and a unique account total. Switch to All notes any time; your view choice is remembered.
+- Group topic notes by account with note counts, seller and territory details, opening and topic-matched excerpts, and note or account previews. Switch to All notes any time; your view choice is remembered.
 
 ## 10/19/2026 - 4450b9ab
 
