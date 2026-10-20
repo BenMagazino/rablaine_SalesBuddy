@@ -11,6 +11,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 ## 10/19/2026
 
 - P-to-F renewal widget Details lists all future renewals with the report's status indicators and hover help. Summary keeps its 90-day window.
+- Add a Fabric trial conversion widget with customer counts and engagement queues, linked directly to Trial audit and customer Fabric details.
+- Capacity overview defaults to one row per customer, with wrapping capacity mixes, average utilization, and optional seller grouping. Your view choices are remembered.
 
 ## 10/20/2026 - bea40fcc
 

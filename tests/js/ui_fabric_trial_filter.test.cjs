@@ -8,6 +8,22 @@ const source = fs.readFileSync(
 const helper = source.slice(source.indexOf('    function isTrialCapacity('),
     source.indexOf('    function render('));
 
+test('workload groups follow the chosen reading order and retain unknown workloads', () => {
+    const workloads = ['SQLDb', 'Power BI', 'AppDev', 'Copilot', 'DE and DS',
+        'Data Integration', 'Data Warehousing Core', 'OneLake', 'Planning',
+        'Real Time Intelligence', 'Future workload'];
+    const groups = vm.runInNewContext(`${helper}\nworkloadGroups(workloads);`, {workloads});
+    assert.deepEqual(Array.from(groups, ([, names]) => Array.from(names)), [
+        ['AppDev', 'Planning', 'Real Time Intelligence'],
+        ['DE and DS', 'Data Integration', 'Data Warehousing Core'],
+        ['OneLake', 'Copilot', 'Power BI'], ['SQLDb'], ['Future workload'],
+    ]);
+    const partial = vm.runInNewContext(`${helper}\nworkloadGroups(['SQLDb', 'Copilot']);`);
+    assert.deepEqual(Array.from(partial, ([, names]) => Array.from(names)), [
+        ['Copilot'], ['SQLDb'],
+    ]);
+});
+
 test('trial customer selection includes all capacities, not just trial rows', () => {
     const rows = [
         {id: 1, capacity: {sku: 'FTL64'}},
@@ -79,8 +95,8 @@ test('P-first numbering uses stable capacity identities', () => {
     assert.deepEqual(Array.from(pOnly, row => row.capacity_index), [1, 2, 3, 4]);
     assert.deepEqual(rows.map(row => row.capacity_index), [1, 2, 3, 4]);
     const styling = source.slice(source.indexOf('                if (isPCapacity'),
-        source.indexOf('                if (index === 2'));
-    assert.match(styling, /index === 3/);
+        source.indexOf('                if (index === 2 && row.customerMode)'));
+    assert.match(styling, /index === 2/);
     assert.match(styling, /sb-fabric-p-sku/);
     assert.doesNotMatch(styling, /utilization|trial-color/);
 });
@@ -95,14 +111,14 @@ test('trial utilization color progresses green to amber to red, capped at 50%', 
     assert.match(color(50), /danger\) 100%/);
     assert.equal(color(120), color(50));
     assert.equal(color(-1), color(0));
-    assert.match(source, /if \(trialsOnly && index === 4 && value != null\)/);
+    assert.match(source, /if \(trialsOnly && index === 3 && value != null\)/);
 });
 
 test('FTL and P SKU badges appear independently of customer filters', () => {
     const styling = source.slice(source.indexOf('                if (isTrialCapacity(row))'),
-        source.indexOf('                if (index === 2'));
+        source.indexOf('                if (index === 2 && row.customerMode)'));
     assert.match(styling, /if \(isTrialCapacity\(row\)\)/);
-    assert.match(styling, /if \(isPCapacity\(row\) && index === 3\)/);
+    assert.match(styling, /if \(isPCapacity\(row\) && index === 2\)/);
     assert.doesNotMatch(styling, /if \((trialsOnly|pOnly) && is/);
     assert.match(styling, /sb-fabric-trial-sku/);
     assert.match(styling, /sb-fabric-p-sku/);
@@ -122,7 +138,47 @@ test('Used % hover includes latest-hour utilization, including zero and missing 
     assert.match(source, /td\.title = getUsedTooltip\(row\)/);
     assert.match(source, /td\.title \+= '\\nTrial utilization/);
     assert.doesNotMatch(source, /name: 'Hour %'/);
-    assert.match(source, /\['Capacity consumption', 2\]/);
-    assert.match(source, /index >= 6 && value > 0/);
-    assert.match(source, /fabric-capacity-overview-v2:/);
+    assert.doesNotMatch(source, /sb-fabric-column-groups|name: 'Cap\.'|name: 'CU hours'/);
+    assert.match(source, /index >= 4 && value > 0/);
+    assert.match(source, /fabric-capacity-overview-v4:/);
+});
+
+test('customer rows average trials in trial audit and all capacities otherwise', () => {
+    const rows = [
+        {id: 1, name: 'First', capacity: {sku: 'FTL64', utilization_pct: 0}},
+        {id: 1, name: 'First', capacity: {sku: 'FTL64', utilization_pct: 10}},
+        {id: 1, name: 'First', capacity: {sku: 'P1', utilization_pct: 80}},
+        {id: 1, name: 'First', capacity: {sku: 'F64', utilization_pct: null}},
+        {id: 2, name: 'Empty', capacity: null},
+    ];
+    const trial = vm.runInNewContext(`${helper}\ncustomerRows(rows, true);`, {rows});
+    assert.equal(trial.length, 2);
+    assert.equal(trial[0].capacity.utilization_pct, 5);
+    assert.equal(trial[0].measuredCount, 2);
+    assert.equal(trial[0].measuredTotal, 2);
+    assert.deepEqual(Array.from(trial[0].capacityMix, pair => Array.from(pair)),
+        [['F64', 1], ['FTL64', 2], ['P1', 1]]);
+    assert.equal(trial[1].capacity.utilization_pct, null);
+    const all = vm.runInNewContext(`${helper}\ncustomerRows(rows, false);`, {rows});
+    assert.equal(all[0].capacity.utilization_pct, 30);
+    assert.equal(all[0].measuredCount, 3);
+    assert.equal(all[0].measuredTotal, 4);
+    assert.equal(rows[0].capacity.utilization_pct, 0);
+});
+
+test('seller grouping preserves customer rows, separates same-name sellers, and puts unassigned last', () => {
+    const rows = [
+        {id: 1, seller: {id: 2, name: 'Zed'}},
+        {id: 2, seller: null},
+        {id: 3, seller: {id: 1, name: 'Alex'}},
+        {id: 4, seller: {id: 1, name: 'Alex'}},
+        {id: 5, seller: {id: 3, name: 'Alex'}},
+    ];
+    const groups = vm.runInNewContext(`${helper}\nsellerGroups(rows, true);`, {rows});
+    assert.deepEqual(Array.from(groups, group => group.seller?.id ?? null), [1, 3, 2, null]);
+    assert.deepEqual(Array.from(groups[0].rows, row => row.id), [3, 4]);
+    const plain = vm.runInNewContext(`${helper}\nsellerGroups(rows, false);`, {rows});
+    assert.equal(plain.length, 1);
+    assert.equal(plain[0].rows.length, 5);
+    assert.equal(vm.runInNewContext(`${helper}\nsellerGroups([], true);`).length, 0);
 });

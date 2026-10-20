@@ -42,16 +42,22 @@ Dashboard placement stays unchecked until you confirm it.
 - **Report/widget:**
 - **Notes / follow-up:**
 
-### 4. [ ] Fabric trial conversion
+### 4. [x] Fabric trial conversion
 
-- [ ] Coded
-- [ ] Added to dashboard
-- **Starting scope:** Trial-capacity follow-up using recognized saved trial
-  SKUs, paid-capacity/revenue context, and linked follow-up work.
+- [x] Coded
+- [x] Added to dashboard
+- **Starting scope:** Summary counts of customers with saved Fabric trials,
+  customers with P-SKUs and trials, and customers with F-SKUs and trials.
 - **Boundary:** Saved SKUs do not establish active/expired status, expiry dates,
   or verified conversion. Actual conversion tracking requires more evidence/history.
-- **Report/widget:**
-- **Notes / follow-up:**
+- **Report/widget:** Fabric trial conversion, Summary / Details. Links to Fabric Consumption
+  > Capacity overview > Trial audit.
+- **Notes / follow-up:** Counts distinct customers, not capacities. P/F groups can
+  overlap. Details lists each customer once, split below/at-or-above 0.1% average
+  trial utilization. Shows P/F-SKU context and average observed history days
+  across trials, using the saved source's trailing 15-day window. Customer links
+  open Fabric detail; the table scrolls within the chosen widget height.
+  Added to the FY27 Data Motions dashboard and confirmed actionable.
 
 ### 5. [x] Power BI to Fabric
 

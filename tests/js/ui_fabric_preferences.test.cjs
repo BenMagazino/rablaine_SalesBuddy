@@ -54,7 +54,7 @@ test('invalid preference and blocked storage expose errors', () => {
     assert.equal(h.errors.length, 1);
 });
 
-function modeFixture(saved = null, failure = false) {
+function modeFixture(saved = null, failure = false, initialMode = null) {
     const buttons = ['all', 'capacities', 'trials', 'p'].map(mode => ({
         dataset: {mode}, pressed: String(mode === 'capacities'), events: {},
         getAttribute() { return this.pressed; },
@@ -73,7 +73,7 @@ function modeFixture(saved = null, failure = false) {
     vm.runInNewContext(source, context);
     const preference = context.window.SBFabricPreferences.bindMode({
         querySelectorAll: () => buttons, after() {},
-    }, 'mode', () => changes++);
+    }, 'mode', () => changes++, initialMode);
     return {preference, buttons, notice, errors, stored: () => stored, changes: () => changes};
 }
 
@@ -101,4 +101,45 @@ test('invalid or blocked view mode preferences show explicit errors without bloc
     assert.equal(blocked.preference.value, 'p');
     assert.equal(blocked.changes(), 1);
     assert.match(blocked.notice.textContent, /Could not save/);
+});
+
+test('explicit audit links override saved mode without overwriting the preference', () => {
+    const h = modeFixture('p', false, 'trials');
+    assert.equal(h.preference.value, 'trials');
+    assert.equal(h.stored(), 'p');
+    assert.equal(h.changes(), 0);
+    assert.equal(modeFixture('p').preference.value, 'p');
+    assert.equal(modeFixture(null, true, 'trials').preference.value, 'trials');
+    const invalid = modeFixture('p', false, 'invalid');
+    assert.equal(invalid.notice.hidden, false);
+    assert.equal(invalid.errors.length, 1);
+});
+
+test('customer-row checkbox honors explicit links without replacing saved preference', () => {
+    let stored = 'false';
+    const events = {};
+    const checkbox = {
+        checked: false,
+        parentElement: {querySelector: () => null},
+        addEventListener: (name, handler) => { events[name] = handler; },
+    };
+    const context = {window: {}, console, localStorage: {
+        getItem: () => stored, setItem: (key, value) => { stored = value; },
+    }};
+    vm.runInNewContext(source, context);
+    context.window.SBFabricPreferences.bindCheckbox(checkbox, 'customers', 'true');
+    assert.equal(checkbox.checked, true);
+    assert.equal(stored, 'false');
+    checkbox.checked = false;
+    events.change();
+    assert.equal(stored, 'false');
+    context.window.SBFabricPreferences.bindCheckbox(checkbox, 'customers');
+    assert.equal(checkbox.checked, false);
+    stored = null;
+    checkbox.checked = true;
+    context.window.SBFabricPreferences.bindCheckbox(checkbox, 'customers');
+    assert.equal(checkbox.checked, true);
+    stored = 'false';
+    context.window.SBFabricPreferences.bindCheckbox(checkbox, 'customers');
+    assert.equal(checkbox.checked, false);
 });

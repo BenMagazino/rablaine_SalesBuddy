@@ -33,7 +33,7 @@
         <tr data-row-key="{{ row.row_key }}">
             <td><a href="{{ row.destination }}">{{ row.customer_name }}</a></td>
             <td>{{ row.product_family.removeprefix('Power BI Premium ').strip() if row.product_family else 'Not supplied' }}</td>
-            <td data-sb-sort-value="{{ row.expiration_date }}">{{ row.expiration_date }} ({{ row.days_until_expiration }}d)</td>
+            <td data-sb-sort-value="{{ row.expiration_date }}">{{ row.expiration_date[5:7] }}-{{ row.expiration_date[8:10] }}-{{ row.expiration_date[2:4] }} ({{ row.days_until_expiration }}d)</td>
             <td class="sb-ptof-status-cell" data-ptof-renewal-status="{{ row.renewal_status or '' }}" data-sb-sort-value="{{ row.renewal_status or '' }}">{{ row.renewal_status or 'Not supplied' }}</td>
         </tr>
         {% endfor %}

@@ -136,6 +136,9 @@ def test_renewal_details_include_all_future_rows_with_independent_totals(monkeyp
     ]
     assert len(details.select("tbody tr")) == 5
     assert len(details.select("th[data-sb-sort-type]")) == 4
+    expiration = details.select_one("tbody td:nth-child(3)")
+    assert expiration.text == "10-18-26 (0d)"
+    assert expiration["data-sb-sort-value"] == "2026-10-18"
     assert "Annual SA" not in details.text
     assert "missing an SA amount" not in details.text
     assert "All dated renewals from" not in details.text

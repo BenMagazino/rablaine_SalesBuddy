@@ -1,5 +1,38 @@
 # Fabric consumption imports
 
+## Fabric trial conversion widget
+
+The dashboard library includes a **Fabric trial conversion** widget.
+It counts distinct local customers with saved FTL4/FTL64 capacities, and how many
+of those customers also have P-SKU or F-SKU capacities. Multiple capacities count
+once per customer; P and F groups can overlap. Trial SKUs do not count as F-SKUs.
+Customer/Seller dashboard filters apply before counting. No import is triggered.
+The Trial audit link opens Capacity overview with
+`view=overview&mode=trials&customers=true`, selecting Trial audit and One row per
+customer for that visit without replacing saved preferences.
+The audit currently shows the full local portfolio, not dashboard filter scope.
+Saved trial SKUs do not prove active trials, expiry dates, or verified conversions.
+
+Details provides two customer queues: **Getting started** below 0.1% average
+utilization, and **Building momentum** at/above 0.1%. All observed trial customers
+are included, even those with paid F-SKUs. Each customer appears once and links
+to their Fabric detail. **Also has** identifies observed P-SKUs, F-SKUs, both,
+or neither alongside their trials. First average known hourly utilization per
+trial capacity in the trailing 15 days ending at the saved capacity source
+timestamp, then average those capacity means with equal weight per customer.
+It does not use today's date or substitute latest-hour or lifetime utilization.
+Missing measurements are excluded, never treated as zero; trials without usable
+history are excluded from utilization and disclosed in the value's tooltip.
+Customers without any usable history are counted separately outside both queues.
+**History** averages the number of distinct UTC days with usable history across
+all of a customer's trials, including zero observed days for trials without data.
+It does not establish actual trial age or complete coverage. Header tooltips
+explain both averages. The group selector sits alongside the title where space
+allows, and only the customer table scrolls within the dashboard's chosen height.
+The 0.1% cutoff is an engagement heuristic, not an official alert or conversion rule.
+
+## Import and report behavior
+
 Fabric consumption is a **manual import only**. It is not registered with the
 scheduler and does not run during account sync, revenue sync, or app startup.
 Power BI access uses the current Azure CLI sign-in and respects the source
@@ -44,6 +77,27 @@ Workload shares are customer-wide rolling
 workload is shown as zero only when known workload measures reconcile to the
 positive customer total; otherwise it remains unknown. Sort any workload
 column to compare customer usage.
+**One row per customer** is the default for new preferences, providing a compact
+customer list with a color-coded
+capacity mix showing each observed SKU and its count. The checkbox persists
+locally; `customers=true` or `customers=false` overrides it for a linked visit.
+Existing saved checkbox choices take precedence over the new default.
+**Group by seller** adds seller sections, including an unassigned section last,
+and persists locally. Column sorting operates within each seller section.
+Capacity mix badges wrap inside their column, including customers with many SKUs,
+without overlapping utilization or hiding capacities.
+In customer mode, Used % averages known trial-capacity utilization in Trial audit,
+and known utilization across all capacities in other modes, equally weighted per
+capacity. Missing measurements are excluded, not zero. This uses source-retained
+summary utilization, not the trial widget's trailing 15-day hourly averages.
+Search matches any customer capacity but retains the complete customer's mix
+and averages. Customer-wide workload shares are shown once, not summed.
+Cap. and CU hours are omitted; in capacity mode, hover/focus the SKU for its
+existing capacity details.
+Workload columns read left to right in separated groups: AppDev, Plan, RTI;
+DE/DS, DI, DW; OneLake, Copilot, PBI; then SQL on its own. Each group has a
+vertical divider. Newly encountered workloads remain available in an Other
+workloads group rather than disappearing.
 Both views share the Fabric Consumption header and tab-style navigation:
 **Customer detail** and **Capacity overview**. Both telemetry surfaces are
 centered at a maximum width of 1536px, shrinking when the window is narrower.

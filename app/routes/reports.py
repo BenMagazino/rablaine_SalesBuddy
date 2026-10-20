@@ -182,7 +182,7 @@ def dashboard_widget_edit(
         if widget_id is None:
             add_dashboard_widget(
                 dashboard, data.get('key') if isinstance(data, dict) else None,
-                data.get('variant_key', 'detailed') if isinstance(data, dict) else 'detailed',
+                data.get('variant_key') if isinstance(data, dict) else None,
                 data.get('column_span') if isinstance(data, dict) else None,
                 data.get('row_span') if isinstance(data, dict) else None,
                 data.get('filters') if isinstance(data, dict) else None,

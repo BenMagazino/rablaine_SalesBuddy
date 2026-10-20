@@ -170,6 +170,23 @@ def report_fabric_consumption(customer_id: int | None = None, overview: bool = F
 
 
 @tool(
+    'report_fabric_trial_conversion',
+    'Count distinct customers with saved Fabric trial SKUs (FTL4/FTL64), '
+    'and trial customers also running P-SKU or F-SKU capacities. Groups may overlap. '
+    'Includes customer queues split at 0.1% average trial utilization over the saved '
+    'source trailing 15-day window, averaging trial capacity means equally. '
+    'Includes P/F-SKU context, average observed days across trials, and customer detail links. '
+    'This is saved capacity inventory, not verified conversion or trial expiry status.',
+    {'type': 'object', 'properties': {}},
+)
+def report_fabric_trial_conversion() -> dict:
+    """Reuse the dashboard trial cohort counts without refreshing Fabric data."""
+    from app.services.fabric_consumption import get_fabric_trial_conversion_widget
+
+    return get_fabric_trial_conversion_widget()
+
+
+@tool(
     'report_fabric_capacity_pressure',
     'Investigate the full saved Fabric capacity pressure report, including recorded throttling, '
     'latest utilization, historical peaks, incomplete data, timestamps, and exact capacity links. '
@@ -1079,7 +1096,8 @@ def get_dashboards(dashboard_id: int | None = None, live_filters: dict | None = 
     'Read a dashboard widget calculation without creating a dashboard or refreshing data. '
     'Use widget_key from the get_dashboards catalog. Includes hygiene.gaps, '
     'activity_coverage.meetings, revenue.attention, ptof.upcoming_renewals, and '
-    'fabric.capacity_pressure. Returns saved-data scope, missing data, source timestamps, '
+    'fabric.capacity_pressure and fabric.trial_conversion. Returns saved-data scope, '
+    'missing data, source timestamps, '
     'and drill-through destinations alongside each signal. Shared prerequisites are preserved.',
     {'type': 'object', 'properties': {
         'widget_key': {'type': 'string', 'description': 'Registered widget key.'},

@@ -4,9 +4,10 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 import threading
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 from urllib.parse import urlencode
 
@@ -839,6 +840,127 @@ def get_fabric_capacity_overview() -> dict:
             })
     return {
         "snapshot": snapshot, "rows": rows, "workloads": names, "totals": report["totals"],
+    }
+
+
+TRIAL_SKUS = ("FTL4", "FTL64")
+TRIAL_UTILIZATION_CUTOFF = 0.1
+TRIAL_HISTORY_DAYS = 15
+
+
+def _get_trial_customer_details(
+    snapshot: dict | None, rows: list[dict], families: dict[str, set[int]],
+) -> dict:
+    """Average trial capacities equally per customer in the saved source's trailing window."""
+    end = _source_datetime(snapshot.get("capacity_as_of")) if snapshot else None
+    start = end - timedelta(days=TRIAL_HISTORY_DAYS) if end else None
+    points: dict[tuple, list] = defaultdict(list)
+    if snapshot and start and end and rows:
+        records = FabricConsumptionRecord.query.filter(
+            FabricConsumptionRecord.import_id == snapshot["id"],
+            FabricConsumptionRecord.kind == "trend",
+            FabricConsumptionRecord.customer_id.in_({row["id"] for row in rows}),
+            FabricConsumptionRecord.observed_at > start,
+            FabricConsumptionRecord.observed_at <= end,
+        ).all()
+        for record in records:
+            value = _number(record.metrics_json.get("utilization_pct"))
+            if (record.sku or "").strip().upper() in TRIAL_SKUS and value is not None:
+                identity = (
+                    record.customer_id, record.metrics_json.get("tenant_id"), record.capacity_id,
+                )
+                points[identity].append((record.observed_at, value))
+    customers: dict[int, list] = defaultdict(list)
+    seen = set()
+    for row in rows:
+        capacity = row["capacity"]
+        identity = (row["id"], capacity.get("tenant_id"), capacity.get("capacity_id"))
+        if identity in seen:
+            continue
+        seen.add(identity)
+        values = points[identity]
+        average = math.fsum(value for _, value in values) / len(values) if values else None
+        customers[row["id"]].append({
+            **row, "average_utilization_pct": average,
+            "observed_hours": len(values),
+            "observed_days": len({stamp.date() for stamp, _ in values}),
+        })
+    cohorts = _summarize_trial_customers(customers, families)
+    for cohort, members in cohorts.items():
+        members.sort(key=lambda row: (
+            -(row["average_utilization_pct"] or 0) if cohort == "high" else
+            row["average_utilization_pct"] or 0,
+            row["name"].casefold(), row["row_key"],
+        ))
+    return {
+        "cohorts": cohorts, "counts": {key: len(rows) for key, rows in cohorts.items()},
+        "window_start": start.isoformat() if start else None,
+        "window_end": end.isoformat() if end else None,
+        "window_days": TRIAL_HISTORY_DAYS, "cutoff_pct": TRIAL_UTILIZATION_CUTOFF,
+    }
+
+
+def _summarize_trial_customers(
+    customers: dict[int, list], families: dict[str, set[int]],
+) -> dict[str, list]:
+    """Keep one customer row and distinguish missing trial history from zero usage."""
+    cohorts: dict[str, list] = {"low": [], "high": [], "unknown": []}
+    for customer_id, trials in customers.items():
+        known = [row["average_utilization_pct"] for row in trials
+                 if row["average_utilization_pct"] is not None]
+        average = math.fsum(known) / len(known) if known else None
+        cohort = ("unknown" if average is None else
+                  "low" if average < TRIAL_UTILIZATION_CUTOFF else "high")
+        has_p, has_f = customer_id in families["p"], customer_id in families["f"]
+        cohorts[cohort].append({
+            "id": customer_id, "name": trials[0]["name"], "row_key": str(customer_id),
+            "has_p_sku": has_p, "has_f_sku": has_f,
+            "other_skus": "P + F" if has_p and has_f else
+                          "P-SKU" if has_p else "F-SKU" if has_f else "Neither",
+            "average_utilization_pct": average,
+            "observed_days": sum(row["observed_days"] for row in trials) / len(trials),
+            "observed_hours": sum(row["observed_hours"] for row in trials),
+            "trial_count": len(trials), "missing_history_count": len(trials) - len(known),
+            "destination": "/reports/fabric-consumption?" + urlencode({
+                "customer_id": customer_id,
+            }),
+        })
+    return cohorts
+
+
+def get_fabric_trial_conversion_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict:
+    """Count distinct trial customers and their observed P/F capacity overlap."""
+    overview = get_fabric_capacity_overview()
+    families: dict[str, set[int]] = {"trial": set(), "p": set(), "f": set()}
+    trial_rows = []
+    for row in overview["rows"]:
+        if customer_ids is not None and row["id"] not in customer_ids:
+            continue
+        capacity = row["capacity"]
+        if capacity is None:
+            continue
+        sku = (capacity.get("sku") or "").strip().upper()
+        if sku in TRIAL_SKUS:
+            families["trial"].add(row["id"])
+            trial_rows.append(row)
+        elif re.fullmatch(r"P[1-9][0-9]*", sku):
+            families["p"].add(row["id"])
+        elif re.fullmatch(r"F[1-9][0-9]*", sku):
+            families["f"].add(row["id"])
+    trials = families["trial"]
+    return {
+        "snapshot": overview["snapshot"],
+        "snapshot_state": "available" if overview["snapshot"] else "not_imported",
+        "scope": "all_local_accounts",
+        "destination": "/reports/fabric-consumption?view=overview&mode=trials&customers=true",
+        "counts": {
+            "customers_with_trials": len(trials),
+            "customers_with_p_and_trials": len(trials & families["p"]),
+            "customers_with_f_and_trials": len(trials & families["f"]),
+        },
+        "details": _get_trial_customer_details(overview["snapshot"], trial_rows, families),
     }
 
 

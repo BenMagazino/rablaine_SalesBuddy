@@ -160,7 +160,7 @@
                 const title = document.createElement('strong');
                 title.textContent = definition.title;
                 const source = document.createElement('span');
-                source.textContent = definition.report;
+                source.textContent = `Report: ${definition.report}`;
                 const description = document.createElement('span');
                 description.textContent = definition.description;
                 button.append(title, source, description);

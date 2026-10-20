@@ -12,7 +12,9 @@ from typing import Any
 from app.models import Dashboard, DashboardWidget, db, utc_now
 from app.services import connect_goals
 from app.services.activity_coverage import get_meeting_activity_coverage_widget
-from app.services.fabric_consumption import get_fabric_capacity_pressure_widget
+from app.services.fabric_consumption import (
+    get_fabric_capacity_pressure_widget, get_fabric_trial_conversion_widget,
+)
 from app.services.hygiene import get_hygiene_gaps_widget
 from app.services.manager_one_on_one import get_initiative_tracker_widget
 from app.services.ptof import get_ptof_renewals_widget
@@ -111,7 +113,7 @@ WIDGET_DEFINITIONS = {
     definition.key: definition for definition in (
         WidgetDefinition(
             'connect_goals.u2c', 'Quarterly U2C progression',
-            'Quarter-to-date commitment progress, expected pace, and the U2C trend.',
+            'Quarterly commitment progress, pace, and trends.',
             'U2C Attainment', _connect_variants('partials/widgets/connect_u2c.html'),
             connect_goals.get_u2c_widget,
             ('compensation_buckets',),
@@ -119,7 +121,7 @@ WIDGET_DEFINITIONS = {
         ),
         WidgetDefinition(
             'connect_goals.team_coverage', 'Milestone team coverage',
-            'ACR-weighted team coverage with a scoped report of off-team milestones.',
+            'ACR-weighted team coverage and off-team milestones.',
             'Milestone Tracker', _connect_variants('partials/widgets/connect_team_coverage.html'),
             connect_goals.get_team_coverage_widget,
             ('compensation_buckets',),
@@ -127,7 +129,7 @@ WIDGET_DEFINITIONS = {
         ),
         WidgetDefinition(
             'connect_goals.hva_coverage', 'Milestone HVA coverage',
-            'On-team milestone activity coverage and technical validation counts.',
+            'Milestone activity coverage and technical validations.',
             'Activity Coverage', _connect_variants('partials/widgets/connect_hva_coverage.html'),
             connect_goals.get_hva_coverage_widget,
             ('compensation_buckets',),
@@ -135,7 +137,7 @@ WIDGET_DEFINITIONS = {
         ),
         WidgetDefinition(
             'connect_goals.whitespace', 'Fabric and database whitespace wins',
-            'Sustained wins, ramping customers, and their monthly consumption history.',
+            'Sustained wins, ramping customers, and consumption trends.',
             'Whitespace Analysis', _connect_variants('partials/widgets/connect_whitespace.html'),
             connect_goals.get_whitespace_widget,
             ('compensation_buckets',),
@@ -143,8 +145,7 @@ WIDGET_DEFINITIONS = {
         ),
         WidgetDefinition(
             'initiative_tracker.overview', 'Initiative Tracker',
-            'Initiatives with combined monthly ACR from engagements and directly added milestones, '
-            'plus seller subtotals in the detailed view.',
+            'Initiative ACR totals and seller breakdowns.',
             'Initiative Tracker', (
                 WidgetVariant(
                     'metric', 'Summary', 'partials/widgets/initiative_tracker.html',
@@ -160,39 +161,50 @@ WIDGET_DEFINITIONS = {
         ),
         WidgetDefinition(
             'hygiene.gaps', 'Hygiene gaps',
-            'Active engagements without milestones and active milestones without engagements, '
-            'with a queue for resolving missing links.',
+            'Active engagements and milestones with missing links.',
             'Hygiene', _report_variants('partials/widgets/hygiene_gaps.html'),
             get_hygiene_gaps_widget, scope='Active work', supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'activity_coverage.meetings', 'Meeting activity coverage',
-            'Fiscal-year meeting coverage, linked activities, HVA coverage, and meetings '
-            'ready for the existing activity-logging workflow.',
+            'Meeting coverage and activities ready to log.',
             'Activity Coverage', _report_variants('partials/widgets/meeting_activity_coverage.html'),
             get_meeting_activity_coverage_widget, scope='Fiscal year to date',
             supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'revenue.attention', 'Revenue risk / opportunity',
-            'Monthly revenue at risk and expansion opportunity across the complete '
-            'unreviewed priority-20+ analysis queue.',
+            'Unreviewed revenue risks and expansion opportunities.',
             'Revenue Analyzer', _report_variants('partials/widgets/revenue_attention.html'),
             get_revenue_attention_widget, scope='Saved unreviewed analysis',
             supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
             'ptof.upcoming_renewals', 'Upcoming P-to-F renewals',
-            'A next-90-days summary or all future subscription details, with annual SA '
-            'expiration amounts and source account-level renewal assessments.',
+            '90-day renewal summary or all future renewals.',
             'P to F', _report_variants('partials/widgets/ptof_renewals.html'),
             get_ptof_renewals_widget, scope='90-day summary / all future details',
             supported_filters=tuple(FILTER_LABELS),
         ),
         WidgetDefinition(
+            'fabric.trial_conversion', 'Fabric trial conversion',
+            'Trial customers, P/F-SKU overlap, and trial engagement queues.',
+            'Fabric Consumption / Trial audit', (
+                WidgetVariant(
+                    'metric', 'Summary', 'partials/widgets/fabric_trial_conversion.html',
+                    (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 4,
+                ),
+                WidgetVariant(
+                    'detailed', 'Details', 'partials/widgets/fabric_trial_conversion.html',
+                    (6, 12), MIN_WIDGET_HEIGHT, 5,
+                ),
+            ),
+            get_fabric_trial_conversion_widget, scope='Saved Fabric 360 capacities',
+            supported_filters=tuple(FILTER_LABELS),
+        ),
+        WidgetDefinition(
             'fabric.capacity_pressure', 'Fabric capacity pressure',
-            'Pressure counts and a top-five attention shortlist, linked to the full '
-            'Fabric Capacity Pressure report.',
+            'Capacity pressure counts and the top five needing attention.',
             'Fabric Capacity Pressure',
             _report_variants('partials/widgets/fabric_capacity_pressure.html'),
             get_fabric_capacity_pressure_widget, scope='Saved capacity measurements',
@@ -406,11 +418,16 @@ def advance_layout_revision(
 
 
 def add_dashboard_widget(
-    dashboard: Dashboard, key: object, variant_key: object = 'detailed',
+    dashboard: Dashboard, key: object, variant_key: object = None,
     column_span: object = None, row_span: object = None,
     filters: object = None,
 ) -> DashboardWidget:
     """Append below existing widgets without packing holes or moving neighbors."""
+    if variant_key is None and isinstance(key, str) and key in WIDGET_DEFINITIONS:
+        variants = WIDGET_DEFINITIONS[key].variants
+        variant_key = next(
+            (variant.key for variant in variants if variant.key == 'detailed'), variants[0].key,
+        )
     variant = get_variant(key, variant_key)
     width = 12 if column_span is None else column_span
     height = variant.default_height if row_span is None else row_span
