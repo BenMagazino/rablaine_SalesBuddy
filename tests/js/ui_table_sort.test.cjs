@@ -598,3 +598,132 @@ test('deferred lifecycle restoration ignores disposed fragments and restores cur
     assert.equal(h.errors.length, 0);
     assert.equal(h.table.previousElementSibling, null);
 });
+
+function groupedFixture(historyState = null) {
+    const h = fixture([{
+        types: ['text', 'text', 'text', 'number', 'number'],
+        rows: [
+            ['Zulu', 'Ada', 'West', '200', '2'], ['Alpha', 'Bea', 'East', '100', '10'],
+            ['Beta', '', '', '900', '3'], ['Alpha', 'Ada', 'North', '200', '2'],
+        ],
+    }], historyState);
+    h.table.setAttribute('data-sb-sort-groups', '');
+    h.body.remove();
+    h.groups = h.rows.map((row, index) => {
+        const body = h.table.appendChild(new h.Node('tbody'));
+        body.appendChild(row);
+        const detail = body.appendChild(new h.Node('tr'));
+        detail.hidden = index !== 0;
+        const cell = detail.appendChild(new h.Node('td'));
+        cell.colSpan = 5;
+        const nested = h.makeTable({key: `nested-${index}`});
+        cell.appendChild(nested.table);
+        return {body, row, detail, nested};
+    });
+    h.groupOrder = () => h.table.tBodies.map(body => body.rows[0].id);
+    return h;
+}
+
+test('grouped sorting moves complete expanded readers by all five summary columns', () => {
+    const h = groupedFixture(), api = h.run().create(h.table);
+    const orders = [
+        [['r1', 'r3', 'r2', 'r0'], ['r0', 'r2', 'r1', 'r3']],
+        [['r0', 'r3', 'r1', 'r2'], ['r1', 'r0', 'r3', 'r2']],
+        [['r1', 'r3', 'r0', 'r2'], ['r0', 'r3', 'r1', 'r2']],
+        [['r1', 'r0', 'r3', 'r2'], ['r2', 'r0', 'r3', 'r1']],
+        [['r0', 'r3', 'r2', 'r1'], ['r1', 'r2', 'r0', 'r3']],
+    ];
+    orders.forEach((directions, column) => {
+        ['ascending', 'descending'].forEach((direction, index) => {
+            api.restore({column, direction});
+            assert.deepEqual(h.groupOrder(), directions[index]);
+            h.groups.forEach(({body, row, detail, nested}, groupIndex) => {
+                assert.deepEqual(body.rows, [row, detail]);
+                assert.equal(detail.hidden, groupIndex !== 0);
+                assert.equal(nested.table.parentNode.parentNode, detail);
+                assert.deepEqual(nested.order(), ['r0', 'r1', 'r2']);
+            });
+        });
+    });
+    api.restore(null);
+    assert.deepEqual(h.groupOrder(), ['r0', 'r1', 'r2', 'r3']);
+});
+
+test('grouped sorting retains nested sort, focus, reading offsets and Back state', () => {
+    const context = {id: 4, top: 200, expanded: ['first']};
+    const h = groupedFixture({sbTopicDetail: context});
+    const pane = h.document.appendChild(new h.Node('section'));
+    pane.appendChild(h.table);
+    pane.scrollHeight = 2000; pane.clientHeight = 500; pane.scrollTop = 200;
+    const sorter = h.run(), api = sorter.create(h.table);
+    const nested = h.groups[0].nested;
+    nested.button(0).click();
+    nested.button(0).focus();
+    h.table.onMove = () => {pane.scrollTop = 0;};
+    api.restore({column: 4, direction: 'descending'});
+    assert.deepEqual(nested.order(), ['r1', 'r0', 'r2']);
+    assert.equal(h.document.activeElement, nested.button(0));
+    assert.equal(pane.scrollTop, 200);
+    h.button(4).click();
+    assert.equal(h.history.state.sbTableSort['table-1'].direction, 'ascending');
+    assert.equal(h.history.state.sbTableSort['nested-0'].direction, 'ascending');
+    assert.equal(h.history.state.sbTopicDetail, context);
+    api.restore(null);
+    h.dispatch('pageshow'); h.flush();
+    assert.deepEqual(h.groupOrder(), ['r0', 'r3', 'r2', 'r1']);
+    assert.deepEqual(nested.order(), ['r1', 'r0', 'r2']);
+});
+
+test('grouped sorting fails visibly before moving records with invalid summary data', () => {
+    const h = groupedFixture(), api = h.run().create(h.table);
+    h.rows[1].cells[4].setAttribute('data-sb-sort-value', 'not a number');
+    assert.throws(() => api.restore({column: 0, direction: 'ascending'}), /Invalid finite/);
+    assert.deepEqual(h.groupOrder(), ['r0', 'r1', 'r2', 'r3']);
+    assert.equal(h.table.previousElementSibling.getAttribute('role'), 'alert');
+    h.rows[1].cells[4].setAttribute('data-sb-sort-value', '10');
+    h.groups[1].body.remove();
+    assert.throws(() => api.restore(null), /rows changed/);
+});
+
+test('Latest defaults newest first and restores that order through header sorting and Back', () => {
+    const context = {id: 4, top: 200, expanded: ['first']};
+    const h = groupedFixture({sbTopicDetail: context});
+    h.table.setAttribute('data-sb-sort-default-column', '3');
+    h.table.setAttribute('data-sb-sort-default-direction', 'descending');
+    const api = h.run().create(h.table);
+    assert.deepEqual(h.groupOrder(), ['r2', 'r0', 'r3', 'r1']);
+    assert.equal(h.headers[3].getAttribute('aria-sort'), 'descending');
+    h.groups[0].nested.button(0).click();
+    h.button(4).click();
+    assert.deepEqual(h.groupOrder(), ['r0', 'r3', 'r2', 'r1']);
+    h.button(3).click();
+    assert.deepEqual(h.groupOrder(), ['r1', 'r0', 'r3', 'r2']);
+    h.button(3).click();
+    assert.deepEqual(h.groupOrder(), ['r2', 'r0', 'r3', 'r1']);
+    assert.equal(api.state.column, 3);
+    assert.equal(api.state.direction, 'descending');
+    assert.equal(h.headers[4].getAttribute('aria-sort'), 'none');
+    assert.equal(h.headers[3].getAttribute('aria-sort'), 'descending');
+    assert.equal(h.history.state.sbTableSort['table-1'].column, 3);
+    assert.equal(h.history.state.sbTableSort['table-1'].direction, 'descending');
+    assert.equal(h.history.state.sbTableSort['nested-0'].direction, 'ascending');
+    assert.equal(h.history.state.sbTopicDetail, context);
+    h.dispatch('pageshow'); h.flush();
+    assert.deepEqual(h.groupOrder(), ['r2', 'r0', 'r3', 'r1']);
+    assert.deepEqual(h.groups[0].nested.order(), ['r1', 'r0', 'r2']);
+    const reloaded = groupedFixture(h.history.state);
+    reloaded.table.setAttribute('data-sb-sort-default-column', '3');
+    reloaded.table.setAttribute('data-sb-sort-default-direction', 'descending');
+    reloaded.run();
+    assert.deepEqual(reloaded.groupOrder(), ['r2', 'r0', 'r3', 'r1']);
+});
+
+test('Latest sorts equal displayed dates by the full underlying time', () => {
+    const h = groupedFixture();
+    h.rows.forEach(row => { row.cells[3].textContent = 'Jan 01, 1970'; });
+    h.run();
+    h.button(3).click();
+    assert.deepEqual(h.groupOrder(), ['r1', 'r0', 'r3', 'r2']);
+    h.button(3).click();
+    assert.deepEqual(h.groupOrder(), ['r2', 'r0', 'r3', 'r1']);
+});

@@ -8,7 +8,8 @@ from flask import (
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models import db, Topic, UserPreference
+from app.models import db, Customer, Note, Topic, UserPreference
+from app.services.topic_excerpts import build_topic_excerpt
 
 # Create blueprint
 topics_bp = Blueprint('topics', __name__)
@@ -89,10 +90,22 @@ def topic_create():
 @topics_bp.route('/topic/<int:id>')
 def topic_view(id):
     """View topic details (FR009)."""
-    topic = Topic.query.filter_by(id=id).first_or_404()
-    # Sort notes in-memory since they're eager-loaded
+    topic = Topic.query.options(
+        db.selectinload(Topic.notes).joinedload(Note.customer),
+        db.selectinload(Topic.notes).joinedload(Note.customer).joinedload(Customer.seller),
+        db.selectinload(Topic.notes).joinedload(Note.customer).joinedload(Customer.territory),
+        db.selectinload(Topic.notes).selectinload(Note.topics),
+        db.selectinload(Topic.notes).selectinload(Note.partners),
+    ).filter_by(id=id).first_or_404()
     notes = sorted(topic.notes, key=lambda c: c.call_date, reverse=True)
-    return render_template('topic_view.html', topic=topic, notes=notes)
+    account_groups: dict[int | None, list[Note]] = {}
+    for note in notes:
+        account_groups.setdefault(note.customer_id, []).append(note)
+    return render_template(
+        'topic_view.html', topic=topic, notes=notes, account_groups=account_groups,
+        account_count=sum(customer_id is not None for customer_id in account_groups),
+        excerpts={note.id: build_topic_excerpt(note.content, topic.name) for note in notes},
+    )
 
 
 @topics_bp.route('/topic/<int:id>/edit', methods=['GET', 'POST'])

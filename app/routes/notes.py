@@ -12,6 +12,7 @@ from app.services.seller_mode import get_seller_mode_seller_id as _get_seller_mo
 from app.services.backup import schedule_customer_backup as _schedule_customer_backup
 from app.services.milestone_tracking import track_note_on_milestones
 from app.services.opportunity_tracking import track_note_on_opportunities
+from app.services.topic_excerpts import highlight_note_content
 
 logger = logging.getLogger(__name__)
 
@@ -674,11 +675,16 @@ def note_view(id):
 def note_detail_fragment(id):
     """Return rendered HTML fragment of note view for modal embedding."""
     note = Note.query.filter_by(id=id).first_or_404()
+    content = note.content
+    if 'topic_id' in request.args:
+        topic = Topic.query.filter_by(id=request.args.get('topic_id', type=int)).first_or_404()
+        content = highlight_note_content(content, topic.name)
     return render_template(
         'partials/note_view_content.html',
         note=note,
         back_url='',
         show_edit_delete=False,
+        highlighted_content=content,
     )
 
 

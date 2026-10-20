@@ -1,32 +1,15 @@
 {% extends "base.html" %}
 {% from 'partials/customer_favicon.html' import customer_favicon %}
 {% macro heading(label, kind='text') %}<th scope="col" data-sb-sort-type="{{ kind }}" data-export-label="{{ label }}">{{ label }}</th>{% endmacro %}
-{% block title %}{{ topic.name }} - Sales Buddy{% endblock %}
-{% block body_class %}sb-page-frame{% endblock %}
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-topic-detail.css') }}">
-{% endblock %}
-{% block content %}
-<section class="sb-topic-detail sb-directory-frame" data-topic-detail="{{ topic.id }}" data-sb-page-surface aria-labelledby="topicTitle">
-    <header class="topic-heading" data-sb-page-band>
-        <h1 id="topicTitle"><i class="bi bi-tag" aria-hidden="true"></i> {{ topic.name }}</h1>
-        <a class="sb-dialog-button" href="{{ url_for('topics.topic_edit', id=topic.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit Topic</a>
-        <button class="sb-dialog-button topic-danger" type="button" data-sb-dialog="deleteTopicDialog"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
-    </header>
-    {% if topic.description %}<div class="topic-description" data-sb-page-band><h2>Description</h2><p>{{ topic.description }}</p></div>{% endif %}
-    <header class="topic-band" data-sb-page-band><h2>Tagged notes <span>{{ notes|length }}</span></h2><span>All notes with this topic · Newest first by default</span></header>
-    <p class="topic-notice" role="alert" data-sb-page-band hidden></p>
-    <div class="topic-reading" data-sb-page-body tabindex="0" aria-label="Topic notes">
-        {% if notes %}
-        <table class="topic-table" data-sb-sortable data-sb-sort-key="topic-{{ topic.id }}-notes">
+{% macro note_table(items, key, label) %}
+        <table class="topic-table" data-topic-sort-pending data-sb-sort-key="{{ key }}" aria-label="{{ label }}">
             <thead><tr>{{ heading('Name') }}{{ heading('Note date', 'number') }}{{ heading('Seller') }}{{ heading('Territory') }}{{ heading('Topics') }}{{ heading('Partners') }}</tr></thead>
-            <tbody>{% for call in notes %}
+            <tbody>{% for call in items %}
                 <tr data-note-id="{{ call.id }}" data-topic-note-href="{{ url_for('notes.note_view', id=call.id) }}">
                     <td data-sb-sort-value="{{ call.customer.name if call.customer else '' }}">
                         <a class="topic-note-link" href="{{ url_for('notes.note_view', id=call.id) }}" aria-label="View note{% if call.customer %} for {{ call.customer.name }}{% endif %}"><i class="bi bi-journal-text" aria-hidden="true"></i> View note</a>
                         {% if call.customer %}<a class="topic-customer" href="{{ url_for('customers.customer_view', id=call.customer.id) }}">{{ customer_favicon(call.customer) }} {{ call.customer.name }}</a>{% else %}<span class="topic-muted">No Customer</span>{% endif %}
-                        <p class="topic-excerpt">{{ call.content|striptags|truncate(200, true) }}</p>
+                        <p class="topic-excerpt">{{ excerpts[call.id].flat_preview }}</p>
                     </td>
                     <td class="topic-date" data-sb-sort-value="{{ call.call_date.timestamp() }}">{{ call.call_date.strftime('%b %d, %Y') }}{% if call.call_date.hour != 0 or call.call_date.minute != 0 %} {{ call.call_date.strftime('%I:%M %p') }}{% endif %}</td>
                     <td data-sb-sort-value="{{ call.seller.name if call.seller else '' }}">{% if call.seller %}<a class="topic-relation topic-seller" href="{{ url_for('sellers.seller_view', id=call.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ call.seller.name }}</a>{% endif %}</td>
@@ -36,6 +19,77 @@
                 </tr>
             {% endfor %}</tbody>
         </table>
+{% endmacro %}
+{% macro grouped_table(items, customer_id) %}
+<table class="topic-table topic-group-table" data-topic-sort-pending data-sb-sort-key="topic-{{ topic.id }}-account-reader-{{ customer_id if customer_id is not none else 'unassigned' }}" aria-label="{{ items[0].customer.name if items[0].customer else 'No Customer' }} tagged notes">
+    <thead><tr>{{ heading('Note date', 'number') }}<th scope="col">Note preview</th><th scope="col">Topic context</th>{{ heading('Topics') }}{{ heading('Partners') }}</tr></thead>
+    <tbody>{% for note in items %}
+        {% set excerpt = excerpts[note.id] %}
+        <tr data-note-id="{{ note.id }}">
+            <td class="topic-date" data-sb-sort-value="{{ note.call_date.timestamp() }}">
+                <a href="{{ url_for('notes.note_view', id=note.id) }}" data-topic-preview="note" data-record-id="{{ note.id }}" data-record-title="{{ (note.customer.name if note.customer else 'General note') ~ ' · ' ~ note.call_date.strftime('%b %d, %Y %I:%M %p') }}" aria-haspopup="dialog" aria-label="Preview {{ note.customer.name if note.customer else 'general' }} note from {{ note.call_date.strftime('%B %d, %Y %I:%M %p') }}">
+                    {{ note.call_date.strftime('%b %d, %Y') }}{% if note.call_date.hour != 0 or note.call_date.minute != 0 %}<span class="topic-note-time">{{ note.call_date.strftime('%I:%M %p') }}</span>{% endif %}
+                </a>
+            </td>
+            <td><p class="topic-preview-text">{{ excerpt.preview or 'No text preview available.' }}</p></td>
+            <td>{% if excerpt.context %}<p class="topic-preview-text">{{ excerpt.context }}</p>{% else %}<p class="topic-context-status">{{ excerpt.status }}</p>{% endif %}</td>
+            <td data-sb-sort-value="{{ note.topics|map(attribute='name')|join(', ') }}">{% for related_topic in note.topics %}<a class="topic-relation topic-tag" href="{{ url_for('topics.topic_view', id=related_topic.id) }}"><i class="bi bi-tag" aria-hidden="true"></i> {{ related_topic.name }}</a>{% endfor %}</td>
+            <td data-sb-sort-value="{{ note.partners|map(attribute='name')|join(', ') }}">{% for partner in note.partners %}<a class="topic-relation topic-partner" href="{{ url_for('partners.partner_view', id=partner.id) }}"><i class="bi bi-building" aria-hidden="true"></i> {{ partner.name }}</a>{% endfor %}</td>
+        </tr>
+    {% endfor %}</tbody>
+</table>
+{% endmacro %}
+{% block title %}{{ topic.name }} - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-topic-detail.css') }}">
+{% endblock %}
+{% block content %}
+<section class="sb-topic-detail sb-directory-frame sb-directory-frame-wide" data-topic-detail="{{ topic.id }}" data-sb-page-surface aria-labelledby="topicTitle">
+    <header class="topic-heading" data-sb-page-band>
+        <h1 id="topicTitle"><i class="bi bi-tag" aria-hidden="true"></i> {{ topic.name }}</h1>
+        <a class="sb-dialog-button" href="{{ url_for('topics.topic_edit', id=topic.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit Topic</a>
+        <button class="sb-dialog-button topic-danger" type="button" data-sb-dialog="deleteTopicDialog"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
+    </header>
+    {% if topic.description %}<div class="topic-description" data-sb-page-band><h2>Description</h2><p>{{ topic.description }}</p></div>{% endif %}
+    <header class="topic-band" data-sb-page-band>
+        <h2>Tagged notes <span>{{ notes|length }} notes · {{ account_count }} {{ 'account' if account_count == 1 else 'accounts' }}</span></h2>
+        <label class="topic-view-label" for="topicView">View
+            <select id="topicView" data-topic-view>
+                <option value="account" selected>Group by account</option>
+                <option value="flat">All notes</option>
+            </select>
+        </label>
+        <span>All tagged notes · Newest first by default</span>
+    </header>
+    <p class="topic-notice" role="alert" data-sb-page-band hidden></p>
+    <div class="topic-reading" data-sb-page-body tabindex="0" aria-label="Topic notes">
+        {% if notes %}
+        <table class="topic-accounts-table" data-topic-accounts data-sb-sortable data-sb-sort-groups data-sb-sort-key="topic-{{ topic.id }}-accounts" data-sb-sort-default-column="3" data-sb-sort-default-direction="descending" aria-label="Accounts with tagged notes">
+            <thead><tr>{{ heading('Customer') }}{{ heading('Seller') }}{{ heading('Territory') }}{{ heading('Latest', 'number') }}{{ heading('Number of notes', 'number') }}</tr></thead>
+            {% for customer_id, group_notes in account_groups.items() %}
+            {% set customer = group_notes[0].customer %}
+            {% set latest = group_notes[0].call_date %}
+            {% set account_key = customer_id if customer_id is not none else 'unassigned' %}
+            <tbody class="topic-account" data-topic-account="{{ account_key }}">
+                <tr class="topic-account-header">
+                    <td data-sb-sort-value="{{ customer.name if customer else '' }}"><div class="topic-account-identity">
+                    <button type="button" class="topic-account-toggle" data-topic-toggle aria-expanded="false" aria-controls="topicAccount{{ account_key }}" aria-label="Expand notes for {{ customer.name if customer else 'No Customer' }}"><i class="bi bi-chevron-down topic-account-chevron" aria-hidden="true"></i></button>
+                    {% if customer %}
+                    <a class="topic-account-name" href="{{ url_for('customers.customer_view', id=customer.id) }}" data-topic-preview="customer" data-record-id="{{ customer.id }}" data-record-title="{{ customer.name }}" aria-haspopup="dialog">{{ customer_favicon(customer) }} {{ customer.name }}</a>
+                    {% else %}<span class="topic-account-name">No Customer</span>{% endif %}
+                    </div></td>
+                    <td data-sb-sort-value="{{ customer.seller.name if customer and customer.seller else '' }}">{% if customer and customer.seller %}<a class="topic-relation topic-seller" href="{{ url_for('sellers.seller_view', id=customer.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ customer.seller.name }}</a>{% endif %}</td>
+                    <td data-sb-sort-value="{{ customer.territory.name if customer and customer.territory else '' }}">{% if customer and customer.territory %}<a class="topic-relation topic-territory" href="{{ url_for('territories.territory_view', id=customer.territory.id) }}"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ customer.territory.name }}</a>{% endif %}</td>
+                    <td class="topic-date" data-sb-sort-value="{{ latest.timestamp() }}"><time datetime="{{ latest.isoformat() }}" title="Latest tagged note: {{ latest.strftime('%b %d, %Y') }}">{{ latest.strftime('%b %d, %Y') }}</time></td>
+                    <td class="topic-account-count" data-sb-sort-value="{{ group_notes|length }}">{{ group_notes|length }} {{ 'note' if group_notes|length == 1 else 'notes' }}</td>
+                </tr>
+                <tr id="topicAccount{{ account_key }}" data-topic-account-body hidden><td colspan="5">{{ grouped_table(group_notes, customer_id) }}</td></tr>
+            </tbody>
+            {% endfor %}
+        </table>
+        <div data-topic-flat hidden>{{ note_table(notes, 'topic-' ~ topic.id ~ '-notes', 'All tagged notes') }}</div>
         {% else %}<p class="topic-empty">No notes tagged with this topic yet.</p>{% endif %}
     </div>
     <dialog id="deleteTopicDialog" class="sb-dialog sb-dialog--compact" aria-labelledby="deleteTopicTitle" data-sb-backdrop-close="true">
@@ -46,8 +100,25 @@
         </form>
     </dialog>
 </section>
+{% for kind, name in [('note', 'Note'), ('customer', 'Account')] %}
+<dialog id="topic{{ name }}Preview" class="sb-dialog sb-dialog-record" aria-labelledby="topic{{ name }}PreviewTitle" data-sb-backdrop-close="true">
+    <div class="sb-dialog-shell">
+        <header class="sb-dialog-header">
+            <div class="sb-dialog-heading"><div class="sb-dialog-eyebrow">{{ name }} preview</div><h2 id="topic{{ name }}PreviewTitle" data-sb-record-title>{{ name }}</h2></div>
+            <a href="#" class="sb-dialog-button" data-sb-record-full-link><i class="bi bi-arrows-fullscreen" aria-hidden="true"></i> Full Page</a>
+            <button type="button" class="sb-dialog-close" data-sb-dialog-close aria-label="Close {{ name|lower }} preview" autofocus><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </header>
+        <div class="sb-dialog-body">
+            <div class="sb-record-state" data-sb-record-loading role="status">Loading {{ name|lower }}...</div>
+            <div class="sb-record-state" data-sb-record-error hidden><p role="alert">Unable to load this {{ name|lower }}. Retry or open the full page.</p><button type="button" class="sb-dialog-button" data-sb-record-retry>Retry</button></div>
+            <div data-sb-record-content></div>
+        </div>
+        <footer class="sb-dialog-footer"><small data-sb-record-status role="status">Open the full page to edit this {{ name|lower }}.</small></footer>
+    </div>
+</dialog>
+{% endfor %}
 {% endblock %}
 {% block footer %}
-<footer class="sb-page-status" aria-label="Topic status"><span>{{ notes|length }} notes</span><span>All tagged notes · No role or date restriction</span></footer>
+<footer class="sb-page-status" aria-label="Topic status"><span>{{ notes|length }} notes · {{ account_count }} {{ 'account' if account_count == 1 else 'accounts' }}</span><span>All tagged notes · No role or date restriction</span></footer>
 {% endblock %}
 {% block extra_js %}<script src="{{ url_for('static', filename='js/ui-topic-detail.js') }}"></script>{% endblock %}

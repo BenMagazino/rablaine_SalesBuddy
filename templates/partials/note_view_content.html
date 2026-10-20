@@ -282,7 +282,7 @@
     <section class="sb-note-main" aria-label="Note content">
         <h2 class="sb-note-section-heading">Notes</h2>
         <div class="call-content" tabindex="0" aria-label="Note text and images">
-            {{ note.content|safe }}
+            {{ highlighted_content|default(note.content)|safe }}
         </div>
     </section>
 </div>
