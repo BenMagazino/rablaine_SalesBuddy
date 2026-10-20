@@ -212,13 +212,15 @@ function editorUI(withWidget = false, records = new Map(), withFilters = false, 
         getAttribute() { return 'Test widget'; },
         querySelector() { return body; },
         hasAttribute(name) { return name === 'data-drag-handle'; },
-        closest(selector) { return selector === '[data-widget-requirement]' ? null : this; },
+        closest(selector) {
+            return selector === '[data-widget-requirement], .db-widget-sync' ? null : this;
+        },
     };
     const resize = {
         ...node(),
         hasAttribute(name) { return name === 'data-resize-handle'; },
         closest(selector) {
-            if (selector === '[data-widget-requirement]') return null;
+            if (selector === '[data-widget-requirement], .db-widget-sync') return null;
             return selector === '[data-widget-id]' ? tile : this;
         },
     };
@@ -431,19 +433,22 @@ test('draft preview uses the unsaved state without rewriting the draft or publis
     assert.equal(ui.nodes.saveDashboardLayout.disabled, false);
 });
 
-test('prerequisite prompts stay interactive in editing and cannot start widget drags', () => {
+for (const attribute of ['data-widget-requirements', 'data-widget-sync']) {
+test(`${attribute} stays interactive in editing and cannot start widget drags`, () => {
     const ui = editorUI(true);
-    ui.body.attributes.set('data-widget-requirements', '');
+    ui.body.attributes.set(attribute, '');
     ui.nodes.previewDashboardDraft.click();
     ui.nodes.exitDashboardDraftPreview.click();
     assert.equal(ui.body.inert, false);
     ui.nodes.dashboardCanvas.pointerdown({
-        target: {closest: selector => selector === '[data-widget-requirement]' ? {} : ui.tile},
+        target: {closest: selector =>
+            selector === '[data-widget-requirement], .db-widget-sync' ? {} : ui.tile},
         preventDefault() { assert.fail('Setup action must not be consumed by dragging'); },
         button: 0,
     });
     assert.equal(ui.tile.capturedPointer, undefined);
 });
+}
 
 test('resolving a prerequisite refreshes content without changing draft or undo history', async () => {
     const ui = editorUI(true);
@@ -544,7 +549,7 @@ test('dragging widget content moves it, while Escape restores its original place
     const ui = editorUI(true);
     const canvas = ui.nodes.dashboardCanvas;
     const content = {closest(selector) {
-        return selector === '[data-widget-requirement]' ? null : ui.tile;
+        return selector === '[data-widget-requirement], .db-widget-sync' ? null : ui.tile;
     }};
     canvas.pointerdown(pointerEvent(content));
     canvas.pointermove(pointerEvent(content, 210, 176));
@@ -691,7 +696,7 @@ test('the resize corner changes dimensions instead of dragging the whole widget'
     const ui = editorUI(true);
     const canvas = ui.nodes.dashboardCanvas;
     const icon = {closest(selector) {
-        return selector === '[data-widget-requirement]' ? null : ui.resize;
+        return selector === '[data-widget-requirement], .db-widget-sync' ? null : ui.resize;
     }};
     canvas.pointerdown(pointerEvent(icon));
     canvas.pointermove(pointerEvent(icon, 100, 176));

@@ -34,6 +34,8 @@
             tile.querySelector('.db-widget-body').remove();
             tile.insertAdjacentHTML('afterbegin', data.html);
             goals.init(tile);
+            global.SBPToF?.mountStatuses(tile);
+            global.SBTableSort?.mount(tile);
         }));
         const failure = results.find(result => result.status === 'rejected');
         if (failure) throw failure.reason;

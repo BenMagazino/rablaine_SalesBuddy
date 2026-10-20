@@ -131,7 +131,9 @@ def test_revenue_widget_matches_active_seller_scope(app, client):
     ('metric', 3), ('metric', 4), ('metric', 6), ('metric', 12),
     ('detailed', 6), ('detailed', 12),
 ])
-def test_signal_widgets_render_all_catalog_footprints(client, key, variant, width):
+def test_signal_widgets_render_all_catalog_footprints(
+    client, key, variant, width, dashboard_sources_ready,
+):
     """Every new widget has an honest empty state without requiring fiscal setup."""
     response = client.get('/api/reports/dashboards/widget-preview', query_string={
         'key': key, 'variant': variant, 'width': width,

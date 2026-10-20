@@ -116,6 +116,29 @@ def get_widget_requirements(
     return missing
 
 
+def get_widget_readiness(
+    definition: WidgetDefinition, reference: date | None = None,
+    states: dict | None = None,
+) -> tuple[list[dict[str, Any]], dict | None]:
+    """Load missing choices first, then collect input before syncing widget data."""
+    from app.services.dashboard_sync import WIDGET_SOURCES, get_source_sync
+
+    if definition.specialty and not has_specialty_access(definition.specialty):
+        return [], None
+    states = states if states is not None else {}
+    requirements = get_widget_requirements(definition, reference, states)
+    sources = WIDGET_SOURCES.get(definition.key, ())
+    if requirements:
+        if any(item['setup']['available_buckets'] for item in requirements):
+            return requirements, None
+        sources = ('revenue',)
+    cache_key = ('sync', sources)
+    if cache_key not in states:
+        states[cache_key] = get_source_sync(sources, reference)
+    sync = states[cache_key]
+    return ([] if sync else requirements), sync
+
+
 WIDGET_DEFINITIONS = {
     definition.key: definition for definition in (
         WidgetDefinition(
@@ -207,7 +230,7 @@ WIDGET_DEFINITIONS = {
                     (6, 12), MIN_WIDGET_HEIGHT, 5,
                 ),
             ),
-            get_fabric_acquisition_widget, scope='Avg monthly ACR / last 3 complete months',
+            get_fabric_acquisition_widget, scope='Avg monthly ACR / current + previous 3 months',
             supported_filters=(*FILTER_LABELS, 'group_by_seller'), specialty='data',
         ),
         WidgetDefinition(
@@ -359,7 +382,9 @@ def get_dashboard_data(
         variant = next((
             item for item in definition.variants if item.key == instance.variant_key
         ), None) if definition else None
-        requirements = get_widget_requirements(definition, reference, states) if definition else []
+        requirements, sync = (
+            get_widget_readiness(definition, reference, states) if definition else ([], None)
+        )
         if definition is None:
             logger.warning('Unknown dashboard widget %s: %s', instance.id, instance.widget_key)
         filters = normalize_filters(instance.filters)
@@ -371,7 +396,7 @@ def get_dashboard_data(
         ]
         customer_ids = resolve_customer_scope(*effective_layers)
         cache_key = (instance.widget_key, customer_ids)
-        if definition and variant and not requirements and cache_key not in values:
+        if definition and variant and not requirements and not sync and cache_key not in values:
             values[cache_key] = scope_report_destination(
                 definition.provider(reference, customer_ids=customer_ids)
                 if customer_ids is not None else definition.provider(reference),
@@ -403,6 +428,7 @@ def get_dashboard_data(
                 'scoped': customer_ids is not None,
             },
             'requirements': requirements if variant else [],
+            'sync': sync if variant else None,
             'message': (
                 'This widget is no longer in the catalog. Remove it in Manage Dashboards.'
                 if definition is None else
@@ -645,7 +671,7 @@ def get_widget_preview(
     variant = get_variant(key, variant_key)
     validate_footprint(variant, width, variant.default_height)
     definition = WIDGET_DEFINITIONS[key]
-    requirements = get_widget_requirements(definition)
+    requirements, sync = get_widget_readiness(definition)
     if filter_context is None:
         filter_context = {}
     if not isinstance(filter_context, dict) or set(filter_context) - {'dashboard', 'widget', 'live'}:
@@ -667,7 +693,7 @@ def get_widget_preview(
         'data': scope_report_destination((
             definition.provider(None, customer_ids=ids) if ids is not None
             else definition.provider(None)
-        ), key, ids) if not requirements else None,
+        ), key, ids) if not requirements and not sync else None,
         'filters': filters,
         'group_by_seller': (
             live.get('group_by_seller', False)
@@ -682,6 +708,7 @@ def get_widget_preview(
             ],
         },
         'requirements': requirements,
+        'sync': sync,
         'message': (
             'Confirm your compensation buckets to preview live values.'
             if requirements else None

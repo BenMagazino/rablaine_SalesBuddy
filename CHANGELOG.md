@@ -10,9 +10,11 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/20/2026
 
+- Dashboard widgets automatically load missing source data, show sync progress, and refresh when ready, with workload setup in the right order.
+- Fabric Acquisition checks this month's Fabric spend as well as the previous three months, treats missing revenue as $0, excludes accounts that dropped out of your sync, and offers a report option to include all current customers with no Fabric spend, regardless of other spend.
 - Rearrange dashboard widgets by dropping onto occupied space: swap when both fit, otherwise shift neighbors down, with a live preview, bounded drag scrolling and one-step Undo.
 - Sellers receive specialty-specific features, including the customer Fabric tab and automatic weekly Fabric and P-to-F refreshes.
-- Add Fabric Acquisition to Whitespace Analysis, with report-backed dashboard widgets for covered AI, Database and non-Fabric Analytics customers without positive Fabric ACR. Widgets focus on customers with at least $2,000/month combined spend; the report retains smaller customers.
+- Add Fabric Acquisition to Whitespace Analysis, with report-backed dashboard widgets for AI, Database and non-Fabric Analytics customers without positive Fabric ACR. Widgets focus on customers with at least $2,000/month combined spend; the report retains smaller customers.
 - Group Whitespace Grid and Fabric Acquisition customers by seller, with sorting within each group.
 - Replace Synapse Customers with Fabric Modernization, comparing average monthly Other Analytics and Fabric ACR over the last three complete months. Eligibility still excludes three-month Other Analytics totals below $50, or below $100 with positive Fabric spend. Monthly averages are unavailable with incomplete coverage.
 - Add Fabric modernization widgets showing the count and average monthly Other Analytics ACR of customers whose Other Analytics spend exceeds Fabric spend, plus a full customer list with optional seller grouping.

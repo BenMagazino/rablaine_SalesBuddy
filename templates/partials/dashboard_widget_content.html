@@ -1,5 +1,5 @@
 {% from 'partials/customer_favicon.html' import customer_favicon %}
-<div class="db-widget-body"{% if instance.requirements %} data-widget-requirements{% endif %}>
+<div class="db-widget-body"{% if instance.requirements %} data-widget-requirements{% endif %}{% if instance.sync %} data-widget-sync="{{ instance.sync|tojson|forceescape }}" data-sync-preview="{{ {'key': instance.key, 'variant': instance.variant_key, 'width': instance.column_span, 'instance_id': instance.id}|tojson|forceescape }}"{% endif %}>
 {% if instance.filter_info is defined and instance.filter_info.ignored %}
 <p class="db-filter-exception">Portfolio-wide · Does not follow {{ instance.filter_info.ignored|join(' or ') }} filters.</p>
 {% elif instance.filter_info is defined and instance.filter_info.scoped %}
@@ -21,6 +21,18 @@
     {% else %}
         {% include instance.template %}
     {% endif %}
+{% elif instance.sync %}
+    <div class="db-widget-unavailable db-widget-sync">
+        <h2>{{ instance.title }}</h2>
+        <p data-sync-label>{{ instance.sync.name }}</p>
+        <progress class="db-sync-progress" max="100" aria-label="{{ instance.sync.name }}"{% if instance.sync.error %} hidden{% endif %}></progress>
+        <p class="db-muted{% if instance.sync.error %} db-error{% endif %}" data-sync-message role="status" aria-live="polite">{{ instance.sync.error or 'Preparing the data for this widget...' }}</p>
+        <div class="db-sync-actions">
+            <button type="button" class="db-command" data-widget-sync-retry{% if not instance.sync.error %} hidden{% endif %}>Retry sync</button>
+            <a class="db-command" href="{{ url_for('jobs.sync_console') }}">Sync Status</a>
+        </div>
+        <p class="db-muted">This widget will update automatically when its data is ready.</p>
+    </div>
 {% elif instance.requirements %}
     <div class="db-widget-unavailable db-widget-requirements">
         <h2>{{ instance.title }}</h2>

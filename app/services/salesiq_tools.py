@@ -172,17 +172,25 @@ def report_fabric_consumption(customer_id: int | None = None, overview: bool = F
 @tool(
     'report_fabric_acquisition',
     'Read the Fabric Acquisition tab of Whitespace Analysis for Data SEs and sellers. '
-    'Returns covered customers with positive AI, Databases or Analytics excluding Fabric '
-    'and no positive monthly net Fabric ACR in the last three complete calendar months. '
-    'All displayed amounts are three-month totals divided by 3. Incomplete customers '
-    'are excluded and counted as unknown. Saved observations do not prove non-adoption.',
-    {'type': 'object', 'properties': {}},
+    'Returns customers with positive AI, Databases or Analytics excluding Fabric '
+    'and no positive monthly net Fabric ACR in the current partial calendar month or previous '
+    'three months. All displayed amounts are four-month totals divided by 4. '
+    'Set include_no_other_spend=true to include all current customers regardless of other spend. '
+    'Accounts flagged stale after dropping out of account sync are excluded. '
+    'Missing customer, product and month revenue observations count as zero. '
+    'Saved observations do not prove non-adoption.',
+    {'type': 'object', 'properties': {
+        'include_no_other_spend': {
+            'type': 'boolean',
+            'description': 'Include all customers with no Fabric spend regardless of other spend.',
+        },
+    }},
 )
-def report_fabric_acquisition() -> dict:
-    """Reuse the report and dashboard acquisition queue without importing data."""
+def report_fabric_acquisition(include_no_other_spend: bool = False) -> dict:
+    """Reuse the report acquisition queue and its optional expansion without importing data."""
     from app.services.fabric_acquisition import get_fabric_acquisition_report
 
-    data = get_fabric_acquisition_report()
+    data = get_fabric_acquisition_report(include_no_other_spend=include_no_other_spend)
     if not data['available']:
         return {'error': 'Fabric Acquisition is available for Data SEs and sellers.'}
     return data

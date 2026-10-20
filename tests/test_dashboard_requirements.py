@@ -12,8 +12,8 @@ from tests.test_dashboards import BASE, add_widget, create_dashboard
 
 
 @pytest.fixture
-def bucket_scope(app):
-    """Provide real bucket choices while leaving annual confirmation unset."""
+def bucket_scope(app, dashboard_sources_ready):
+    """Provide choices and isolate input gating from independently tested source gating."""
     with app.app_context():
         imported = RevenueImport(filename='widget-requirement-test')
         db.session.add(imported)

@@ -149,7 +149,9 @@ def test_expansion_rendering_sort_keys_and_single_summary_metric(monkeypatch):
     assert not summary.select("table, input")
 
 
-def test_expansion_catalog_preview_tool_and_saved_widget(client, monkeypatch):
+def test_expansion_catalog_preview_tool_and_saved_widget(
+    client, monkeypatch, dashboard_sources_ready,
+):
     """Wire both variants, all widths, shared read tools, and normal placement."""
     install_overview(monkeypatch, [expansion_row(1, [90, 10, 0, 0])], {"id": 1})
     catalog = client.get("/api/reports/dashboards").json["catalog"]
@@ -290,7 +292,7 @@ def test_expansion_seller_groups_are_distinct_and_headers_fixed(monkeypatch):
     assert grouped.select_one(".badge.bg-primary .bi-person")
 
 
-def test_expansion_seller_scope_and_empty_intersection(app, monkeypatch):
+def test_expansion_seller_scope_and_empty_intersection(app, monkeypatch, dashboard_sources_ready):
     """Resolve dashboard seller filters before both the flat and grouped calculations."""
     with app.app_context():
         seller = Seller(name="Expansion owner")

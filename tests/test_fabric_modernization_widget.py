@@ -190,7 +190,7 @@ def test_all_candidates_are_returned_without_top_n_limit(saved_report):
     assert len(soup.select('tbody tr')) == 30
 
 
-def test_catalog_preview_tools_and_saved_viewer(client, saved_report):
+def test_catalog_preview_tools_and_saved_viewer(client, saved_report, dashboard_sources_ready):
     """Wire Summary/Details widths, saved placement, and the shared live grouping control."""
     definition = next(row for row in client.get('/api/reports/dashboards').json['catalog']
                       if row['key'] == 'fabric.modernization')
@@ -224,7 +224,7 @@ def test_catalog_preview_tools_and_saved_viewer(client, saved_report):
     assert len(page.select('.db-modernization-table tr[data-row-key]')) == 3
 
 
-def test_current_seller_scope_and_empty_intersection(app, saved_report):
+def test_current_seller_scope_and_empty_intersection(app, saved_report, dashboard_sources_ready):
     """Use dashboard customer/seller intersection consistently before both presentations."""
     with app.app_context():
         seller = Seller(name='Current owner')

@@ -1,4 +1,4 @@
-"""Covered Fabric acquisition whitespace shared by the report, widgets and SalesIQ."""
+"""Fabric acquisition whitespace shared by the report, widgets and SalesIQ."""
 
 from collections import defaultdict
 from datetime import date
@@ -21,25 +21,33 @@ COLUMNS = (
 def get_fabric_acquisition_report(
     reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
     minimum_monthly_acr: float | None = None,
+    include_no_other_spend: bool = False,
 ) -> dict:
-    """Require three covered months and no positive monthly net Fabric ACR.
+    """Find customers with no positive monthly net Fabric ACR, treating missing data as zero.
 
-    Coverage uses all source-defined pillars for each linked customer. Missing
-    product rows within a covered month are zero; missing months remain unknown.
+    Include the current, partial calendar month and the previous three months.
+    Missing customer, product and month observations contribute zero.
     Fabric is split out of Analytics before any aggregation, never subtracted
     from rounded amounts or combined with the separate service-bucket feed.
     The optional footprint minimum is used only by the dashboard widget.
+    Exclude customers flagged stale after dropping out of account sync.
+    The report-only option includes all current customers regardless of other spend,
+    including customers without any imported revenue observations.
     """
-    end = (reference or date.today()).replace(day=1)
-    index = end.year * 12 + end.month - 1
-    months = [date(i // 12, i % 12 + 1, 1) for i in range(index - 3, index)]
+    current = (reference or date.today()).replace(day=1)
+    index = current.year * 12 + current.month - 1
+    months = [date(i // 12, i % 12 + 1, 1) for i in range(index - 3, index + 1)]
+    month_count = len(months)
     result = {
         'available': has_specialty_access('data'),
-        'rows': [], 'seller_groups': [], 'count': 0, 'unknown_customer_count': 0,
+        'rows': [], 'seller_groups': [], 'count': 0,
         'columns': [{'key': key, 'label': label} for key, label in COLUMNS],
-        'period_label': f'{months[0]:%b %Y} through {months[-1]:%b %Y}',
+        'period_label': (
+            f'{months[0]:%b %Y} through {months[-1]:%b %Y} (current month partial)'
+        ),
         'months': [month.isoformat() for month in months],
         'has_revenue_data': False, 'destination': DESTINATION,
+        'include_no_other_spend': include_no_other_spend,
     }
     if not result['available']:
         return result
@@ -60,11 +68,9 @@ def get_fabric_acquisition_report(
         StrategicPillarRevenueData.customer_id, StrategicPillarRevenueData.pillar,
         StrategicPillarRevenueData.product, StrategicPillarRevenueData.month_date,
     ).all()
-    coverage = defaultdict(set)
     spend = defaultdict(lambda: defaultdict(list))
     fabric_months = defaultdict(lambda: defaultdict(list))
     for record in records:
-        coverage[record.customer_id].add(record.month_date)
         if record.pillar not in ('AI', 'Databases', 'Analytics'):
             continue
         fabric = record.pillar == 'Analytics' and (
@@ -74,33 +80,34 @@ def get_fabric_acquisition_report(
         spend[record.customer_id][family].append(record.revenue)
         if fabric:
             fabric_months[record.customer_id][record.month_date].append(record.revenue)
-    customers = {
-        customer.id: customer for customer in Customer.query.options(
-            joinedload(Customer.seller),
-        ).filter(Customer.id.in_(spend)).all()
-    }
-    for customer_id, families in spend.items():
+    customers = Customer.query.filter(Customer.stale_since.is_(None)).options(
+        joinedload(Customer.seller),
+    )
+    if customer_ids is not None:
+        customers = customers.filter(Customer.id.in_(customer_ids))
+    for customer in customers.all():
+        families = spend[customer.id]
         totals = {
             key: fsum(families[key]) for key in ('AI', 'Databases', 'Analytics', 'Fabric')
         }
-        if not any(totals[key] > 0 for key in ('AI', 'Databases', 'Analytics')):
+        if not include_no_other_spend and not any(
+            totals[key] > 0 for key in ('AI', 'Databases', 'Analytics')
+        ):
             continue
-        if any(fsum(values) > 0 for values in fabric_months[customer_id].values()):
+        if any(fsum(values) > 0 for values in fabric_months[customer.id].values()):
             continue
-        if len(coverage[customer_id]) != 3:
-            result['unknown_customer_count'] += 1
-            continue
-        monthly_footprint = fsum(totals[key] for key in ('AI', 'Databases', 'Analytics')) / 3
+        monthly_footprint = (
+            fsum(totals[key] for key in ('AI', 'Databases', 'Analytics')) / month_count
+        )
         if minimum_monthly_acr is not None and monthly_footprint < minimum_monthly_acr:
             continue
-        customer = customers[customer_id]
         result['rows'].append({
             'customer_id': customer.id, 'customer_name': customer.name,
             'destination': f'/customer/{customer.id}/revenue',
             'row_key': f'customer-{customer.id}',
             'seller': {'id': customer.seller.id, 'name': customer.seller.name}
             if customer.seller else None,
-            'monthly_spend': {key: value / 3 for key, value in totals.items()},
+            'monthly_spend': {key: value / month_count for key, value in totals.items()},
             'revenue': monthly_footprint,
         })
     result['rows'].sort(key=lambda row: (-row['revenue'], row['customer_name'].casefold()))

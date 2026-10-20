@@ -13,6 +13,9 @@ from tests.test_dashboard_drafts import draft_payload
 from tests.test_dashboards import BASE, add_widget, create_dashboard
 
 
+pytestmark = pytest.mark.usefixtures('dashboard_sources_ready')
+
+
 GROUPING_WIDGETS = (
     'ptof.upcoming_renewals', 'fabric.trial_conversion', 'fabric.expansion',
     'fabric.modernization',

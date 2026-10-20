@@ -66,7 +66,7 @@ def test_trial_missing_snapshot_is_not_zero(monkeypatch, snapshot):
     }
 
 
-def test_trial_widget_catalog_preview_and_read_tools(client, monkeypatch):
+def test_trial_widget_catalog_preview_and_read_tools(client, monkeypatch, dashboard_sources_ready):
     """Expose both variants through the library and reuse the tool provider."""
     reader = set_capacities(monkeypatch, trial_rows(), {"id": 1})
     catalog = client.get("/api/reports/dashboards").json["catalog"]

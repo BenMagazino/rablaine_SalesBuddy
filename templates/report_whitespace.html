@@ -51,15 +51,17 @@
                  class="sb-whitespace-panel" hidden>
             <div class="sb-whitespace-scope">
                 <span id="acquisitionSummary">{{ acquisition.count }} customers | Avg monthly ACR, {{ acquisition.period_label }}</span>
+                <label><input type="checkbox" id="acquisitionIncludeNoOtherSpend"> All customers with no Fabric spend</label>
                 <label><input type="checkbox" id="acquisitionGroupBySeller"> Group by seller</label>
             </div>
-            <p class="sb-whitespace-notice">Positive AI, Database or non-Fabric Analytics spend, with no positive monthly Fabric ACR observed in the same three complete months. $0 is an observed revenue gap, not proof of no adoption or licensing.</p>
+            <div class="sb-whitespace-notice" data-error="acquisition" hidden><span role="alert"></span><button type="button" data-retry="acquisition">Retry acquisition</button></div>
+            <p data-loading="acquisition" role="status" hidden>Loading acquisition customers...</p>
             <div class="sb-whitespace-reading" tabindex="0" role="region" aria-label="Fabric acquisition whitespace">
                 {% if acquisition.rows %}
                 {% set acquisition_table_id = 'fabricAcquisitionTable' %}
                 {% include 'partials/_fabric_acquisition_table.html' %}
                 {% else %}
-                <p class="sb-whitespace-empty">No covered customers match the acquisition criteria.</p>
+                <p class="sb-whitespace-empty">No customers match the acquisition criteria.</p>
                 {% endif %}
             </div>
         </section>

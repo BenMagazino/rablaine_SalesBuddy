@@ -302,7 +302,8 @@
         function setTileMode(tile) {
             tile.tabIndex = previewing ? -1 : 0;
             const body = tile.querySelector('.db-widget-body');
-            body.inert = !previewing && !body.hasAttribute('data-widget-requirements');
+            body.inert = !previewing && !body.hasAttribute('data-widget-requirements')
+                && !body.hasAttribute('data-widget-sync');
         }
         function setPreview(value) {
             if (pending || published) return;
@@ -704,7 +705,7 @@
             }
         }
         canvas.addEventListener('pointerdown', event => {
-            if (event.target.closest('[data-widget-requirement]')) return;
+            if (event.target.closest('[data-widget-requirement], .db-widget-sync')) return;
             const handle = event.target.closest('[data-drag-handle], [data-resize-handle]');
             if (previewing || pending || published || blocked || !handle || event.button !== 0) return;
             event.preventDefault();
@@ -748,7 +749,7 @@
                 deselectFromKeyboard();
                 return;
             }
-            if (event.target.closest('[data-widget-requirement]')) return;
+            if (event.target.closest('[data-widget-requirement], .db-widget-sync')) return;
             const handle = event.target.closest('[data-drag-handle], [data-resize-handle]');
             if (previewing || pending || published || blocked
                 || !handle || !event.key.startsWith('Arrow')) return;
@@ -889,6 +890,13 @@
                 if (results.some(result => result.status === 'rejected')) {
                     throw new Error('One or more widgets could not load the selected scope.');
                 }
+            },
+            async refreshWidget(id) {
+                const item = entries.find(entry => entry.id === id);
+                const tile = tiles.get(id);
+                if (!item || !tile) return;
+                delete tile.dataset.loadedPresentation;
+                await loadContent(item, false);
             },
             async refreshRequirement(key) {
                 tiles.forEach((tile, id) => {

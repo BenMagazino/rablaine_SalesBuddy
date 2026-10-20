@@ -2,6 +2,8 @@
     color: var(--sb-ui-ink);
     font: 13px/1.6 var(--sb-ui-font);
 }
+.db-sync-progress { width: 100%; height: 6px; accent-color: var(--sb-ui-accent); }
+.db-sync-actions { display: flex; gap: 8px; align-items: center; }
 :is(.sb-dashboards, .db-editor-toolbar) *,
 :is(.sb-dashboards, .db-editor-toolbar) *::before,
 :is(.sb-dashboards, .db-editor-toolbar) *::after { box-sizing: border-box; }

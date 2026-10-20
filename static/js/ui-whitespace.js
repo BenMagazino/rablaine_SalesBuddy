@@ -134,7 +134,7 @@
     const frame = find('[data-bucket-frame]');
     const retries = {};
     const sorts = {};
-    const acquisitionTemplate = find('#fabricAcquisitionTable')?.cloneNode(true);
+    let acquisitionTemplate = find('#fabricAcquisitionTable')?.cloneNode(true);
     let preferences = parsePreferences(null);
     const restoredReadings = new Set();
     let availableBuckets = [];
@@ -347,7 +347,7 @@
     function renderAcquisition() {
         if (!acquisitionTemplate) return;
         const previous = find('#fabricAcquisitionTable');
-        const state = global.SBTableSort.create(previous).state;
+        const state = previous ? global.SBTableSort.create(previous).state : null;
         const table = acquisitionTemplate.cloneNode(true);
         const rows = [...table.querySelectorAll('tr[data-row-key]')];
         table.querySelectorAll('thead th').forEach(header => {
@@ -356,11 +356,33 @@
         [...table.tBodies].forEach(body => body.remove());
         setTableBodies(table, rows, find('#acquisitionGroupBySeller').checked);
         table.dataset.exportVisible = String(mode === 'acquisition');
-        const reading = previous.closest('.sb-whitespace-reading');
+        const reading = find('#acquisitionPanel .sb-whitespace-reading');
         const scrollTop = reading.scrollTop;
-        previous.replaceWith(table);
+        reading.replaceChildren(table);
         global.SBTableSort.create(table).restore(state);
         reading.scrollTop = scrollTop;
+        if (!rows.length) {
+            reading.replaceChildren(element('p', 'No customers match the acquisition criteria.',
+                'sb-whitespace-empty'));
+        }
+    }
+
+    function loadAcquisition() {
+        const reading = find('#acquisitionPanel .sb-whitespace-reading');
+        reading.hidden = true;
+        const include = find('#acquisitionIncludeNoOtherSpend').checked;
+        return read('acquisition', '/api/reports/whitespace/fabric-acquisition?'
+            + 'include_no_other_spend=' + include, data => {
+            const fragment = document.createElement('template');
+            fragment.innerHTML = data.table_html;
+            acquisitionTemplate = fragment.content.querySelector('#fabricAcquisitionTable');
+            if (!acquisitionTemplate) throw new Error('Invalid acquisition table response');
+            renderAcquisition();
+            reading.hidden = false;
+            const summary = data.count + ' customers | Avg monthly ACR, ' + data.period_label;
+            find('#acquisitionSummary').textContent = summary;
+            if (mode === 'acquisition') updateStatus(summary);
+        });
     }
 
     function cell(row, text, value) {
@@ -758,6 +780,8 @@
         renderAcquisition();
         saveView();
     });
+    find('#acquisitionIncludeNoOtherSpend')?.addEventListener('change', loadAcquisition);
+    retries.acquisition = loadAcquisition;
     document.addEventListener('DOMContentLoaded', renderAcquisition);
     search.addEventListener('input', searchCustomers);
     search.addEventListener('keydown', event => {

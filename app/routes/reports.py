@@ -271,6 +271,39 @@ def dashboard_widget_preview():
     ))
 
 
+@bp.route('/api/reports/dashboards/widgets/<key>/sync', methods=['POST'])
+def dashboard_widget_sync(key: str):
+    """Admit only a visible widget's next missing source after checking its setup."""
+    from sqlalchemy.exc import SQLAlchemyError
+    from app.services.dashboards import WIDGET_DEFINITIONS, get_widget_readiness
+    from app.services.dashboard_sync import start_widget_sync
+    from app.services.se_specialty import has_specialty_access
+
+    definition = WIDGET_DEFINITIONS.get(key)
+    if definition is None:
+        return jsonify(success=False, error='Unknown widget.'), 404
+    if definition.specialty and not has_specialty_access(definition.specialty):
+        return jsonify(success=False, error='This widget is not available for your specialty.'), 403
+    options = request.get_json(silent=True)
+    if not isinstance(options, dict) or set(options) - {'retry'} or (
+        'retry' in options and not isinstance(options['retry'], bool)
+    ):
+        return jsonify(success=False, error='Provide a valid sync request.'), 400
+    try:
+        requirements, sync = get_widget_readiness(definition)
+        if sync:
+            sync = start_widget_sync(sync, retry=options.get('retry', False))
+        return jsonify(success=True, ready=not requirements and not sync,
+                       requirements=bool(requirements), sync=sync)
+    except ValueError as exc:
+        current_app.logger.info('Dashboard widget sync rejected for %s: %s', key, exc)
+        return jsonify(success=False, error=str(exc)), getattr(exc, 'status', 400)
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Could not admit dashboard widget sync for %s', key)
+        return jsonify(success=False, error='Could not save the sync job. Please retry.'), 500
+
+
 @bp.route('/api/reports/dashboards/requirements/<key>')
 def dashboard_requirement(key: str):
     """Return current shared setup without changing dashboard or draft state."""
@@ -1736,12 +1769,21 @@ def report_whitespace():
 
 @bp.route('/api/reports/whitespace/fabric-acquisition')
 def api_fabric_acquisition() -> Response | tuple[Response, int]:
-    """Read the same covered acquisition queue as the tab and dashboard widget."""
+    """Read covered acquisition customers with an optional report-only spend expansion."""
     from app.services.fabric_acquisition import get_fabric_acquisition_report
 
-    data = get_fabric_acquisition_report()
+    include_no_other_spend = request.args.get('include_no_other_spend', 'false').lower()
+    if include_no_other_spend not in ('true', 'false'):
+        return jsonify(error='include_no_other_spend must be true or false.'), 400
+    data = get_fabric_acquisition_report(
+        include_no_other_spend=include_no_other_spend == 'true',
+    )
     if not data['available']:
         return jsonify(error='Fabric Acquisition is available for Data SEs and sellers.'), 403
+    data['table_html'] = render_template(
+        'partials/_fabric_acquisition_table.html',
+        acquisition=data, acquisition_table_id='fabricAcquisitionTable',
+    )
     return jsonify(data)
 
 
