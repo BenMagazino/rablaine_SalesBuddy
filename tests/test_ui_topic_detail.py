@@ -1,6 +1,6 @@
 """Topic detail parity and deletion isolation on the actual route."""
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from time import perf_counter
 from unittest.mock import patch
 
@@ -9,7 +9,9 @@ from bs4 import BeautifulSoup
 from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models import Customer, Note, Partner, Seller, Territory, Topic, UserPreference, db
+from app.models import (
+    Customer, Milestone, Note, Opportunity, Partner, Seller, Territory, Topic, UserPreference, db,
+)
 from app.services.topic_excerpts import build_topic_excerpt, highlight_note_content
 
 
@@ -104,7 +106,10 @@ def test_original_fields_relationships_and_unrestricted_scope(app, client, sampl
         "text", "number", "text", "text", "text", "text",
     ]
     assert not root.select("script,.card,.badge,.btn,[onclick],[data-bs-toggle]")
-    assert not root.select_one("table").has_attr("data-sb-sort-default-column")
+    accounts = root.select_one("[data-topic-accounts]")
+    assert accounts["data-sb-sort-default-column"] == "3"
+    assert accounts["data-sb-sort-default-direction"] == "descending"
+    assert not flat.select_one("table").has_attr("data-sb-sort-default-column")
 
 
 def test_given_repeated_accounts_when_grouped_then_counts_identity_and_order(app, client):
@@ -117,10 +122,13 @@ def test_given_repeated_accounts_when_grouped_then_counts_identity_and_order(app
             Note(customer=first, content="Older", call_date=datetime(2026, 1, 1)),
             Note(customer=second, content="Other", call_date=datetime(2026, 2, 1)),
             Note(content="Unassigned", call_date=datetime(2026, 3, 1)),
-            Note(customer=first, content="Newest", call_date=datetime(2026, 4, 1)),
+            Note(customer=first, content="Newest", call_date=datetime(2026, 4, 1, 15, 45)),
         ]
         topic.notes.extend(notes)
         db.session.add(topic)
+        db.session.add(Note(
+            customer=first, content="Not tagged", call_date=datetime(2030, 1, 1),
+        ))
         db.session.commit()
         topic_id, first_id, second_id = topic.id, first.id, second.id
         expected = [notes[i].id for i in (3, 2, 1, 0)]
@@ -133,6 +141,37 @@ def test_given_repeated_accounts_when_grouped_then_counts_identity_and_order(app
     assert [group.select_one(".topic-account-count").get_text() for group in groups] == [
         "2 notes", "1 note", "1 note",
     ]
+    summary = root.select_one("[data-topic-accounts]")
+    assert summary.name == "table"
+    assert summary.has_attr("data-sb-sort-groups")
+    headings = summary.select_one("thead").select("th")
+    assert [heading.get_text() for heading in headings] == [
+        "Customer", "Seller", "Territory", "Latest", "Number of notes",
+    ]
+    assert [heading["data-sb-sort-type"] for heading in headings] == [
+        "text", "text", "text", "number", "number",
+    ]
+    for group, count in zip(groups, [2, 1, 1]):
+        assert group.name == "tbody"
+        cells = group.select_one(".topic-account-header").find_all("td", recursive=False)
+        assert len(cells) == 5
+        assert cells[4]["data-sb-sort-value"] == str(count)
+        assert group.select_one("[data-topic-account-body] > td")["colspan"] == "5"
+    for group, latest in zip(groups, [
+        datetime(2026, 4, 1, 15, 45), datetime(2026, 3, 1), datetime(2026, 2, 1),
+    ]):
+        cell = group.select_one(".topic-account-header").find_all("td", recursive=False)[3]
+        assert float(cell["data-sb-sort-value"]) == latest.timestamp()
+        assert cell.time["datetime"] == latest.isoformat()
+        assert cell.get_text(strip=True) == latest.strftime("%b %d, %Y")
+        assert cell.time["title"] == f"Latest tagged note: {latest.strftime('%b %d, %Y')}"
+    assert groups[0].select_one(".topic-account-header td")["data-sb-sort-value"] == (
+        'Same "<account>"'
+    )
+    assert all(
+        cell["data-sb-sort-value"] == ""
+        for cell in groups[1].select_one(".topic-account-header").select("td")[:3]
+    )
     assert all(not group.has_attr("open") and not group.has_attr("name") for group in groups)
     assert 'Same "<account>"' in groups[0].select_one(".topic-account-header").get_text()
     assert groups[0].select_one(".topic-account-header account") is None
@@ -162,9 +201,9 @@ def test_given_repeated_accounts_when_grouped_then_counts_identity_and_order(app
         expected[0], expected[-1],
     ]
     keys = [table["data-sb-sort-key"] for table in root.select("table")]
-    assert len(keys) == len(set(keys)) == 4
+    assert len(keys) == len(set(keys)) == 5
     assert len(soup.select("#topicNotePreview,#topicAccountPreview")) == 2
-    assert not root.select("[data-sb-sortable]")
+    assert root.select("[data-sb-sortable]") == [summary]
 
 
 @pytest.mark.parametrize(
@@ -285,6 +324,131 @@ def test_given_customer_when_previewed_then_reuses_info_and_pipeline(client, sam
     assert "TPID" in root.get_text()
     assert not soup.select("html,script,form")
     assert client.get("/api/customer/999999/info?view=preview").status_code == 404
+
+
+def test_account_preview_preserves_pipeline_metadata_and_json_contract(
+        app, client, sample_data) -> None:
+    """Render real pipeline relationships and due dates without changing the JSON flyout."""
+    customer_id = sample_data["customer1_id"]
+    due_date = datetime.combine(date.today() + timedelta(days=7), datetime.min.time())
+    with app.app_context():
+        customer = db.session.get(Customer, customer_id)
+        customer.nickname = 'Nickname "<test>"'
+        customer.dae_name = "Account executive"
+        opportunities = [
+            Opportunity(customer=customer, name=name, msx_opportunity_id=f"preview-{index}")
+            for index, name in enumerate(["Zulu pipeline", "Alpha pipeline"])
+        ]
+        db.session.add_all(opportunities)
+        db.session.flush()
+        milestone = Milestone(
+            customer=customer, opportunity=opportunities[0], title='Milestone "<test>"',
+            url="https://example.com/milestone", due_date=due_date,
+            msx_status="At Risk", monthly_usage=1234, workload="Data: Fabric",
+        )
+        db.session.add(milestone)
+        db.session.commit()
+        opportunity_ids = [opportunity.id for opportunity in reversed(opportunities)]
+        milestone_id = milestone.id
+
+    response = client.get(f"/api/customer/{customer_id}/info?view=preview")
+    assert response.status_code == 200
+    assert response.mimetype == "text/html"
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert [int(row["data-opportunity-id"]) for row in soup.select("[data-opportunity-id]")] == (
+        opportunity_ids
+    )
+    row = soup.select_one(f'[data-milestone-id="{milestone_id}"]')
+    assert row["data-status"] == "At Risk"
+    assert row.select_one("a")["href"] == f"/milestone/{milestone_id}"
+    for expected in (
+            'Milestone "<test>"', "Data: Fabric", "$1,234/mo", due_date.strftime("%b %d, %Y")):
+        assert expected in row.get_text()
+    metadata = soup.select_one(".topic-customer-metadata")
+    assert 'Nickname "<test>"' in metadata.get_text()
+    assert "Account executive" in metadata.get_text()
+    assert metadata.select_one(f'a[href="/seller/{sample_data["seller1_id"]}"]')
+    assert metadata.select_one(f'a[href="/territory/{sample_data["territory1_id"]}"]')
+    assert not soup.select("test,script,form")
+    original = client.get(f"/api/customer/{customer_id}/info")
+    assert original.is_json and original.json["id"] == customer_id
+    assert len(original.json["opportunities"]) == 2
+
+
+def test_account_preview_without_pipeline_or_ownership_has_explicit_empty_state(
+        app, client) -> None:
+    """Optional ownership fields never prevent inspection of an otherwise empty account."""
+    with app.app_context():
+        customer = Customer(name='Unassigned "<account>"', tpid=900099)
+        db.session.add(customer)
+        db.session.commit()
+        customer_id = customer.id
+
+    response = client.get(f"/api/customer/{customer_id}/info?view=preview")
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert 'Unassigned "<account>"' in soup.h3.get_text()
+    assert "No opportunities for this account." in soup.get_text()
+    assert [term.get_text() for term in soup.select("dt")] == ["TPID"]
+    assert not soup.select("account,script,form,[data-opportunity-id]")
+
+
+def test_grouped_rows_render_bounded_context_and_missing_text_states(app, client) -> None:
+    """Both previews, literal highlights and honest no-match states reach actual table cells."""
+    with app.app_context():
+        topic = Topic(name="C++")
+        contents = [
+            "<p>Opening discussion. " + "Planning details. " * 30 + "</p><p>Evaluate c++.</p>",
+            "<p>Try C++ today.</p>",
+            "<p>Tagged for follow-up only.</p>",
+            '<img src="data:image/png;base64,AAAA" alt="C++">',
+        ]
+        notes = [
+            Note(content=content, call_date=datetime(2026, 10, index + 1))
+            for index, content in enumerate(contents)
+        ]
+        topic.notes.extend(notes)
+        db.session.add(topic)
+        db.session.commit()
+        topic_id = topic.id
+        note_ids = [note.id for note in notes]
+
+    root, soup = detail(client, topic_id)
+    assert "0 accounts" in soup.select_one(".sb-page-status").get_text()
+    group = root.select_one('[data-topic-account="unassigned"]')
+    assert group.select_one(".topic-account-count").get_text() == "4 notes"
+    for index, note_id in enumerate(note_ids):
+        row = group.select_one(f'[data-note-id="{note_id}"]')
+        cells = row.select("td")
+        assert len(cells[1].get_text(strip=True)) <= 250
+        assert len(cells[2].get_text(strip=True)) <= 350
+        if index == 0:
+            assert cells[1].get_text(strip=True).endswith("...")
+            assert cells[2].mark.get_text() == "c++"
+        elif index == 1:
+            assert cells[1].mark.get_text() == "C++"
+            assert cells[2].get_text(strip=True) == "Topic mentioned in opening preview."
+        else:
+            assert cells[2].get_text(strip=True) == "Topic tagged; no matching text found."
+        assert not row.select("img")
+    assert "No text preview available." in group.select_one(
+        f'[data-note-id="{note_ids[-1]}"]'
+    ).get_text()
+
+
+@pytest.mark.parametrize("topic_id", ["", "invalid", "-1", "2147483647"])
+def test_topic_note_preview_rejects_missing_or_invalid_topic(client, sample_data, topic_id) -> None:
+    """An invalid highlight context produces a real 404, not a successful unmarked preview."""
+    response = client.get(f'/api/note/{sample_data["call1_id"]}/detail?topic_id={topic_id}')
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("builder", [build_topic_excerpt, highlight_note_content])
+@pytest.mark.parametrize("topic_name", ["", " \t\n "])
+def test_topic_text_helpers_reject_empty_phrases(builder, topic_name) -> None:
+    """Empty highlight phrases fail explicitly rather than marking every text boundary."""
+    with pytest.raises(ValueError, match="nonempty topic name"):
+        builder("<p>Authored note.</p>", topic_name)
 
 
 def test_given_rich_note_when_highlighted_then_preserves_formatting_and_attributes():

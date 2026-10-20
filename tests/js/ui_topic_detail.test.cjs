@@ -143,7 +143,8 @@ function mountTopic({stored = null, saved = null, storageFails = false} = {}) {
         addEventListener(type, fn) {events[type] = fn;}};
     vm.runInNewContext(source, {window});
     function choose(view) {picker.value = view; picker.change();}
-    return {window, root, events, reading, picker, groups, accounts, flat, notice, errors, choose};
+    return {window, root, events, reading, picker, groups, accounts, flat,
+        notice, errors, choose};
 }
 
 test('grouped default, independent disclosures and persistent flat choice across topics', () => {
@@ -248,6 +249,59 @@ test('storage and invalid history errors are visible and do not disable view cha
     assert.equal(historyFailure.flat.hidden, false);
     assert.equal(historyFailure.notice.hidden, false);
     assert.match(historyFailure.notice.textContent, /remember Topic context for Back/);
+});
+
+test('all modified preview clicks retain native navigation without loading a controller', () => {
+    const page = mountTopic();
+    const calls = [];
+    page.window.SBRecordDialog = {create() {calls.push('created');}};
+    for (const kind of ['note', 'customer']) {
+        const link = {dataset: {topicPreview: kind, recordId: '7', recordTitle: 'Preview'}};
+        for (const modifier of ['ctrlKey', 'metaKey', 'shiftKey', 'altKey']) {
+            page.root.click({button: 0, [modifier]: true, target: {closest: () => link},
+                preventDefault() {calls.push('prevented');}});
+        }
+        for (const extra of [{button: 1}, {button: 2}, {defaultPrevented: true}]) {
+            page.root.click({button: 0, ...extra, target: {closest: () => link},
+                preventDefault() {calls.push('prevented');}});
+        }
+    }
+    assert.deepEqual(calls, []);
+});
+
+test('preview controller failure is visible and the same link can be retried', () => {
+    const page = mountTopic();
+    const link = {dataset: {topicPreview: 'note', recordId: '7', recordTitle: 'Preview'}};
+    const event = {button: 0, target: {closest: () => link}, preventDefault() {}};
+    page.window.SBRecordDialog = {create() {throw new Error('Controller unavailable');}};
+    page.root.click(event);
+    assert.equal(page.notice.hidden, false);
+    assert.match(page.notice.textContent, /Could not open the note preview/);
+    assert.equal(page.errors.length, 1);
+    let selected;
+    page.window.SBRecordDialog = {create() {return {open(value) {selected = value;}};}};
+    page.root.click(event);
+    assert.equal(selected.id, 7);
+    assert.equal(selected.title, 'Preview');
+});
+
+test('history is topic-local and restores the unassigned disclosure independently', () => {
+    const unrelated = mountTopic({stored: 'flat', saved: {
+        id: 99, top: 500, left: 0, description: 0, view: 'account', expanded: ['1'],
+    }});
+    assert.equal(unrelated.picker.value, 'flat');
+    assert.equal(unrelated.reading.scrollTop, 0);
+    assert.ok(unrelated.groups.every(group => !group.open));
+    assert.equal(unrelated.notice.hidden, true);
+    const restored = mountTopic({saved: {
+        id: 4, top: 90, left: 0, description: 0, view: 'account', expanded: ['unassigned'],
+    }});
+    assert.deepEqual(restored.groups.map(group => group.open), [false, false, true]);
+    restored.groups[0].toggle();
+    restored.groups[2].toggle();
+    assert.deepEqual(restored.groups.map(group => group.open), [true, false, false]);
+    assert.equal(JSON.stringify(restored.window.history.state.sbTopicDetail.expanded), '["1"]');
+    assert.equal(restored.window.history.state.sbTableSort.kept, true);
 });
 
 test('mount waits for shared initialization and ignores unrelated pages', () => {

@@ -91,8 +91,9 @@ def test_full_note_page_retains_edit_delete_share_and_same_editor(
     assert soup.select_one(".btn-share")
     assert soup.find(id="deleteModal")
     assert soup.select_one("[data-sb-note-actions]")
-    assert soup.select_one('script[src="/static/js/ui-note-actions.js"]')
-    assert soup.select_one('script[src="/static/js/ui-local-datetime.js"]')
+    scripts = [script["src"].split("?", 1)[0] for script in soup.select("script[src]")]
+    assert "/static/js/ui-note-actions.js" in scripts, scripts
+    assert "/static/js/ui-local-datetime.js" in scripts, scripts
 
 
 def test_general_note_fragment_has_no_manufactured_engagement_editor(

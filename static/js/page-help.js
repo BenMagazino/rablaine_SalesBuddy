@@ -376,9 +376,14 @@ const PageHelp = (function () {
       <p>All notes tagged with this topic, across all dates and seller roles.
       The full description, total tagged-note count and unique account count remain available.</p>
       <ul>
-        <li>Group by account starts collapsed. Use the arrow beside an account to expand
-        its notes; multiple accounts can stay open. Account headers show Seller, Territory
-        and note count, ordered by their newest tagged note. No Customer keeps unassigned
+        <li>Group by account starts collapsed. Sort the account table by Customer, Seller,
+        Territory, Latest or Number of notes in either direction. Latest shows the date
+        of the account's newest note tagged with this topic and defaults to
+        newest first, using the full note time to order notes on the same date.
+        Sort Latest descending to return to that order.
+        Use the arrow beside an account
+        to expand its notes; multiple accounts can stay open and travel with their account
+        when sorted, without changing the notes' individual sorting. No Customer keeps unassigned
         notes outside the account count.</li>
         <li>Account names open focused account previews. Note dates open note-detail
         previews. Close a preview to keep your place, or choose Full Page for the complete

@@ -66,24 +66,29 @@
     <p class="topic-notice" role="alert" data-sb-page-band hidden></p>
     <div class="topic-reading" data-sb-page-body tabindex="0" aria-label="Topic notes">
         {% if notes %}
-        <div data-topic-accounts>
+        <table class="topic-accounts-table" data-topic-accounts data-sb-sortable data-sb-sort-groups data-sb-sort-key="topic-{{ topic.id }}-accounts" data-sb-sort-default-column="3" data-sb-sort-default-direction="descending" aria-label="Accounts with tagged notes">
+            <thead><tr>{{ heading('Customer') }}{{ heading('Seller') }}{{ heading('Territory') }}{{ heading('Latest', 'number') }}{{ heading('Number of notes', 'number') }}</tr></thead>
             {% for customer_id, group_notes in account_groups.items() %}
             {% set customer = group_notes[0].customer %}
+            {% set latest = group_notes[0].call_date %}
             {% set account_key = customer_id if customer_id is not none else 'unassigned' %}
-            <section class="topic-account" data-topic-account="{{ account_key }}">
-                <div class="topic-account-header">
+            <tbody class="topic-account" data-topic-account="{{ account_key }}">
+                <tr class="topic-account-header">
+                    <td data-sb-sort-value="{{ customer.name if customer else '' }}"><div class="topic-account-identity">
                     <button type="button" class="topic-account-toggle" data-topic-toggle aria-expanded="false" aria-controls="topicAccount{{ account_key }}" aria-label="Expand notes for {{ customer.name if customer else 'No Customer' }}"><i class="bi bi-chevron-down topic-account-chevron" aria-hidden="true"></i></button>
                     {% if customer %}
                     <a class="topic-account-name" href="{{ url_for('customers.customer_view', id=customer.id) }}" data-topic-preview="customer" data-record-id="{{ customer.id }}" data-record-title="{{ customer.name }}" aria-haspopup="dialog">{{ customer_favicon(customer) }} {{ customer.name }}</a>
-                    {% if customer.seller %}<a class="topic-relation topic-seller" href="{{ url_for('sellers.seller_view', id=customer.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ customer.seller.name }}</a>{% endif %}
-                    {% if customer.territory %}<a class="topic-relation topic-territory" href="{{ url_for('territories.territory_view', id=customer.territory.id) }}"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ customer.territory.name }}</a>{% endif %}
                     {% else %}<span class="topic-account-name">No Customer</span>{% endif %}
-                    <span class="topic-account-count">{{ group_notes|length }} {{ 'note' if group_notes|length == 1 else 'notes' }}</span>
-                </div>
-                <div id="topicAccount{{ account_key }}" data-topic-account-body hidden>{{ grouped_table(group_notes, customer_id) }}</div>
-            </section>
+                    </div></td>
+                    <td data-sb-sort-value="{{ customer.seller.name if customer and customer.seller else '' }}">{% if customer and customer.seller %}<a class="topic-relation topic-seller" href="{{ url_for('sellers.seller_view', id=customer.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ customer.seller.name }}</a>{% endif %}</td>
+                    <td data-sb-sort-value="{{ customer.territory.name if customer and customer.territory else '' }}">{% if customer and customer.territory %}<a class="topic-relation topic-territory" href="{{ url_for('territories.territory_view', id=customer.territory.id) }}"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ customer.territory.name }}</a>{% endif %}</td>
+                    <td class="topic-date" data-sb-sort-value="{{ latest.timestamp() }}"><time datetime="{{ latest.isoformat() }}" title="Latest tagged note: {{ latest.strftime('%b %d, %Y') }}">{{ latest.strftime('%b %d, %Y') }}</time></td>
+                    <td class="topic-account-count" data-sb-sort-value="{{ group_notes|length }}">{{ group_notes|length }} {{ 'note' if group_notes|length == 1 else 'notes' }}</td>
+                </tr>
+                <tr id="topicAccount{{ account_key }}" data-topic-account-body hidden><td colspan="5">{{ grouped_table(group_notes, customer_id) }}</td></tr>
+            </tbody>
             {% endfor %}
-        </div>
+        </table>
         <div data-topic-flat hidden>{{ note_table(notes, 'topic-' ~ topic.id ~ '-notes', 'All tagged notes') }}</div>
         {% else %}<p class="topic-empty">No notes tagged with this topic yet.</p>{% endif %}
     </div>

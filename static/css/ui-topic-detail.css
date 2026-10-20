@@ -14,13 +14,24 @@
 .topic-band h2 span { margin-left: 8px; font-size: 12px; }
 .topic-view-label { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--sb-ui-muted); }
 .topic-view-label select { padding: 4px 8px; border: 1px solid var(--sb-ui-line); background: var(--sb-ui-surface); color: var(--sb-ui-ink); font: inherit; }
-.topic-account { border-bottom: 1px solid var(--sb-ui-line); }
-.topic-account-header { display: flex; align-items: center; gap: 16px; padding: 10px 24px; }
+.topic-accounts-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.topic-accounts-table > thead th { position: sticky; top: 0; z-index: 2; padding: 10px 14px; border-bottom: 1px solid var(--sb-ui-line); background: var(--sb-ui-context); color: var(--sb-ui-muted); text-align: left; font-size: 12px; font-weight: 500; }
+.topic-accounts-table > thead th:first-child { width: 32%; padding-left: 24px; }
+.topic-accounts-table > thead th:nth-child(2) { width: 18%; }
+.topic-accounts-table > thead th:nth-child(3) { width: 22%; }
+.topic-accounts-table > thead th:nth-child(4) { width: 14%; }
+.topic-accounts-table > thead th:last-child { width: 14%; text-align: right; }
+.topic-account-header > td { padding: 10px 14px; border-bottom: 1px solid var(--sb-ui-line); vertical-align: middle; overflow-wrap: anywhere; }
+.topic-account-header > td:first-child { padding-left: 24px; }
+.topic-account-identity { display: flex; align-items: center; gap: 16px; }
+.topic-account-header:hover { background: var(--sb-ui-raised); }
+.topic-accounts-table > tbody > [data-topic-account-body] > td { padding: 0; }
 .topic-account-toggle { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border: 1px solid transparent; background: transparent; color: var(--sb-ui-ink); cursor: pointer; }
 .topic-account-toggle:hover { background: var(--sb-ui-raised); border-color: var(--sb-ui-line); }
 .topic-account-name { color: var(--sb-ui-ink); font-weight: 600; overflow-wrap: anywhere; }
 .topic-account-header .topic-relation { margin: 0; }
-.topic-account-count { margin-left: auto; white-space: nowrap; color: var(--sb-ui-muted); font-variant-numeric: tabular-nums; }
+.topic-account-count { white-space: nowrap; color: var(--sb-ui-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.topic-accounts-table > thead th:last-child .sb-table-sort-button { justify-content: flex-end; }
 .topic-account[data-expanded="true"] > .topic-account-header { background: var(--sb-ui-context); }
 .topic-account-toggle[aria-expanded="true"] .topic-account-chevron { transform: rotate(180deg); }
 .sb-topic-detail .topic-reading { overflow: auto; scrollbar-gutter: stable; overflow-anchor: none; }

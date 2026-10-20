@@ -140,7 +140,11 @@
                 }
                 indexes.add(column.index);
             }
-            const bodies = [...table.tBodies].map(body => ({body, original: [...body.rows]}));
+            // Grouped readers keep each tbody's summary and expanded content together.
+            const grouped = table.hasAttribute('data-sb-sort-groups');
+            const items = container => grouped ? container.tBodies : container.rows;
+            const bodies = grouped ? [{body: table, original: [...items(table)]}] :
+                [...table.tBodies].map(body => ({body, original: [...items(body)]}));
             let state = null;
             const defaultColumn = table.getAttribute('data-sb-sort-default-column');
             const defaultDirection = table.getAttribute('data-sb-sort-default-direction');
@@ -164,14 +168,16 @@
 
             function plan(next) {
                 return bodies.map(({body, original}) => {
-                    const current = [...body.rows];
+                    const current = [...items(body)];
                     if (current.length !== original.length ||
                         current.some(row => !original.includes(row))) {
                         throw new Error('Table rows changed after mounting; mount a new table.');
                     }
                     const movable = original.filter(row => !row.hasAttribute('data-sb-sort-fixed'));
                     const values = new Map(movable.map(row => [row, new Map(columns.map(column =>
-                        [column.index, value(row.cells[column.index], column.type)]))]));
+                        [column.index, value(
+                            (grouped ? row.rows[0] : row)?.cells[column.index], column.type,
+                        )]))]));
                     if (next) {
                         const type = columns.find(column => column.index === next.column).type;
                         const ordinals = new Map(original.map((row, index) => [row, index]));
@@ -211,7 +217,7 @@
                 try {
                     next = validateState(next);
                     const changes = plan(next).filter(({body, rows}) =>
-                        rows.some((row, index) => row !== body.rows[index]));
+                        rows.some((row, index) => row !== items(body)[index]));
                     if (save) persist(key, next);
                     const focused = document.activeElement;
                     const keepFocus = focused && table.contains(focused);
@@ -219,7 +225,7 @@
                     try {
                         for (const {body, rows} of changes) {
                             rows.forEach((row, index) => {
-                                const before = body.rows[index];
+                                const before = items(body)[index];
                                 if (row === before) return;
                                 if (body.moveBefore) body.moveBefore(row, before ?? null);
                                 else body.insertBefore(row, before ?? null);
