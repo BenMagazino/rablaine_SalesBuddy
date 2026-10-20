@@ -85,6 +85,31 @@ def test_shared_source_joins_active_run_with_different_options(client, app):
         assert Job.query.count() == 1
 
 
+def test_rti_waits_for_revenue_and_fabric_then_uses_successful_empty_imports(client, app):
+    """The two-source RTI widget participates in the normal sequential sync flow."""
+    with app.app_context():
+        db.session.add(Customer(name='RTI customer', tpid=12345))
+        db.session.commit()
+    assert start(client, 'fabric.rti').json['sync']['operation'] == 'revenue'
+    with app.app_context():
+        job = Job.query.filter_by(job_type='sync:revenue').one()
+        job.status = Job.STATUS_DONE
+        job.result = '{"success": true}'
+        job.finished_at = datetime.now(timezone.utc)
+        db.session.commit()
+    assert start(client, 'fabric.rti').json['sync']['operation'] == 'fabric'
+    with app.app_context():
+        job = Job.query.filter_by(job_type='sync:fabric').one()
+        job.status = Job.STATUS_DONE
+        job.result = '{"success": true}'
+        job.finished_at = datetime.now(timezone.utc)
+        db.session.commit()
+    assert start(client, 'fabric.rti').json['ready']
+    assert 'data-widget-sync=' not in preview(client, 'fabric.rti').json['html']
+    with app.app_context():
+        assert Job.query.count() == 2
+
+
 def test_accounts_then_source_then_empty_data_without_resync(client, app):
     """Account import is a real prerequisite; a successful empty source stays ready."""
     key = 'fabric.trial_conversion'

@@ -19,6 +19,7 @@ from app.services.fabric_consumption import (
 from app.services.hygiene import get_hygiene_gaps_widget
 from app.services.fabric_modernization import get_fabric_modernization_widget
 from app.services.fabric_acquisition import get_fabric_acquisition_widget
+from app.services.rti import get_rti_widget
 from app.services.se_specialty import has_specialty_access
 from app.services.manager_one_on_one import get_initiative_tracker_widget
 from app.services.ptof import get_ptof_renewals_widget
@@ -232,6 +233,22 @@ WIDGET_DEFINITIONS = {
             ),
             get_fabric_acquisition_widget, scope='Avg monthly ACR / current + previous 3 months',
             supported_filters=(*FILTER_LABELS, 'group_by_seller'), specialty='data',
+        ),
+        WidgetDefinition(
+            'fabric.rti', 'Real-Time Intelligence',
+            'RTI workload usage alongside Event Hubs, Stream Analytics and IoT ACR.',
+            'Real-Time Intelligence', (
+                WidgetVariant(
+                    'metric', 'Summary', 'partials/widgets/rti.html',
+                    (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 4,
+                ),
+                WidgetVariant(
+                    'detailed', 'Details', 'partials/widgets/rti.html',
+                    (6, 12), MIN_WIDGET_HEIGHT, 5,
+                ),
+            ),
+            get_rti_widget, scope='RTI / rolling 28 days; ACR / last 3 complete months',
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'),
         ),
         WidgetDefinition(
             'fabric.modernization', 'Fabric modernization',

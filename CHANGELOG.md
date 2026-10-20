@@ -10,6 +10,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/20/2026
 
+- Find P to F and Fabric reports together under FY27 Data Motions in Reports.
+- Find Real-Time Intelligence opportunities with RTI usage and average monthly Event Hubs, Stream Analytics and IoT spend over the last three complete months in a shared report and dashboard widgets.
 - Dashboard widgets automatically load missing source data, show sync progress, and refresh when ready, with workload setup in the right order.
 - Fabric Acquisition checks this month's Fabric spend as well as the previous three months, treats missing revenue as $0, excludes accounts that dropped out of your sync, and offers a report option to include all current customers with no Fabric spend, regardless of other spend.
 - Rearrange dashboard widgets by dropping onto occupied space: swap when both fit, otherwise shift neighbors down, with a live preview, bounded drag scrolling and one-step Undo.

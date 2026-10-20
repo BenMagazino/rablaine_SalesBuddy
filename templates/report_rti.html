@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Real-Time Intelligence - Sales Buddy{% endblock %}
+{% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-reports.css') }}">
+{% endblock %}
+{% block footer %}
+{% if not request.args.get('embed') %}
+<footer class="sb-page-status" aria-label="Report status">
+    <span>{{ report.count }} customers; {{ report.rti_customer_count }} with RTI usage</span>
+    <span>Observed consumption, not architecture or migration readiness.</span>
+</footer>
+{% endif %}
+{% endblock %}
+{% block content %}
+<section class="sb-revenue-reports sb-modernization-report{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}"
+         data-sb-page-surface data-sb-report-key="rti-v1"
+         data-sb-report-embedded="{{ 'true' if request.args.get('embed') else 'false' }}" aria-labelledby="rtiTitle">
+    <header class="sb-revenue-reports-header" data-sb-page-band>
+        <div>
+            <h1 id="rtiTitle">Real-Time Intelligence</h1>
+            <p>Avg monthly ACR, {{ report.period_label }} (three complete months).</p>
+            <form method="get" action="{{ url_for('reports.report_rti') }}" class="sb-rti-grouping">
+                {% if request.args.get('embed') %}<input type="hidden" name="embed" value="{{ request.args.get('embed') }}">{% endif %}
+                <label><input type="checkbox" name="group_by_seller" value="true"{% if group_by_seller %} checked{% endif %} onchange="this.form.requestSubmit()"> Group by seller</label>
+                <input type="hidden" name="group_by_seller" value="false">
+                <noscript><button type="submit" class="sb-revenue-command">Apply</button></noscript>
+            </form>
+        </div>
+        {% set export_table_id = '.sb-rti-table' %}
+        {% set export_filename = 'real-time-intelligence' %}
+        {% set export_title = 'Real-Time Intelligence - ' ~ report.period_label %}
+        {% include 'partials/_report_export.html' %}
+    </header>
+    <p class="sb-revenue-report-notice" data-sb-report-context-notice data-sb-page-band role="alert" hidden></p>
+    <p class="sb-modernization-context" data-sb-page-band>
+        RTI usage: rolling 28 days from Fabric 360.
+        ACR: last three complete months, divided by 3. Missing revenue counts as $0.
+        {% if report.snapshot %}Fabric imported <span class="local-datetime" data-utc="{{ report.snapshot.imported_at }}">{{ report.snapshot.imported_at }}</span>.
+        {% if report.snapshot.workload_as_of %}Workload as of {{ report.snapshot.workload_as_of }}.{% endif %}{% endif %}
+    </p>
+    {% if not report.snapshot or not report.has_revenue_data %}
+    <p class="sb-revenue-report-notice" data-sb-page-band>
+        {% if not report.snapshot %}No saved Fabric snapshot. RTI usage is unavailable. {% endif %}
+        {% if not report.has_revenue_data %}No saved product revenue. ACR is unavailable. {% endif %}
+        Sync missing data from <a href="{{ url_for('revenue.revenue_import') }}">Data Management</a>.
+    </p>
+    {% endif %}
+    <div class="sb-revenue-reports-body" data-sb-page-body tabindex="0" role="region" aria-label="RTI customers{{ ' by seller' if group_by_seller else '' }}">
+        {% set products = report.products %}
+        {% set period_label = report.period_label %}
+        {% set groups = (report.seller_groups if group_by_seller else [{'rows': report.rows}]) if report.rows else [] %}
+        {% for group in groups %}
+        <section class="sb-modernization-group"{% if group_by_seller %} aria-labelledby="rtiSeller{{ loop.index }}"{% endif %}>
+            {% if group_by_seller %}
+            <header class="sb-modernization-group-header">
+                <h2 id="rtiSeller{{ loop.index }}">{% if group.seller %}<a class="badge bg-primary text-decoration-none" href="{{ url_for('sellers.seller_view', id=group.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ group.seller.name }}</a>{% else %}No seller assigned{% endif %}</h2>
+                <span>{{ group.rows|length }} customers</span>
+            </header>
+            {% endif %}
+            <table class="sb-modernization-table sb-rti-table{% if not group_by_seller %} sb-rti-flat{% endif %}" data-sb-sortable data-sb-sort-key="rti-{{ (group.seller.id if group.seller else 'unassigned') if group_by_seller else 'flat' }}"
+                   data-sb-sort-default-column="6" data-sb-sort-default-direction="descending"{% if group_by_seller %} aria-labelledby="rtiSeller{{ loop.index }}"{% else %} aria-label="RTI customers"{% endif %}>
+                <thead><tr>{% include 'partials/_rti_headers.html' %}</tr></thead>
+                <tbody>{% set rows = group.rows %}{% include 'partials/_rti_rows.html' %}</tbody>
+            </table>
+        </section>
+        {% else %}
+        <div class="sb-revenue-empty"><h2>No observed RTI or related Azure consumption</h2>
+            <p>No current accounts have positive RTI usage or positive Event Hubs, Stream Analytics or IoT ACR in this period.</p></div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
+{% block extra_js %}<script src="{{ url_for('static', filename='js/ui-revenue-reports.js') }}"></script>{% endblock %}

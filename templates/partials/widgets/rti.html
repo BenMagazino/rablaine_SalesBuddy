@@ -1,0 +1,35 @@
+{% set data = instance.data %}
+{% set prefix = widget_id_prefix|default('rti-') %}
+{% set detailed = instance.variant_key|default('metric') == 'detailed' %}
+{% set grouped = instance.group_by_seller|default(false) %}
+{% set products = data.products %}
+{% set period_label = data.period_label %}
+{% set rti_widget = true %}
+{% set seller_group_columns = 6 %}
+<section class="db-report-widget{% if detailed %} db-rti-details{% endif %}" aria-labelledby="{{ prefix }}title">
+    <header class="db-report-heading"><h2 id="{{ prefix }}title">Real-Time Intelligence</h2>
+        <a href="{{ data.destination }}">Full report <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a></header>
+    <p class="db-report-caption">RTI: rolling 28 days. Avg monthly ACR: {{ data.period_label }}, three complete months.</p>
+    {% if detailed %}
+    {% if data.details.rows %}
+    <div class="db-rti-table-scroll" tabindex="0" role="region" aria-label="RTI customers{% if grouped %} by seller{% endif %}">
+        <table class="db-report-table" data-sb-sortable data-sb-sort-key="{{ prefix }}rti-v2-{{ 'sellers' if grouped else 'flat' }}"
+               data-sb-sort-default-column="5" data-sb-sort-default-direction="descending" aria-label="RTI and related Azure consumption">
+            <thead><tr>{% include 'partials/_rti_headers.html' %}</tr></thead>
+            {% for group in (data.details.seller_groups if grouped else [{'rows': data.details.rows}]) %}
+            <tbody{% if grouped %} class="db-report-seller-group"{% endif %}>
+                {% if grouped %}{% include 'partials/widgets/_seller_group_header.html' %}{% endif %}
+                {% set rows = group.rows %}{% include 'partials/_rti_rows.html' %}
+            </tbody>
+            {% endfor %}
+        </table>
+    </div>
+    {% else %}<p class="db-report-empty">No current customers with observed RTI usage or positive related Azure ACR.</p>{% endif %}
+    {% else %}
+    <dl class="db-modernization-metrics">
+        <div><dt>Customers</dt><dd>{{ data.count }}</dd></div>
+        <div><dt>With RTI usage</dt><dd>{{ data.rti_customer_count }}</dd></div>
+        <div><dt>Related Azure ACR / month</dt><dd class="db-modernization-revenue{% if data.monthly_acr is none %} is-unavailable{% endif %}">{% if data.monthly_acr is none %}Unavailable{% elif 0 < data.monthly_acr < 1 %}&lt;$1{% elif -1 < data.monthly_acr < 0 %}-&lt;$1{% else %}${{ '{:,.0f}'.format(data.monthly_acr) }}{% endif %}</dd></div>
+    </dl>
+    {% endif %}
+</section>

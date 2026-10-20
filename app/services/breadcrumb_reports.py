@@ -25,6 +25,7 @@ REPORT_ENDPOINTS = {
     "reports.report_connect_impact",
     "revenue.reports_list",
     "reports.report_fabric_modernization",
+    "reports.report_rti",
 }
 
 HANDLED_ENDPOINTS = REPORT_ENDPOINTS | {

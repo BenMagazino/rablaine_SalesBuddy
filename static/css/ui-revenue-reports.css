@@ -64,6 +64,9 @@
 .sb-revenue-report-entry:hover { background: var(--sb-ui-control-hover); color: var(--sb-ui-ink); }
 
 .sb-modernization-context { margin: 0; padding: 12px 24px; color: var(--sb-ui-muted); font-size: 12px; border-bottom: 1px solid var(--sb-ui-line); }
+.sb-rti-grouping { margin-top: 8px; font-size: 12px; }
+.sb-rti-grouping label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.sb-rti-table.sb-rti-flat th { top: 0; }
 .sb-modernization-group + .sb-modernization-group { border-top: 1px solid var(--sb-ui-line); }
 .sb-modernization-group-header {
     display: flex;

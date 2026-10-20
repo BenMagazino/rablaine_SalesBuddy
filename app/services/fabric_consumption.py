@@ -835,6 +835,9 @@ def get_fabric_capacity_overview() -> dict:
         for index, capacity in enumerate(ordered or [None], start=1):
             rows.append({
                 **customer, "capacity": capacity, "workload_shares": shares,
+                "workload_cu_hours": {
+                    name: _number(values.get(name, 0 if complete else None)) for name in names
+                },
                 "capacity_index": index if capacity else None,
                 "capacity_total": len(ordered),
                 "workload_scope": "Customer-wide rolling 28 days, repeated per capacity",

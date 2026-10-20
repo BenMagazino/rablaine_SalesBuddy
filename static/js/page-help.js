@@ -766,6 +766,7 @@ const PageHelp = (function () {
     `},
     { pattern: /^\/reports\/?$/, title: 'Reports', content: `
       <p>Open reports from the same groups and order used in the Reports menu.</p>
+      <p>FY27 Data Motions brings together P to F, Fabric Consumption, Fabric Capacity Pressure, Fabric Modernization and Real-Time Intelligence.</p>
       <p>Use Find a report to match names, purposes or groups. Clear restores the full directory. The status bar shows how many reports match; filtering does not change report data.</p>
       <p>Each row opens its named report. Back restores your filter and reading position. Embedded directories keep their filter local and do not change the parent page's history.</p>
     `},
@@ -888,6 +889,15 @@ const PageHelp = (function () {
     `},
     { pattern: /^\/reports\/revenue-reports/, title: 'Revenue Reports', content: `
       <p>Open Fabric Modernization to compare recent source-product and Fabric spend grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>
+    `},
+    { pattern: /^\/reports\/rti(?:\/|$)/, title: 'Real-Time Intelligence', content: `
+      <p>Use Group by seller to switch between seller sections and one sortable customer list. The page URL retains your selection on reload and Back. CSV, Clipboard and Email export the currently displayed tables.</p>
+      <p>Current accounts qualify with positive RTI usage or positive net Event Hubs, Stream Analytics or IoT revenue. No minimum spend cutoff applies.</p>
+      <p>RTI CU-hours and RTI workload share come from Fabric 360's native rolling 28-day measurements. They are customer-wide, not per capacity. Missing workload measurements remain Unavailable.</p>
+      <p>Dollar amounts are average monthly ACR across the last three complete calendar months: three-month totals divided by 3. The current month is excluded. Missing revenue observations count as $0. Credits are included. IoT includes IoT-prefixed products and Device Update for IoT Hub. Event Grid and unrelated products are excluded.</p>
+      <p>Accounts that dropped out of account sync are excluded without deleting their saved history. Customer links open Fabric details; Total / mo links open customer Revenue. Sortable headings and exports retain source precision and customer links.</p>
+      <p>Summary and Details dashboard widgets use the same queue, with customer/seller scope, optional seller grouping and automatic sync of both sources. Signals support discovery, not architecture assessments, external Kafka inventory or migration recommendations.</p>
+      <p>In widget Details, missing RTI measurements display as 0. Hover over RTI CU-hrs to see RTI's share of Fabric CU-hours. The full report keeps its separate RTI % column and marks missing measurements Unavailable.</p>
     `},
     { pattern: /^\/reports\/fabric-modernization/, title: 'Fabric Modernization', content: `
       <p>One row per customer with positive net revenue in Synapse, Azure Analysis Services (AAS), Azure Data Explorer (ADX), or Azure Databricks over the last three complete calendar months.</p>

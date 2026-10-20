@@ -103,17 +103,28 @@ Dashboard placement stays unchecked until you confirm it.
   Summary retains the next 90 days. Added to the FY27 Data Motions dashboard;
   future layout adjustments do not affect completion.
 
-### 6. [ ] RTI
+### 6. [x] RTI
 
-- [ ] Coded
-- [ ] Added to dashboard
+- [x] Coded
+- [x] Added to dashboard
 - **Starting scope:** Observed RTI usage for expansion, plus Event Hubs,
   Stream Analytics, and IoT consumption for discovery. Add confirmed context
   from notes and engagements.
 - **Boundary:** These signals do not establish external Kafka inventory,
   architecture, or whether RTI should replace the current platform.
-- **Report/widget:**
-- **Notes / follow-up:**
+- **Report/widget:** Real-Time Intelligence report and Summary/Details widgets.
+  One row per current account with positive RTI usage or positive Event Hubs,
+  Stream Analytics or IoT net ACR. No minimum spend cutoff.
+- **Notes / follow-up:** Native rolling 28-day RTI CU-hours and workload share stay
+  separate from ACR across the last three complete calendar months,
+  divided by three. The current month is excluded. Missing revenue observations count as $0;
+  unavailable workload measurements remain unknown. IoT includes IoT-prefixed products and Device Update
+  for IoT Hub. Dropped/stale accounts are excluded, without deleting history.
+  Supports customer/seller widget scope, seller grouping and both source syncs.
+  Widget Details displays missing RTI values as 0 and shows workload share on the
+  CU-hours hover text; the full report retains unavailable values and its RTI % column.
+  Added to the FY27 Data Motions dashboard and confirmed complete for this scope.
+  Notes/engagement context remains manual.
 
 ### 7. [ ] Data/AI foundation
 

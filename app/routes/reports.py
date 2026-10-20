@@ -40,6 +40,28 @@ def api_fabric_modernization():
     return jsonify(get_fabric_modernization_report())
 
 
+@bp.route('/reports/rti')
+def report_rti() -> str:
+    """Show RTI usage alongside recent Azure streaming and IoT consumption."""
+    from app.services.rti import get_rti_report
+
+    grouping = request.args.get('group_by_seller', 'true')
+    if grouping not in ('true', 'false'):
+        abort(400, description='Group by seller must be true or false.')
+    return render_template(
+        'report_rti.html', report=get_rti_report(), title='Real-Time Intelligence',
+        group_by_seller=grouping == 'true',
+    )
+
+
+@bp.route('/api/reports/rti')
+def api_rti() -> Response:
+    """Read the same saved data as the RTI report and dashboard widgets."""
+    from app.services.rti import get_rti_report
+
+    return jsonify(get_rti_report())
+
+
 @bp.route('/reports/dashboards')
 def dashboards_hub():
     """Manage saved dashboards separately from their report views."""
@@ -824,6 +846,23 @@ def reports_hub():
                     'url': url_for('reports.report_workload'),
                 },
                 {
+                    'id': 'marketing-insights',
+                    'name': 'Marketing Insights',
+                    'description': (
+                        'Marketing engagement data from MSX. See which accounts '
+                        'have active marketing activity, sales play breakdowns, '
+                        'and top engaged contacts.'
+                    ),
+                    'icon': 'bi-megaphone',
+                    'url': url_for('reports.report_marketing_insights'),
+                },
+            ],
+        },
+        {
+            'title': 'FY27 Data Motions',
+            'icon': 'bi-database-gear',
+            'reports': [
+                {
                     'id': 'p-to-f',
                     'name': 'P to F',
                     'description': (
@@ -855,17 +894,6 @@ def reports_hub():
                     'url': url_for('reports.report_fabric_capacity_pressure'),
                 },
                 {
-                    'id': 'marketing-insights',
-                    'name': 'Marketing Insights',
-                    'description': (
-                        'Marketing engagement data from MSX. See which accounts '
-                        'have active marketing activity, sales play breakdowns, '
-                        'and top engaged contacts.'
-                    ),
-                    'icon': 'bi-megaphone',
-                    'url': url_for('reports.report_marketing_insights'),
-                },
-                {
                     'id': 'fabric-modernization',
                     'name': 'Fabric Modernization',
                     'description': (
@@ -874,6 +902,16 @@ def reports_hub():
                     ),
                     'icon': 'bi-database-gear',
                     'url': url_for('reports.report_fabric_modernization'),
+                },
+                {
+                    'id': 'rti',
+                    'name': 'Real-Time Intelligence',
+                    'description': (
+                        'RTI workload usage alongside Event Hubs, Stream Analytics '
+                        'and IoT consumption, grouped by seller.'
+                    ),
+                    'icon': 'bi-broadcast',
+                    'url': url_for('reports.report_rti'),
                 },
             ],
         },

@@ -451,6 +451,18 @@
 .db-modernization-details .db-modernization-table :is(th, td):first-child { width: auto; }
 .db-modernization-table th:nth-child(2) { width: 144px; }
 .db-modernization-table th:last-child { width: 144px; }
+.db-widget-body:has(> .db-rti-details) { display: flex; flex-direction: column; overflow: hidden; scrollbar-gutter: auto; }
+.db-widget-body:has(> .db-rti-details) > :is(.db-filter-scope, .db-filter-exception) { flex-shrink: 0; }
+.db-rti-details { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.db-rti-details > :is(.db-report-heading, .db-report-caption) { flex-shrink: 0; }
+.db-rti-table-scroll { flex: 1; min-height: 0; overflow: auto; margin-top: 12px; border: 1px solid var(--sb-ui-grid-line); scrollbar-gutter: stable; }
+.db-rti-table-scroll table { min-width: 580px; margin: 0; }
+.db-rti-table-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); }
+.db-rti-table-scroll th:nth-child(2) { min-width: 120px; width: 120px; white-space: nowrap; }
+.db-rti-table-scroll th:nth-child(3) { min-width: 100px; width: 100px; white-space: nowrap; }
+.db-rti-table-scroll th:nth-child(4) { width: 64px; }
+.db-rti-table-scroll th:nth-child(5) { width: 54px; }
+.db-rti-table-scroll .db-report-table :is(th, td):first-child { width: 28%; overflow-wrap: anywhere; }
 .db-widget-body:has(> .db-acquisition-details) { display: flex; flex-direction: column; overflow: hidden; scrollbar-gutter: auto; }
 .db-widget-body:has(> .db-acquisition-details) > :is(.db-filter-scope, .db-filter-exception) { flex-shrink: 0; }
 .db-acquisition-details { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }

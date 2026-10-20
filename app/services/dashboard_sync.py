@@ -24,6 +24,7 @@ WIDGET_SOURCES = {
     'ptof.upcoming_renewals': ('ptof',),
     'fabric.acquisition': ('pillars',),
     'fabric.modernization': ('products',),
+    'fabric.rti': ('products', 'fabric'),
     'fabric.expansion': ('fabric',),
     'fabric.trial_conversion': ('fabric',),
     'fabric.capacity_pressure': ('fabric',),
