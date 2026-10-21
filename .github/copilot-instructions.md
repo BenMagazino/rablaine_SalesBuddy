@@ -67,6 +67,12 @@
 - Use `has_specialty_access(specialty)` from `app/services/se_specialty.py` for new gates.
   The existing `is_data_se()` wrapper also includes sellers.
 - Apply this consistently to pages, tabs, APIs, widgets, automatic sync, and help text.
+- **Sellers inherit all specialty-specific automated syncs as well as visible
+  features.** Reuse the same access helper for scheduler admission, queued-worker
+  eligibility rechecks and schedule labels. Never require `user_role == 'se'`
+  or compare `se_specialty` alone for specialty-based scheduling.
+- Fabric and SQL Motions refresh weekly for Data SEs **and every seller**, with
+  startup catch-up. Other SE specialties stay manual for these sources.
 - Keep specialty selection SE-only and preserve the stored specialty when roles change.
 - Test sellers with a different saved SE specialty, the matching SE specialty, and
   nonmatching SE specialties. Seller access must not depend on their saved specialty.
@@ -118,6 +124,26 @@
 - Tools are thin wrappers over existing service/query code - never duplicate business logic in a tool handler.
 - The test `test_salesiq_tools.py::test_tool_coverage` enforces that every core entity and report has at least one registered tool. If you add a new model or report, update the coverage test.
 - Run `pytest tests/test_salesiq_tools.py` after adding or modifying tools.
+
+### Central Sync Integration
+
+- **Every new report or widget data import must integrate with the central durable
+  sync system**, including manual-only imports. Register its operation, validated
+  options/prerequisites, resource conflicts, handler dispatch and recovery policy
+  in `app/services/sync_jobs.py`, and expose it in the Sync Status console.
+- HTTP launchers and schedulers must admit or join jobs through `admit_sync`;
+  remote reads and writes execute in the shared worker. Use common persisted
+  progress/heartbeat, observation, retry and failure handling. Do not add separate
+  importer threads, job tables, sync-on-GET behavior or private progress loops.
+- Reuse existing operations for shared sources: `fabric` owns Fabric telemetry,
+  revenue and P-to-F; `sql-motions` owns Azure Migrations and ADS Accelerate together.
+  Widgets declare readiness dependencies in `dashboard_sync.py`, not separate imports.
+- Wire recurring imports into the existing scheduler and worker startup, with
+  freshness checks, eligibility gates and failed-attempt cooldowns. Test that
+  report/widget/manual/scheduled launchers share one active central job and expose
+  real progress and terminal results.
+- See the [widget authoring guide](../docs/DASHBOARD_WIDGET_AUTHORING.md#introducing-a-genuinely-new-sync-source)
+  for the integration checklist and reference implementations.
 
 
 
@@ -313,6 +339,13 @@ pytest --cov=app tests/  # with coverage
 - See `.github/instructions/gateway-deployment.instructions.md` for deploy procedures
 
 ## UI/UX Conventions
+
+### Dashboard Widget Authoring
+
+- Before adding or changing widgets, read the shared
+  [Dashboard Widget Authoring Guide](../docs/DASHBOARD_WIDGET_AUTHORING.md).
+- It defines provider/filter contracts, shared query loaders, setup and sync gates,
+  full-report actions, presentation rules, and validation/integration checklists.
 
 ### Dashboard Widget Table Spacing
 

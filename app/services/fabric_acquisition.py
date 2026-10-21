@@ -61,6 +61,7 @@ def get_fabric_acquisition_report(
     ).filter(
         StrategicPillarRevenueData.customer_id.isnot(None),
         StrategicPillarRevenueData.month_date.in_(months),
+        StrategicPillarRevenueData.pillar.in_([key for key, _ in COLUMNS]),
     )
     if customer_ids is not None:
         query = query.filter(StrategicPillarRevenueData.customer_id.in_(customer_ids))

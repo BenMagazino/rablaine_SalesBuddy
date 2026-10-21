@@ -63,14 +63,16 @@ def test_monthly_revenue_split_starts_open_with_accessible_percentage_chart(clie
     assert 'Reserved instance (RI)' in monthly.select_one('.sb-fabric-revenue-legend').text
 
 
-def test_fabric_endpoint_contract_is_limited_to_saved_telemetry_and_import(app):
-    """The release registers only the telemetry page, saved reads, status and import."""
+def test_fabric_endpoint_contract_includes_saved_reports_and_import(app):
+    """The Fabric surface includes its saved-data pressure and modernization reports."""
     registered = {
         rule.endpoint for rule in app.url_map.iter_rules()
         if rule.endpoint.startswith(('reports.fabric_', 'reports.report_fabric_'))
     }
     assert registered == {
         'reports.report_fabric_consumption',
+        'reports.report_fabric_capacity_pressure',
+        'reports.report_fabric_modernization',
         'reports.fabric_capacity_overview_data',
         'reports.fabric_consumption_data',
         'reports.fabric_consumption_status',
@@ -100,7 +102,7 @@ def test_fabric_views_share_header_navigation_and_manual_import(client, view):
     assert markup.h1.text == 'Fabric Consumption'
     tabs = markup.select_one('nav[aria-label="Fabric report views"]')
     assert [a.text for a in tabs.select('a')] == [
-        'Customer detail', 'Capacity overview',
+        'Customer detail', 'Capacity overview', 'Capacity pressure',
     ]
     assert tabs.select_one('[aria-current="page"]').text == (
         'Capacity overview' if view == 'overview' else 'Customer detail')

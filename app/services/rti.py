@@ -50,6 +50,13 @@ def get_rti_report(
     ).filter(
         ProductRevenueData.customer_id.in_(customer_ids_in_scope),
         ProductRevenueData.month_date >= months[0], ProductRevenueData.month_date < end,
+        db.or_(*(
+            db.or_(
+                ProductRevenueData.product == prefix,
+                ProductRevenueData.product.startswith(prefix + ' ', autoescape=True),
+            )
+            for _, _, prefixes in PRODUCT_FAMILIES for prefix in prefixes
+        )),
     ).group_by(ProductRevenueData.customer_id, ProductRevenueData.product).all()
     amounts: dict[int, dict[str, list[float]]] = {}
     for record in records:

@@ -38,6 +38,19 @@ def preview(client, key: str):
     })
 
 
+def test_every_widget_source_uses_a_registered_central_sync_operation():
+    """Widget dependencies cannot introduce imports outside the durable sync registry."""
+    from app.services import job_queue
+    from app.services.sync_jobs import OPERATIONS, register_handlers
+
+    register_handlers()
+    for sources in dashboard_sync.WIDGET_SOURCES.values():
+        for source in sources:
+            operation = dashboard_sync.SOURCE_OPERATIONS.get(source, source)
+            assert operation in OPERATIONS
+            assert callable(job_queue.get_handler(f'sync:{operation}'))
+
+
 def test_fresh_install_loads_choices_before_prompting_without_get_writes(client, app):
     """An empty picker does not deadlock setup or start syncs during rendering."""
     page = preview(client, 'connect_goals.u2c')

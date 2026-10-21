@@ -21,6 +21,7 @@ from app.models import (
     db,
 )
 from app.services.activity_coverage import fiscal_year_bounds
+from app.services.request_cache import request_cached
 from app.services.u2c_snapshot import (
     U2C_TARGET,
     current_fiscal_quarter,
@@ -225,11 +226,17 @@ def _milestone_scope(
     return query
 
 
+@request_cached
+def _load_milestones(reference: date, customer_ids: tuple[int, ...] | None) -> list[Milestone]:
+    """Share the same scoped population between team and HVA coverage."""
+    return _milestone_scope(reference, customer_ids=customer_ids).all()
+
+
 def get_team_coverage_widget(
     reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
 ) -> dict[str, Any]:
     """Return ACR-weighted milestone team coverage."""
-    milestones = _milestone_scope(reference, customer_ids=customer_ids).all()
+    milestones = _load_milestones(reference or date.today(), customer_ids)
     total_acr = sum(max(milestone.monthly_usage or 0.0, 0.0) for milestone in milestones)
     on_team = [milestone for milestone in milestones if milestone.on_my_team]
     on_team_acr = sum(max(milestone.monthly_usage or 0.0, 0.0) for milestone in on_team)
@@ -287,9 +294,10 @@ def get_hva_coverage_widget(
     """Return current-FY HVA coverage for the provisional milestone scope."""
     reference = reference or date.today()
     fiscal_start, fiscal_end = fiscal_year_bounds(reference)
-    milestones = _milestone_scope(reference, customer_ids=customer_ids).filter(
-        Milestone.on_my_team.is_(True)
-    ).all()
+    milestones = [
+        milestone for milestone in _load_milestones(reference, customer_ids)
+        if milestone.on_my_team
+    ]
     milestone_ids = [milestone.id for milestone in milestones]
     tasks = (
         MsxTask.query
@@ -391,7 +399,10 @@ def get_whitespace_widget(
     half_start, half_end, half_label = _current_half(reference)
     buckets = FY27_DATA_SCOPE['revenue_buckets']
     query = (
-        CustomerRevenueData.query
+        db.session.query(
+            CustomerRevenueData.customer_id, CustomerRevenueData.customer_name,
+            CustomerRevenueData.bucket, CustomerRevenueData.month_date, CustomerRevenueData.revenue,
+        )
         .filter(CustomerRevenueData.customer_id.isnot(None))
         .filter(CustomerRevenueData.bucket.in_(buckets))
         .order_by(CustomerRevenueData.month_date)
@@ -412,7 +423,7 @@ def get_whitespace_widget(
     customer_names = {row.customer_id: row.customer_name for row in rows}
     customer_favicons = {
         customer.id: customer.favicon_b64
-        for customer in Customer.query.filter(
+        for customer in db.session.query(Customer.id, Customer.favicon_b64).filter(
             Customer.id.in_(customer_names)
         ).all()
     }

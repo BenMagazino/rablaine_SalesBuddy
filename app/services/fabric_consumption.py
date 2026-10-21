@@ -16,6 +16,7 @@ from sqlalchemy.orm import joinedload
 
 from app.models import Customer, FabricConsumptionImport, FabricConsumptionRecord, SyncStatus, db
 from app.services.dashboard_filters import group_rows_by_seller
+from app.services.request_cache import request_cached
 from app.services.fabric_consumption_pull import (
     FabricPullError, pull_fabric_consumption, pull_fabric_revenue, validate_revenue_payload,
 )
@@ -793,6 +794,7 @@ def get_fabric_report(customer_id: int | None = None) -> dict:
     }
 
 
+@request_cached
 def get_fabric_capacity_overview() -> dict:
     """Read capacity rows with explicitly customer-wide rolling workload shares.
 

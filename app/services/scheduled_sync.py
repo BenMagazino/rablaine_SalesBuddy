@@ -7,7 +7,7 @@ The sync time is randomly assigned per-user (stored in UserPreference) in
 Sales Buddy instances. If missed (server was off), catches up on startup.
 
 No environment variables needed - everything is stored in the database.
-Data SEs and sellers receive independent weekly Fabric refreshes with startup catch-up.
+Data SEs and sellers receive independent weekly Fabric and SQL refreshes with startup catch-up.
 """                                                                          
 import random
 import time

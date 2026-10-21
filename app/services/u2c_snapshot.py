@@ -773,7 +773,9 @@ def get_attainment(
     if not snapshot:
         return {'success': False, 'error': 'Snapshot not found'}
 
-    items_query = U2CSnapshotItem.query.filter_by(snapshot_id=snapshot_id)
+    items_query = U2CSnapshotItem.query.options(
+        selectinload(U2CSnapshotItem.customer).selectinload(Customer.seller),
+    ).filter_by(snapshot_id=snapshot_id)
     if customer_ids is not None:
         items_query = items_query.filter(U2CSnapshotItem.customer_id.in_(customer_ids))
     if workload_prefix:

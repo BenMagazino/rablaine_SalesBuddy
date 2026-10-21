@@ -49,6 +49,20 @@ def test_settings_save_and_render_each_specialty(client, specialty_preference, s
     assert soup.select_one('#settingsSeSpecialtyResult')['aria-live'] == 'polite'
 
 
+@pytest.mark.parametrize('role', ['se', 'dss', None])
+@pytest.mark.parametrize('specialty', SE_SPECIALTIES)
+def test_specialty_access_includes_all_sellers_regardless_of_saved_specialty(
+    specialty_preference, role, specialty,
+):
+    """One eligibility helper covers specialty tabs, reports and automatic syncs."""
+    specialty_preference.user_role = role
+    specialty_preference.se_specialty = specialty
+    db.session.commit()
+    for requested in SE_SPECIALTIES:
+        assert has_specialty_access(requested) is (role == 'dss' or specialty == requested)
+    assert not db.session.dirty
+
+
 @pytest.mark.parametrize('role', ['se', None, 'dss'])
 def test_specialty_control_and_api_are_se_only(client, specialty_preference, role):
     """DSS hides/rejects specialty edits but keeps the stored value for a later role change."""

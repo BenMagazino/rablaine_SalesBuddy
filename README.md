@@ -450,6 +450,11 @@ standalone UI iterations using entirely fictional data. See the
   stable widget definitions and presentation support live in the code-owned catalog,
   independently of menu placement. Geometry uses zero-based `layout_column` and
   `layout_row`, plus `column_span`, `row_span` (64px rows with 12px gaps), and `variant_key`.
+  Dashboard rendering shares read-only loader results for identical inputs within
+  that render. Fabric expansion, trial conversion and RTI reuse one capacity
+  overview; Connect team/HVA coverage reuse their scoped milestone population.
+  The shared-read scope always ends with the render, including failures. Ordinary
+  standalone reads, background jobs and write requests do not retain cached data.
 - **Reports Navigation** - Dashboards precedes Reports, separating personal overviews
   from their drill-through reports. Reports uses divider-separated groups for planning
   and reviews, execution and coverage, pipeline health, and account insights. Goal action reports
@@ -666,10 +671,22 @@ pytest
 pytest --cov=app tests/  # with coverage
 ```
 
+## Building Dashboard Widgets
+
+Start with the [Dashboard Widget Authoring Guide](docs/DASHBOARD_WIDGET_AUTHORING.md),
+written for contributors and their coding agents. It covers report-backed providers,
+filter capabilities and scope, shared query loading, setup/sync progress, Summary and
+Details layouts, actionable full-report links, and testing/integration checklists.
+
+Agents also have [scoped widget instructions](.github/instructions/dashboard-widgets.instructions.md)
+that point to the same guide. Give your agent the guide path when starting a widget
+so it follows the framework instead of inventing a parallel implementation.
+
 ## Documentation
 
 | Guide | Description |
 |-------|-------------|
+| [Dashboard Widget Authoring](docs/DASHBOARD_WIDGET_AUTHORING.md) | Human and agent guide to widget data, filters, shared queries, setup, sync, UI and actions |
 | [MSX Integration](docs/MSX_INTEGRATION.md) | Account imports, milestone sync, API details |
 | [WorkIQ Integration](docs/WORKIQ_INTEGRATION.md) | Meeting import setup and customization |
 | [Connect Features](docs/CONNECT_FEATURES.md) | Self-eval export and impact signals |

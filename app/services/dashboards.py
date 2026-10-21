@@ -11,6 +11,7 @@ from typing import Any
 
 from app.models import Dashboard, DashboardWidget, db, utc_now
 from app.services import connect_goals
+from app.services.request_cache import shared_read_scope
 from app.services.activity_coverage import get_meeting_activity_coverage_widget
 from app.services.fabric_consumption import (
     get_fabric_capacity_pressure_widget, get_fabric_expansion_widget,
@@ -434,6 +435,7 @@ def list_dashboards() -> list[dict[str, Any]]:
     ]
 
 
+@shared_read_scope()
 def get_dashboard_data(
     dashboard: Dashboard, reference: date | None = None,
     *, live_filters: object = None,

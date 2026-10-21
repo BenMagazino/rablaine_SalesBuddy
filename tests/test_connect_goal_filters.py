@@ -2,6 +2,7 @@
 from datetime import date, datetime, timezone
 
 import pytest
+from sqlalchemy import event
 
 from app.models import (
     Customer, CustomerRevenueData, Milestone, MsxTask, RevenueImport, Seller,
@@ -11,6 +12,46 @@ from app.services import connect_goals, dashboards
 from app.services.dashboard_filters import normalize_filters, resolve_customer_scope
 from app.services.u2c_snapshot import get_attainment, get_attainment_trend
 from tests.test_connect_goals import _confirm_scope, _milestone, _seed_revenue_buckets
+
+
+def test_u2c_customer_and_seller_loading_has_bounded_query_count(app):
+    """Attainment does not issue a customer/seller query for each snapshot item."""
+    with app.app_context():
+        snapshot = U2CSnapshot(
+            fiscal_quarter='FY27 Q1', snapshot_date=datetime(2026, 7, 1, tzinfo=timezone.utc),
+        )
+        db.session.add(snapshot)
+        db.session.flush()
+        for index in range(20):
+            seller = Seller(name=f'Batch seller {index}')
+            customer = Customer(name=f'Batch customer {index}', tpid=98920200 + index, seller=seller)
+            db.session.add(customer)
+            db.session.flush()
+            db.session.add(U2CSnapshotItem(
+                snapshot_id=snapshot.id, customer_id=customer.id, customer_name=customer.name,
+                milestone_number=f'BATCH-{index}', milestone_title='Batch loading',
+                workload='Data: SQL', monthly_acr=100, due_date=datetime(2026, 9, 1),
+            ))
+        db.session.commit()
+        snapshot_id = snapshot.id
+        db.session.expunge_all()
+        statements = []
+
+        def count_query(connection, cursor, statement, parameters, context, executemany):
+            """Count database round trips without relying on the identity map."""
+            statements.append(statement)
+
+        event.listen(db.engine, 'before_cursor_execute', count_query)
+        try:
+            data = get_attainment(snapshot_id, 'Data:')
+        finally:
+            event.remove(db.engine, 'before_cursor_execute', count_query)
+        assert len(statements) <= 4
+        assert data['remaining_count'] == 20
+        assert data['target_total'] == 2000
+        assert {item['seller_name'] for item in data['remaining_items']} == {
+            f'Batch seller {index}' for index in range(20)
+        }
 
 
 @pytest.fixture

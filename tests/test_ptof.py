@@ -202,10 +202,11 @@ def test_complete_empty_scope_can_remove_outdated_renewals(accounts, monkeypatch
 
 @pytest.mark.parametrize(('role', 'specialty', 'due'), [
     ('se', 'infra', False), ('se', 'apps_ai', False), ('se', 'other', False),
-    ('dss', 'data', True), ('dss', 'infra', True),
+    ('se', 'data', True), ('dss', 'data', True), ('dss', 'infra', True),
+    ('dss', 'apps_ai', True), ('dss', 'other', True), (None, 'data', True),
 ])
 def test_weekly_refresh_includes_data_ses_and_all_sellers(accounts, role, specialty, due):
-    """Non-Data SEs stay manual; sellers always receive the shared refresh schedule."""
+    """Non-Data SEs stay manual; all sellers inherit Data-specialty scheduling."""
     pref = accounts[2]
     pref.user_role, pref.se_specialty = role, specialty
     db.session.commit()
@@ -219,20 +220,35 @@ def test_renewals_share_the_fabric_schedule(accounts):
     assert 'ptof' not in sync_jobs.operation_schedules()
 
 
-def test_queued_automatic_import_rechecks_specialty_before_execution(accounts, monkeypatch):
-    """Changing specialty after admission skips both automatic source reads."""
+@pytest.mark.parametrize(('role', 'specialty', 'skipped'), [
+    ('se', 'infra', True), ('se', 'apps_ai', True), ('se', 'other', True),
+    ('dss', 'data', False), ('dss', 'infra', False),
+    ('dss', 'apps_ai', False), ('dss', 'other', False),
+])
+def test_queued_automatic_import_rechecks_specialty_before_execution(
+    accounts, monkeypatch, role, specialty, skipped,
+):
+    """Queued work skips non-Data SEs but keeps all source reads enabled for sellers."""
     from app.services.job_queue import CURRENT_JOB_ID
 
-    telemetry = Mock(side_effect=AssertionError('Scheduled work must be skipped'))
+    telemetry = Mock(return_value={'success': True})
+    renewals = Mock(return_value={'success': True})
     monkeypatch.setattr(fabric_consumption, 'sync_fabric_consumption', telemetry)
+    monkeypatch.setattr(ptof, 'sync_ptof', renewals)
     job = Job(job_type='sync:fabric', initiator='scheduled', payload='{}')
     db.session.add(job)
-    accounts[2].se_specialty = 'infra'
+    accounts[2].user_role, accounts[2].se_specialty = role, specialty
     db.session.commit()
     token = CURRENT_JOB_ID.set(job.id)
     try:
-        assert fabric_consumption.sync_fabric_360()['skipped']
-        telemetry.assert_not_called()
+        result = fabric_consumption.sync_fabric_360()
+        assert bool(result.get('skipped')) is skipped
+        if skipped:
+            telemetry.assert_not_called()
+            renewals.assert_not_called()
+        else:
+            telemetry.assert_called_once()
+            renewals.assert_called_once()
         assert PToFImport.query.count() == 0
     finally:
         CURRENT_JOB_ID.reset(token)

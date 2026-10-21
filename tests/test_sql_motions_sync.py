@@ -173,28 +173,42 @@ def test_wrapped_network_failure_remains_retryable(sql_customers, monkeypatch):
         sync_jobs._execute_operation('sql-motions', {})
 
 
-def test_scheduled_worker_rechecks_specialty_before_source_reads(sql_customers, monkeypatch):
+@pytest.mark.parametrize(('role', 'specialty', 'skipped'), [
+    ('se', 'infra', True), ('se', 'apps_ai', True), ('se', 'other', True),
+    ('dss', 'infra', False), ('dss', 'data', False),
+    ('dss', 'apps_ai', False), ('dss', 'other', False),
+])
+def test_scheduled_worker_rechecks_specialty_before_source_reads(
+    sql_customers, monkeypatch, role, specialty, skipped,
+):
     """A queued scheduled import does not bypass a subsequent specialty change."""
     job = sync_jobs.admit_sync('sql-motions', initiator='scheduled')
     assert job_queue.claim_next('sql-test-worker').id == job.id
     pref = UserPreference.query.first()
-    pref.user_role, pref.se_specialty = 'se', 'infra'
+    pref.user_role, pref.se_specialty = role, specialty
     db.session.commit()
-    reader = Mock(side_effect=AssertionError('Ineligible scheduled source read'))
+    reader = Mock(return_value=payload())
     monkeypatch.setattr(sync, 'pull_sql_motions', reader)
     job_queue._execute(job, with_heartbeat=False)
     db.session.refresh(job)
     assert job.status == Job.STATUS_DONE
-    assert json.loads(job.result)['skipped']
-    reader.assert_not_called()
+    assert bool(json.loads(job.result).get('skipped')) is skipped
+    if skipped:
+        reader.assert_not_called()
+        assert SqlMotionImport.query.count() == 0
+    else:
+        reader.assert_called_once()
+        assert SqlMotionImport.query.count() == 1
 
 
 @pytest.mark.parametrize(('role', 'specialty', 'due'), [
-    ('dss', 'infra', True), ('dss', 'apps_ai', True), ('se', 'data', True),
-    ('se', 'infra', False), ('se', 'apps_ai', False),
+    ('dss', 'data', True), ('dss', 'infra', True), ('dss', 'apps_ai', True),
+    ('dss', 'other', True),
+    ('se', 'data', True), ('se', 'infra', False), ('se', 'apps_ai', False),
+    ('se', 'other', False), (None, 'data', True),
 ])
 def test_weekly_specialty_access(sql_customers, role, specialty, due):
-    """Seller scheduling never depends on a saved SE specialty."""
+    """All sellers inherit weekly SQL sync regardless of their saved SE specialty."""
     pref = UserPreference.query.first()
     pref.user_role, pref.se_specialty = role, specialty
     db.session.commit()
