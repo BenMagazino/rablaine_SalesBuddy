@@ -1,4 +1,4 @@
-"""Distinct trial customer counts and saved-history engagement queues."""
+"""Trial-to-paid customer eligibility and saved-history engagement queues."""
 from datetime import datetime, timedelta, timezone
 
 from bs4 import BeautifulSoup
@@ -32,24 +32,30 @@ def trial_rows() -> list[dict]:
 
 
 @pytest.mark.parametrize(("scope", "counts"), [
-    (None, (4, 2, 2)),
-    ((1,), (1, 1, 1)),
-    ((2, 3), (2, 1, 1)),
+    (None, (2, 1, 0)),
+    ((1,), (0, 0, 0)),
+    ((2, 3), (1, 1, 0)),
     ((4, 5, 6, 7, 8), (1, 0, 0)),
     ((), (0, 0, 0)),
 ])
 def test_trial_counts_use_distinct_customers_and_intersections(monkeypatch, scope, counts):
-    """Scope before counting, exclude trials from F-SKUs, and allow P/F overlap."""
+    """Exclude any paid F capacity across the customer while retaining P-SKU prospects."""
     reader = set_capacities(monkeypatch, trial_rows(), {"id": 1})
     result = fabric_consumption.get_fabric_trial_conversion_widget(customer_ids=scope)
     reader.assert_called_once_with()
     assert tuple(result["counts"].values()) == counts
     assert result["destination"] == (
-        "/reports/fabric-consumption?view=overview&mode=trials&customers=true"
+        "/reports/fabric-consumption?view=overview&mode=trial_to_paid&customers=true"
     )
     soup = BeautifulSoup(render_widget("fabric_trial_conversion", result, "metric"), "html.parser")
-    assert [int(node.text) for node in soup.select("dd")] == list(counts)
-    assert "groups can overlap" in soup.text
+    assert [int(node.text) for node in soup.select("dd")] == list(counts[:2])
+    assert "Trial customers without a paid F SKU." in soup.text
+    assert soup.h2.text == "Trial to Paid"
+    assert soup.select_one(".db-report-heading a")["href"] == result["destination"]
+    assert all(
+        not row["has_f_sku"]
+        for rows in result["details"]["cohorts"].values() for row in rows
+    )
 
 
 @pytest.mark.parametrize("snapshot", [None, {"id": 1}])
@@ -79,7 +85,7 @@ def test_trial_widget_catalog_preview_and_read_tools(client, monkeypatch, dashbo
     assert response.status_code == 200
     assert "Customers with trials" in response.json["html"]
     result = execute_tool("report_fabric_trial_conversion", {})
-    assert result["counts"]["customers_with_trials"] == 4
+    assert result["counts"]["customers_with_trials"] == 2
     assert reader.call_count == 2
     created = client.post("/api/reports/dashboards", json={"name": "Trial dashboard"})
     dashboard_id = created.json["id"]
@@ -89,6 +95,47 @@ def test_trial_widget_catalog_preview_and_read_tools(client, monkeypatch, dashbo
     assert added.status_code == 200
     saved = client.get(f"/api/reports/dashboards/{dashboard_id}").json["dashboard"]
     assert saved["widgets"][0]["variant_key"] == "detailed"
+
+
+def test_trial_eligibility_uses_latest_snapshot_and_all_customer_capacities(app):
+    """An old paid F SKU does not exclude a current trial, but any current F SKU does."""
+    with app.app_context():
+        customer = Customer(name="Trial to Paid candidate", tpid=123456)
+        previous = FabricConsumptionImport(
+            customer_count=1, workload_row_count=0, capacity_row_count=1, trend_row_count=0,
+        )
+        db.session.add_all([customer, previous])
+        db.session.flush()
+        db.session.add(FabricConsumptionRecord(
+            import_id=previous.id, customer_id=customer.id, tpid=customer.tpid,
+            kind="capacity", capacity_id="previous-paid", sku="F64", metrics_json={},
+        ))
+        latest = FabricConsumptionImport(
+            customer_count=1, workload_row_count=0, capacity_row_count=2, trend_row_count=0,
+        )
+        db.session.add(latest)
+        db.session.flush()
+        for sku in ("FTL64", "P1"):
+            db.session.add(FabricConsumptionRecord(
+                import_id=latest.id, customer_id=customer.id, tpid=customer.tpid,
+                kind="capacity", capacity_id=sku, sku=sku,
+                metrics_json={"sku": sku, "tenant_id": "trial-tenant"},
+            ))
+        db.session.flush()
+        result = fabric_consumption.get_fabric_trial_conversion_widget()
+        assert result["counts"]["customers_with_trials"] == 1
+        assert result["counts"]["customers_with_p_and_trials"] == 1
+        assert result["details"]["cohorts"]["unknown"][0]["id"] == customer.id
+        db.session.add(FabricConsumptionRecord(
+            import_id=latest.id, customer_id=customer.id, tpid=customer.tpid,
+            kind="capacity", capacity_id="new-paid", sku="F2",
+            metrics_json={"sku": "F2", "tenant_id": "different-tenant"},
+        ))
+        db.session.flush()
+        result = fabric_consumption.get_fabric_trial_conversion_widget()
+        assert result["counts"]["customers_with_trials"] == 0
+        assert all(not rows for rows in result["details"]["cohorts"].values())
+        assert execute_tool("report_fabric_trial_conversion", {})["counts"] == result["counts"]
 
 
 @pytest.fixture
@@ -158,6 +205,7 @@ def test_trial_grouping_preserves_both_queues_and_customer_seller_metadata(
     assert len(high.select("tbody")) == 1
     assert len(grouped.select("tr[data-row-key]")) == 4
     assert len(grouped.select("tr[data-sb-sort-fixed]")) == 4
+    assert {node["colspan"] for node in grouped.select("tr[data-sb-sort-fixed] th")} == {"3"}
     assert [node["href"] for node in low.select(".db-report-seller")] == [
         "/seller/1", "/seller/2",
     ]
@@ -199,12 +247,17 @@ def test_trial_detail_exact_cutoff_zero_missing_and_overload(trial_history, valu
         assert "excluded from both groups" in soup.text
         assert not soup.select("table")
     else:
-        assert float(soup.select_one('tbody td:nth-child(3)')["data-sb-sort-value"]) == value
+        assert [node.text for node in soup.select("thead th")] == [
+            "Customer", "Avg used", "History",
+        ]
+        assert len(soup.select_one("tr[data-row-key]").select("td")) == 3
+        assert "-v4-" in soup.select_one("table")["data-sb-sort-key"]
+        assert float(soup.select_one('tbody td:nth-child(2)')["data-sb-sort-value"]) == value
         assert "customer_id=" in soup.select_one("tbody a")["href"]
         assert "capacity=" not in soup.select_one("tbody a")["href"]
         assert soup.select_one(".db-trial-table-scroll table")
-        assert "equal weight" in soup.select("th")[2]["title"]
-        assert "across all" in soup.select("th")[3]["title"]
+        assert "equal weight" in soup.select("th")[1]["title"]
+        assert "across all" in soup.select("th")[2]["title"]
         if 0 < value < 0.001:
             assert "<0.001%" in soup.text
         if value == 0.099999:
@@ -245,11 +298,11 @@ def test_trial_detail_instances_have_independent_controls(trial_history):
     assert len({node["data-sb-sort-key"] for node in soup.select("table")}) == 2
 
 
-@pytest.mark.parametrize(("paid_skus", "label"), [
-    ([], "Neither"), (["P1"], "P-SKU"), (["F64"], "F-SKU"), (["P1", "F64"], "P + F"),
+@pytest.mark.parametrize("paid_skus", [
+    [], ["P1"], ["F64"], ["P1", "F64"],
 ])
 def test_trial_customer_rollup_equal_capacity_weight_and_paid_context(
-    trial_history, monkeypatch, paid_skus, label,
+    trial_history, monkeypatch, paid_skus,
 ):
     """One customer row averages capacity means and history days, not pooled hours."""
     customer, snapshot, source, header = trial_history
@@ -263,19 +316,31 @@ def test_trial_customer_rollup_equal_capacity_weight_and_paid_context(
     add_point(customer, snapshot, 0.4, tenant="other", sku="FTL4", capacity_id="second")
     result = fabric_consumption.get_fabric_trial_conversion_widget()
     details = result["details"]
+    if "F64" in paid_skus:
+        assert result["counts"]["customers_with_trials"] == 0
+        assert details["counts"] == {"low": 0, "high": 0, "unknown": 0}
+        assert all(not rows for rows in details["seller_groups"].values())
+        assert not BeautifulSoup(
+            render_widget("fabric_trial_conversion", result), "html.parser",
+        ).select("table")
+        return
     assert details["counts"] == {"low": 0, "high": 1, "unknown": 0}
     row = details["cohorts"]["high"][0]
     assert row["average_utilization_pct"] == pytest.approx(0.25)
     assert row["observed_days"] == 1.5
     assert row["trial_count"] == 2
-    assert row["other_skus"] == label
+    assert row["has_p_sku"] is ("P1" in paid_skus)
     soup = BeautifulSoup(render_widget("fabric_trial_conversion", result), "html.parser")
     assert len(soup.select("tbody tr")) == 1
-    context = soup.select("tbody td")[1]
-    assert context["data-sb-sort-value"] == label
-    assert bool(context.select(".db-trial-p-sku")) is ("P1" in paid_skus)
-    assert bool(context.select(".db-trial-f-sku")) is ("F64" in paid_skus)
-    assert [td.text for td in soup.select("tbody td")][2:] == ["0.25%", "1.5d"]
+    name = soup.select_one("tbody td")
+    assert name["data-sb-sort-value"] == customer.name
+    assert name.select_one("a").text == customer.name
+    badge = name.select_one(".db-trial-p-sku")
+    assert bool(badge) is ("P1" in paid_skus)
+    if badge:
+        assert badge.text == "P"
+        assert badge["title"] == "Also has Power BI Premium P-SKU capacity"
+    assert [td.text for td in soup.select("tbody td")][1:] == ["0.25%", "1.5d"]
     assert soup.select_one("tbody td:last-child")["data-sb-sort-value"] == "1.5"
 
 

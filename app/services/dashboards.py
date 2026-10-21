@@ -19,6 +19,7 @@ from app.services.fabric_consumption import (
 from app.services.hygiene import get_hygiene_gaps_widget
 from app.services.fabric_modernization import get_fabric_modernization_widget
 from app.services.fabric_acquisition import get_fabric_acquisition_widget
+from app.services.whitespace import get_database_whitespace_widget
 from app.services.rti import get_rti_widget
 from app.services.se_specialty import has_specialty_access
 from app.services.manager_one_on_one import get_initiative_tracker_widget
@@ -235,6 +236,23 @@ WIDGET_DEFINITIONS = {
             supported_filters=(*FILTER_LABELS, 'group_by_seller'), specialty='data',
         ),
         WidgetDefinition(
+            'database.whitespace', 'Database whitespace',
+            'Customers without Databases coverage and with AI, Analytics or Apps spend '
+            'in the existing Whitespace Analysis grid, ranked by that monthly ACR.',
+            'Whitespace Analysis', (
+                WidgetVariant(
+                    'metric', 'Summary', 'partials/widgets/database_whitespace.html',
+                    (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 4,
+                ),
+                WidgetVariant(
+                    'detailed', 'Details', 'partials/widgets/database_whitespace.html',
+                    (6, 12), MIN_WIDGET_HEIGHT, 5,
+                ),
+            ),
+            get_database_whitespace_widget, scope='Saved whitespace grid / recent pillar ACR',
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'), specialty='data',
+        ),
+        WidgetDefinition(
             'fabric.rti', 'Real-Time Intelligence',
             'Customers without RTI usage who consume Event Hubs, Stream Analytics or IoT, '
             'including Fabric entry-point prospects. Missing RTI counts as zero.',
@@ -253,7 +271,8 @@ WIDGET_DEFINITIONS = {
         ),
         WidgetDefinition(
             'fabric.modernization', 'Fabric modernization',
-            'Average monthly ACR for customers whose Other Analytics spend exceeds Fabric.',
+            'Separate Other Analytics and ADF spend, with Synapse indicators, for customers '
+            'whose combined source spend exceeds Fabric.',
             'Fabric Modernization', (
                 WidgetVariant(
                     'metric', 'Summary', 'partials/widgets/fabric_modernization.html',
@@ -284,9 +303,9 @@ WIDGET_DEFINITIONS = {
             supported_filters=(*FILTER_LABELS, 'group_by_seller'),
         ),
         WidgetDefinition(
-            'fabric.trial_conversion', 'Fabric trial conversion',
-            'Trial customers, P/F-SKU overlap, and trial engagement queues.',
-            'Fabric Consumption / Trial audit', (
+            'fabric.trial_conversion', 'Trial to Paid',
+            'Customers with trial capacities and no paid F SKU, with trial engagement queues.',
+            'Fabric Consumption / Trial to Paid audit', (
                 WidgetVariant(
                     'metric', 'Summary', 'partials/widgets/fabric_trial_conversion.html',
                     (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 4,

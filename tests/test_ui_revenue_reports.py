@@ -12,7 +12,7 @@ def modernization_report(monkeypatch):
         'rows': [], 'seller_groups': [], 'period_label': 'Jul 2026 through Sep 2026',
         'products': [{'key': key, 'label': label, 'source': label} for key, label in (
             ('synapse', 'Synapse'), ('aas', 'AAS'), ('adx', 'ADX'),
-            ('databricks', 'Databricks'), ('fabric', 'Fabric'),
+            ('databricks', 'Databricks'), ('adf', 'ADF'), ('fabric', 'Fabric'),
         )],
         'has_revenue_data': True, 'partial_customer_count': 1,
     }
@@ -22,14 +22,17 @@ def modernization_report(monkeypatch):
             'customer_name': 'Literal <customer & team>' if complete else 'Unmatched',
             'tpid_url': 'https://example.test/account?TPID=123' if complete else None,
             'spend': {'synapse': 100.49, 'aas': 0, 'adx': -0.25, 'databricks': 3.75,
-                      'fabric': 0 if complete else 1.49},
-            'source_revenue': 103.99,
+                      'adf': 12.34, 'fabric': 0 if complete else 1.49},
+            'source_revenue': 116.33,
+            'other_analytics_revenue': 103.99,
             'coverage_complete': complete, 'row_key': str(index),
+            'months_observed': 3 if complete else 2,
         }
         row['monthly_spend'] = {
-            family: amount / 3 if complete else None for family, amount in row['spend'].items()
+            family: amount / row['months_observed'] for family, amount in row['spend'].items()
         }
-        row['monthly_source_revenue'] = row['source_revenue'] / 3 if complete else None
+        row['monthly_source_revenue'] = row['source_revenue'] / row['months_observed']
+        row['monthly_other_analytics_revenue'] = 103.99 / row['months_observed']
         report['rows'].append(row)
         report['seller_groups'].append({
             'key': str(index), 'name': 'R&D <seller>' if complete else None,
@@ -52,7 +55,7 @@ def test_modernization_native_contract_and_exact_values(client, modernization_re
     soup = BeautifulSoup(response.data, 'html.parser')
     root = soup.select_one('.sb-modernization-report')
     assert ('sb-directory-frame-wide' in root['class']) is not embedded
-    assert root['data-sb-report-key'] == 'fabric-modernization-v1'
+    assert root['data-sb-report-key'] == 'fabric-modernization-v2'
     assert root['data-sb-report-embedded'] == str(embedded).lower()
     assert bool(soup.select('footer.sb-page-status')) is not embedded
     assert soup.select_one('script[src*="/js/ui-revenue-reports.js"]')
@@ -63,27 +66,31 @@ def test_modernization_native_contract_and_exact_values(client, modernization_re
     assert root.select_one('a[href="/customer/17/revenue"]').text == 'Literal <customer & team>'
     assert root.select_one('.badge.bg-primary')['href'] == '/seller/2'
     assert root.select_one('[data-export-url]')['data-export-url'].endswith('TPID=123')
-    assert root.select_one('.sb-revenue-report-notice:not([hidden])')
+    assert not root.select_one('.sb-revenue-report-notice:not([hidden])')
     for table in root.select('table'):
         assert table.has_attr('data-sb-sortable')
-        assert len(table.select('thead [data-sb-sort-type]')) == 7
-        assert len(table.select('tbody tr:first-child td')) == 7
-        assert table['data-sb-sort-key'].startswith('modernization-v2-')
+        assert len(table.select('thead [data-sb-sort-type]')) == 8
+        assert len(table.select('tbody tr:first-child td')) == 8
+        assert table['data-sb-sort-key'].startswith('modernization-v3-')
         assert 'Months observed' not in table.get_text()
         assert all(th.has_attr('data-export-label') for th in table.select('thead th'))
-        assert table['data-sb-sort-default-column'] == '6'
-        assert table.select('thead th')[6]['data-export-label'] == 'Other Analytics avg monthly ACR'
+        assert table['data-sb-sort-default-column'] == '7'
+        assert table.select('thead th')[7]['data-export-label'] == 'Other Analytics avg monthly ACR'
+        assert table.select('thead th')[5]['data-export-label'] == 'ADF avg monthly ACR'
     cells = root.select('tbody')[0].select('td')
     assert [float(cell['data-sb-sort-value']) for cell in cells[1:]] == pytest.approx([
-        100.49 / 3, 0, -0.25 / 3, 3.75 / 3, 0, 103.99 / 3,
+        100.49 / 3, 0, -0.25 / 3, 3.75 / 3, 12.34 / 3, 0, 103.99 / 3,
     ])
     assert 'Average monthly ACR across Jul 2026 through Sep 2026' in root.text
     assert b'Fabric Modernization - Avg monthly ACR' in response.data
-    assert cells[5].get_text(strip=True) == '$0'
+    assert cells[6].get_text(strip=True) == '$0'
     partial = root.select('tbody')[1].select('td')
-    assert partial[2]['data-sb-sort-value'] == ''
-    assert all(cell['data-sb-sort-value'] == '' for cell in partial[1:])
-    assert all(cell.get_text(strip=True) == 'Unavailable' for cell in partial[1:])
+    assert [float(cell['data-sb-sort-value']) for cell in partial[1:]] == pytest.approx([
+        100.49 / 2, 0, -0.25 / 2, 3.75 / 2, 12.34 / 2, 1.49 / 2, 103.99 / 2,
+    ])
+    assert partial[2].get_text(strip=True) == '$0'
+    assert 'Unavailable' not in root.text
+    assert 'available months' not in str(soup)
     assert b'const TABLE_SELECTOR = ".sb-modernization-table"' in response.data
 
 

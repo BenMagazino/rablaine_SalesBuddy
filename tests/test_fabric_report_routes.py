@@ -176,7 +176,10 @@ def test_capacity_overview_is_saved_data_only(client, app, monkeypatch):
     assert 'Workload mix is customer-wide, repeated per capacity' not in markup.text
     assert markup.select_one('[data-overview-workload]') is None
     assert markup.select_one('[data-overview-exclusive]') is None
-    assert len(markup.select('[data-overview-mode] button')) == 4
+    assert [node['data-mode'] for node in markup.select('[data-overview-mode] button')] == [
+        'capacities', 'trials', 'trial_to_paid', 'f',
+    ]
+    assert markup.select_one('[data-mode="trial_to_paid"]').text == 'Trial to Paid audit'
     assert markup.select_one('[data-overview-mode] [data-mode="capacities"]').text == (
         'Only customers with capacities')
     assert markup.select_one('[data-overview-data-only]') is None

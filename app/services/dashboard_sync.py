@@ -23,6 +23,7 @@ WIDGET_SOURCES = {
     'revenue.attention': ('revenue-analysis',),
     'ptof.upcoming_renewals': ('ptof',),
     'fabric.acquisition': ('pillars',),
+    'database.whitespace': ('pillars',),
     'fabric.modernization': ('products',),
     'fabric.rti': ('products', 'fabric'),
     'fabric.expansion': ('fabric',),

@@ -197,6 +197,27 @@ def report_fabric_acquisition(include_no_other_spend: bool = False) -> dict:
 
 
 @tool(
+    'report_database_whitespace',
+    'Read Database whitespace candidates for Data SEs and sellers from the existing '
+    'Whitespace Analysis grid. Uses the source-defined Databases pillar and the same '
+    'latest imported month minus 62 days window, averaging stored monthly pillar totals. '
+    'Includes customers with positive AI, Analytics or Apps coverage and no Databases coverage. '
+    'No added minimum spend or new stale-account rule. Returns count, ranked customer rows, '
+    'AI, Analytics (including Fabric), Apps and their total monthly spend, and seller groups. '
+    'A discovery queue, not confirmed opportunities or achieved consumption wins.',
+    {'type': 'object', 'properties': {}},
+)
+def report_database_whitespace() -> dict:
+    """Reuse the existing grid-backed widget calculation without refreshing source data."""
+    from app.services.whitespace import get_database_whitespace_widget
+
+    data = get_database_whitespace_widget()
+    if not data['available']:
+        return {'error': 'Database whitespace is available for Data SEs and sellers.'}
+    return data
+
+
+@tool(
     'report_rti',
     'Read Real-Time Intelligence customer discovery signals: native rolling 28-day RTI '
     'CU-hours and workload share alongside Event Hubs, Stream Analytics and IoT ACR. '
@@ -217,12 +238,14 @@ def report_rti() -> dict:
 @tool(
     'report_fabric_modernization',
     'Read Fabric Modernization: one row per customer with positive recent Synapse, '
-    'Azure Analysis Services, Azure Data Explorer, or Azure Databricks revenue. '
+    'Azure Analysis Services, Azure Data Explorer, Azure Databricks, or Azure Data Factory revenue. '
     'Displays average monthly ACR across the last three complete calendar months. '
-    'Other Analytics combines the four non-Fabric products. Eligibility still uses '
-    'three-month totals of at least $50, or $100 with positive Fabric spend. '
+    'Other Analytics combines Synapse, AAS, ADX and Databricks; ADF is separate. Eligibility uses '
+    'combined Other Analytics plus ADF three-month totals of at least $50, or $100 '
+    'with positive Fabric spend. '
     'Rows retain spend and source_revenue as three-month totals; monthly_spend and '
-    'monthly_source_revenue are display averages, unavailable with incomplete coverage. '
+    'monthly_source_revenue divide by each customer\'s available months within that period, '
+    'returning zero with no observed months. '
     'Includes seller groups and monthly coverage. Saved data only, not evidence of '
     'migration, readiness, or non-Azure Databricks inventory.',
     {'type': 'object', 'properties': {}},
@@ -237,11 +260,14 @@ def report_fabric_modernization() -> dict:
 @tool(
     'report_fabric_modernization_candidates',
     'Read the Fabric modernization widget: report-qualified customers whose last three '
-    'complete months of Other Analytics (Synapse, AAS, ADX and Azure Databricks) strictly exceed '
+    'complete months of Other Analytics (Synapse, AAS, ADX and Azure Databricks) plus ADF '
+    'strictly exceed '
     'Fabric spend. Includes matching customers, count, seller groups and coverage. '
-    'monthly_other_analytics_revenue is their combined average monthly ACR, unavailable '
-    'if any qualifying customer has incomplete coverage. other_analytics_revenue retains '
-    'the three-month total for eligibility and reconciliation. '
+    'monthly_other_analytics_revenue and monthly_adf_revenue are separate monthly averages; '
+    'monthly_source_revenue combines them. Summary averages sum each customer\'s monthly '
+    'average using that customer\'s available months, or zero without observations. '
+    'source_revenue retains the combined three-month total. '
+    'has_synapse marks positive net Synapse consumption, not confirmed migration. '
     'Saved observations only, not proof of migration or readiness.',
     {'type': 'object', 'properties': {}},
 )
@@ -273,12 +299,13 @@ def report_fabric_expansion() -> dict:
 
 @tool(
     'report_fabric_trial_conversion',
-    'Count distinct customers with saved Fabric trial SKUs (FTL4/FTL64), '
-    'and trial customers also running P-SKU or F-SKU capacities. Groups may overlap. '
+    'Find Trial to Paid prospects: distinct customers with saved Fabric trial SKUs '
+    '(FTL4/FTL64) and no paid F-SKU capacities. P-SKU customers remain eligible. '
     'Includes customer queues split at 0.1% average trial utilization over the saved '
     'source trailing 15-day window, averaging trial capacity means equally. '
-    'Includes P/F-SKU context, average observed days across trials, and customer detail links. '
-    'This is saved capacity inventory, not verified conversion or trial expiry status.',
+    'Includes P-SKU context, average observed days across trials, and customer detail links. '
+    'A trial present in the latest snapshot is active for this workflow. Engagement creation '
+    'and trial-to-F-SKU conversion tracking are manual, not automatic outcome detection.',
     {'type': 'object', 'properties': {}},
 )
 def report_fabric_trial_conversion() -> dict:

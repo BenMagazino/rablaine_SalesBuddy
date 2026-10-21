@@ -12,8 +12,10 @@ PRODUCT_FAMILIES = (
     ('aas', 'AAS', 'Azure Analysis Services'),
     ('adx', 'ADX', 'Azure Data Explorer'),
     ('databricks', 'Databricks', 'Azure Databricks'),
+    ('adf', 'ADF', 'Azure Data Factory'),
     ('fabric', 'Fabric', 'Fabric Capacity'),
 )
+OTHER_ANALYTICS_FAMILIES = ('synapse', 'aas', 'adx', 'databricks')
 MIN_SOURCE_REVENUE = 50
 MIN_SOURCE_REVENUE_WITH_FABRIC = 100
 REVENUE_WINDOW_MONTHS = 3
@@ -27,8 +29,13 @@ def _product_family(product: str) -> str | None:
     return None
 
 
+def _average_monthly_revenue(revenue: float, months_observed: int) -> float:
+    """Average over available customer months, returning zero without observations."""
+    return revenue / months_observed if months_observed else 0.0
+
+
 def get_fabric_modernization_report(reference: date | None = None) -> dict:
-    """Keep three-month eligibility totals and expose covered monthly averages for display.
+    """Keep three-month eligibility totals and average over available customer months.
 
     Linked rows roll up by customer ID across names and buckets. Unlinked imports
     remain separate by source name rather than guessing a customer match.
@@ -86,12 +93,14 @@ def get_fabric_modernization_report(reference: date | None = None) -> dict:
     for key, families in amounts.items():
         spend = {family: fsum(values) for family, values in families.items()}
         source_revenue = fsum(spend[family] for family in spend if family != 'fabric')
+        other_analytics = fsum(spend[family] for family in OTHER_ANALYTICS_FAMILIES)
         minimum = MIN_SOURCE_REVENUE_WITH_FABRIC if spend['fabric'] > 0 else MIN_SOURCE_REVENUE
         if source_revenue < minimum:
             continue
         customer = customers.get(key[1]) if key[0] == 'id' else None
         seller = customer.seller if customer else None
-        coverage_complete = len(observed.get(key, set())) == REVENUE_WINDOW_MONTHS
+        months_observed = len(observed.get(key, set()))
+        coverage_complete = months_observed == REVENUE_WINDOW_MONTHS
         rows.append({
             'customer_id': customer.id if customer else None,
             'customer_name': customer.get_display_name() if customer else names[key],
@@ -101,14 +110,19 @@ def get_fabric_modernization_report(reference: date | None = None) -> dict:
                 source_sellers.get(names[key]) if customer is None else None,
             'spend': spend,
             'source_revenue': source_revenue,
+            'other_analytics_revenue': other_analytics,
+            'has_synapse': spend['synapse'] > 0,
             'monthly_spend': {
-                family: amount / REVENUE_WINDOW_MONTHS if coverage_complete else None
+                family: _average_monthly_revenue(amount, months_observed)
                 for family, amount in spend.items()
             },
             'monthly_source_revenue': (
-                source_revenue / REVENUE_WINDOW_MONTHS if coverage_complete else None
+                _average_monthly_revenue(source_revenue, months_observed)
             ),
-            'months_observed': len(observed.get(key, set())),
+            'monthly_other_analytics_revenue': (
+                _average_monthly_revenue(other_analytics, months_observed)
+            ),
+            'months_observed': months_observed,
             'coverage_complete': coverage_complete,
             'row_key': f'{key[0]}-{key[1]}',
         })
@@ -145,7 +159,7 @@ def get_fabric_modernization_report(reference: date | None = None) -> dict:
 def get_fabric_modernization_widget(
     reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
 ) -> dict:
-    """Reuse report eligibility, then select customers with Other Analytics above Fabric."""
+    """Reuse report eligibility, then select Other Analytics plus ADF above Fabric."""
     report = get_fabric_modernization_report(reference)
     scope = set(customer_ids) if customer_ids is not None else None
     rows = [
@@ -162,13 +176,19 @@ def get_fabric_modernization_widget(
         if members:
             groups.append({**group, 'rows': members})
     total_revenue = fsum(row['source_revenue'] for row in rows)
+    other_analytics = fsum(row['other_analytics_revenue'] for row in rows)
+    adf = fsum(row['spend']['adf'] for row in rows)
     partial_count = sum(not row['coverage_complete'] for row in rows)
     return {
         'count': len(rows),
-        'other_analytics_revenue': total_revenue,
-        'monthly_other_analytics_revenue': (
-            total_revenue / REVENUE_WINDOW_MONTHS if not partial_count else None
+        'source_revenue': total_revenue,
+        'monthly_source_revenue': fsum(row['monthly_source_revenue'] for row in rows),
+        'other_analytics_revenue': other_analytics,
+        'monthly_other_analytics_revenue': fsum(
+            row['monthly_other_analytics_revenue'] for row in rows
         ),
+        'adf_revenue': adf,
+        'monthly_adf_revenue': fsum(row['monthly_spend']['adf'] for row in rows),
         'details': {'rows': rows, 'seller_groups': groups},
         'period_label': report['period_label'],
         'has_revenue_data': report['has_revenue_data'],

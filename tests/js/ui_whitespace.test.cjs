@@ -1,13 +1,39 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const {displayName, formatRevenue, visibleCustomers, matchingCustomers, createLatestReader,
-    requireGrid, parsePreferences, sellerGroups} = require('../../static/js/ui-whitespace.js');
+const {displayName, formatRevenue, visibleBuckets, visibleCustomers, matchingCustomers,
+    createLatestReader, requireGrid, parsePreferences, sellerGroups, entryPreset} =
+    require('../../static/js/ui-whitespace.js');
+
+test('Database widget entry selects every contributing pillar and sorts by Databases', () => {
+    assert.deepEqual(entryPreset('?view=database-whitespace'), {
+        key: 'database-whitespace-v2',
+        pillars: ['AI', 'Analytics', 'Apps', 'Databases'],
+        sortPillar: 'Databases',
+        focus: 'Databases',
+    });
+    for (const search of ['', '?view=fabric-acquisition', '?view=unknown']) {
+        assert.equal(entryPreset(search), null);
+    }
+});
 
 const customers = [
     {id: 1, name: 'Beta', nickname: 'Nickname', tpid: 123456, buckets: {Databases: 1234.56}},
     {id: 2, name: 'Alpha', nickname: null, buckets: {Databases: 3.25, Analytics: 5}},
     {id: 3, name: 'Gamma', buckets: {Analytics: 0}},
 ];
+
+test('focused pillar is hidden without changing selected columns or their order', () => {
+    const selected = ['AI', 'Analytics', 'Apps', 'Databases', 'Developer', 'Infra', 'Security'];
+    const original = [...selected];
+    for (const focus of selected) {
+        assert.deepEqual(visibleBuckets(selected, focus), selected.filter(bucket => bucket !== focus));
+    }
+    assert.deepEqual(visibleBuckets(selected), original);
+    assert.deepEqual(visibleBuckets(['AI'], 'Databases'), ['AI']);
+    assert.deepEqual(visibleBuckets(['Databases'], 'Databases'), []);
+    assert.deepEqual(visibleBuckets([], 'Databases'), []);
+    assert.deepEqual(selected, original);
+});
 
 test('grid retains partial coverage, single-pillar and fully-covered behavior', () => {
     assert.deepEqual(visibleCustomers(customers, ['Databases', 'Analytics'], false)
@@ -17,6 +43,51 @@ test('grid retains partial coverage, single-pillar and fully-covered behavior', 
     assert.deepEqual(visibleCustomers(customers.slice(0, 1), ['Databases'], false), [customers[0]]);
     assert.deepEqual(visibleCustomers([], ['Databases'], true), []);
     assert.deepEqual(customers.map(customer => customer.id), [1, 2, 3]);
+});
+
+test('focus excludes target coverage independently of spend columns and show-all', () => {
+    for (const showAll of [false, true]) {
+        for (const columns of [[], ['Databases'], ['Analytics'], ['Databases', 'Analytics']]) {
+            assert.deepEqual(visibleCustomers(customers, columns, showAll, 'Databases')
+                .map(customer => customer.id), [3]);
+        }
+    }
+    assert.deepEqual(visibleCustomers(customers, ['AI'], false, 'Analytics')
+        .map(customer => customer.id), [1]);
+    assert.equal(visibleCustomers(customers, ['AI'], false, 'AI').length, 3);
+    assert.deepEqual(visibleCustomers([{id: 4, name: 'No coverage', buckets: {}}],
+        [], true, 'Databases'), []);
+    assert.deepEqual(customers.map(customer => customer.id), [1, 2, 3]);
+});
+
+test('focus preferences are additive and reject invalid types', () => {
+    const preferences = {version: 1, pillars: ['AI'], focus: 'Databases', sorts: {}};
+    assert.deepEqual(parsePreferences(JSON.stringify(preferences)), preferences);
+    assert.equal(parsePreferences(JSON.stringify({...preferences, focus: ''})).focus, '');
+    for (const focus of [null, 1, true, [], {}]) {
+        assert.throws(() => parsePreferences(JSON.stringify({...preferences, focus})),
+            /Invalid whitespace focus/);
+    }
+});
+
+test('Database entry requires AI, Analytics or Apps coverage independently of visible columns', () => {
+    const preset = entryPreset('?view=database-whitespace');
+    const rows = [
+        {id: 1, name: 'AI', buckets: {AI: 0}},
+        {id: 2, name: 'Analytics', buckets: {Analytics: 10, Infra: 1000}},
+        {id: 3, name: 'Apps', buckets: {Apps: 25}},
+        {id: 4, name: 'Infra only', buckets: {Infra: 1000}},
+        {id: 5, name: 'Developer and security', buckets: {Developer: 10, Security: 20}},
+        {id: 6, name: 'Database user', buckets: {AI: 20, Databases: 0}},
+        {id: 7, name: 'No coverage', buckets: {}},
+    ];
+    for (const columns of [[], ['AI'], ['Infra'], preset.pillars]) {
+        for (const showAll of [false, true]) {
+            assert.deepEqual(visibleCustomers(rows, columns, showAll, preset.focus, preset.pillars)
+                .map(row => row.id).sort(), [1, 2, 3]);
+        }
+    }
+    assert.equal(visibleCustomers(rows, [], false, 'Databases').length, 5);
 });
 
 test('display rounding does not mutate raw revenue or rounded-zero coverage', () => {

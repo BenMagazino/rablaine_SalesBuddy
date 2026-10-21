@@ -90,7 +90,7 @@
         }
         try {
             const saved = initialMode ?? localStorage.getItem(key);
-            if (saved !== null) select(saved);
+            if (saved !== null) select(['all', 'p'].includes(saved) ? 'capacities' : saved);
         } catch (error) {
             reportError('restore', error);
         }

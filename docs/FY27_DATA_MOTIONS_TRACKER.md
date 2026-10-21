@@ -13,23 +13,31 @@ Dashboard placement stays unchecked until you confirm it.
 
 - [x] Coded
 - [x] Added to dashboard
-- **Starting scope:** Customers with positive Synapse, AAS, ADX, or Azure Databricks
+- **Starting scope:** Customers with positive Synapse, AAS, ADX, Azure Databricks or ADF
   revenue over the last three complete calendar months, alongside Fabric spend
   for the same period.
 - **Boundary:** Consumption signals are not migration-readiness assessments.
   Azure Databricks is not evidence of non-Azure Databricks.
 - **Report/widget:** Fabric Modernization report, replacing Synapse Customers.
-  Summary and Details widgets show report-qualified customers whose Other Analytics spend
-  exceeds Fabric spend, with viewer-controlled seller grouping.
-  Dollar amounts display average monthly ACR (three-month totals divided by 3).
-  Summary includes the customer count and combined average monthly Other Analytics ACR.
-- **Revenue cutoffs:** Exclude Other Analytics totals below $50, or below $100 with positive
+  Summary and Details widgets show report-qualified customers whose Other Analytics
+  plus ADF spend exceeds Fabric spend, with viewer-controlled seller grouping.
+  Dollar amounts display average monthly ACR, dividing each customer's totals by its
+  available months within the three-month window, or $0 when no months are available.
+  Summary includes the customer count and separate monthly Other Analytics and ADF ACR.
+  Details shows Customer, Other Analytics, ADF and Fabric. Other Analytics amounts
+  with positive net Synapse spend have a dotted underline and an "Includes Synapse" tooltip.
+- **Revenue cutoffs:** Exclude combined Other Analytics plus ADF totals below $50,
+  or below $100 with positive
   Fabric spend, using unrounded three-month net totals.
 - **Notes / follow-up:** One row per customer, source-product columns and Fabric Capacity
-  revenue, grouped by current seller. Incomplete coverage makes a customer's monthly
-  averages unavailable, not inflated by a shorter divisor. The combined widget average
-  is unavailable if any qualifying customer has incomplete coverage.
+  revenue, grouped by current seller. Months count once per customer across all saved
+  product rows, including products outside the modernization families. Missing product
+  spend is $0. Summary totals sum customer-level monthly averages, even when customers
+  have different month counts. Partial coverage remains flagged.
   Dollar amounts represent existing consumption, not projected incremental Fabric benefit.
+  ADF maps Azure Data Factory v2, Data Flow and Managed Airflow. Synapse-branded
+  pipelines remain in Synapse. Other Analytics retains Synapse, AAS, ADX and Databricks
+  only, with no ADF double-counting.
   Report and widget validated against saved revenue. Added to the FY27 Data Motions
   dashboard and confirmed complete for this scope.
 
@@ -72,19 +80,19 @@ Dashboard placement stays unchecked until you confirm it.
   Incomplete mixes remain excluded. Added to the FY27 Data Motions dashboard
   and confirmed complete for this scope.
 
-### 4. [x] Fabric trial conversion
+### 4. [x] Trial to Paid
 
 - [x] Coded
 - [x] Added to dashboard
-- **Starting scope:** Summary counts of customers with saved Fabric trials,
-  customers with P-SKUs and trials, and customers with F-SKUs and trials.
-- **Boundary:** Saved SKUs do not establish active/expired status, expiry dates,
-  or verified conversion. Actual conversion tracking requires more evidence/history.
-- **Report/widget:** Fabric trial conversion, Summary / Details. Links to Fabric Consumption
-  > Capacity overview > Trial audit.
-- **Notes / follow-up:** Counts distinct customers, not capacities. P/F groups can
-  overlap. Details lists each customer once, split below/at-or-above 0.1% average
-  trial utilization. Shows P/F-SKU context and average observed history days
+- **Starting scope:** Customers with trial capacities and no paid F SKU.
+  Summary counts eligible customers and those with P-SKUs alongside their trials.
+- **Boundary:** A trial present in the latest sync is active for this workflow.
+  Engagement creation and trial -> F-SKU conversion tracking remain manual.
+- **Report/widget:** Trial to Paid, Summary / Details. Links to Fabric Consumption
+  > Capacity overview > Trial to Paid audit. The broader Trial audit remains available.
+- **Notes / follow-up:** Counts distinct customers, not capacities. No additional
+  Fabric ACR filter is imposed. Details lists each customer once, split below/at-or-above 0.1%
+  average trial utilization. Tables show Customer, Avg used and average observed history days
   across trials, using the saved source's trailing 15-day window. Customer links
   open Fabric detail; the table scrolls within the chosen widget height.
   Added to the FY27 Data Motions dashboard and confirmed actionable.
@@ -127,16 +135,30 @@ Dashboard placement stays unchecked until you confirm it.
   Added to the FY27 Data Motions dashboard and confirmed complete for this scope.
   Engagement creation and trial -> F-SKU conversion tracking remain manual.
 
-### 7. [ ] Data/AI foundation
+### Database whitespace (added from revised guidance)
 
-- [ ] Coded
-- [ ] Added to dashboard
-- **Starting scope:** Foundry Agents/OpenAI/ML consumption and relevant linked
-  work, paired with observed Fabric/workload context.
-- **Boundary:** This is candidate discovery, not a governance or agent-readiness
-  assessment. Missing Fabric does not mean missing governance.
-- **Report/widget:**
-- **Notes / follow-up:**
+- [x] Coded
+- [x] Dashboard placement confirmed by user
+- **Status:** User confirmed this report/widget scope complete on October 20, 2026.
+- **Starting scope:** Existing Whitespace Grid customers without Databases coverage
+  and with positive AI, Analytics or Apps coverage. Developer, Infra and Security
+  alone do not qualify. Reuse the latest-data window and available-month averages,
+  without an additional minimum spend.
+- **Report/widget:** Existing Whitespace Analysis calculation, plus Summary/Details widgets
+  and a SalesIQ read tool. Details shows Customer, AI, Analytics, Apps and Total / mo.
+  Analytics includes Fabric; totals and ranking use only those three adjacent pillars.
+- **Notes / follow-up:** Customer/seller filters and seller grouping apply to both
+  widget variants. Focus whitespace excludes customers with the target pillar,
+  independently of the displayed spend columns, and hides the focused pillar's
+  zero-only column. The report link selects Databases
+  focus with the same qualifying cohort and AI, Analytics and Apps columns,
+  preserving normal report preferences.
+  Candidate discovery is separate from achieved whitespace wins.
+
+### 7. Data/AI foundation - not planned
+
+- **Decision:** On October 20, 2026, the user confirmed that existing Fabric Acquisition
+  is sufficient for AI attach. No separate report, widget or targeting view is planned.
 
 ### 8. [ ] SQL migration
 

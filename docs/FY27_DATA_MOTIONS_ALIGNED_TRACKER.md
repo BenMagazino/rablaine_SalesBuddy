@@ -20,8 +20,8 @@ because this document is created.
 - **Fabric:** acquisition/whitespace, modernization and workload expansion.
 - **Databases:** acquisition/whitespace, renewal/EOS-driven modernization and
   consumption expansion.
-- **Data + AI:** a real cross-platform attach scenario, not a generic
-  "AI-ready foundation" assessment.
+- **Data + AI:** covered by existing Fabric Acquisition. The user explicitly declined
+  a separate AI/Foundry attach report, widget or targeting view.
 - **RTI:** a streaming-to-Fabric entry point or workload-expansion play for customers
   without RTI usage, including those with no Fabric capacity.
 - **Arc/ESU:** a path within SQL renewal/EOS/migration, not a standalone headline motion.
@@ -52,22 +52,24 @@ the result unique customers.
 | --- | --- | --- | --- |
 | Fabric acquisition | [x] | [x] | Keep as Fabric Whitespace candidate generation. |
 | Fabric expansion | [x] | [x] | Keep the Power BI-heavy workload-expansion queue. |
-| Fabric trial conversion | [x] | [x] | Existing trial follow-up; align to Trial -> Paid targeting. |
+| Trial to Paid | [x] | [x] | Trial capacities without paid F-SKUs, linked to the matching audit. |
 | P to F | [x] | [x] | Keep the management-supplied renewal motion. |
 | Fabric modernization | [x] | [x] | Keep as modernization signals; add named source submotions. |
 | Real-Time Intelligence | [x] | [x] | Streaming customers without RTI usage, including Fabric entry points. |
+| Database whitespace | [x] | [x] | Grid-backed Database gaps with AI, Analytics or Apps spend; user confirmed complete. |
 
 Fabric Capacity Pressure is also an existing supporting report/widget, not a new
 database motion or proof of a qualified expansion opportunity.
 
-## Recommended build order from the response
+## Remaining additions
 
-1. Database Whitespace.
-2. SQL Renewals.
-3. SQL EOS / ESU.
-4. AI/Foundry -> Fabric Attach.
-5. Database Expansion.
-6. Refactor Fabric Modernization into named submotions.
+1. SQL Renewals.
+2. SQL EOS / ESU.
+3. Database Expansion.
+
+Database Whitespace is complete. Named-source Fabric Modernization refinements are
+implemented. On October 20, the user confirmed that existing Fabric Acquisition
+is sufficient for AI attach; no separate addition is planned.
 
 Keep the Fabric targeting/wording corrections below visible alongside this order.
 Do not silently substitute the old "four remaining motions" backlog.
@@ -97,39 +99,35 @@ Follow-up:
 ### Acquire: Trial -> Paid
 
 **Direction:** Retain trial discovery, but tighten the business interpretation.
-The response describes the target as an **active Fabric trial with no Fabric ACR**.
+The response suggested active trials without Fabric ACR. The user's clarified
+implementation rule is **a trial capacity and no paid F SKU**. Do not add a separate
+ACR eligibility requirement.
 
 - Existing widget finds saved trial SKUs, shows P/F-capacity overlap and 15-day
   utilization, and splits observed usage at 0.1%.
 - [x] Use a trial capacity present in the latest synced snapshot as active for this workflow.
-- [ ] Rename the user-facing motion to Trial -> Paid.
-- [ ] Add the no-Fabric-ACR target cohort without hiding useful paid/trial context.
+- [x] Rename the user-facing motion to Trial to Paid.
+- [x] Exclude customers with any paid F SKU from both widget variants and all their cohorts.
+  Retain eligible P-SKU customers and the existing utilization/history calculations.
+- [x] Keep Details focused on Customer, Avg used and History rather than SKU-overlap columns.
+- [x] Add a matching Trial to Paid audit in Fabric Consumption and link the widget to it.
+  Keep the broader Trial audit, remove the all-customer overview option, and map old
+  links/preferences for that removed option to the capacities view.
+- [x] Remove the redundant P-only overview selection and its filtering code.
+  Keep P-SKU badges/context and use the separate P to F report for renewal audits.
+  Old links/preferences for the removed selection open the capacities view.
+- [x] Verify the native latest-snapshot and cross-tenant paid F exclusions, scope filters,
+  utilization queues and read tool. Live audit and both widget variants agree on
+  21 customers (11 getting started, 10 building momentum), including 2 with P-SKUs.
 - [x] Keep engagement creation and trial -> F-SKU conversion tracking manual.
   The user creates an engagement from the surfaced insight and tracks the outcome;
   automatic conversion detection is not part of this change.
 
 ### Acquire / cross-platform: AI/Foundry -> Fabric Attach
 
-**Direction:** Replace the old Data/AI foundation concept with
-**Fabric attach to AI / Unify Data Estate for AI**.
-
-Seller action: determine what governed enterprise data and business context the
-customer's AI/agent workloads require; qualify Fabric/OneLake/Fabric IQ as the
-supporting platform where appropriate.
-
-- [ ] Confirm segment-specific targeting and the source product/measure mapping.
-- [ ] Build an AI-investment plus absent/underpenetrated-Fabric candidate queue.
-- [ ] Show AI/Foundry, Fabric, database and analytics context.
-- [ ] Include relevant known AI/Foundry pipeline where available.
-- [ ] Add a shared report, widget and read tool; verify and place on the dashboard.
-
-The response cites an SME&C targeting example of **Foundry >$1,000/month and
-Fabric <$1,000/month**. Confirm applicability, measurement window and product
-definitions before implementing it. Do not substitute the entire AI pillar for
-Foundry without evidence. Another cited land scenario combines low Foundry/low
-Fabric with meaningful M365/D365 footprint; those terms and sources remain undefined.
-
-AI consumption is not proof of poor governance, missing foundations or a Fabric need.
+**Decision:** Not planned as a separate addition. On October 20, 2026, the user
+confirmed that existing Fabric Acquisition is sufficient for AI attach.
+Do not build an additional report, widget or AI-led targeting view for this motion.
 
 ### Acquire: Competitive / third-party Fabric acquisition
 
@@ -144,15 +142,25 @@ Databricks ACR does not establish a non-Azure Databricks or competing-platform e
 **Direction:** Retain Fabric Modernization as a signals umbrella, with explicit
 legacy-source subtypes rather than treating all adjacent spend equivalently.
 
-- [ ] Make Synapse -> Fabric an explicit submotion.
-- [ ] Add ADF / pipeline -> Fabric discovery using verified source mappings.
-- [ ] Retain AAS, ADX and Azure Databricks as clearly identified source signals.
+- [x] Identify Synapse -> Fabric with a dotted underline on the widget's Other Analytics
+  amount when net Synapse revenue is positive. Hover text says "Includes Synapse".
+- [x] Add ADF / pipeline -> Fabric discovery using verified local source names:
+  Azure Data Factory v2, Data Flow and Managed Airflow.
+- [x] Retain AAS, ADX and Azure Databricks under Other Analytics, alongside Synapse.
+  Keep ADF separate in the report and both widget variants. Synapse-branded pipelines
+  stay in Synapse and are not counted again as ADF.
+- [x] Verify report/widget totals, indicator eligibility, scope, cutoffs and complete-month
+  boundaries in scoped tests. The live widget shows 22 candidates, including 7
+  ADF-only customers, with no horizontal overflow at its saved half-width size.
 - [ ] Distinguish customer-confirmed consolidation/migration work from observed spend.
 - [ ] Agree evidence for outcomes such as consolidation, retired workloads, reduced
   cost/complexity and a governed data foundation.
 
-Existing report averages three complete months. Its $50/$100 three-month cutoffs
-and the widget's Other Analytics > Fabric rule are local implementation heuristics.
+The report uses the last three complete calendar months, averaging each customer's
+spend over its available months within that window, or $0 when no months are available.
+Summary amounts sum these customer-level averages. Its $50/$100 combined Other Analytics
+plus ADF three-month cutoffs and the widget's combined-source > Fabric rule are
+local implementation heuristics. ADF-only prospects can qualify.
 Confirm before changing them; do not label them managerial qualification rules.
 
 ### Modernize: P2F
@@ -204,23 +212,47 @@ trial -> F-SKU conversion tracking remain manual.
 
 ## Database work register
 
-### Acquire: Database Whitespace - priority 1
+### Acquire: Database Whitespace - complete
 
 **Direction:** Make this a first-class queue, not an incidental database filter.
 The response identifies DatabaseWhiteSpace in the manager's motion workbook.
 
-- [ ] Confirm which Azure database products/pillars count and the stable zero-spend window.
-- [ ] Identify accounts with $0 observed Azure database ACR over that window.
-- [ ] Show/rank adjacent Azure, Fabric and AI footprint.
+**Status:** User confirmed the discovery report/widget complete on October 20, 2026.
+On-prem evidence and achieved-outcome tracking remain follow-ups, not blockers for this scope.
+
+- [x] Reuse the existing source-defined Databases pillar and Whitespace Grid window:
+  62 days before the latest imported month, averaging stored monthly pillar totals.
+  The user explicitly chose the existing report rules, without a Fabric-style rewrite.
+- [x] Identify customers without Databases coverage in that grid and with positive
+  AI, Analytics or Apps coverage. Developer, Infra and Security alone do not qualify.
+  Missing target coverage is a gap; all-zero accounts remain outside the grid.
+  Preserve the report's net-credit and current account scope.
+- [x] Rank and total only AI, Analytics (including Fabric) and Apps footprint.
 - [ ] Add known on-prem database evidence where trustworthy and available.
-- [ ] Define missing-data and current-account scope explicitly.
-- [ ] Build shared report/widget/read tool; test and add to the dashboard.
+- [x] Share the unchanged grid calculation between the existing report and widgets,
+  without an additional minimum spend, stale-account exclusion or calendar window.
+- [x] Build Summary/Details widgets, customer/seller scope, seller grouping, pillar
+  source readiness and a shared SalesIQ read tool. Scoped tests cover report parity.
+- [x] Verify 101 scoped Python and 54 JavaScript tests, plus live report/widget parity:
+  41 qualifying customers, identical monthly amounts and 5 seller groups.
+  Details is saved at half width on FY27 Data Motions,
+  with no horizontal overflow and existing placements/filters preserved.
+- [x] Add a generic Focus whitespace selector, independent of displayed spend columns,
+  using the existing seller grouping. The widget opens the same AI/Analytics/Apps-qualified
+  Database cohort with those three spend columns, excluding existing Database coverage.
+  Hide the focused pillar's
+  zero-only column without changing saved column selections.
+  Normal saved focus, column and sort preferences are unchanged by this linked visit.
+- [x] Verify focused navigation, column-independent qualification and seller grouping.
+  Generic focus retains all-pillar coverage; the Database widget entry uses only
+  AI, Analytics or Apps coverage regardless of the displayed columns.
+- [x] Confirm the development dashboard placement with the user.
 - [ ] Separate acquisition candidates from sustained new database-consumption wins.
 
 Do not copy Fabric's $2,000 widget cutoff or lookback blindly. The response suggests
 analogous candidate logic and continuous-consumption outcomes, not identical rules.
 
-### Modernize: SQL Renewal & Migration - priority 2
+### Modernize: SQL Renewal & Migration - priority 1
 
 **Direction:** Replace generic SQL-consumption prospecting with a compelling-event queue.
 
@@ -234,7 +266,7 @@ analogous candidate logic and continuous-consumption outcomes, not identical rul
 on-prem report and considered it more than a month stale. Do not use it as
 authoritative eligibility evidence without validation.
 
-### Modernize: SQL EOS / ESU - priority 3
+### Modernize: SQL EOS / ESU - priority 2
 
 **Direction:** Make SQL 2016 EOS/ESU an explicit queue, not a generic Arc tile.
 
@@ -260,7 +292,7 @@ separate dashboard tiles:
 - [ ] Confirm the taxonomy, target evidence and overlap with renewal/EOS queues.
 - [ ] Record customer-confirmed source/target and the reason for a bridge or deferral.
 
-### Expand: Database Consumption Growth - priority 5
+### Expand: Database Consumption Growth - priority 3
 
 **Direction:** Replace the old generic DB modernization concept with a distinct
 existing-consumer expansion queue.
@@ -287,8 +319,6 @@ and confirm applicable segment, dates and definitions before treating details as
 - [ ] October 1 Alex/Josh 1:1: Power BI-heavy expansion and database-growth cohorts.
 - [ ] FY27 Job 2 guidance: Fabric workloads, migrations, RTI and mirroring.
 - [ ] Active-trial/no-Fabric-ACR targeting and September 3 Trial -> Paid guidance.
-- [ ] Enterprise Majors Growth Plan, reportedly updated October 20:
-  Foundry/Fabric attach scenarios and SME&C targeting applicability.
 - [ ] Current SQL execution resources, workload taxonomy and on-prem source warning.
 - [ ] Fabric preload workflow: validate signals, engage, then qualify/block/close with reasons.
 

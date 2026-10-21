@@ -5,7 +5,8 @@ import pytest
 
 from app.models import Customer, ProductRevenueData, RevenueAnalysis, RevenueImport, Seller, db
 from app.services.fabric_modernization import (
-    _product_family, get_fabric_modernization_report, get_fabric_modernization_widget,
+    _average_monthly_revenue, _product_family,
+    get_fabric_modernization_report, get_fabric_modernization_widget,
 )
 from app.services.salesiq_tools import execute_tool
 
@@ -34,6 +35,11 @@ def revenue_rows(app):
     ('Azure Synapse Analytics Dedicated SQL Pool', 'synapse'),
     ('Azure Analysis Services Standard v2', 'aas'),
     ('Azure Data Explorer', 'adx'), ('Azure Databricks Regional', 'databricks'),
+    ('Azure Data Factory', 'adf'), ('Azure Data Factory v2', 'adf'),
+    ('Azure Data Factory v2 - Managed Airflow', 'adf'),
+    ('Azure Data Factory v2 Data Flow - General Purpose', 'adf'),
+    ('Azure Data Factory v2 Data Flow - Memory Optimized', 'adf'),
+    ('Azure Data FactoryX', None), ('Data Factory', None),
     ('Fabric Capacity', 'fabric'), ('SQL Server Standard - Analysis Services', None),
     ('Azure Synapse Link for SQL', None), ('Azure DatabricksX', None),
 ])
@@ -64,15 +70,62 @@ def test_three_complete_months_and_independent_product_spend(revenue_rows):
     assert result['months'] == ['2026-07-01', '2026-08-01', '2026-09-01']
     assert [row['customer_name'] for row in result['rows']] == ['Prospect']
     row = result['rows'][0]
-    assert row['spend'] == {'synapse': 90, 'aas': 11, 'adx': -2, 'databricks': 4, 'fabric': 15}
+    assert row['spend'] == {
+        'synapse': 90, 'aas': 11, 'adx': -2, 'databricks': 4, 'adf': 0, 'fabric': 15,
+    }
     assert row['source_revenue'] == 103
     assert row['monthly_source_revenue'] == pytest.approx(103 / 3)
     assert row['monthly_spend'] == pytest.approx({
-        'synapse': 30, 'aas': 11 / 3, 'adx': -2 / 3, 'databricks': 4 / 3, 'fabric': 5,
+        'synapse': 30, 'aas': 11 / 3, 'adx': -2 / 3, 'databricks': 4 / 3, 'adf': 0, 'fabric': 5,
     })
     assert row['coverage_complete']
     assert row['months_observed'] == 3
     assert result['totals'] == row['spend']
+
+
+def test_adf_and_other_analytics_stay_separate_with_combined_eligibility(revenue_rows):
+    """Include pipeline-only and combined plays without double-counting Synapse pipelines."""
+    for month in (7, 8, 9):
+        revenue_rows('ADF only', 'Azure Data Factory v2', 100, month)
+        revenue_rows('Both plays', 'Azure Data Factory v2 - Managed Airflow', 40, month)
+        revenue_rows('Both plays', 'Azure Synapse Analytics Pipelines', 30, month)
+        revenue_rows('Both plays', 'Fabric Capacity', 60, month)
+        revenue_rows('Synapse credits', 'Azure Data Factory v2', 30, month)
+        revenue_rows('Synapse credits', 'Azure Synapse Analytics', -1, month)
+    for month in (6, 10, 11):
+        revenue_rows('ADF only', 'Azure Data Factory v2', 90000, month)
+    revenue_rows('Current ADF only', 'Azure Data Factory v2', 90000, 10)
+    revenue_rows('Credit only', 'Azure Data Factory v2 Data Flow - General Purpose', -100)
+    report = get_fabric_modernization_report(date(2026, 10, 20))
+    rows = {row['customer_name']: row for row in report['rows']}
+    assert set(rows) == {'ADF only', 'Both plays', 'Synapse credits'}
+    assert rows['ADF only']['monthly_spend']['adf'] == 100
+    assert rows['ADF only']['monthly_other_analytics_revenue'] == 0
+    assert rows['ADF only']['has_synapse'] is False
+    assert rows['Both plays']['monthly_spend']['adf'] == 40
+    assert rows['Both plays']['monthly_other_analytics_revenue'] == 30
+    assert rows['Both plays']['monthly_source_revenue'] == 70
+    assert rows['Both plays']['has_synapse'] is True
+    assert rows['Synapse credits']['has_synapse'] is False
+    widget = get_fabric_modernization_widget(date(2026, 10, 20))
+    assert {row['customer_name'] for row in widget['details']['rows']} == set(rows)
+    assert widget['monthly_other_analytics_revenue'] == 29
+    assert widget['monthly_adf_revenue'] == 170
+    assert widget['monthly_source_revenue'] == 199
+    assert widget['source_revenue'] == (
+        widget['other_analytics_revenue'] + widget['adf_revenue']
+    )
+
+
+@pytest.mark.parametrize(('amount', 'fabric', 'included'), [
+    (49.999, 0, False), (50, 0, True), (99.999, 1, False), (100, 1, True),
+])
+def test_adf_uses_existing_report_cutoffs(revenue_rows, amount, fabric, included):
+    """ADF-only candidates obey the same unrounded source-volume thresholds."""
+    revenue_rows('Pipeline candidate', 'Azure Data Factory v2', amount)
+    revenue_rows('Pipeline candidate', 'Fabric Capacity', fabric)
+    assert bool(get_fabric_modernization_report(date(2026, 10, 20))['rows']) is included
+    assert bool(get_fabric_modernization_widget(date(2026, 10, 20))['count']) is included
 
 
 def test_linked_customer_identity_across_names_buckets_and_same_name_sellers(revenue_rows):
@@ -102,8 +155,16 @@ def test_linked_customer_identity_across_names_buckets_and_same_name_sellers(rev
     assert result['partial_customer_count'] == 3
 
 
+@pytest.mark.parametrize(('revenue', 'months', 'expected'), [
+    (900, 3, 300), (600, 2, 300), (300, 1, 300), (0, 0, 0), (99, 0, 0),
+])
+def test_average_uses_available_months_or_zero(revenue, months, expected):
+    """Use the actual month count and return zero when there are no observations."""
+    assert _average_monthly_revenue(revenue, months) == expected
+
+
 def test_period_is_calendar_based_even_with_missing_months(revenue_rows):
-    """Do not silently stretch recent to older imported months when coverage is sparse."""
+    """Count available customer months without stretching the three-month lookback."""
     revenue_rows('Sparse', 'Azure Synapse Analytics', 100, 9)
     revenue_rows('Sparse', 'Other product', 10, 8)
     revenue_rows('Sparse', 'Fabric Capacity', 99, 5)
@@ -112,9 +173,37 @@ def test_period_is_calendar_based_even_with_missing_months(revenue_rows):
     assert row['months_observed'] == 2
     assert not row['coverage_complete']
     assert row['spend']['fabric'] == 0
-    assert row['monthly_source_revenue'] is None
-    assert all(value is None for value in row['monthly_spend'].values())
+    assert row['monthly_source_revenue'] == 50
+    assert row['monthly_other_analytics_revenue'] == 50
+    assert row['monthly_spend'] == {
+        'synapse': 50, 'aas': 0, 'adx': 0, 'databricks': 0, 'adf': 0, 'fabric': 0,
+    }
     assert result['partial_customer_count'] == 1
+
+
+def test_widget_sums_customer_averages_with_different_month_counts(revenue_rows):
+    """Normalize each customer before summing, counting months once across products."""
+    for month in (7, 8, 9):
+        revenue_rows('Full', 'Azure Synapse Analytics', 90, month)
+        revenue_rows('Full', 'Azure Data Factory v2', 30, month)
+        revenue_rows('Full', 'Fabric Capacity', 10, month)
+    for month in (8, 9):
+        revenue_rows('Partial', 'Azure Data Factory v2', 500, month)
+        revenue_rows('Partial', 'Azure Data Factory v2 Data Flow', 100, month, bucket='Other')
+    revenue_rows('Single', 'Azure Synapse Analytics', 150)
+    report = get_fabric_modernization_report(date(2026, 10, 20))
+    rows = {row['customer_name']: row for row in report['rows']}
+    assert rows['Full']['months_observed'] == 3
+    assert rows['Partial']['months_observed'] == 2
+    assert rows['Single']['months_observed'] == 1
+    assert rows['Partial']['monthly_spend']['adf'] == 600
+    assert rows['Single']['monthly_other_analytics_revenue'] == 150
+    widget = get_fabric_modernization_widget(date(2026, 10, 20))
+    assert widget['count'] == 3
+    assert widget['partial_customer_count'] == 2
+    assert widget['monthly_other_analytics_revenue'] == 240
+    assert widget['monthly_adf_revenue'] == 630
+    assert widget['monthly_source_revenue'] == 870
 
 
 def test_distinct_source_identities_and_ambiguous_ownership(revenue_rows):
@@ -221,6 +310,6 @@ def test_widget_preserves_report_cutoffs_before_strict_spend_comparison(revenue_
     ]
     assert result['count'] == 2
     assert result['other_analytics_revenue'] == pytest.approx(150.0001)
-    assert result['monthly_other_analytics_revenue'] is None
+    assert result['monthly_other_analytics_revenue'] == pytest.approx(150.0001)
     assert result['has_revenue_data']
     assert result['period_label'] == 'Jul 2026 through Sep 2026'

@@ -1032,8 +1032,6 @@ def _summarize_trial_customers(
             "id": customer_id, "name": trials[0]["name"], "row_key": str(customer_id),
             "seller": trials[0].get("seller"),
             "has_p_sku": has_p, "has_f_sku": has_f,
-            "other_skus": "P + F" if has_p and has_f else
-                          "P-SKU" if has_p else "F-SKU" if has_f else "Neither",
             "average_utilization_pct": average,
             "observed_days": sum(row["observed_days"] for row in trials) / len(trials),
             "observed_hours": sum(row["observed_hours"] for row in trials),
@@ -1048,7 +1046,7 @@ def _summarize_trial_customers(
 def get_fabric_trial_conversion_widget(
     reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
 ) -> dict:
-    """Count distinct trial customers and their observed P/F capacity overlap."""
+    """Surface trial customers without a paid F-SKU for manual conversion follow-up."""
     overview = get_fabric_capacity_overview()
     families: dict[str, set[int]] = {"trial": set(), "p": set(), "f": set()}
     trial_rows = []
@@ -1066,12 +1064,13 @@ def get_fabric_trial_conversion_widget(
             families["p"].add(row["id"])
         elif re.fullmatch(r"F[1-9][0-9]*", sku):
             families["f"].add(row["id"])
-    trials = families["trial"]
+    trials = families["trial"] - families["f"]
+    trial_rows = [row for row in trial_rows if row["id"] in trials]
     return {
         "snapshot": overview["snapshot"],
         "snapshot_state": "available" if overview["snapshot"] else "not_imported",
         "scope": "all_local_accounts",
-        "destination": "/reports/fabric-consumption?view=overview&mode=trials&customers=true",
+        "destination": "/reports/fabric-consumption?view=overview&mode=trial_to_paid&customers=true",
         "counts": {
             "customers_with_trials": len(trials),
             "customers_with_p_and_trials": len(trials & families["p"]),

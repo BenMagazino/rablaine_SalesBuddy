@@ -19,11 +19,15 @@ def candidate_row(customer_id: int | None, key: str, source: float, fabric: floa
     return {
         'customer_id': customer_id, 'row_key': key, 'customer_name': f'Customer {key}',
         'source_revenue': source,
-        'spend': {'synapse': source, 'aas': 0, 'adx': 0, 'databricks': 0, 'fabric': fabric},
+        'other_analytics_revenue': source, 'has_synapse': source > 0,
+        'spend': {'synapse': source, 'aas': 0, 'adx': 0, 'databricks': 0, 'adf': 0,
+                  'fabric': fabric},
         'monthly_spend': {
-            'synapse': source / 3, 'aas': 0, 'adx': 0, 'databricks': 0, 'fabric': fabric / 3,
+            'synapse': source / 3, 'aas': 0, 'adx': 0, 'databricks': 0, 'adf': 0,
+            'fabric': fabric / 3,
         },
         'monthly_source_revenue': source / 3,
+        'monthly_other_analytics_revenue': source / 3,
         'seller': seller, 'seller_name': seller['name'] if seller else None,
         'coverage_complete': True,
     }
@@ -95,26 +99,34 @@ def test_details_sortable_columns_and_exact_amounts(saved_report, grouped):
     assert not soup.select('img')
     assert len(table.select('tr[data-row-key]')) == 3
     assert [th.text for th in table.select('thead th')] == [
-        'Customer', 'Other Analytics', 'Fabric',
+        'Customer', 'Other Analytics', 'ADF', 'Fabric',
     ]
-    assert all(len(row.select('td')) == 3 for row in table.select('tr[data-row-key]'))
+    assert all(len(row.select('td')) == 4 for row in table.select('tr[data-row-key]'))
     assert table['data-sb-sort-default-column'] == '1'
-    assert 'modernization-v2-' in table['data-sb-sort-key']
+    assert 'modernization-v3-' in table['data-sb-sort-key']
     assert table['data-sb-sort-default-direction'] == 'descending'
     assert table.parent['tabindex'] == '0'
     if grouped:
         assert len(table.select('tbody')) == 3
         assert len(table.select('tr[data-sb-sort-fixed]')) == 3
-        assert all(th['colspan'] == '3' for th in table.select('tbody th'))
+        assert all(th['colspan'] == '4' for th in table.select('tbody th'))
         assert 'No seller assigned' in table.select('tbody')[-1].text
     else:
         assert not table.select('.db-report-seller')
     assert table.select('thead th')[1]['data-sb-sort-type'] == 'number'
     cells = table.select_one('tr[data-row-key="above-fabric"]').select('td')
-    assert float(cells[-2]['data-sb-sort-value']) == pytest.approx(100.0001 / 3)
+    assert float(cells[1]['data-sb-sort-value']) == pytest.approx(100.0001 / 3)
+    assert float(cells[2]['data-sb-sort-value']) == 0
     assert float(cells[-1]['data-sb-sort-value']) == pytest.approx(100 / 3)
     assert 'Avg monthly ACR' in soup.text
     assert table.select_one('a[href="/customer/1/revenue"]')
+    name = table.select_one('tr[data-row-key="first"] td')
+    assert name['data-sb-sort-value'] == '<img src=x onerror=bad()>'
+    assert not name.select_one('.badge')
+    indicator = table.select_one('tr[data-row-key="first"] td:nth-child(2) .db-modernization-synapse')
+    assert indicator['title'] == 'Includes Synapse'
+    assert indicator.text == '$67'
+    assert len(table.select('.db-modernization-synapse')) == 3
     assert bool(table.select_one('.badge.bg-primary .bi-person')) == grouped
     second = BeautifulSoup(render_widget(
         'fabric_modernization', result, prefix='second-', group_by_seller=grouped,
@@ -130,7 +142,8 @@ def test_no_data_empty_and_summary_states(saved_report):
     assert summary.select_one('.db-modernization-revenue').text == '$123/mo'
     assert summary.select_one('.db-modernization-revenue')['title'] == '$123.33 average monthly ACR'
     assert 'Other Analytics / month' in summary.text
-    assert 'Other Analytics-led customers' in summary.text
+    assert 'Modernization customers' in summary.text
+    assert 'ADF / month' in summary.text
     result['has_revenue_data'] = False
     for variant in ('metric', 'detailed'):
         soup = BeautifulSoup(render_widget('fabric_modernization', result, variant), 'html.parser')
@@ -141,33 +154,67 @@ def test_no_data_empty_and_summary_states(saved_report):
     empty_summary = BeautifulSoup(
         render_widget('fabric_modernization', result, 'metric'), 'html.parser',
     )
-    assert [node.text for node in empty_summary.select('dd')] == ['0', '$0/mo']
+    assert [node.text for node in empty_summary.select('dd')] == ['0', '$0/mo', '$0/mo']
     soup = BeautifulSoup(render_widget('fabric_modernization', result), 'html.parser')
     assert 'No customers meeting the report cutoffs' in soup.text
     assert not soup.select('table')
 
 
+def test_adf_only_widget_amounts_and_indicator_eligibility(saved_report):
+    """ADF-only customers show pipeline spend separately without a Synapse indicator."""
+    row = candidate_row(1, 'pipeline', 300, 100)
+    row.update(
+        other_analytics_revenue=0, monthly_other_analytics_revenue=0, has_synapse=False,
+    )
+    row['spend'].update(synapse=0, adf=300)
+    row['monthly_spend'].update(synapse=0, adf=100)
+    saved_report.return_value.update(rows=[row], seller_groups=[
+        {'seller': None, 'name': None, 'rows': [row]},
+    ])
+    result = fabric_modernization.get_fabric_modernization_widget()
+    soup = BeautifulSoup(render_widget('fabric_modernization', result), 'html.parser')
+    assert not soup.select('td .badge')
+    assert not soup.select('.db-modernization-synapse')
+    cells = soup.select_one('tr[data-row-key="pipeline"]').select('td')
+    assert [float(cell['data-sb-sort-value']) for cell in cells[1:]] == pytest.approx([
+        0, 100, 100 / 3,
+    ])
+    summary = BeautifulSoup(render_widget('fabric_modernization', result, 'metric'), 'html.parser')
+    assert [node.text for node in summary.select('dd')] == ['1', '$0/mo', '$100/mo']
+    assert result['monthly_source_revenue'] == 100
+    assert result['monthly_other_analytics_revenue'] == 0
+    assert result['monthly_adf_revenue'] == 100
+
+
 def test_partial_coverage_and_source_only_seller_name(saved_report):
-    """Keep unknown Fabric visible and source seller names literal without an invented link."""
+    """Render available-month averages and literal source seller names without a link."""
     row = saved_report.return_value['rows'][-1]
-    row.update(coverage_complete=False, seller_name='Source <seller>')
-    row['monthly_spend'] = dict.fromkeys(row['monthly_spend'])
-    row['monthly_source_revenue'] = None
+    row.update(coverage_complete=False, seller_name='Source <seller>', months_observed=2)
+    row['monthly_spend']['synapse'] = 35
+    row['monthly_source_revenue'] = 35
+    row['monthly_other_analytics_revenue'] = 35
     saved_report.return_value['seller_groups'][-1]['name'] = 'Source <seller>'
     result = fabric_modernization.get_fabric_modernization_widget()
     assert result['partial_customer_count'] == 1
-    assert result['monthly_other_analytics_revenue'] is None
+    assert result['monthly_other_analytics_revenue'] == pytest.approx(200 / 3 + 100.0001 / 3 + 35)
+    assert result['monthly_adf_revenue'] == 0
+    assert result['monthly_source_revenue'] == result['monthly_other_analytics_revenue']
     summary = BeautifulSoup(render_widget('fabric_modernization', result, 'metric'), 'html.parser')
     assert summary.select_one('dd').text == '3'
-    assert summary.select_one('.db-modernization-revenue').text == 'Unavailable'
+    assert summary.select_one('.db-modernization-revenue').text == '$135/mo'
+    assert 'Unavailable' not in summary.text
     scoped = fabric_modernization.get_fabric_modernization_widget(customer_ids=(1,))
     assert scoped['count'] == 1
     assert scoped['monthly_other_analytics_revenue'] == pytest.approx(200 / 3)
     flat = BeautifulSoup(render_widget('fabric_modernization', result), 'html.parser')
     last = flat.select_one('tr[data-row-key="unlinked"]')
-    assert last.select('td')[-1]['data-sb-sort-value'] == ''
-    assert last.select('td')[-1].text == 'Unavailable'
-    assert last.select('td')[-2]['data-sb-sort-value'] == ''
+    assert float(last.select('td')[1]['data-sb-sort-value']) == 35
+    assert float(last.select('td')[-1]['data-sb-sort-value']) == 0
+    assert last.select('td')[-1].text == '$0'
+    assert float(last.select('td')[-2]['data-sb-sort-value']) == 0
+    assert 'Unavailable' not in flat.text
+    assert not flat.select('.db-report-notice')
+    assert 'available months' not in str(flat)
     assert not last.select('a')
     grouped = BeautifulSoup(render_widget(
         'fabric_modernization', result, group_by_seller=True,

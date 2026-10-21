@@ -14,6 +14,8 @@
 .sb-whitespace-panel { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
 .sb-whitespace-tools { display: flex; align-items: center; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--sb-ui-line); }
 .sb-whitespace-label { color: var(--sb-ui-muted); font-size: 12px; }
+.sb-whitespace-focus { display: flex; align-items: center; gap: 8px; white-space: nowrap; color: var(--sb-ui-muted); font-size: 12px; }
+.sb-whitespace-focus select { padding: 4px 8px; border: 1px solid var(--sb-ui-control-line); background: var(--sb-ui-context); color: var(--sb-ui-ink); font: inherit; }
 #bucketCheckboxes { display: flex; flex-wrap: wrap; gap: 6px 16px; flex: 1; font-size: 12px; }
 #bucketCheckboxes label, .sb-whitespace-scope label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
 .sb-whitespace input[type="checkbox"] { margin: 0; accent-color: var(--sb-ui-accent); }

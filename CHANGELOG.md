@@ -10,6 +10,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/20/2026
 
+- Find customers with AI, Analytics or Apps spend but no database spend using Database whitespace widgets and their matching report view. In Whitespace Analysis, focus a pillar to exclude existing users and hide its zero-only column, choose surrounding spend columns independently, and group candidates by seller.
 - Find P to F and Fabric reports together under FY27 Data Motions in Reports.
 - Find streaming customers without RTI usage in the Real-Time Intelligence report and widgets, including customers without Fabric capacity. Tables focus on average monthly Event Hubs, Stream Analytics and IoT spend over the last three complete months, without zero-only RTI columns; missing RTI counts as zero.
 - Dashboard widgets automatically load missing source data, show sync progress, and refresh when ready, with workload setup in the right order.
@@ -18,11 +19,10 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 - Sellers receive specialty-specific features, including the customer Fabric tab and automatic weekly Fabric and P-to-F refreshes.
 - Add Fabric Acquisition to Whitespace Analysis, with report-backed dashboard widgets for AI, Database and non-Fabric Analytics customers without positive Fabric ACR. Widgets focus on customers with at least $2,000/month combined spend; the report retains smaller customers.
 - Group Whitespace Grid and Fabric Acquisition customers by seller, with sorting within each group.
-- Replace Synapse Customers with Fabric Modernization, comparing average monthly Other Analytics and Fabric ACR over the last three complete months. Eligibility still excludes three-month Other Analytics totals below $50, or below $100 with positive Fabric spend. Monthly averages are unavailable with incomplete coverage.
-- Add Fabric modernization widgets showing the count and average monthly Other Analytics ACR of customers whose Other Analytics spend exceeds Fabric spend, plus a full customer list with optional seller grouping.
+- Find analytics and pipeline modernization prospects with separate Other Analytics, ADF and Fabric spend, plus an "Includes Synapse" hover indicator on matching Other Analytics amounts. ADF-only prospects can qualify; monthly averages use each customer's available months within the last three complete months, with the existing source-volume cutoffs.
 - Configure widget customer and seller restrictions in the Filters flyout after placing a widget, rather than in the widget library.
 - P-to-F renewal widget Details lists all future renewals with the report's status indicators and hover help. Summary keeps its 90-day window.
-- Add a Fabric trial conversion widget with customer counts and engagement queues, linked directly to Trial audit and customer Fabric details.
+- Find Trial to Paid prospects with trial capacities and no paid F SKU, showing utilization and history with a matching Fabric Consumption audit. Capacity overview removes redundant portfolio selections; use P to F for P-SKU renewal audits.
 - Add Fabric expansion Summary and Details widgets for Power BI-led paid Fabric customers, with P/trial context and Capacity overview drill-throughs.
 - Let viewers group Fabric expansion, trial conversion, and upcoming P-to-F renewal Details by seller using one dashboard filter.
 - Capacity overview defaults to one row per customer, with wrapping capacity mixes, average utilization, and optional seller grouping. Your view choices are remembered.
@@ -170,7 +170,7 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/10/2026 - 94c1432c
 
-- Add Fabric consumption reports for workload mix, capacity utilization, and Trial/P-SKU audits.
+- Add Fabric consumption reports for workload mix, capacity utilization, and trial audits.
 
 ## 10/9/2026 - 7162f63e
 

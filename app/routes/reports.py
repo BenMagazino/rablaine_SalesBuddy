@@ -1864,75 +1864,11 @@ def api_whitespace_grid():
         return jsonify(customers=[], buckets=[])
     selected_buckets = [b.strip() for b in bucket_param.split(',') if b.strip()]
     min_revenue = float(request.args.get('min_revenue', 0))
-    from app.services.whitespace import monthly_revenue
-    monthly = monthly_revenue().c
-
-    # Find the latest month in the data
-    latest_month = db.session.query(
-        func.max(monthly.month_date)
-    ).scalar()
-    if not latest_month:
-        return jsonify(customers=[], buckets=selected_buckets)
-
-    # Get the trailing 3 months for a more stable view
-    trailing_start = latest_month - timedelta(days=62)  # ~2 months back
-
-    # Average revenue per customer per bucket over the trailing 3 months
-    spend_query = (
-        db.session.query(
-            monthly.customer_id,
-            monthly.bucket,
-            func.avg(monthly.revenue).label('avg_revenue')
-        )
-        .filter(
-            monthly.customer_id.isnot(None),
-            monthly.bucket.in_(selected_buckets),
-            monthly.month_date >= trailing_start,
-        )
-        .group_by(monthly.customer_id, monthly.bucket)
-        .all()
-    )
-
-    # Build customer -> bucket -> avg_revenue mapping
-    customer_buckets = {}
-    for row in spend_query:
-        cid = row.customer_id
-        if cid not in customer_buckets:
-            customer_buckets[cid] = {}
-        if row.avg_revenue and row.avg_revenue > min_revenue:
-            customer_buckets[cid][row.bucket] = round(row.avg_revenue, 2)
-
-    # Filter customers based on show_all parameter
-    show_all = request.args.get('show_all', '') == '1'
-    if show_all:
-        # Show all customers that have any spend in selected buckets
-        target_ids = [cid for cid, bkts in customer_buckets.items() if bkts]
-    else:
-        # Only customers with at least one bucket but missing at least one
-        target_ids = [
-            cid for cid, bkts in customer_buckets.items()
-            if 0 < len(bkts) < len(selected_buckets)
-        ]
-
-    if not target_ids:
-        return jsonify(customers=[], buckets=selected_buckets)
-
-    # Fetch customer details
-    customers = Customer.query.options(db.joinedload(Customer.seller)).filter(
-        Customer.id.in_(target_ids)
-    ).order_by(Customer.name).all()
-
-    result = []
-    for c in customers:
-        result.append({
-            'id': c.id,
-            'name': c.name,
-            'nickname': c.nickname,
-            'seller': {'id': c.seller.id, 'name': c.seller.name} if c.seller else None,
-            'buckets': customer_buckets.get(c.id, {}),
-        })
-
-    return jsonify(customers=result, buckets=selected_buckets)
+    from app.services.whitespace import get_whitespace_grid
+    return jsonify(get_whitespace_grid(
+        selected_buckets, min_revenue=min_revenue,
+        show_all=request.args.get('show_all', '') == '1',
+    ))
 
 
 @bp.route('/api/reports/whitespace/reverse/<int:customer_id>')

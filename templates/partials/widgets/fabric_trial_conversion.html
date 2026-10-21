@@ -3,10 +3,10 @@
 {% set detailed = instance.variant_key|default('metric') == 'detailed' %}
 {% set details = data.details %}
 {% set grouped = instance.group_by_seller|default(false) %}
-{% set seller_group_columns = 4 %}
+{% set seller_group_columns = 3 %}
 <section class="db-report-widget{% if detailed %} db-trial-details{% endif %}" aria-labelledby="{{ prefix }}title">
     <header class="db-report-heading">
-        <h2 id="{{ prefix }}title">Fabric trial conversion</h2>
+        <h2 id="{{ prefix }}title">Trial to Paid</h2>
         {% if detailed and data.snapshot_state != 'not_imported' %}
         <fieldset class="db-trial-switch">
             <legend class="sb-visually-hidden">Trial engagement group</legend>
@@ -14,10 +14,10 @@
             <label title="Customers at or above 0.1% average trial utilization"><input type="radio" name="{{ prefix }}cohort" value="high"><span>Building momentum <span>({{ details.counts.high }})</span></span></label>
         </fieldset>
         {% endif %}
-        <a href="{{ data.destination }}">Trial audit <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>
+        <a href="{{ data.destination }}">Trial to Paid audit <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>
     </header>
     {% if data.snapshot_state == 'not_imported' %}
-    <p class="db-report-empty">No saved Fabric snapshot. Open Trial audit to get started.</p>
+    <p class="db-report-empty">No saved Fabric snapshot. Open Trial to Paid audit to get started.</p>
     {% elif detailed %}
         <p class="db-report-caption">Getting started: below 0.1%. Building momentum: 0.1% or higher average trial utilization.</p>
         {% if not details.window_end %}
@@ -27,10 +27,9 @@
         <div data-trial-cohort="{{ cohort }}">
             {% if details.cohorts[cohort] %}
             <div class="db-trial-table-scroll" role="region" tabindex="0" aria-label="{{ title }} customers">
-            <table class="db-report-table db-trial-table" data-sb-sortable data-sb-sort-key="{{ prefix }}trial-{{ cohort }}-v3-{{ 'sellers' if grouped else 'flat' }}" aria-label="{{ title }} trial customers">
+            <table class="db-report-table db-trial-table" data-sb-sortable data-sb-sort-key="{{ prefix }}trial-{{ cohort }}-v4-{{ 'sellers' if grouped else 'flat' }}" aria-label="{{ title }} trial customers">
                 <thead><tr>
                     <th data-sb-sort-type="text">Customer</th>
-                    <th data-sb-sort-type="text" title="Observed P-SKUs and/or paid F-SKUs alongside this customer's trial capacities.">Also has</th>
                     <th data-sb-sort-type="number" title="Average of each trial capacity's average hourly utilization in the saved source's last 15 days. Each trial has equal weight. Missing hourly measurements and trials without usable history are excluded.">Avg used</th>
                     <th data-sb-sort-type="number" title="Average observed history days across all of this customer's trial capacities in the saved source's last 15 days. Counts UTC days with known hourly utilization, not the trial's age. Trials without usable history contribute zero observed days.">History</th>
                 </tr></thead>
@@ -40,8 +39,7 @@
                 {% for row in group.rows %}
                 {% set average = row.average_utilization_pct %}
                 <tr data-row-key="{{ row.row_key }}">
-                    <td><a href="{{ row.destination }}">{{ row.name }}</a></td>
-                    <td data-sb-sort-value="{{ row.other_skus }}">{% if row.has_p_sku %}<span class="db-trial-p-sku">P</span>{% endif %}{% if row.has_p_sku and row.has_f_sku %} + {% endif %}{% if row.has_f_sku %}<span class="db-trial-f-sku">F</span>{% endif %}{% if not row.has_p_sku and not row.has_f_sku %}Neither{% endif %}</td>
+                    <td data-sb-sort-value="{{ row.name }}"><a href="{{ row.destination }}">{{ row.name }}</a>{% if row.has_p_sku %} <span class="db-trial-p-sku" title="Also has Power BI Premium P-SKU capacity">P</span>{% endif %}</td>
                     <td data-sb-sort-value="{{ average }}" title="{{ average }}%, averaged across {{ row.trial_count - row.missing_history_count }} of {{ row.trial_count }} trial capacities with usable history{% if row.missing_history_count %}; {{ row.missing_history_count }} without usable history excluded{% endif %}">{% if average > 0 and average < 0.001 %}&lt;0.001%{% elif average < details.cutoff_pct and average|round(3) >= details.cutoff_pct %}&lt;0.1%{% else %}{{ ("%.3f"|format(average)).rstrip('0').rstrip('.') }}%{% endif %}</td>
                     <td data-sb-sort-value="{{ row.observed_days }}" title="Average observed days across {{ row.trial_count }} trial capacities">{{ ("%.1f"|format(row.observed_days)).rstrip('0').rstrip('.') }}d</td>
                 </tr>
@@ -62,8 +60,7 @@
     <dl class="db-trial-metrics">
         <div><dt>Customers with trials</dt><dd>{{ data.counts.customers_with_trials }}</dd></div>
         <div><dt>With P-SKU + trials</dt><dd>{{ data.counts.customers_with_p_and_trials }}</dd></div>
-        <div><dt>With F-SKU + trials</dt><dd>{{ data.counts.customers_with_f_and_trials }}</dd></div>
     </dl>
-    <p class="db-report-caption">P-SKU and F-SKU groups can overlap.</p>
+    <p class="db-report-caption">Trial customers without a paid F SKU.</p>
     {% endif %}
 </section>

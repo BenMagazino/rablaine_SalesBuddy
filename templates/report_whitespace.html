@@ -68,7 +68,10 @@
         {% endif %}
         <section id="gridPanel" role="tabpanel" aria-labelledby="grid-tab" class="sb-whitespace-panel">
             <div class="sb-whitespace-tools">
-                <span class="sb-whitespace-label">Pillars</span><div id="bucketCheckboxes" role="group" aria-label="Selected strategic pillars"><span>Loading pillars...</span></div>
+                <label class="sb-whitespace-focus" for="whitespaceFocus">Focus whitespace
+                    <select id="whitespaceFocus"><option value="">Any selected pillar</option></select>
+                </label>
+                <span class="sb-whitespace-label">Spend columns</span><div id="bucketCheckboxes" role="group" aria-label="Selected strategic pillars"><span>Loading pillars...</span></div>
             </div>
             <div class="sb-whitespace-notice" data-error="defaults" hidden><span role="alert"></span><button type="button" data-retry="defaults">Retry pillars</button></div>
             <div class="sb-whitespace-scope">

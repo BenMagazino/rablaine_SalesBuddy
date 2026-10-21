@@ -95,4 +95,3 @@
 .sb-modernization-table tbody tr:nth-child(even) { background: color-mix(in oklch, var(--sb-ui-context) 40%, var(--sb-ui-surface)); }
 .sb-modernization-table tbody tr:hover { background: var(--sb-ui-control-hover); }
 .sb-modernization-fabric { background: color-mix(in oklch, var(--sb-ui-selection) 35%, transparent); }
-.sb-modernization-unavailable { color: var(--sb-ui-muted); }

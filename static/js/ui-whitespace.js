@@ -9,9 +9,16 @@
         return '$' + (amount >= 1000 ? (amount / 1000).toFixed(1) + 'K' : Math.round(amount));
     }
 
-    function visibleCustomers(customers, buckets, showAll) {
+    function visibleBuckets(buckets, focus = '') {
+        return buckets.filter(bucket => bucket !== focus);
+    }
+
+    function visibleCustomers(customers, buckets, showAll, focus = '', qualifyingBuckets = null) {
         return customers.filter(customer => {
             const coverage = Object.keys(customer.buckets).length;
+            if (focus) return !Object.hasOwn(customer.buckets, focus) && (qualifyingBuckets
+                ? qualifyingBuckets.some(bucket => Object.hasOwn(customer.buckets, bucket))
+                : coverage > 0);
             return showAll || buckets.length === 1 || (coverage > 0 && coverage < buckets.length);
         }).sort((a, b) => Object.keys(a.buckets).length - Object.keys(b.buckets).length
             || a.name.localeCompare(b.name));
@@ -95,6 +102,16 @@
 
     const PREFERENCES_KEY = 'salesbuddy_whitespace_preferences';
 
+    function entryPreset(search) {
+        if (new URLSearchParams(search).get('view') !== 'database-whitespace') return null;
+        return {
+            key: 'database-whitespace-v2',
+            pillars: ['AI', 'Analytics', 'Apps', 'Databases'],
+            sortPillar: 'Databases',
+            focus: 'Databases',
+        };
+    }
+
     function parsePreferences(raw) {
         if (raw === null) return {version: 1, sorts: {}};
         const value = JSON.parse(raw);
@@ -103,6 +120,9 @@
             throw new Error('Invalid whitespace preferences');
         }
         if (value.pillars !== undefined) requireStrings(value.pillars);
+        if (value.focus !== undefined && typeof value.focus !== 'string') {
+            throw new Error('Invalid whitespace focus preference');
+        }
         for (const [key, state] of Object.entries(value.sorts)) {
             const match = /^whitespace:(gridTable|penetrationTable):(.+)$/.exec(key);
             const columns = match ? JSON.parse(match[2]) : null;
@@ -118,8 +138,8 @@
         return value;
     }
 
-    const helpers = {displayName, formatRevenue, visibleCustomers, matchingCustomers,
-        createLatestReader, requireGrid, parsePreferences, sellerGroups};
+    const helpers = {displayName, formatRevenue, visibleBuckets, visibleCustomers, matchingCustomers,
+        createLatestReader, requireGrid, parsePreferences, sellerGroups, entryPreset};
     if (typeof module !== 'undefined' && module.exports) module.exports = helpers;
     if (!global.document) return;
     const root = document.querySelector('[data-sb-whitespace]');
@@ -152,6 +172,8 @@
     let defaultsVersion = 0;
     const saved = history.state?.sbWhitespace?.dimension === 'SuperStrategicPillar'
         ? history.state.sbWhitespace : {};
+    const preset = entryPreset(global.location.search);
+    const restoringPreset = preset && saved.entry === preset.key;
 
     function element(tag, text, className) {
         const node = document.createElement(tag);
@@ -215,7 +237,9 @@
             });
             history.replaceState({...history.state, sbWhitespace: {
                 dimension: 'SuperStrategicPillar',
+                entry: preset?.key ?? null,
                 mode, buckets: selectedBuckets(),
+                focus: find('#whitespaceFocus').value,
                 showAll: find('#showAllCustomers').checked,
                 groupBySeller: {
                     grid: find('#gridGroupBySeller').checked,
@@ -261,10 +285,12 @@
     }
 
     function savePreferences() {
+        if (preset) return;
         const pillars = availableBuckets.length ? selectedBuckets() : preferences.pillars;
         preferences = {
             version: 1,
             ...(pillars === undefined ? {} : {pillars}),
+            focus: find('#whitespaceFocus').value,
             sorts: {...preferences.sorts, ...Object.fromEntries(
                 Object.entries(sorts).map(([key, sort]) => [key, sort.state]))},
         };
@@ -320,8 +346,12 @@
 
     function makeTable(id, columns, host, rows, grouped = false) {
         const key = 'whitespace:' + id + ':' + JSON.stringify(columns);
-        const previousSort = Object.hasOwn(preferences.sorts, key) ? preferences.sorts[key] :
-            Object.hasOwn(sorts, key) ? sorts[key].state : saved.sorts?.[key];
+        const presetGrid = id === 'gridTable' && preset;
+        const previousSort = presetGrid
+            ? Object.hasOwn(sorts, key) ? sorts[key].state :
+                restoringPreset ? saved.sorts?.[key] : undefined
+            : Object.hasOwn(preferences.sorts, key) ? preferences.sorts[key] :
+                Object.hasOwn(sorts, key) ? sorts[key].state : saved.sorts?.[key];
         const table = element('table');
         table.id = id;
         table.setAttribute('data-sb-sortable', '');
@@ -332,12 +362,17 @@
             th.scope = 'col';
             th.dataset.sbSortType = type;
             th.dataset.exportLabel = label;
+            if (presetGrid && label === preset.sortPillar) th.dataset.sbSortEmptyFirst = '';
             head.append(th);
         });
         setTableBodies(table, rows, grouped);
         host.replaceChildren(table);
         sorts[key] = global.SBTableSort.create(table);
         if (previousSort !== undefined) sorts[key].restore(previousSort);
+        else if (presetGrid) {
+            const column = columns.findIndex(([label]) => label === preset.sortPillar);
+            if (column >= 0) sorts[key].restore({column, direction: 'ascending'});
+        }
         table.addEventListener('click', event => {
             if (event.target.closest('[data-sb-table-sort]')) savePreferences();
         });
@@ -400,11 +435,14 @@
 
     function renderGrid() {
         if (!grid) return;
-        const rows = visibleCustomers(grid.customers, grid.buckets,
-            find('#showAllCustomers').checked);
+        const focus = find('#whitespaceFocus').value;
+        const buckets = visibleBuckets(selectedBuckets(), focus);
+        const rows = visibleCustomers(grid.customers, buckets,
+            find('#showAllCustomers').checked, focus,
+            preset && focus === preset.focus ? preset.pillars : null);
         const host = find('#gridResults');
         const table = makeTable('gridTable', [['Customer', 'text'],
-            ...grid.buckets.map(bucket => [bucket, 'number']), ['Gaps', 'number']], host,
+            ...buckets.map(bucket => [bucket, 'number']), ['Gaps', 'number']], host,
         rows.map(customer => {
             const row = element('tr');
             row.dataset.customerId = customer.id;
@@ -413,7 +451,7 @@
                 row.dataset.sellerName = customer.seller.name;
             }
             cell(row, '', customer.name).append(customerLink(customer));
-            grid.buckets.forEach(bucket => {
+            buckets.forEach(bucket => {
                 const amount = customer.buckets[bucket];
                 const td = cell(row, '', amount);
                 if (amount === undefined) {
@@ -429,14 +467,16 @@
                     td.append(button);
                 }
             });
-            cell(row, grid.buckets.length - Object.keys(customer.buckets).length);
+            cell(row, buckets.filter(bucket => !Object.hasOwn(customer.buckets, bucket)).length);
             return row;
         }), find('#gridGroupBySeller').checked);
         table.dataset.exportVisible = String(rows.length > 0 && mode !== 'acquisition');
         host.hidden = rows.length === 0;
         find('#gridEmpty').hidden = rows.length > 0;
         find('#gridEmpty').textContent = 'No customers match this pillar scope.';
-        const scope = rows.length + ' customers | ' + grid.buckets.join(', ')
+        const scope = rows.length + ' customers'
+            + (focus ? ' | ' + focus + ' whitespace' : '')
+            + (buckets.length ? ' | ' + buckets.join(', ') : '')
             + ' | Recent average spend';
         find('#gridSummary').textContent = scope;
         if (mode === 'grid') updateStatus(scope);
@@ -444,6 +484,9 @@
     }
 
     function loadGrid(buckets = selectedBuckets()) {
+        const focused = Boolean(find('#whitespaceFocus').value);
+        find('#showAllCustomers').disabled = focused;
+        if (focused) buckets = availableBuckets;
         if (!buckets.length) {
             reader.cancel('grid');
             grid = null;
@@ -478,8 +521,15 @@
         const loaded = await read('defaults', '/api/reports/whitespace/pillars', data => {
             availableBuckets = requireStrings(data);
             const host = find('#bucketCheckboxes');
+            const focus = find('#whitespaceFocus');
+            const any = element('option', 'Any selected pillar');
+            any.value = '';
+            focus.replaceChildren(any);
             host.replaceChildren();
             availableBuckets.forEach(bucket => {
+                const option = element('option', bucket);
+                option.value = bucket;
+                focus.append(option);
                 const label = element('label');
                 const input = element('input');
                 input.type = 'checkbox';
@@ -495,12 +545,23 @@
         });
         if (!loaded || version !== defaultsVersion || !availableBuckets.length) return;
         try {
-            const defaults = preferences.pillars ?? (Array.isArray(saved.buckets)
-                ? requireStrings(saved.buckets) : availableBuckets);
+            const defaults = preset
+                ? restoringPreset && Array.isArray(saved.buckets)
+                    ? requireStrings(saved.buckets) : preset.pillars
+                : preferences.pillars ?? (Array.isArray(saved.buckets)
+                    ? requireStrings(saved.buckets) : availableBuckets);
             find('#bucketCheckboxes').querySelectorAll('input').forEach(input => {
                 input.checked = defaults.includes(input.value);
             });
-            find('#showAllCustomers').checked = Boolean(saved.showAll);
+            const focus = preset
+                ? restoringPreset ? saved.focus ?? preset.focus : preset.focus
+                : preferences.focus ?? saved.focus ?? '';
+            if (focus && !availableBuckets.includes(focus)) {
+                throw new Error('Saved whitespace focus is not an available pillar');
+            }
+            find('#whitespaceFocus').value = focus;
+            find('#showAllCustomers').checked = preset && !restoringPreset
+                ? true : Boolean(saved.showAll);
             await loadGrid();
         } catch (error) {
             showError('defaults', error);
@@ -771,6 +832,11 @@
         savePreferences();
         loadGrid();
     });
+    find('#whitespaceFocus').addEventListener('change', () => {
+        cancelDefaults();
+        savePreferences();
+        loadGrid();
+    });
     find('#showAllCustomers').addEventListener('change', renderGrid);
     find('#gridGroupBySeller').addEventListener('change', () => {
         renderGrid();
@@ -833,7 +899,7 @@
     if (find('#acquisitionGroupBySeller')) {
         find('#acquisitionGroupBySeller').checked = saved.groupBySeller?.acquisition === true;
     }
-    setMode(saved.mode || root.dataset.initialMode || 'grid');
+    setMode(preset && !restoringPreset ? 'grid' : saved.mode || root.dataset.initialMode || 'grid');
     restorePreferences();
     loadDefaults();
 })(typeof window === 'undefined' ? globalThis : window);

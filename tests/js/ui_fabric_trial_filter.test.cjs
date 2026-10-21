@@ -46,9 +46,37 @@ test('audit modes are exclusive, imply capacities, and persist as one preference
     assert.match(source, /getTrialCustomerIds\(report\.rows\)/);
     assert.match(source, /if \(trialCustomers && !trialCustomers\.has\(row\.id\)\) return false/);
     assert.match(source, /modePreference\.value === 'trials'/);
-    assert.match(source, /modePreference\.value === 'p'/);
-    assert.match(source, /modePreference\.value !== 'all' && !capacity/);
+    assert.match(source, /if \(!capacity\) return false/);
+    assert.doesNotMatch(source, /modePreference\.value [!=]== 'all'/);
     assert.match(source, /find\('mode'\), 'salesbuddy_fabric_overview_mode', render/);
+});
+
+test('trial-to-paid selects trials without any paid F SKU and retains P capacity context', () => {
+    const rows = [
+        {id: 1, capacity: {sku: 'FTL64'}},
+        {id: 1, capacity: {sku: 'F64'}},
+        {id: 2, capacity: {sku: ' ftl4 '}},
+        {id: 2, capacity: {sku: ' p2 '}},
+        {id: 3, capacity: {sku: 'FTL64'}},
+        {id: 3, capacity: {sku: ' f4 '}},
+        {id: 4, capacity: {sku: 'FTL4'}},
+        {id: 4, capacity: {sku: 'F0'}},
+        {id: 4, capacity: {sku: 'F64X'}},
+        {id: 5, capacity: null},
+        {id: 6, capacity: {sku: 'FTL640'}},
+        {id: 7, capacity: {sku: 'P1'}},
+    ];
+    const ids = vm.runInNewContext(`${helper}\ngetTrialToPaidCustomerIds(rows);`, {rows});
+    assert.deepEqual(Array.from(ids), [2, 4]);
+    const scoped = rows.filter(row => ids.has(row.id));
+    assert.deepEqual(scoped.map(row => row.capacity.sku),
+        [' ftl4 ', ' p2 ', 'FTL4', 'F0', 'F64X']);
+    const customers = vm.runInNewContext(`${helper}\ncustomerRows(rows, true);`, {rows: scoped});
+    assert.deepEqual(Array.from(customers, row => row.id), [2, 4]);
+    assert.equal(customers[0].measuredTotal, 1);
+    assert.match(source, /modePreference\.value === 'trial_to_paid'/);
+    assert.match(source, /trialToPaid \? getTrialToPaidCustomerIds\(report\.rows\)/);
+    assert.equal(vm.runInNewContext(`${helper}\ngetTrialToPaidCustomerIds([]).size;`), 0);
 });
 
 test('trial-first numbering is per customer, stable within SKU groups, and does not mutate data', () => {
@@ -67,33 +95,14 @@ test('trial-first numbering is per customer, stable within SKU groups, and does 
     assert.deepEqual(Array.from(ordered, row => row.capacity_total), [3, 3, 3, 2, 2]);
     assert.deepEqual(rows.map(row => row.capacity_index), [1, 2, 3, 1, 2]);
     assert.equal(rows[0].capacity.sku, 'F64');
-    assert.match(source, /trialsOnly \|\| pOnly \|\| fOnly \? orderMatchingCapacities\(report\.rows/);
+    assert.match(source, /trialsOnly \|\| fOnly \? orderMatchingCapacities\(report\.rows/);
 });
 
-test('P filter retains other capacities and excludes unrelated SKU families', () => {
-    const rows = [
-        {id: 1, capacity: {sku: 'P1'}}, {id: 1, capacity: {sku: 'F64'}},
-        {id: 2, capacity: {sku: ' p5 '}}, {id: 2, capacity: {sku: 'FTL4'}},
-        ...['PP1', 'P1X', 'P0', 'P', 'F64', null].map((sku, index) =>
-            ({id: index + 3, capacity: {sku}})),
-        {id: 10, capacity: null},
-    ];
-    const ids = vm.runInNewContext(`${helper}\ngetPCustomerIds(rows);`, {rows});
-    assert.deepEqual(Array.from(ids), [1, 2]);
-    assert.deepEqual(rows.filter(row => ids.has(row.id)).map(row => row.capacity.sku),
-        ['P1', 'F64', ' p5 ', 'FTL4']);
-    assert.match(source, /if \(pCustomers && !pCustomers\.has\(row\.id\)\) return false/);
-});
-
-test('P-first numbering uses stable capacity identities', () => {
-    const rows = ['F64', 'P2', 'FTL64', 'P1'].map((sku, index) => ({
-        id: 1, capacity_index: index + 1, capacity_total: 4, capacity: {sku},
-    }));
-    const pOnly = vm.runInNewContext(
-        `${helper}\norderMatchingCapacities(rows, isPCapacity);`, {rows});
-    assert.deepEqual(Array.from(pOnly, row => row.capacity.sku), ['P2', 'P1', 'F64', 'FTL64']);
-    assert.deepEqual(Array.from(pOnly, row => row.capacity_index), [1, 2, 3, 4]);
-    assert.deepEqual(rows.map(row => row.capacity_index), [1, 2, 3, 4]);
+test('P SKU badges retain valid source classification and do not color utilization', () => {
+    const skus = ['P1', ' p5 ', 'PP1', 'P1X', 'P0', 'P', 'F64', null];
+    const flags = vm.runInNewContext(
+        `${helper}\nskus.map(sku => isPCapacity({capacity: {sku}}));`, {skus});
+    assert.deepEqual(Array.from(flags), [true, true, false, false, false, false, false, false]);
     const styling = source.slice(source.indexOf('                if (isPCapacity'),
         source.indexOf('                if (index === 2 && row.customerMode)'));
     assert.match(styling, /index === 2/);
@@ -148,7 +157,7 @@ test('FTL and P SKU badges appear independently of customer filters', () => {
         source.indexOf('                if (index === 2 && row.customerMode)'));
     assert.match(styling, /if \(isTrialCapacity\(row\)\)/);
     assert.match(styling, /if \(isPCapacity\(row\) && index === 2\)/);
-    assert.doesNotMatch(styling, /if \((trialsOnly|pOnly) && is/);
+    assert.doesNotMatch(styling, /if \(trialsOnly && is/);
     assert.match(styling, /sb-fabric-trial-sku/);
     assert.match(styling, /sb-fabric-p-sku/);
 });

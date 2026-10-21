@@ -10,13 +10,13 @@
 {% if not request.args.get('embed') %}
 <footer class="sb-page-status" aria-label="Report status">
     <span>{{ report.rows|length }} customers; {{ report.seller_groups|length }} seller groups</span>
-    <span>Avg monthly ACR over 3 complete months. Existing footprint, not projected benefit.</span>
+    <span>Avg monthly ACR. Existing footprint, not projected benefit.</span>
 </footer>
 {% endif %}
 {% endblock %}
 {% block content %}
 <section class="sb-revenue-reports sb-modernization-report{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-page-surface
-         data-sb-report-key="fabric-modernization-v1"
+         data-sb-report-key="fabric-modernization-v2"
          data-sb-report-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
          aria-labelledby="modernizationTitle">
     <header class="sb-revenue-reports-header" data-sb-page-band>
@@ -31,18 +31,11 @@
     </header>
     <p class="sb-revenue-report-notice" data-sb-report-context-notice data-sb-page-band role="alert" hidden></p>
     <p class="sb-modernization-context" data-sb-page-band>
-        Eligibility still uses three-month Other Analytics totals: $50+, or $100+ with positive Fabric spend.
+        Eligibility uses three-month Other Analytics plus ADF totals: $50+, or $100+ with positive Fabric spend.
         Fabric revenue shows an observed paid footprint, not proof of migration or readiness.
         $0 means no observed revenue in this period, not no Fabric adoption.
-        AAS = Azure Analysis Services; ADX = Azure Data Explorer.
+        AAS = Azure Analysis Services; ADX = Azure Data Explorer; ADF = Azure Data Factory.
     </p>
-    {% if report.partial_customer_count %}
-    <p class="sb-revenue-report-notice" data-sb-page-band>
-        {{ report.partial_customer_count }} customer{{ '' if report.partial_customer_count == 1 else 's' }}
-        {{ 'has' if report.partial_customer_count == 1 else 'have' }} incomplete monthly coverage.
-        Their monthly averages are unavailable until all three months are covered.
-    </p>
-    {% endif %}
     <div class="sb-revenue-reports-body" data-sb-page-body tabindex="0" role="region" aria-label="Seller-grouped Fabric modernization customers">
         {% if not report.has_revenue_data %}
         <div class="sb-revenue-empty">
@@ -63,15 +56,15 @@
                 <h2 id="modernizationSeller{{ loop.index }}">{% if group.seller %}<a class="badge bg-primary text-decoration-none" href="{{ url_for('sellers.seller_view', id=group.seller.id) }}"><i class="bi bi-person" aria-hidden="true"></i> {{ group.name }}</a>{% elif group.name %}<span class="badge bg-primary"><i class="bi bi-person" aria-hidden="true"></i> {{ group.name }}</span>{% else %}No seller assigned{% endif %}</h2>
                 <span>{{ group.rows|length }} customer{{ '' if group.rows|length == 1 else 's' }}</span>
             </header>
-            <table class="sb-modernization-table" data-sb-sortable data-sb-sort-key="modernization-v2-{{ group.key }}"
-                   data-sb-sort-default-column="6" data-sb-sort-default-direction="descending"
+            <table class="sb-modernization-table" data-sb-sortable data-sb-sort-key="modernization-v3-{{ group.key }}"
+                   data-sb-sort-default-column="7" data-sb-sort-default-direction="descending"
                    aria-labelledby="modernizationSeller{{ loop.index }}">
                 <thead><tr>
                     <th data-sb-sort-type="text" data-export-label="Customer">Customer</th>
                     {% for product in report.products %}
-                    <th data-sb-sort-type="number" data-export-label="{{ product.label }} avg monthly ACR" title="{{ product.source }} average monthly ACR, {{ report.period_label }}. Three-month total divided by 3.">{{ product.label }}</th>
+                    <th data-sb-sort-type="number" data-export-label="{{ product.label }} avg monthly ACR" title="{{ product.source }} average monthly ACR, {{ report.period_label }}.">{{ product.label }}</th>
                     {% endfor %}
-                    <th data-sb-sort-type="number" data-export-label="Other Analytics avg monthly ACR" title="Average monthly Synapse, AAS, ADX and Azure Databricks ACR. Three-month total divided by 3. Excludes Fabric.">Other Analytics</th>
+                    <th data-sb-sort-type="number" data-export-label="Other Analytics avg monthly ACR" title="Average monthly Synapse, AAS, ADX and Azure Databricks ACR. Excludes ADF and Fabric.">Other Analytics</th>
                 </tr></thead>
                 <tbody>
                 {% for row in group.rows %}
@@ -79,11 +72,11 @@
                     <td{% if row.tpid_url %} data-export-url="{{ row.tpid_url }}"{% endif %}>{% if row.customer_id %}<a href="{{ url_for('revenue.revenue_customer_view', customer_id=row.customer_id) }}">{{ row.customer_name }}</a>{% else %}{{ row.customer_name }}{% endif %}</td>
                     {% for product in report.products %}
                     {% set amount = row.monthly_spend[product.key] %}
-                    <td data-sb-sort-value="{{ amount if amount is not none else '' }}"{% if product.key == 'fabric' %} class="sb-modernization-fabric"{% endif %}>
-                        {% if amount is none %}<span class="sb-modernization-unavailable">Unavailable</span>{% else %}${{ '{:,.0f}'.format(amount) }}{% endif %}
+                    <td data-sb-sort-value="{{ amount }}"{% if product.key == 'fabric' %} class="sb-modernization-fabric"{% endif %}>
+                        ${{ '{:,.0f}'.format(amount) }}
                     </td>
                     {% endfor %}
-                    <td data-sb-sort-value="{{ row.monthly_source_revenue if row.monthly_source_revenue is not none else '' }}">{% if row.monthly_source_revenue is none %}<span class="sb-modernization-unavailable">Unavailable</span>{% else %}${{ '{:,.0f}'.format(row.monthly_source_revenue) }}{% endif %}</td>
+                    <td data-sb-sort-value="{{ row.monthly_other_analytics_revenue }}">${{ '{:,.0f}'.format(row.monthly_other_analytics_revenue) }}</td>
                 </tr>
                 {% endfor %}
                 </tbody>

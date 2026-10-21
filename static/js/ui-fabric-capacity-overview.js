@@ -27,14 +27,15 @@
     function isPCapacity(row) {
         return /^P[1-9]\d*$/.test(row.capacity?.sku?.trim().toUpperCase() ?? '');
     }
-    function getPCustomerIds(rows) {
-        return new Set(rows.filter(isPCapacity).map(row => row.id));
-    }
     function isFCapacity(row) {
         return /^F[1-9]\d*$/.test(row.capacity?.sku?.trim().toUpperCase() ?? '');
     }
     function getFCustomerIds(rows) {
         return new Set(rows.filter(isFCapacity).map(row => row.id));
+    }
+    function getTrialToPaidCustomerIds(rows) {
+        const paid = getFCustomerIds(rows);
+        return new Set([...getTrialCustomerIds(rows)].filter(id => !paid.has(id)));
     }
     function orderMatchingCapacities(rows, matches) {
         const customers = new Map();
@@ -127,29 +128,27 @@
         if (!report) return;
         window.SBFabricCapacityLabel.close();
         const query = find('search').value.trim().toLocaleLowerCase();
-        const trialsOnly = modePreference.value === 'trials';
-        const pOnly = modePreference.value === 'p';
+        const trialToPaid = modePreference.value === 'trial_to_paid';
+        const trialsOnly = modePreference.value === 'trials' || trialToPaid;
         const fOnly = modePreference.value === 'f';
-        const trialCustomers = trialsOnly ? getTrialCustomerIds(report.rows) : null;
-        const pCustomers = pOnly ? getPCustomerIds(report.rows) : null;
+        const trialCustomers = trialToPaid ? getTrialToPaidCustomerIds(report.rows) :
+            trialsOnly ? getTrialCustomerIds(report.rows) : null;
         const fCustomers = fOnly ? getFCustomerIds(report.rows) : null;
-        const orderedRows = trialsOnly || pOnly || fOnly ? orderMatchingCapacities(report.rows,
-            row => (trialsOnly && isTrialCapacity(row)) || (pOnly && isPCapacity(row)) ||
+        const orderedRows = trialsOnly || fOnly ? orderMatchingCapacities(report.rows,
+            row => (trialsOnly && isTrialCapacity(row)) ||
                 (fOnly && isFCapacity(row))) : report.rows;
         const scopedRows = orderedRows.filter(row =>
             (!trialCustomers || trialCustomers.has(row.id)) &&
-            (!pCustomers || pCustomers.has(row.id)) &&
             (!fCustomers || fCustomers.has(row.id)) &&
-            (modePreference.value === 'all' || row.capacity));
+            row.capacity);
         const onePerCustomer = find('customers').checked;
         const grouped = find('sellers').checked;
         const candidates = onePerCustomer ? customerRows(scopedRows, trialsOnly) : scopedRows;
         const rows = candidates.filter(row => {
             const capacity = row.capacity;
             if (trialCustomers && !trialCustomers.has(row.id)) return false;
-            if (pCustomers && !pCustomers.has(row.id)) return false;
             if (fCustomers && !fCustomers.has(row.id)) return false;
-            if (modePreference.value !== 'all' && !capacity) return false;
+            if (!capacity) return false;
             if (!`${row.name} ${row.account_name} ${row.nickname ?? ''} ${row.tpid ?? ''} ${row.searchText ?? ''} ${capacity?.tenant_id ?? ''} ${capacity?.capacity_id ?? ''} ${capacity?.sku ?? ''}`
                 .toLocaleLowerCase().includes(query)) return false;
             return true;

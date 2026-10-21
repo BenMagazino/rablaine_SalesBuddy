@@ -46,7 +46,7 @@ visible. Sort headers use source-precision numbers, with missing values last.
 **Group by seller** is an optional viewer filter. Enable it under the dashboard's
 **Available viewer filters**, then viewers can toggle one checkbox in **Filters**
 without editing the dashboard. It groups Details rows in every supporting widget:
-Fabric expansion, Upcoming P-to-F renewals, and Fabric trial conversion. Trial
+Fabric expansion, Upcoming P-to-F renewals, and Trial to Paid. Trial
 customers remain inside their existing engagement queues. Sorting stays within
 seller sections, with unassigned customers last.
 Expanded sidebar filter lists stay open when you toggle grouping or open another filter.
@@ -59,24 +59,30 @@ not a viewer's current grouping choice.
 Summary and Details, the SalesIQ `report_fabric_expansion` read tool, and the
 generic dashboard signal tool all reuse this provider.
 
-## Fabric trial conversion widget
+## Trial to Paid widget
 
-The dashboard library includes a **Fabric trial conversion** widget.
-It counts distinct local customers with saved FTL4/FTL64 capacities, and how many
-of those customers also have P-SKU or F-SKU capacities. Multiple capacities count
-once per customer; P and F groups can overlap. Trial SKUs do not count as F-SKUs.
+The dashboard library includes a **Trial to Paid** widget.
+It counts distinct local customers with saved FTL4/FTL64 capacities and no paid
+F-number SKU anywhere in the latest snapshot. Customers with P-SKUs remain eligible,
+and Summary shows their count alongside the total. Multiple capacities count once
+per customer. Trial SKUs do not count as F-SKUs. This is a capacity-inventory filter,
+not an additional Fabric ACR cutoff.
 Customer/Seller dashboard filters apply before counting. No import is triggered.
-The Trial audit link opens Capacity overview with
-`view=overview&mode=trials&customers=true`, selecting Trial audit and One row per
+The Trial to Paid audit link opens Capacity overview with
+`view=overview&mode=trial_to_paid&customers=true`, selecting Trial to Paid audit and One row per
 customer for that visit without replacing saved preferences.
 The audit currently shows the full local portfolio, not dashboard filter scope.
-Saved trial SKUs do not prove active trials, expiry dates, or verified conversions.
+A trial present in the latest synced snapshot is active for this workflow. Users
+create engagements from surfaced insights and track trial-to-F-SKU conversion manually.
+Neither the widget nor audit automatically detects completed conversions.
 
 Details provides two customer queues: **Getting started** below 0.1% average
-utilization, and **Building momentum** at/above 0.1%. All observed trial customers
-are included, even those with paid F-SKUs. Each customer appears once and links
-to their Fabric detail. **Also has** identifies observed P-SKUs, F-SKUs, both,
-or neither alongside their trials. First average known hourly utilization per
+utilization, and **Building momentum** at/above 0.1%. Both queues exclude customers
+with paid F-SKUs. Each customer appears once and links to their Fabric detail.
+The table shows Customer, Avg used and History, without redundant SKU-overlap columns.
+A small P tag beside eligible customer names identifies Power BI Premium P-SKU
+capacity, explained on hover. Customer sorting uses the name without the tag.
+First average known hourly utilization per
 trial capacity in the trailing 15 days ending at the saved capacity source
 timestamp, then average those capacity means with equal weight per customer.
 It does not use today's date or substitute latest-hour or lifetime utilization.
@@ -149,7 +155,7 @@ without overlapping utilization or hiding capacities.
 their other capacity families. In capacity mode it places paid F-SKUs first;
 customer mode retains the full capacity mix. Like the other audits, the mode
 persists locally, with URL overrides taking precedence for a linked visit.
-In customer mode, Used % averages known trial-capacity utilization in Trial audit,
+In customer mode, Used % averages known trial-capacity utilization in either trial audit,
 and known utilization across all capacities in other modes, equally weighted per
 capacity. Missing measurements are excluded, not zero. This uses source-retained
 summary utilization, not the trial widget's trailing 15-day hourly averages.
@@ -188,9 +194,13 @@ it does not cancel it. Stopping or restarting the Flask backend interrupts the i
 Browser reload re-reads that snapshot. Use **Import from MSXi** only when
 you want fresh source measurements; customer detail updates automatically
 when an import it is monitoring completes.
-The overview uses one persistent segmented view selector: **All customers**,
-**Only customers with capacities** (the initial default), **Trial audit**, or
-**P-SKU audit**. Audit modes are mutually exclusive and automatically exclude rows
+The overview uses one persistent segmented view selector:
+**Only customers with capacities** (the initial default), **Trial audit**,
+**Trial to Paid audit**, or **F-SKU audit**. Use the separate P to F report for
+P-SKU renewal reviews.
+The former all-customer and P-only modes are removed; their old links and saved preferences
+select Only customers with capacities without changing other saved preferences.
+Audit modes are mutually exclusive and automatically exclude rows
 without capacities. Search combines with the selected mode. The detail view's
 **Only customers with capacities** checkbox remains an independent preference.
 
@@ -225,18 +235,17 @@ Capacity Overview's **Trial audit** mode selects customers
 with an imported FTL4 or FTL64 capacity and includes all their capacity rows,
 including paid SKUs. It reflects the saved snapshot, not
 live trial status or proof that migration is underway.
-In Trial audit, each customer's capacities are numbered with
+**Trial to Paid audit** narrows this to customers with trials and no paid F SKU,
+retaining P-SKU context. It uses the same SKU eligibility as the dashboard widget.
+In both trial audits, each customer's capacities are numbered with
 trial SKUs first, then paid SKUs. Numbering uses all that customer's capacities
 before search filtering. Leaving audit modes restores normal numbering; metric sorting
 still controls the displayed row order when selected.
 FTL and P SKU labels remain highlighted in the normal overview, without either
-audit mode selected. Trial audit additionally colors FTL Used % values
+audit mode selected. Both trial audits additionally color FTL Used % values
 from green at 0%, through amber at 25%, to full red at 50%
 and above. Missing measurements and paid-capacity values retain neutral styling.
-The **P-SKU audit** mode similarly includes all capacities
-for customers with P-number SKUs and numbers P capacities first.
-It does not color usage percentages. Search does not change numbering, and metric
-sorting still controls displayed row order.
+Search does not change numbering, and metric sorting still controls displayed row order.
 
 ## Backend entry points
 

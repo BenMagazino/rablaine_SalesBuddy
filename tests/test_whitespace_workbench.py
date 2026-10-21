@@ -69,6 +69,9 @@ def test_native_structure(client, embedded):
     assert root.select_one("dialog.sb-dialog [data-bucket-frame]")
     assert root.select_one("#bucketCheckboxes")
     assert root.select_one('#gridGroupBySeller[type="checkbox"]')
+    assert len(root.select('#gridGroupBySeller')) == 1
+    assert root.select_one('label[for="whitespaceFocus"]')
+    assert root.select_one('#whitespaceFocus option[value=""]').text == 'Any selected pillar'
     assert root.select_one('#acquisitionGroupBySeller[type="checkbox"]')
     assert not root.select(".sb-whitespace-tools button")
     assert root.select_one('[data-error="preferences"][hidden] [role="alert"]')
@@ -102,6 +105,7 @@ def test_whitespace_help_explains_distinct_scope(client):
     for phrase in ["62 days", "zero-only", "does not change the saved Revenue filter",
                    "export only the loaded grid", "nickname or TPID",
                    "checkboxes automatically updates the grid",
+                   "AI, Analytics or Apps", "Developer, Infra and Security alone do not qualify",
                    "saved on this device and restored on future visits"]:
         assert phrase in help_text
 

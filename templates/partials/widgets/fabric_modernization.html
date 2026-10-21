@@ -2,13 +2,14 @@
 {% set prefix = widget_id_prefix|default('fabric-modernization-') %}
 {% set detailed = instance.variant_key|default('metric') == 'detailed' %}
 {% set grouped = instance.group_by_seller|default(false) %}
-{% set seller_group_columns = 3 %}
+{% set seller_group_columns = 4 %}
 {% macro customer_rows(rows) %}
 {% for row in rows %}
 <tr data-row-key="{{ row.row_key }}">
-    <td>{% if row.destination %}<a href="{{ row.destination }}">{{ row.customer_name }}</a>{% else %}{{ row.customer_name }}{% endif %}</td>
-    <td data-sb-sort-value="{{ row.monthly_source_revenue if row.monthly_source_revenue is not none else '' }}">{% if row.monthly_source_revenue is none %}<span class="db-muted">Unavailable</span>{% else %}${{ '{:,.0f}'.format(row.monthly_source_revenue) }}{% endif %}</td>
-    <td data-sb-sort-value="{{ row.monthly_spend.fabric if row.monthly_spend.fabric is not none else '' }}">{% if row.monthly_spend.fabric is none %}<span class="db-muted">Unavailable</span>{% else %}${{ '{:,.0f}'.format(row.monthly_spend.fabric) }}{% endif %}</td>
+    <td data-sb-sort-value="{{ row.customer_name }}">{% if row.destination %}<a href="{{ row.destination }}">{{ row.customer_name }}</a>{% else %}{{ row.customer_name }}{% endif %}</td>
+    <td data-sb-sort-value="{{ row.monthly_other_analytics_revenue }}">{% if row.has_synapse %}<span class="db-modernization-synapse" title="Includes Synapse">{% endif %}${{ '{:,.0f}'.format(row.monthly_other_analytics_revenue) }}{% if row.has_synapse %}</span>{% endif %}</td>
+    <td data-sb-sort-value="{{ row.monthly_spend.adf }}">${{ '{:,.0f}'.format(row.monthly_spend.adf) }}</td>
+    <td data-sb-sort-value="{{ row.monthly_spend.fabric }}">${{ '{:,.0f}'.format(row.monthly_spend.fabric) }}</td>
 </tr>
 {% endfor %}
 {% endmacro %}
@@ -20,21 +21,19 @@
     {% if not data.has_revenue_data %}
     <p class="db-report-empty">No saved product revenue. Open the full report to get started.</p>
     {% elif detailed %}
-    <p class="db-report-caption">Avg monthly ACR, {{ data.period_label }}. Other Analytics &gt; Fabric.</p>
-    {% if data.partial_customer_count %}
-    <p class="db-report-notice">Some customers have incomplete coverage; their monthly averages are unavailable.</p>
-    {% endif %}
+    <p class="db-report-caption">Avg monthly ACR, {{ data.period_label }}. Other Analytics + ADF &gt; Fabric.</p>
     {% if data.details.rows %}
     <div class="db-modernization-table-scroll" tabindex="0" role="region" aria-label="Fabric modernization customers{% if grouped %} by seller{% endif %}">
         <table class="db-report-table db-modernization-table" data-sb-sortable
-               data-sb-sort-key="{{ prefix }}modernization-v2-{{ 'sellers' if grouped else 'flat' }}"
+               data-sb-sort-key="{{ prefix }}modernization-v3-{{ 'sellers' if grouped else 'flat' }}"
                data-sb-sort-default-column="1"
                data-sb-sort-default-direction="descending"
-               aria-label="Other Analytics-led modernization customers{% if grouped %} by seller{% endif %}">
+               aria-label="Analytics and pipeline modernization customers{% if grouped %} by seller{% endif %}">
             <thead><tr>
                 <th data-sb-sort-type="text">Customer</th>
-                <th data-sb-sort-type="number" title="Average monthly Synapse, AAS, ADX and Azure Databricks ACR across {{ data.period_label }}. Three-month total divided by 3. Report cutoffs still use three-month totals.">Other Analytics</th>
-                <th data-sb-sort-type="number" title="Average monthly Fabric Capacity ACR across {{ data.period_label }}. Three-month total divided by 3. Observed spend, not projected benefit or migration status.">Fabric</th>
+                <th data-sb-sort-type="number" title="Average monthly Synapse, AAS, ADX and Azure Databricks ACR across {{ data.period_label }}.">Other Analytics</th>
+                <th data-sb-sort-type="number" title="Azure Data Factory average monthly ACR across {{ data.period_label }}, including v2, Data Flow and Managed Airflow. Excluded from Other Analytics.">ADF</th>
+                <th data-sb-sort-type="number" title="Average monthly Fabric Capacity ACR across {{ data.period_label }}. Observed spend, not projected benefit or migration status.">Fabric</th>
             </tr></thead>
             {% for group in (data.details.seller_groups if grouped else [{'rows': data.details.rows}]) %}
             <tbody{% if grouped %} class="db-report-seller-group"{% endif %}>
@@ -45,12 +44,13 @@
         </table>
     </div>
     {% else %}
-    <p class="db-report-empty">No customers meeting the report cutoffs have Other Analytics spend above Fabric spend.</p>
+    <p class="db-report-empty">No customers meeting the report cutoffs have Other Analytics plus ADF spend above Fabric spend.</p>
     {% endif %}
     {% else %}
     <dl class="db-modernization-metrics">
-        <div><dt>Other Analytics-led customers</dt><dd>{{ data.count }}</dd></div>
-        <div><dt>Other Analytics / month</dt><dd class="db-modernization-revenue{% if data.monthly_other_analytics_revenue is none %} is-unavailable{% endif %}" title="{% if data.monthly_other_analytics_revenue is none %}Incomplete coverage for qualifying customers. The combined monthly average is unavailable.{% else %}${{ '{:,.2f}'.format(data.monthly_other_analytics_revenue) }} average monthly ACR{% endif %}">{% if data.monthly_other_analytics_revenue is none %}Unavailable{% else %}${{ '{:,.0f}'.format(data.monthly_other_analytics_revenue) }}/mo{% endif %}</dd></div>
+        <div><dt>Modernization customers</dt><dd>{{ data.count }}</dd></div>
+        <div><dt>Other Analytics / month</dt><dd class="db-modernization-revenue" title="${{ '{:,.2f}'.format(data.monthly_other_analytics_revenue) }} average monthly ACR">${{ '{:,.0f}'.format(data.monthly_other_analytics_revenue) }}/mo</dd></div>
+        <div><dt>ADF / month</dt><dd class="db-modernization-revenue" title="${{ '{:,.2f}'.format(data.monthly_adf_revenue) }} average monthly ACR">${{ '{:,.0f}'.format(data.monthly_adf_revenue) }}/mo</dd></div>
     </dl>
     <p class="db-report-caption">Avg monthly ACR, {{ data.period_label }}. Existing footprint, not projected benefit.</p>
     {% endif %}

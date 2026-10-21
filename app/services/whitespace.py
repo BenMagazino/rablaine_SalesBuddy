@@ -1,16 +1,19 @@
 """Source-defined strategic pillar revenue shared by reports, imports and SalesIQ."""
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
+from math import fsum
 from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.sql.selectable import Subquery
 
-from app.models import StrategicPillarRevenueData, db
+from app.models import Customer, StrategicPillarRevenueData, db
 from app.services.revenue_import import fiscal_month_to_date
+from app.services.se_specialty import has_specialty_access
 
 STRATEGIC_PILLARS = ('AI', 'Analytics', 'Apps', 'Databases', 'Developer', 'Infra', 'Security')
+DATABASE_WHITESPACE_ADJACENT_PILLARS = ('AI', 'Analytics', 'Apps')
 
 
 def has_pillar_data() -> bool:
@@ -30,6 +33,99 @@ def monthly_revenue() -> Subquery:
         StrategicPillarRevenueData.pillar,
         StrategicPillarRevenueData.month_date,
     ).subquery()
+
+
+def get_whitespace_grid(
+    selected_buckets: list[str], *, min_revenue: float = 0, show_all: bool = False,
+) -> dict:
+    """Read the existing grid's latest-data window, averages and coverage rules."""
+    result = {'customers': [], 'buckets': selected_buckets}
+    if not selected_buckets:
+        return result
+    monthly = monthly_revenue().c
+    latest_month = db.session.query(func.max(monthly.month_date)).scalar()
+    if not latest_month:
+        return result
+    spend = db.session.query(
+        monthly.customer_id, monthly.bucket,
+        func.avg(monthly.revenue).label('avg_revenue'),
+    ).filter(
+        monthly.customer_id.isnot(None),
+        monthly.bucket.in_(selected_buckets),
+        monthly.month_date >= latest_month - timedelta(days=62),
+    ).group_by(monthly.customer_id, monthly.bucket).all()
+    customer_buckets = {}
+    for row in spend:
+        buckets = customer_buckets.setdefault(row.customer_id, {})
+        if row.avg_revenue and row.avg_revenue > min_revenue:
+            buckets[row.bucket] = round(row.avg_revenue, 2)
+    target_ids = [
+        cid for cid, buckets in customer_buckets.items()
+        if buckets and (show_all or len(buckets) < len(selected_buckets))
+    ]
+    if not target_ids:
+        return result
+    customers = Customer.query.options(db.joinedload(Customer.seller)).filter(
+        Customer.id.in_(target_ids),
+    ).order_by(Customer.name).all()
+    result['customers'] = [{
+        'id': customer.id, 'name': customer.name, 'nickname': customer.nickname,
+        'seller': {'id': customer.seller.id, 'name': customer.seller.name}
+        if customer.seller else None,
+        'buckets': customer_buckets[customer.id],
+    } for customer in customers]
+    return result
+
+
+def get_database_whitespace_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict:
+    """Select AI, Analytics or Apps-backed Database gaps using the grid's saved window."""
+    result = {
+        'available': has_specialty_access('data'), 'has_revenue_data': False,
+        'rows': [], 'seller_groups': [], 'count': 0,
+        'destination': '/reports/whitespace?view=database-whitespace',
+    }
+    if not result['available']:
+        return result
+    result['has_revenue_data'] = has_pillar_data()
+    grid = get_whitespace_grid([*DATABASE_WHITESPACE_ADJACENT_PILLARS, 'Databases'], show_all=True)
+    scope = set(customer_ids) if customer_ids is not None else None
+    for customer in grid['customers']:
+        if 'Databases' in customer['buckets'] or (
+            scope is not None and customer['id'] not in scope
+        ):
+            continue
+        buckets = customer['buckets']
+        name = customer['name']
+        if customer['nickname']:
+            name += f" ({customer['nickname']})"
+        adjacent_spend = {
+            pillar: buckets.get(pillar, 0) for pillar in DATABASE_WHITESPACE_ADJACENT_PILLARS
+        }
+        result['rows'].append({
+            'customer_id': customer['id'], 'customer_name': name,
+            'row_key': f"customer-{customer['id']}", 'seller': customer['seller'],
+            'destination': f"/customer/{customer['id']}/revenue",
+            'monthly_spend': {
+                **adjacent_spend, 'Total': fsum(adjacent_spend.values()),
+            },
+        })
+    result['rows'].sort(key=lambda row: (
+        -row['monthly_spend']['Total'], row['customer_name'].casefold(), row['customer_id'],
+    ))
+    groups = {}
+    for row in result['rows']:
+        seller = row['seller']
+        key = seller['id'] if seller else None
+        groups.setdefault(key, {'seller': seller, 'rows': []})['rows'].append(row)
+    result['seller_groups'] = sorted(groups.values(), key=lambda group: (
+        group['seller'] is None,
+        group['seller']['name'].casefold() if group['seller'] else '',
+        group['seller']['id'] if group['seller'] else 0,
+    ))
+    result['count'] = len(result['rows'])
+    return result
 
 
 def prepare_pillar_rows(rows: list[dict], customer_ids: dict[int, int],
