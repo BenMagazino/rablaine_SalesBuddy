@@ -892,12 +892,12 @@ const PageHelp = (function () {
     `},
     { pattern: /^\/reports\/rti(?:\/|$)/, title: 'Real-Time Intelligence', content: `
       <p>Use Group by seller to switch between seller sections and one sortable customer list. The page URL retains your selection on reload and Back. CSV, Clipboard and Email export the currently displayed tables.</p>
-      <p>Current accounts qualify with positive RTI usage or positive net Event Hubs, Stream Analytics or IoT revenue. No minimum spend cutoff applies.</p>
-      <p>RTI CU-hours and RTI workload share come from Fabric 360's native rolling 28-day measurements. They are customer-wide, not per capacity. Missing workload measurements remain Unavailable.</p>
+      <p>Current accounts qualify with zero RTI usage and positive net Event Hubs, Stream Analytics or IoT revenue. Missing RTI measurements count as 0, so accounts without Fabric capacity are included. This can be an entry point to Fabric or a new workload for an existing Fabric customer. Customers already using RTI are excluded. No minimum spend cutoff applies.</p>
+      <p>RTI CU-hours and RTI workload share come from Fabric 360's native rolling 28-day measurements. They are customer-wide, not per capacity.</p>
       <p>Dollar amounts are average monthly ACR across the last three complete calendar months: three-month totals divided by 3. The current month is excluded. Missing revenue observations count as $0. Credits are included. IoT includes IoT-prefixed products and Device Update for IoT Hub. Event Grid and unrelated products are excluded.</p>
       <p>Accounts that dropped out of account sync are excluded without deleting their saved history. Customer links open Fabric details; Total / mo links open customer Revenue. Sortable headings and exports retain source precision and customer links.</p>
       <p>Summary and Details dashboard widgets use the same queue, with customer/seller scope, optional seller grouping and automatic sync of both sources. Signals support discovery, not architecture assessments, external Kafka inventory or migration recommendations.</p>
-      <p>In widget Details, missing RTI measurements display as 0. Hover over RTI CU-hrs to see RTI's share of Fabric CU-hours. The full report keeps its separate RTI % column and marks missing measurements Unavailable.</p>
+      <p>Tables show customer, streaming ACR and the combined monthly total. RTI usage is an eligibility filter, not a redundant zero-only column. Create an engagement for a surfaced insight and track trial-to-F-SKU conversion manually; this queue does not track conversion outcomes automatically.</p>
     `},
     { pattern: /^\/reports\/fabric-modernization/, title: 'Fabric Modernization', content: `
       <p>One row per customer with positive net revenue in Synapse, Azure Analysis Services (AAS), Azure Data Explorer (ADX), or Azure Databricks over the last three complete calendar months.</p>

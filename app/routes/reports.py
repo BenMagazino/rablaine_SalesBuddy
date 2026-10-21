@@ -42,7 +42,7 @@ def api_fabric_modernization():
 
 @bp.route('/reports/rti')
 def report_rti() -> str:
-    """Show RTI usage alongside recent Azure streaming and IoT consumption."""
+    """Show streaming and IoT customers without RTI usage as Fabric prospects."""
     from app.services.rti import get_rti_report
 
     grouping = request.args.get('group_by_seller', 'true')

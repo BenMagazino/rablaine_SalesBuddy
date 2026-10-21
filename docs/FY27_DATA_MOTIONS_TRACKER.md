@@ -107,24 +107,25 @@ Dashboard placement stays unchecked until you confirm it.
 
 - [x] Coded
 - [x] Added to dashboard
-- **Starting scope:** Observed RTI usage for expansion, plus Event Hubs,
-  Stream Analytics, and IoT consumption for discovery. Add confirmed context
-  from notes and engagements.
+- **Starting scope:** Event Hubs, Stream Analytics and IoT customers without RTI
+  usage, including accounts without Fabric capacity as an entry point to Fabric.
+  Add confirmed context from notes and engagements.
 - **Boundary:** These signals do not establish external Kafka inventory,
   architecture, or whether RTI should replace the current platform.
 - **Report/widget:** Real-Time Intelligence report and Summary/Details widgets.
-  One row per current account with positive RTI usage or positive Event Hubs,
-  Stream Analytics or IoT net ACR. No minimum spend cutoff.
+  One row per current account with zero RTI usage and positive Event Hubs,
+  Stream Analytics or IoT net ACR. Customers already using RTI are excluded.
+  No minimum spend cutoff.
 - **Notes / follow-up:** Native rolling 28-day RTI CU-hours and workload share stay
   separate from ACR across the last three complete calendar months,
   divided by three. The current month is excluded. Missing revenue observations count as $0;
-  unavailable workload measurements remain unknown. IoT includes IoT-prefixed products and Device Update
+  missing RTI measurements count as 0. IoT includes IoT-prefixed products and Device Update
   for IoT Hub. Dropped/stale accounts are excluded, without deleting history.
   Supports customer/seller widget scope, seller grouping and both source syncs.
-  Widget Details displays missing RTI values as 0 and shows workload share on the
-  CU-hours hover text; the full report retains unavailable values and its RTI % column.
+  Report and widget tables show customer, streaming ACR and the combined monthly total.
+  Zero RTI usage is enforced by the filter rather than repeated in zero-only columns.
   Added to the FY27 Data Motions dashboard and confirmed complete for this scope.
-  Notes/engagement context remains manual.
+  Engagement creation and trial -> F-SKU conversion tracking remain manual.
 
 ### 7. [ ] Data/AI foundation
 

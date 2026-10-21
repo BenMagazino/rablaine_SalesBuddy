@@ -1,13 +1,6 @@
 {% for row in rows %}
-{% set compact = rti_widget|default(false) %}
-{% set hours = row.rti_cu_hours if row.rti_cu_hours is not none else (0 if compact else none) %}
-{% set share = row.rti_share_pct if row.rti_share_pct is not none else (0 if compact else none) %}
 <tr data-row-key="{{ row.row_key }}">
     <td><a href="{{ row.destination }}">{{ row.name }}</a></td>
-    <td data-sb-sort-value="{{ hours if hours is not none else '' }}"{% if compact %} title="RTI share: {% if 0 < share < 0.01 %}&lt;0.01{% else %}{{ ('{:,.2f}'.format(share)).rstrip('0').rstrip('.') }}{% endif %}% of Fabric CU-hours (rolling 28 days)."{% endif %}>{% if hours is none %}<span class="db-muted">Unavailable</span>{% elif compact and hours == 0 %}0{% elif 0 < hours < 0.01 %}&lt;0.01{% else %}{{ '{:,.2f}'.format(hours) }}{% endif %}</td>
-    {% if not compact %}
-    <td data-sb-sort-value="{{ row.rti_share_pct if row.rti_share_pct is not none else '' }}">{% if row.rti_share_pct is none %}<span class="db-muted">Unavailable</span>{% elif 0 < row.rti_share_pct < 0.01 %}&lt;0.01%{% else %}{{ '{:,.2f}'.format(row.rti_share_pct) }}%{% endif %}</td>
-    {% endif %}
     {% for product in products %}
     {% set amount = row.monthly_spend[product.key] %}
     <td data-sb-sort-value="{{ amount if amount is not none else '' }}">{% if amount is none %}Unavailable{% elif 0 < amount < 1 %}&lt;$1{% elif -1 < amount < 0 %}-&lt;$1{% else %}${{ '{:,.0f}'.format(amount) }}{% endif %}</td>

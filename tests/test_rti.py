@@ -75,10 +75,10 @@ def test_exact_product_families(product, family):
     assert rti._product_family(product) == family
 
 
-def test_union_windows_net_amounts_and_no_capacity_double_count(rti_rows):
-    """Either source qualifies, with three complete months and independent RTI usage."""
+def test_prospect_windows_net_amounts_and_no_capacity_double_count(rti_rows):
+    """Streaming qualifies only without RTI; retain complete-month windows and deduplication."""
     add = rti_rows
-    both = add('Both', product='Event Hubs', hours=25, capacities=3)
+    both = add('Both', product='Event Hubs', hours=0, capacities=3)
     add('Both', product='IoT Hub', amount=80, month=date(2026, 7, 1))
     add('Both', product='Stream Analytics', amount=-40, month=date(2026, 8, 1))
     add('Both', product='Event Hubs', amount=90000, month=date(2026, 6, 1))
@@ -86,7 +86,8 @@ def test_union_windows_net_amounts_and_no_capacity_double_count(rti_rows):
     for product in ('Event Hubs', 'Stream Analytics', 'IoT Hub'):
         add('Both', product=product, amount=90000, month=date(2026, 10, 1))
     add('Current month only', product='Event Hubs', amount=90000, month=date(2026, 10, 1))
-    rti_only = add('RTI only', hours=0.00001, total=10)
+    add('RTI only', hours=0.00001, total=10)
+    add('RTI and streaming', product='Event Hubs', hours=0.00001, amount=90000)
     azure_only = add('Azure only', product='Stream Analytics', amount=0.00001)
     add('Credit only', product='IoT Hub', amount=-400)
     add('Not relevant', product='Event Grid')
@@ -94,30 +95,29 @@ def test_union_windows_net_amounts_and_no_capacity_double_count(rti_rows):
     result = rti.get_rti_report(REFERENCE)
     assert result['months'] == ['2026-07-01', '2026-08-01', '2026-09-01']
     assert result['period_label'] == 'Jul 2026 through Sep 2026'
-    assert result['count'] == 3
-    assert result['rti_customer_count'] == 2
+    assert result['count'] == 2
+    assert result['rti_customer_count'] == 0
     rows = {row['id']: row for row in result['rows']}
-    assert set(rows) == {both.id, rti_only.id, azure_only.id}
-    assert rows[both.id]['rti_cu_hours'] == 25
-    assert rows[both.id]['rti_share_pct'] == 25
+    assert set(rows) == {both.id, azure_only.id}
+    assert rows[both.id]['rti_cu_hours'] == 0
+    assert rows[both.id]['rti_share_pct'] == 0
     assert rows[both.id]['monthly_spend'] == pytest.approx({
         'event_hubs': 400 / 3, 'stream_analytics': -40 / 3, 'iot': 80 / 3,
     })
     assert rows[both.id]['monthly_acr'] == pytest.approx(440 / 3)
-    assert rows[azure_only.id]['rti_cu_hours'] is None
-    assert rows[azure_only.id]['rti_share_pct'] is None
-    assert rows[rti_only.id]['monthly_acr'] == 0
+    assert rows[azure_only.id]['rti_cu_hours'] == 0
+    assert rows[azure_only.id]['rti_share_pct'] == 0
     assert result['monthly_acr'] == pytest.approx((440 + 0.00001) / 3)
     widget = rti.get_rti_widget(REFERENCE)
     assert widget['details']['rows'] == result['rows']
     assert widget['monthly_acr'] == result['monthly_acr']
-    assert sum(len(group['rows']) for group in result['seller_groups']) == 3
+    assert sum(len(group['rows']) for group in result['seller_groups']) == 2
 
 
 def test_stale_scope_and_returning_account(rti_rows):
     """Neither RTI usage nor explicit scope brings stale accounts back into the queue."""
-    current = rti_rows('Current', hours=10)
-    stale = rti_rows('Stale', product='Event Hubs', hours=20)
+    current = rti_rows('Current', product='Event Hubs', hours=0)
+    stale = rti_rows('Stale', product='Event Hubs')
     stale.stale_since = datetime.now(timezone.utc)
     db.session.flush()
     assert rti.get_rti_report(REFERENCE)['count'] == 1
@@ -129,19 +129,35 @@ def test_stale_scope_and_returning_account(rti_rows):
     assert rti.get_rti_widget(REFERENCE)['count'] == 2
 
 
+@pytest.mark.parametrize('product', ['Event Hubs', 'Stream Analytics', 'IoT Hub'])
+@pytest.mark.parametrize('hours', [None, 0, 0.00001])
+def test_streaming_prospect_eligibility(rti_rows, product, hours):
+    """Each streaming family qualifies missing/zero RTI, but never positive RTI."""
+    customer = rti_rows('Streaming prospect', product=product, hours=hours, capacities=2)
+    report = rti.get_rti_report(REFERENCE)
+    expected_ids = [] if hours else [customer.id]
+    assert [row['id'] for row in report['rows']] == expected_ids
+    assert rti.get_rti_widget(REFERENCE)['details']['rows'] == report['rows']
+    assert rti.get_rti_report(REFERENCE, customer_ids=())['rows'] == []
+
+
 def test_year_boundary_and_no_import_states(rti_rows):
-    """Calendar arithmetic crosses years; absent sources are not measured zeros."""
+    """Calendar arithmetic crosses years; missing Fabric data still allows streaming prospects."""
     rti_rows('RTI only', hours=1, total=0)
     result = rti.get_rti_report(date(2027, 1, 15))
     assert result['months'] == ['2026-10-01', '2026-11-01', '2026-12-01']
-    assert result['rows'][0]['rti_share_pct'] is None
-    assert result['rows'][0]['monthly_acr'] is None
+    assert result['count'] == 0
     assert result['monthly_acr'] is None
+    customer = rti_rows('No Fabric', product='Event Hubs')
     db.session.query(FabricConsumptionRecord).delete()
     db.session.query(FabricConsumptionImport).delete()
     result = rti.get_rti_report(REFERENCE)
     assert result['snapshot'] is None
-    assert result['count'] == 0
+    assert result['count'] == 1
+    assert result['rows'][0]['id'] == customer.id
+    assert result['rows'][0]['rti_cu_hours'] == 0
+    assert result['rows'][0]['rti_share_pct'] == 0
+    assert result['rows'][0]['monthly_acr'] == pytest.approx(400 / 3)
 
 
 def test_latest_fabric_snapshot_only(rti_rows):
@@ -153,67 +169,70 @@ def test_latest_fabric_snapshot_only(rti_rows):
     db.session.flush()
     row = rti.get_rti_report(REFERENCE)['rows'][0]
     assert row['id'] == customer.id
-    assert row['rti_cu_hours'] is None
+    assert row['rti_cu_hours'] == 0
     assert row['has_rti'] is False
 
 
 @pytest.mark.parametrize('grouped', [False, True])
 def test_widget_safe_markup_raw_sorting_and_grouping(rti_rows, grouped):
-    """Keep six compact widget columns, percentage hover text and precise sort values."""
-    rti_rows('<img src=x onerror=bad()>', product='Event Hubs', amount=0.0001, hours=0.001)
+    """Show five streaming columns with precise sorting and matching seller-group spans."""
+    rti_rows('<img src=x onerror=bad()>', product='Event Hubs', amount=0.0001, hours=0)
     widget = rti.get_rti_widget(REFERENCE)
     soup = BeautifulSoup(render_widget('rti', widget, group_by_seller=grouped), 'html.parser')
     assert not soup.select('img')
     assert len(soup.select('tr[data-row-key]')) == 1
-    assert len(soup.select('thead th')) == 6
-    assert soup.select('thead th')[3].text.strip() == 'ASA'
-    assert 'Stream Analytics' in soup.select('thead th')[3]['title']
-    assert 'RTI %' not in [node.text.strip() for node in soup.select('thead th')]
-    assert soup.select_one('table')['data-sb-sort-default-column'] == '5'
+    assert [node.text.strip() for node in soup.select('thead th')] == [
+        'Customer', 'Event Hubs', 'ASA', 'IoT', 'Total / mo',
+    ]
+    assert 'Stream Analytics' in soup.select('thead th')[2]['title']
+    assert len(soup.select_one('tr[data-row-key]').select('td')) == 5
+    assert soup.select_one('table')['data-sb-sort-default-column'] == '4'
+    assert 'rti-v3-' in soup.select_one('table')['data-sb-sort-key']
     assert float(soup.select('tbody td')[-1]['data-sb-sort-value']) == pytest.approx(0.0001 / 3)
-    assert '<0.01' in soup.select('tbody td')[1].text
-    assert soup.select('tbody td')[1]['title'] == (
-        'RTI share: <0.01% of Fabric CU-hours (rolling 28 days).'
-    )
     assert '<$1' in soup.select('tbody td')[-1].text
     assert soup.select('table')[0].parent['tabindex'] == '0'
     assert bool(soup.select('.db-report-seller-heading')) is grouped
     if grouped:
-        assert soup.select_one('tbody th')['colspan'] == '6'
+        assert soup.select_one('tbody th')['colspan'] == '5'
     summary = BeautifulSoup(render_widget('rti', widget, 'metric'), 'html.parser')
-    assert [node.text for node in summary.select('dd')] == ['1', '1', '<$1']
-    assert 'rolling 28 days' in summary.text
-    assert 'three complete months' in summary.text
-    assert 'current month partial' not in summary.text
+    assert [node.text for node in summary.select('dd')] == ['1', '<$1']
+    assert summary.select_one('.db-report-caption').text == (
+        'Streaming customers without RTI usage'
+    )
+    assert soup.select_one('.db-report-caption').text == (
+        'Streaming customers without RTI usage'
+    )
 
 
-def test_widget_missing_rti_is_zero_without_changing_report(client, rti_rows):
-    """Only the widget substitutes zero; report measurements and columns stay unchanged."""
+def test_missing_rti_is_zero_in_widget_report_api_and_tool(client, rti_rows):
+    """Missing RTI qualifies as zero without redundant RTI columns in either table."""
     customer = rti_rows('Azure only', product='Event Hubs')
     db.session.commit()
     widget = rti.get_rti_widget(REFERENCE)
-    assert widget['details']['rows'][0]['rti_cu_hours'] is None
-    assert widget['details']['rows'][0]['rti_share_pct'] is None
+    assert widget['details']['rows'][0]['rti_cu_hours'] == 0
+    assert widget['details']['rows'][0]['rti_share_pct'] == 0
+    for data in (client.get('/api/reports/rti').json, execute_tool('report_rti', {})):
+        assert data['rows'][0]['id'] == customer.id
+        assert data['rows'][0]['rti_cu_hours'] == 0
+        assert data['rows'][0]['rti_share_pct'] == 0
     soup = BeautifulSoup(render_widget('rti', widget), 'html.parser')
-    cell = soup.select_one(f'tr[data-row-key="{customer.id}"]').select('td')[1]
-    assert cell.text == '0'
-    assert cell['data-sb-sort-value'] == '0'
-    assert cell['title'] == 'RTI share: 0% of Fabric CU-hours (rolling 28 days).'
+    assert len(soup.select_one(f'tr[data-row-key="{customer.id}"]').select('td')) == 5
     page = BeautifulSoup(client.get('/reports/rti').data, 'html.parser')
-    assert len(page.select('.sb-rti-table thead th')) == 7
-    assert page.select('.sb-rti-table thead th')[4].text.strip() == 'Stream Analytics'
-    assert [cell.text.strip() for cell in page.select('.sb-rti-table tbody td')[1:3]] == [
-        'Unavailable', 'Unavailable',
+    assert [node.text.strip() for node in page.select('.sb-rti-table thead th')] == [
+        'Customer', 'Event Hubs', 'Stream Analytics', 'IoT', 'Total / mo',
     ]
+    assert len(page.select_one('.sb-rti-table tr[data-row-key]').select('td')) == 5
 
 
 def test_report_api_tool_catalog_and_saved_dashboard(client, rti_rows, dashboard_sources_ready):
     """All entry points reuse saved measurements, with scope and ordinary widget placement."""
-    customer = rti_rows('Integrated', product='Event Hubs', hours=30)
+    customer = rti_rows('Integrated', product='Event Hubs', hours=0)
+    rti_rows('Already using RTI', product='Event Hubs', hours=30)
     db.session.commit()
     assert execute_tool('report_rti', {})['count'] == 1
     response = client.get('/api/reports/rti')
     assert response.status_code == 200
+    assert response.json['count'] == 1
     assert response.json['rows'][0]['id'] == customer.id
     page = BeautifulSoup(client.get('/reports/rti').data, 'html.parser')
     assert len(page.select('.sb-rti-table tr[data-row-key]')) == 1
@@ -265,9 +284,13 @@ def test_report_seller_group_toggle_preserves_all_rows(client, rti_rows, embedde
         }
         assert len(page.select('.sb-modernization-group-header')) == (2 if grouped else 0)
         assert len(page.select('.sb-rti-table')) == (2 if grouped else 1)
+        for table in page.select('.sb-rti-table'):
+            assert len(table.select('thead th')) == 5
+            assert table['data-sb-sort-default-column'] == '4'
+            assert table['data-sb-sort-key'].startswith('rti-v2-')
         if not grouped:
             table = page.select_one('.sb-rti-table')
-            assert table['data-sb-sort-key'] == 'rti-flat'
+            assert table['data-sb-sort-key'] == 'rti-v2-flat'
             assert table['aria-label'] == 'RTI customers'
             assert not table.has_attr('aria-labelledby')
     assert client.get('/reports/rti?group_by_seller=invalid').status_code == 400

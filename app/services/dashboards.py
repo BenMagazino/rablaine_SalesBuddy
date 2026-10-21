@@ -236,7 +236,8 @@ WIDGET_DEFINITIONS = {
         ),
         WidgetDefinition(
             'fabric.rti', 'Real-Time Intelligence',
-            'RTI workload usage alongside Event Hubs, Stream Analytics and IoT ACR.',
+            'Customers without RTI usage who consume Event Hubs, Stream Analytics or IoT, '
+            'including Fabric entry-point prospects. Missing RTI counts as zero.',
             'Real-Time Intelligence', (
                 WidgetVariant(
                     'metric', 'Summary', 'partials/widgets/rti.html',

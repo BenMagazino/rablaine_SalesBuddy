@@ -1,4 +1,4 @@
-"""Saved RTI workload usage and adjacent Azure consumption for customer discovery."""
+"""Streaming customers without RTI usage, including Fabric entry-point prospects."""
 from datetime import date
 from math import fsum
 
@@ -27,10 +27,10 @@ def _product_family(product: str) -> str | None:
 def get_rti_report(
     reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
 ) -> dict:
-    """Include current accounts with positive RTI usage or a positive Azure family total.
+    """Include current accounts without RTI usage and with a positive streaming family.
 
     ACR uses the last three complete calendar months and a fixed three-month divisor.
-    Fabric usage retains its independent rolling 28-day window and unknown values.
+    Fabric usage retains its independent rolling 28-day window; missing RTI counts as zero.
     Capacity rows repeat customer-wide usage, so only the first row is used.
     """
     reference = reference or date.today()
@@ -72,14 +72,14 @@ def get_rti_report(
             key: fsum(amounts.get(customer_id, {}).get(key, []))
             for key, _, _ in PRODUCT_FAMILIES
         }
-        rti_hours = customer['workload_cu_hours'].get(RTI_WORKLOAD)
-        has_rti = rti_hours is not None and rti_hours > 0
-        if not has_rti and not any(amount > 0 for amount in spend.values()):
+        rti_hours = customer['workload_cu_hours'].get(RTI_WORKLOAD) or 0
+        has_rti = rti_hours > 0
+        if has_rti or not any(amount > 0 for amount in spend.values()):
             continue
         rows.append({
             'id': customer_id, 'row_key': str(customer_id), 'name': customer['name'],
             'seller': customer['seller'], 'rti_cu_hours': rti_hours,
-            'rti_share_pct': customer['workload_shares'].get(RTI_WORKLOAD),
+            'rti_share_pct': customer['workload_shares'].get(RTI_WORKLOAD) or 0,
             'has_rti': has_rti, 'spend': spend,
             'monthly_spend': {
                 key: amount / WINDOW_MONTHS if has_revenue_data else None

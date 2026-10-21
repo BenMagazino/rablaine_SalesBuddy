@@ -1,8 +1,4 @@
 <th data-sb-sort-type="text">Customer</th>
-<th data-sb-sort-type="number" title="Customer-wide RTI CU-hours over the source's rolling 28 days, not the ACR period.">RTI CU-hrs</th>
-{% if not rti_widget|default(false) %}
-<th data-sb-sort-type="number" title="RTI share of customer-wide Fabric CU-hours over the rolling 28-day source window.">RTI %</th>
-{% endif %}
 {% for product in products %}
 <th data-sb-sort-type="number" title="Average monthly {{ product.label }} ACR across {{ period_label }}. Last three complete months, divided by 3. Current month excluded.">{{ 'ASA' if rti_widget|default(false) and product.key == 'stream_analytics' else product.label }}</th>
 {% endfor %}

@@ -8,14 +8,14 @@
 {% block footer %}
 {% if not request.args.get('embed') %}
 <footer class="sb-page-status" aria-label="Report status">
-    <span>{{ report.count }} customers; {{ report.rti_customer_count }} with RTI usage</span>
+    <span>{{ report.count }} RTI prospects</span>
     <span>Observed consumption, not architecture or migration readiness.</span>
 </footer>
 {% endif %}
 {% endblock %}
 {% block content %}
 <section class="sb-revenue-reports sb-modernization-report{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}"
-         data-sb-page-surface data-sb-report-key="rti-v1"
+         data-sb-page-surface data-sb-report-key="rti-v2"
          data-sb-report-embedded="{{ 'true' if request.args.get('embed') else 'false' }}" aria-labelledby="rtiTitle">
     <header class="sb-revenue-reports-header" data-sb-page-band>
         <div>
@@ -35,14 +35,16 @@
     </header>
     <p class="sb-revenue-report-notice" data-sb-report-context-notice data-sb-page-band role="alert" hidden></p>
     <p class="sb-modernization-context" data-sb-page-band>
+        Streaming customers without RTI usage, including accounts with no Fabric capacity.
         RTI usage: rolling 28 days from Fabric 360.
+        Missing RTI usage counts as 0.
         ACR: last three complete months, divided by 3. Missing revenue counts as $0.
         {% if report.snapshot %}Fabric imported <span class="local-datetime" data-utc="{{ report.snapshot.imported_at }}">{{ report.snapshot.imported_at }}</span>.
         {% if report.snapshot.workload_as_of %}Workload as of {{ report.snapshot.workload_as_of }}.{% endif %}{% endif %}
     </p>
     {% if not report.snapshot or not report.has_revenue_data %}
     <p class="sb-revenue-report-notice" data-sb-page-band>
-        {% if not report.snapshot %}No saved Fabric snapshot. RTI usage is unavailable. {% endif %}
+        {% if not report.snapshot %}No saved Fabric snapshot. Missing RTI usage counts as 0. {% endif %}
         {% if not report.has_revenue_data %}No saved product revenue. ACR is unavailable. {% endif %}
         Sync missing data from <a href="{{ url_for('revenue.revenue_import') }}">Data Management</a>.
     </p>
@@ -59,15 +61,15 @@
                 <span>{{ group.rows|length }} customers</span>
             </header>
             {% endif %}
-            <table class="sb-modernization-table sb-rti-table{% if not group_by_seller %} sb-rti-flat{% endif %}" data-sb-sortable data-sb-sort-key="rti-{{ (group.seller.id if group.seller else 'unassigned') if group_by_seller else 'flat' }}"
-                   data-sb-sort-default-column="6" data-sb-sort-default-direction="descending"{% if group_by_seller %} aria-labelledby="rtiSeller{{ loop.index }}"{% else %} aria-label="RTI customers"{% endif %}>
+            <table class="sb-modernization-table sb-rti-table{% if not group_by_seller %} sb-rti-flat{% endif %}" data-sb-sortable data-sb-sort-key="rti-v2-{{ (group.seller.id if group.seller else 'unassigned') if group_by_seller else 'flat' }}"
+                   data-sb-sort-default-column="4" data-sb-sort-default-direction="descending"{% if group_by_seller %} aria-labelledby="rtiSeller{{ loop.index }}"{% else %} aria-label="RTI customers"{% endif %}>
                 <thead><tr>{% include 'partials/_rti_headers.html' %}</tr></thead>
                 <tbody>{% set rows = group.rows %}{% include 'partials/_rti_rows.html' %}</tbody>
             </table>
         </section>
         {% else %}
-        <div class="sb-revenue-empty"><h2>No observed RTI or related Azure consumption</h2>
-            <p>No current accounts have positive RTI usage or positive Event Hubs, Stream Analytics or IoT ACR in this period.</p></div>
+        <div class="sb-revenue-empty"><h2>No RTI prospects</h2>
+            <p>No current accounts have both zero RTI usage and positive Event Hubs, Stream Analytics or IoT ACR in this period.</p></div>
         {% endfor %}
     </div>
 </section>

@@ -201,9 +201,10 @@ def report_fabric_acquisition(include_no_other_spend: bool = False) -> dict:
     'Read Real-Time Intelligence customer discovery signals: native rolling 28-day RTI '
     'CU-hours and workload share alongside Event Hubs, Stream Analytics and IoT ACR. '
     'ACR covers the last three complete calendar months, divided by 3; current month excluded. '
-    'Current accounts qualify with positive RTI usage or a positive Azure product-family total. '
-    'Includes seller groups; missing revenue observations count as zero, missing RTI '
-    'measurements remain unavailable. Saved data only, not architecture or migration readiness.',
+    'Current accounts qualify with zero RTI usage and a positive Azure streaming product-family '
+    'total, including accounts without Fabric capacity. Missing RTI measurements and revenue '
+    'observations count as zero. Includes seller groups. Saved data only, not architecture '
+    'or migration readiness.',
     {'type': 'object', 'properties': {}},
 )
 def report_rti() -> dict:
