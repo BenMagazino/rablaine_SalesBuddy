@@ -1,6 +1,7 @@
 """Customer history uses real event dates and never turns sync times into activity."""
 
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -10,6 +11,16 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import Customer, Engagement, Milestone, Note, Opportunity, db
 from app.services.customer_timeline import _plain_text, _utc, get_customer_timeline
+
+
+def test_timeline_uses_compact_date_gutter_with_aligned_markers():
+    """Reclaim 24px for event titles without detaching the year or connecting line."""
+    css = (Path(__file__).parents[1] / 'static' / 'css' / 'ui-customer-timeline.css'
+           ).read_text(encoding='utf-8')
+    assert 'grid-template-columns: 24px 24px minmax(0, 1fr)' in css
+    assert 'column-gap: 6px' in css
+    assert 'padding: 16px 0 8px 42px' in css
+    assert 'left: 41px' in css
 
 
 @pytest.fixture

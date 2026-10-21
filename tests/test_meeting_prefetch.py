@@ -144,6 +144,42 @@ class TestExtractJsonArray:
 
         assert items == [{'subject': 'Customer sync'}]
 
+    @pytest.mark.parametrize('status,meetings', [
+        ('no_meetings', []),
+        ('meetings_found', [{
+            'subject': 'Internal planning',
+            'start_time': '2026-10-23T09:00:00-05:00',
+            'organizer_email': 'seller@microsoft.com',
+            'attendees': [],
+        }]),
+    ])
+    @pytest.mark.parametrize('separator', ['\n', '\nCalendar checked.\n', '\n```\n```json\n'])
+    @pytest.mark.parametrize('collapsed', [False, True])
+    def test_accepts_equivalent_repeated_calendar_payloads(
+        self, status, meetings, separator, collapsed,
+    ):
+        """WorkIQ can echo an identical result with underscores stripped from its fields."""
+        first = {'calendar_query_status': status, 'meetings': meetings, 'error': None}
+        second = first
+        if collapsed:
+            second = {
+                'calendarquerystatus': status.replace('_', ''),
+                'meetings': [
+                    {key.replace('_', ''): value for key, value in meeting.items()}
+                    for meeting in meetings
+                ],
+                'error': None,
+            }
+        response = f'```json\n{json.dumps(first)}{separator}{json.dumps(second)}\n```'
+
+        assert meeting_prefetch._extract_json_array(response) == meetings
+
+    def test_accepts_a_single_collapsed_empty_calendar_envelope(self):
+        """A successful empty lookup stays unambiguous even with collapsed field names."""
+        assert meeting_prefetch._extract_json_array(
+            '{"calendarquerystatus":"nomeetings","meetings":[],"error":null}'
+        ) == []
+
     @pytest.mark.parametrize('wrapper', [
         '{payload}\nSource: your calendar [1].',
         'Here are your meetings:\n{payload}\nSource: your calendar [1].',
@@ -166,6 +202,8 @@ class TestExtractJsonArray:
         '{"calendar_query_status":"meetings_found",'
         '"meetings":[{"subject":"Customer sync"}],"error":null}',
         '[{"subject":"Customer sync"}]',
+        '{"calendarquerystatus":"calendarlookupfailed",'
+        '"meetings":[],"error":"Calendar unavailable"}',
     ])
     def test_rejects_multiple_calendar_payloads(self, separator, second_payload):
         """Never choose an empty result over a second, conflicting calendar result."""
@@ -175,6 +213,21 @@ class TestExtractJsonArray:
             meeting_prefetch._extract_json_array(
                 f'```json\n{empty}{separator}{second_payload}\n```',
             )
+
+    @pytest.mark.parametrize('response', [
+        '{"calendar_query_status":"no_meetings","calendarquerystatus":"meetingsfound",'
+        '"meetings":[],"error":null}',
+        '{"calendar_query_status":"meetings_found",'
+        '"meetings":[{"subject":"First sync"}],"error":null}\n'
+        '{"calendarquerystatus":"meetingsfound",'
+        '"meetings":[{"subject":"Different sync"}],"error":null}',
+        '{"calendar_query_status":"no_meetings","meetings":[],"error":null}\n'
+        '{"calendarquerystatus":"nomeetings","meetings":',
+    ])
+    def test_does_not_hide_conflicts_or_truncated_repeated_payloads(self, response):
+        """Only complete, semantically equivalent copies can be accepted."""
+        with pytest.raises(ValueError):
+            meeting_prefetch._extract_json_array(response)
 
     def test_does_not_recover_a_truncated_envelope_from_its_meeting_array(self):
         """A partial payload must not be mistaken for a complete calendar result."""
@@ -569,6 +622,35 @@ class TestDomainMap:
 # ---------------------------------------------------------------------------
 
 class TestPrefetchForDate:
+    @pytest.mark.parametrize('meetings,status', [
+        ([], 'no_meetings'),
+        ([{
+            'subject': 'SME&C Internal planning',
+            'start_time': '2026-10-23T09:00:00-05:00',
+            'end_time': '2026-10-23T09:30:00-05:00',
+            'organizer_email': 'seller@microsoft.com',
+            'attendees': [],
+        }], 'meetings_found'),
+    ])
+    def test_repeated_empty_or_internal_only_results_succeed_without_fallback(
+        self, app, clean_prefetch_tables, meetings, status,
+    ):
+        """A day without customer matches is successful, not a parsing failure or retry."""
+        first = {'calendar_query_status': status, 'meetings': meetings, 'error': None}
+        second = {'calendarquerystatus': status.replace('_', ''),
+                  'meetings': meetings, 'error': None}
+        response = json.dumps(first) + '\n' + json.dumps(second)
+        with app.app_context(), patch(
+            'app.services.workiq_service.query_workiq', return_value=response,
+        ) as query, patch(
+            'app.services.workiq_service.get_meetings_for_date',
+        ) as fallback:
+            stored, error = meeting_prefetch.prefetch_for_date('2026-10-23')
+
+        assert (stored, error) == (0, None)
+        query.assert_called_once()
+        fallback.assert_not_called()
+
     def test_unavailable_outlook_falls_back_to_workiq(
         self, app, clean_prefetch_tables,
     ):

@@ -8,6 +8,11 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/21/2026
+
+- Contact photos in the note editor open in a compact window without an empty right half.
+- Calendar refreshes accept repeated copies of the same WorkIQ result, avoiding false errors on days without matching customer meetings.
+
 ## 10/21/2026 - d2ece58e
 
 - Get an editable FY27 Data Motions dashboard automatically on upgrade, with ten report-backed widgets for Fabric acquisition, modernization, expansion, trials and RTI, database whitespace and growth, P-to-F renewals, and SQL motions. Add another copy anytime from dashboard templates and follow each widget to its full report.

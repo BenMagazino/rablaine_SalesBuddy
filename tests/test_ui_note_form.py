@@ -73,6 +73,18 @@ def test_autocomplete_rows_reset_native_button_borders_and_show_keyboard_selecti
     assert "background:var(--sb-ui-selection)" in selection.group(2)
 
 
+def test_small_modal_width_applies_to_outer_dialog_not_only_its_contents() -> None:
+    """The contact photo dialog must not leave an empty half beside its contents."""
+    styles = Path(__file__).parents[1] / "static" / "css"
+    css = (styles / "ui-note-form.css").read_text("utf-8")
+    rule = re.search(r"\.sb-nf-modal\.sb-nf-modal-sm\s*\{([^}]+)\}", css)
+    assert rule is not None
+    assert "width:min(400px,calc(100vw - 80px))" in rule.group(1)
+    native = (styles / "ui-note-form-native.css").read_text("utf-8")
+    assert ".sb-nf-modal-dialog{margin:0;width:100%}" in native
+    assert ".sb-nf-modal-sm{" not in native
+
+
 @pytest.mark.parametrize("kind", ["customer", "general", "edit"])
 def test_note_form_retains_fields_commands_and_native_dialogs(
     client: FlaskClient, sample_data: dict[str, int], kind: str,
@@ -133,6 +145,9 @@ def test_note_form_retains_fields_commands_and_native_dialogs(
                       "contactPhotoModal", "attendeeReviewModal"]:
         dialog = main.select_one(f"dialog.sb-dialog#{dialog_id}")
         assert dialog is not None and not dialog.has_attr("open")
+    photo = main.select_one("#contactPhotoModal")
+    assert "sb-nf-modal-sm" in photo["class"]
+    assert "sb-nf-modal-sm" not in photo.select_one(".sb-nf-modal-dialog")["class"]
     assert "/static/js/ui-note-form-native.js" in scripts
     assert "/static/css/ui-note-form-native.css" in styles
     assert all(dialog.get("data-sb-nonmodal") == "true"
