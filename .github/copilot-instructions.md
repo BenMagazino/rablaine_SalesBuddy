@@ -61,6 +61,22 @@
 
 ## Coding Standards & Best Practices
 
+### Specialty Feature Access
+- Sellers (DSS Mode, `user_role == 'dss'`) receive features for **every** SE specialty.
+- Specialty gates select features for SEs; they must never exclude sellers.
+- Use `has_specialty_access(specialty)` from `app/services/se_specialty.py` for new gates.
+  The existing `is_data_se()` wrapper also includes sellers.
+- Apply this consistently to pages, tabs, APIs, widgets, automatic sync, and help text.
+- **Sellers inherit all specialty-specific automated syncs as well as visible
+  features.** Reuse the same access helper for scheduler admission, queued-worker
+  eligibility rechecks and schedule labels. Never require `user_role == 'se'`
+  or compare `se_specialty` alone for specialty-based scheduling.
+- Fabric and SQL Motions refresh weekly for Data SEs **and every seller**, with
+  startup catch-up. Other SE specialties stay manual for these sources.
+- Keep specialty selection SE-only and preserve the stored specialty when roles change.
+- Test sellers with a different saved SE specialty, the matching SE specialty, and
+  nonmatching SE specialties. Seller access must not depend on their saved specialty.
+
 ### Code Style
 - Follow PEP 8 style guide for Python code
 - Use type hints for function parameters and return values
@@ -108,6 +124,26 @@
 - Tools are thin wrappers over existing service/query code - never duplicate business logic in a tool handler.
 - The test `test_salesiq_tools.py::test_tool_coverage` enforces that every core entity and report has at least one registered tool. If you add a new model or report, update the coverage test.
 - Run `pytest tests/test_salesiq_tools.py` after adding or modifying tools.
+
+### Central Sync Integration
+
+- **Every new report or widget data import must integrate with the central durable
+  sync system**, including manual-only imports. Register its operation, validated
+  options/prerequisites, resource conflicts, handler dispatch and recovery policy
+  in `app/services/sync_jobs.py`, and expose it in the Sync Status console.
+- HTTP launchers and schedulers must admit or join jobs through `admit_sync`;
+  remote reads and writes execute in the shared worker. Use common persisted
+  progress/heartbeat, observation, retry and failure handling. Do not add separate
+  importer threads, job tables, sync-on-GET behavior or private progress loops.
+- Reuse existing operations for shared sources: `fabric` owns Fabric telemetry,
+  revenue and P-to-F; `sql-motions` owns Azure Migrations and ADS Accelerate together.
+  Widgets declare readiness dependencies in `dashboard_sync.py`, not separate imports.
+- Wire recurring imports into the existing scheduler and worker startup, with
+  freshness checks, eligibility gates and failed-attempt cooldowns. Test that
+  report/widget/manual/scheduled launchers share one active central job and expose
+  real progress and terminal results.
+- See the [widget authoring guide](../docs/DASHBOARD_WIDGET_AUTHORING.md#introducing-a-genuinely-new-sync-source)
+  for the integration checklist and reference implementations.
 
 
 
@@ -228,6 +264,17 @@ cp .env.example .env
 - Never run `flask run` or `python` without activating venv first
 - When running Flask in background, combine: `& C:\dev\SalesBuddy\venv\Scripts\Activate.ps1 ; flask run`
 
+**IMPORTANT - Development Authentication:**
+- Sales Buddy dev has its own corporate Azure CLI context at
+  `%USERPROFILE%\SalesBuddyDev\.azure`, separate from the shell's default account.
+- Before development MSX/Power BI auth probes or standalone pull scripts, set
+  `$env:AZURE_CONFIG_DIR = Join-Path $env:USERPROFILE 'SalesBuddyDev\.azure'`
+  and `$env:FLASK_ENV = 'development'` in the same process as the command.
+- Reuse that existing sign-in. Do not diagnose the default CLI account as an app
+  auth failure, change the default account, log out, or copy credential caches.
+- Keep this environment process-scoped. Follow `scripts/dev.ps1` and
+  `app/services/azure_profile.py`; never print tokens or replay HAR credentials.
+
 **Testing:**
 ```powershell
 pytest
@@ -292,6 +339,32 @@ pytest --cov=app tests/  # with coverage
 - See `.github/instructions/gateway-deployment.instructions.md` for deploy procedures
 
 ## UI/UX Conventions
+
+### Dashboard Widget Authoring
+
+- Before adding or changing widgets, read the shared
+  [Dashboard Widget Authoring Guide](../docs/DASHBOARD_WIDGET_AUTHORING.md).
+- It defines provider/filter contracts, shared query loaders, setup and sync gates,
+  full-report actions, presentation rules, and validation/integration checklists.
+
+### Dashboard Widget Table Spacing
+
+- Keep the rightmost table header and data cells padded away from the widget's
+  vertical scrollbar. Use at least 16px of right-side cell padding, following
+  existing widget tables; reserving a scrollbar gutter alone is not enough.
+- Verify the rightmost label, sort control, and values remain readable with the
+  scrollbar present, including when seller grouping is enabled.
+
+### Dashboard Widget Seller Display
+
+- Do not show seller names, badges, columns, or seller labels in dashboard widgets
+  unless the viewer explicitly enables **Group by seller** in the Filters panel.
+- Filtering to a seller, seller mode, or having seller data available does not
+  enable seller display. Seller scope and seller presentation are separate.
+- When grouping is enabled, use the shared seller group header once per group,
+  not repeated seller badges on every customer row.
+- For widget changes, test grouping off and on. The default ungrouped render must
+  contain no seller identity. Keep full-report seller displays unchanged unless requested.
 
 ### Platform Scope
 - **Sales Buddy is a desktop-only Electron application.** Mobile and tablet layouts are out of scope unless the user explicitly requests them.

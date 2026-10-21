@@ -123,7 +123,8 @@ def test_revenue_widget_matches_active_seller_scope(app, client):
     assert 'In scope' in page.get_text()
     assert 'Other account' not in page.get_text()
     assert '$2,000' in page.get_text()
-    assert page.select_one('a.db-report-seller .bi-person')
+    assert not page.select_one('.db-report-seller')
+    assert 'Scope seller' not in page.get_text()
 
 
 @pytest.mark.parametrize('key', SIGNAL_KEYS)
@@ -131,7 +132,9 @@ def test_revenue_widget_matches_active_seller_scope(app, client):
     ('metric', 3), ('metric', 4), ('metric', 6), ('metric', 12),
     ('detailed', 6), ('detailed', 12),
 ])
-def test_signal_widgets_render_all_catalog_footprints(client, key, variant, width):
+def test_signal_widgets_render_all_catalog_footprints(
+    client, key, variant, width, dashboard_sources_ready,
+):
     """Every new widget has an honest empty state without requiring fiscal setup."""
     response = client.get('/api/reports/dashboards/widget-preview', query_string={
         'key': key, 'variant': variant, 'width': width,

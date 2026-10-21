@@ -1,5 +1,103 @@
 # Fabric consumption imports
 
+## Fabric expansion widget
+
+**Fabric expansion** uses the same saved customer-wide workload shares as
+Capacity overview, counting only customers with at least one paid F-SKU. Each
+customer counts once; P-only and trial-only estates belong to the conversion
+widgets instead. Customer/Seller dashboard
+filters apply before every count and row; no import or remote read is triggered.
+The report link selects `view=overview&mode=f&customers=true` for that
+visit without replacing saved view preferences. Like the trial widget, this link
+opens the full local portfolio rather than carrying dashboard filters.
+
+Summary shows one metric: **Power BI-led customers**, where Power BI accounts
+for at least 80% of customer-wide consumed CU hours. The caption gives the
+total paid F-SKU customer population for context.
+
+This is a discovery heuristic, not an official threshold or validated
+workload fit, adoption gap, or readiness assessment. The queue requires all saved
+workload shares to be known, between 0% and 100%, and to reconcile to 100%
+(0.1 percentage-point tolerance for source rounding). Missing, zero-total, or
+unreconciled mixes are excluded and counted separately in the provider.
+New source workloads participate in the same calculations.
+
+Details lists only these Power BI-led customers, without cohort tabs or a row
+limit. Each row links to customer Fabric detail and shows:
+
+- **Used %:** Equal-weight average of known saved capacity summary utilization,
+  identical to customer-mode Capacity overview. Missing measurements are excluded;
+  this is not latest-hour or trial-only trailing-15-day utilization.
+- **SKU:** Largest paid F-SKU, ranked and sorted by CU size rather than label text.
+  Smaller F-SKUs remain in the customer's underlying capacity inventory.
+  P and Trial badges identify other observed capacity families alongside it,
+  without allowing a larger P-SKU or trial to obscure the paid Fabric footprint.
+  For example, P1 + F8 + FTL64 displays F8 with P and Trial badges.
+  Used % still averages all customer capacities, including P and trial capacities,
+  matching customer-mode Capacity overview rather than implying F-only utilization.
+- **PBI %:** Customer-wide Power BI CU-hour share in the saved rolling 28-day window.
+- **Above 1%:** Known workloads strictly above 1%, ordered by descending share,
+  with full names and exact shares on hover. Missing values are excluded rather
+  than treated as low usage. This display threshold does not change the 80%
+  Power BI-led eligibility rule.
+
+The table alone scrolls within the selected widget height; headings remain
+visible. Sort headers use source-precision numbers, with missing values last.
+**Group by seller** is an optional viewer filter. Enable it under the dashboard's
+**Available viewer filters**, then viewers can toggle one checkbox in **Filters**
+without editing the dashboard. It groups Details rows in every supporting widget:
+Fabric expansion, Upcoming P-to-F renewals, and Trial to Paid. Trial
+customers remain inside their existing engagement queues. Sorting stays within
+seller sections, with unassigned customers last.
+Expanded sidebar filter lists stay open when you toggle grouping or open another filter.
+The selection is temporary, like Customer and Seller viewer selections; it does
+not change saved widgets, customer scope, or Summary totals. Reset filters restores
+flat lists. Active-filter counts and highlighting appear only in the viewer or
+preview, not the editor. Returning to preview retains your temporary selections.
+Dashboard drafts and undo/redo retain which viewer controls are enabled,
+not a viewer's current grouping choice.
+Summary and Details, the SalesIQ `report_fabric_expansion` read tool, and the
+generic dashboard signal tool all reuse this provider.
+
+## Trial to Paid widget
+
+The dashboard library includes a **Trial to Paid** widget.
+It counts distinct local customers with saved FTL4/FTL64 capacities and no paid
+F-number SKU anywhere in the latest snapshot. Customers with P-SKUs remain eligible,
+and Summary shows their count alongside the total. Multiple capacities count once
+per customer. Trial SKUs do not count as F-SKUs. This is a capacity-inventory filter,
+not an additional Fabric ACR cutoff.
+Customer/Seller dashboard filters apply before counting. No import is triggered.
+The Trial to Paid audit link opens Capacity overview with
+`view=overview&mode=trial_to_paid&customers=true`, selecting Trial to Paid audit and One row per
+customer for that visit without replacing saved preferences.
+The audit currently shows the full local portfolio, not dashboard filter scope.
+A trial present in the latest synced snapshot is active for this workflow. Users
+create engagements from surfaced insights and track trial-to-F-SKU conversion manually.
+Neither the widget nor audit automatically detects completed conversions.
+
+Details provides two customer queues: **Getting started** below 0.1% average
+utilization, and **Building momentum** at/above 0.1%. Both queues exclude customers
+with paid F-SKUs. Each customer appears once and links to their Fabric detail.
+The table shows Customer, Avg used and History, without redundant SKU-overlap columns.
+A small P tag beside eligible customer names identifies Power BI Premium P-SKU
+capacity, explained on hover. Customer sorting uses the name without the tag.
+First average known hourly utilization per
+trial capacity in the trailing 15 days ending at the saved capacity source
+timestamp, then average those capacity means with equal weight per customer.
+It does not use today's date or substitute latest-hour or lifetime utilization.
+Missing measurements are excluded, never treated as zero; trials without usable
+history are excluded from utilization and disclosed in the value's tooltip.
+Customers without any usable history are counted separately outside both queues.
+**History** averages the number of distinct UTC days with usable history across
+all of a customer's trials, including zero observed days for trials without data.
+It does not establish actual trial age or complete coverage. Header tooltips
+explain both averages. The group selector sits alongside the title where space
+allows, and only the customer table scrolls within the dashboard's chosen height.
+The 0.1% cutoff is an engagement heuristic, not an official alert or conversion rule.
+
+## Import and report behavior
+
 Fabric consumption is a **manual import only**. It is not registered with the
 scheduler and does not run during account sync, revenue sync, or app startup.
 Power BI access uses the current Azure CLI sign-in and respects the source
@@ -44,6 +142,31 @@ Workload shares are customer-wide rolling
 workload is shown as zero only when known workload measures reconcile to the
 positive customer total; otherwise it remains unknown. Sort any workload
 column to compare customer usage.
+**One row per customer** is the default for new preferences, providing a compact
+customer list with a color-coded
+capacity mix showing each observed SKU and its count. The checkbox persists
+locally; `customers=true` or `customers=false` overrides it for a linked visit.
+Existing saved checkbox choices take precedence over the new default.
+**Group by seller** adds seller sections, including an unassigned section last,
+and persists locally. Column sorting operates within each seller section.
+Capacity mix badges wrap inside their column, including customers with many SKUs,
+without overlapping utilization or hiding capacities.
+**F-SKU audit** selects customers with at least one paid F-SKU, retaining all of
+their other capacity families. In capacity mode it places paid F-SKUs first;
+customer mode retains the full capacity mix. Like the other audits, the mode
+persists locally, with URL overrides taking precedence for a linked visit.
+In customer mode, Used % averages known trial-capacity utilization in either trial audit,
+and known utilization across all capacities in other modes, equally weighted per
+capacity. Missing measurements are excluded, not zero. This uses source-retained
+summary utilization, not the trial widget's trailing 15-day hourly averages.
+Search matches any customer capacity but retains the complete customer's mix
+and averages. Customer-wide workload shares are shown once, not summed.
+Cap. and CU hours are omitted; in capacity mode, hover/focus the SKU for its
+existing capacity details.
+Workload columns read left to right in separated groups: AppDev, Plan, RTI;
+DE/DS, DI, DW; OneLake, Copilot, PBI; then SQL on its own. Each group has a
+vertical divider. Newly encountered workloads remain available in an Other
+workloads group rather than disappearing.
 Both views share the Fabric Consumption header and tab-style navigation:
 **Customer detail** and **Capacity overview**. Both telemetry surfaces are
 centered at a maximum width of 1536px, shrinking when the window is narrower.
@@ -71,9 +194,13 @@ it does not cancel it. Stopping or restarting the Flask backend interrupts the i
 Browser reload re-reads that snapshot. Use **Import from MSXi** only when
 you want fresh source measurements; customer detail updates automatically
 when an import it is monitoring completes.
-The overview uses one persistent segmented view selector: **All customers**,
-**Only customers with capacities** (the initial default), **Trial audit**, or
-**P-SKU audit**. Audit modes are mutually exclusive and automatically exclude rows
+The overview uses one persistent segmented view selector:
+**Only customers with capacities** (the initial default), **Trial audit**,
+**Trial to Paid audit**, or **F-SKU audit**. Use the separate P to F report for
+P-SKU renewal reviews.
+The former all-customer and P-only modes are removed; their old links and saved preferences
+select Only customers with capacities without changing other saved preferences.
+Audit modes are mutually exclusive and automatically exclude rows
 without capacities. Search combines with the selected mode. The detail view's
 **Only customers with capacities** checkbox remains an independent preference.
 
@@ -108,18 +235,17 @@ Capacity Overview's **Trial audit** mode selects customers
 with an imported FTL4 or FTL64 capacity and includes all their capacity rows,
 including paid SKUs. It reflects the saved snapshot, not
 live trial status or proof that migration is underway.
-In Trial audit, each customer's capacities are numbered with
+**Trial to Paid audit** narrows this to customers with trials and no paid F SKU,
+retaining P-SKU context. It uses the same SKU eligibility as the dashboard widget.
+In both trial audits, each customer's capacities are numbered with
 trial SKUs first, then paid SKUs. Numbering uses all that customer's capacities
 before search filtering. Leaving audit modes restores normal numbering; metric sorting
 still controls the displayed row order when selected.
 FTL and P SKU labels remain highlighted in the normal overview, without either
-audit mode selected. Trial audit additionally colors FTL Used % values
+audit mode selected. Both trial audits additionally color FTL Used % values
 from green at 0%, through amber at 25%, to full red at 50%
 and above. Missing measurements and paid-capacity values retain neutral styling.
-The **P-SKU audit** mode similarly includes all capacities
-for customers with P-number SKUs and numbers P capacities first.
-It does not color usage percentages. Search does not change numbering, and metric
-sorting still controls displayed row order.
+Search does not change numbering, and metric sorting still controls displayed row order.
 
 ## Backend entry points
 

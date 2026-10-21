@@ -4,6 +4,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-goals.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-ptof.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-dashboards.css') }}">
 {% endblock %}
 {% block footer %}
@@ -106,7 +107,8 @@
                Ctrl+Z undoes edits; Ctrl+Y or Ctrl+Shift+Z redoes them.
                Text fields keep their native editing shortcuts.
                Undo history lasts until you reload, save, or discard the draft.
-               Other widgets never move. Every change is kept as a local draft in this browser.
+               Drop onto a widget to swap when both fit; otherwise neighbors shift down.
+               Resizing never moves neighbors. Every change is kept as a local draft in this browser.
                Save publishes the complete dashboard. Discard draft restores the saved dashboard.</p>
         </details>
         <button class="db-command is-primary db-inspector-add" type="button"
@@ -217,6 +219,7 @@
                     <legend class="sb-visually-hidden">Available viewer filters</legend>
                     <label><input type="checkbox" data-live-filter="customer_ids"><span>Customer<small>Switch between customer accounts.</small></span></label>
                     <label><input type="checkbox" data-live-filter="seller_ids"><span>Seller<small>Focus on a seller's customers.</small></span></label>
+                    <label><input type="checkbox" data-live-filter="group_by_seller"><span>Group by seller<small>Group Details rows in supported widgets.</small></span></label>
                 </fieldset>
                 <p class="db-filter-rule-hint" id="dashboardViewerFilterHint"></p>
                 <button class="db-command" type="button" id="tryDashboardFilters" hidden>
@@ -237,7 +240,7 @@
         {% endif %}
         <section class="db-filter-section" id="dashboardLiveFilters" aria-label="Temporary dashboard filters"{% if manage_dashboard %} hidden{% endif %}>
             <h3>Filter dashboard</h3>
-            <p>Narrow the widgets in this view without changing the saved dashboard.</p>
+            <p>Filter or group widgets in this view without changing the saved dashboard.</p>
             <div class="db-filter-row" id="dashboardLiveControls"></div>
             <p class="db-filter-rule-hint" id="dashboardFilterCoverage" hidden></p>
             <section class="db-viewer-scope" id="dashboardViewerScope" hidden>
@@ -340,9 +343,11 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ui-connect-goals.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-ptof.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboard-drafts.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboard-dividers.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboards.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-dashboard-sync.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboard-requirements.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-dashboard-filters.js') }}" defer></script>
 {% if manage_dashboard %}

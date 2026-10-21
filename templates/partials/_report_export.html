@@ -88,6 +88,11 @@
         table.querySelectorAll('tbody tr').forEach(tr => {
             // Skip rows hidden by filters
             if (tr.style.display === 'none') return;
+            const groupLabel = tr.getAttribute('data-export-group-label');
+            if (groupLabel !== null) {
+                rows.push([groupLabel]);
+                return;
+            }
             const cells = [];
             tr.querySelectorAll('td').forEach((td, idx) => {
                 if (!skip.has(idx)) cells.push(cleanCellText(td));
@@ -233,6 +238,13 @@
             }
 
             bodyRows.forEach(tr => {
+                const groupLabel = tr.getAttribute('data-export-group-label');
+                if (tr.style.display !== 'none' && groupLabel !== null) {
+                    html += '<tr><th colspan="' + (headerCells.length - skip.size) +
+                        '" style="padding: 6px 10px; text-align: left;">' +
+                        escapeHtml(groupLabel) + '</th></tr>';
+                    return;
+                }
                 if (tr.style.display === 'none') return;
                 const cells = tr.querySelectorAll('td');
                 if (cells.length === 0) return;

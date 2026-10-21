@@ -1,0 +1,13 @@
+<th scope="col" data-sb-sort-type="text" data-export-label="Customer">Customer</th>
+{% if report.motion == 'renewals' %}
+<th scope="col" data-sb-sort-type="date" data-export-label="Next SQL expiration">Next SQL expiration</th>
+<th scope="col" data-sb-sort-type="number" data-export-label="Expiring $" title="Source-reported next SQL expiration amount.">Expiring $</th>
+{% if not sql_widget %}
+<th scope="col" data-sb-sort-type="number" data-export-label="SQL license cores" title="On-prem SQL license cores with SA.">SQL license cores</th>
+<th scope="col" data-sb-sort-type="number" data-export-label="Azure SQL IaaS cores" title="Estimated Azure cores, capped at licensed footprint.">Azure SQL IaaS cores</th>
+<th scope="col" data-sb-sort-type="number" data-export-label="Modeled ACR/mo" title="Finance-assumption model, not qualified pipeline or forecast.">Modeled ACR/mo</th>
+{% endif %}
+{% else %}
+<th scope="col" data-sb-sort-type="number" data-export-label="Discovered" title="Source-reported discovery count; unit not verified.">Discovered</th>
+<th scope="col" data-sb-sort-type="number" data-export-label="Subscriptions">Subscriptions</th>
+{% endif %}

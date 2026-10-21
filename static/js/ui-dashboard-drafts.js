@@ -27,7 +27,8 @@
             if (!config || typeof config !== 'object' || Array.isArray(config)
                 || Object.keys(config).some(key => !['scope', 'live_filters'].includes(key))
                 || !Array.isArray(config.live_filters)
-                || config.live_filters.some(key => !['customer_ids', 'seller_ids'].includes(key))) {
+                || config.live_filters.some(key =>
+                    !['customer_ids', 'seller_ids', 'group_by_seller'].includes(key))) {
                 throw new Error('This dashboard draft contains invalid live filter controls.');
             }
             validateFilters(config.scope);

@@ -11,10 +11,17 @@ SE_SPECIALTIES = {
 }
 
 
-def is_data_se() -> bool:
-    """Check SE mode and specialty, retaining the legacy Data default."""
+def has_specialty_access(specialty: str) -> bool:
+    """Include sellers in every specialty; otherwise use the saved SE specialty."""
     preference = UserPreference.query.order_by(UserPreference.id).first()
     if preference and preference.user_role == 'dss':
-        return False
+        return True
     value = preference.se_specialty if preference else None
-    return (value.strip().casefold() if value and value.strip() else DEFAULT_SE_SPECIALTY) == 'data'
+    return (
+        value.strip().casefold() if value and value.strip() else DEFAULT_SE_SPECIALTY
+    ) == specialty
+
+
+def is_data_se() -> bool:
+    """Allow Data-specialty features for Data SEs and sellers."""
+    return has_specialty_access('data')

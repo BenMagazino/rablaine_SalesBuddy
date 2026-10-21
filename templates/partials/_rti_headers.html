@@ -1,0 +1,5 @@
+<th data-sb-sort-type="text">Customer</th>
+{% for product in products %}
+<th data-sb-sort-type="number" title="Average monthly {{ product.label }} ACR across {{ period_label }}. Last three complete months, divided by 3. Current month excluded.">{{ 'ASA' if rti_widget|default(false) and product.key == 'stream_analytics' else product.label }}</th>
+{% endfor %}
+<th data-sb-sort-type="number" title="Combined average monthly Event Hubs, Stream Analytics and IoT ACR. Last three complete months, divided by 3. Current month excluded.">Total / mo</th>

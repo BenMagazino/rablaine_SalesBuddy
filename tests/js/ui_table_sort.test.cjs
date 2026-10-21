@@ -209,6 +209,20 @@ test('unavailable raw values remain last in both directions, including ties', ()
     assert.deepEqual(h.order(), ['r4', 'r2', 'r3', 'r0', 'r1', 'r5']);
 });
 
+test('a column can opt into empty values first without changing other columns', () => {
+    const h = fixture([{types: ['number', 'number'], rows: [
+        ['', '5'], ['200', ''], ['0', '2'], ['5', '1'], ['-', '3'],
+    ]}]);
+    h.headers[0].setAttribute('data-sb-sort-empty-first', '');
+    h.run();
+    h.button(0).click();
+    assert.deepEqual(h.order(), ['r0', 'r4', 'r2', 'r3', 'r1']);
+    h.button(0).click();
+    assert.deepEqual(h.order(), ['r0', 'r4', 'r1', 'r3', 'r2']);
+    h.button(1).click();
+    assert.deepEqual(h.order(), ['r3', 'r2', 'r4', 'r0', 'r1']);
+});
+
 test('strict formatted numeric fallback supports dollars, grouping, percent and parentheses', () => {
     const h = fixture([{rows: [
         [{text: '$1,250.50'}], [{text: '($2.50)'}], [{text: '0%'}],

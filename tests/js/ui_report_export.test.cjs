@@ -52,6 +52,28 @@ test('boolean and ordinary cell exports retain their original behavior', () => {
     })}), '$5,000 /mo risk');
 });
 
+test('seller group headings export without contaminating customer summary cells', () => {
+    const row = (label, values, display = '') => ({
+        style: {display},
+        getAttribute: () => label,
+        querySelectorAll: () => values.map(value => ({value})),
+    });
+    const rows = [
+        row('Seller: SQL owner', []),
+        row(null, ['SQL customer', '12']),
+        row('Seller: Hidden', [], 'none'),
+    ];
+    const table = {querySelectorAll: selector => selector === 'thead th'
+        ? [{value: 'Customer'}, {value: 'Discovered'}] : rows};
+    const extract = helper('tableToRows', {
+        getSkipColumns: () => new Set(),
+        cleanCellText: cell => cell.value,
+    });
+    assert.deepEqual(JSON.parse(JSON.stringify(extract(table))), [
+        ['Customer', 'Discovered'], ['Seller: SQL owner'], ['SQL customer', '12'],
+    ]);
+});
+
 test('report tables exclude native popup containers', () => {
     const pageTable = {closest: () => null}, popupTable = {closest: selector => {
         assert.equal(selector, 'dialog, [popover]');

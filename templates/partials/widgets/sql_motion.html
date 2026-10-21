@@ -1,0 +1,40 @@
+{% set report = instance.data %}
+{% set prefix = widget_id_prefix %}
+{% set detailed = instance.variant_key == 'detailed' %}
+{% set grouped = instance.group_by_seller|default(false) %}
+{% set sql_widget = true %}
+{% set seller_group_columns = 3 %}
+<section class="db-report-widget{% if detailed %} db-sql-details{% endif %}" aria-labelledby="{{ prefix }}title">
+    <header class="db-report-heading">
+        <h2 id="{{ prefix }}title">{{ report.title }}</h2>
+        <a href="{{ report.destination }}">Full report <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>
+    </header>
+    <p class="db-report-caption">{% if not report.snapshot %}SQL Motions data not loaded.{% elif report.motion == 'renewals' %}{{ report.count }} upcoming · {{ report.within_90_count }} within 90 days{% else %}{{ report.count }} customers · ESU protection unknown{% endif %}</p>
+    {% if not report.snapshot %}
+    <p class="db-report-empty">Sync SQL Motions to load both sources.</p>
+    {% elif detailed %}
+    {% if report.rows %}
+    <div class="db-sql-table-scroll" role="region" tabindex="0" aria-label="{{ report.title }} customers">
+        <table class="db-report-table" data-sb-sortable data-sb-sort-key="{{ prefix }}sql-{{ report.motion }}-{{ 'sellers' if grouped else 'flat' }}"
+               data-sb-sort-default-column="1" data-sb-sort-default-direction="{{ 'ascending' if report.motion == 'renewals' else 'descending' }}">
+            <thead><tr>{% include 'partials/_sql_motion_headers.html' %}</tr></thead>
+            {% for group in (report.seller_groups if grouped else [{'rows': report.rows}]) %}
+            <tbody{% if grouped %} class="db-report-seller-group"{% endif %}>
+                {% if grouped %}{% include 'partials/widgets/_seller_group_header.html' %}{% endif %}
+                {% set rows = group.rows %}{% include 'partials/_sql_motion_rows.html' %}
+            </tbody>
+            {% endfor %}
+        </table>
+    </div>
+    {% else %}<p class="db-report-empty">{% if report.motion == 'renewals' %}No upcoming SQL expirations in this scope.{% else %}No SQL 2016 discovery evidence in this scope. Missing data is not a clean bill of health.{% endif %}</p>{% endif %}
+    {% else %}
+    <dl class="db-modernization-metrics">
+        <div><dt>{{ 'Upcoming customers' if report.motion == 'renewals' else 'SQL 2016 customers' }}</dt><dd>{{ report.count }}</dd></div>
+        {% if report.motion == 'renewals' %}
+        <div><dt>Within 90 days</dt><dd>{{ report.within_90_count }}</dd></div>
+        {% else %}
+        <div><dt title="Source-reported discovery count; unit not verified.">Discovered</dt><dd>{{ '{:,.0f}'.format(report.discovered_count) }}</dd></div>
+        {% endif %}
+    </dl>
+    {% endif %}
+</section>

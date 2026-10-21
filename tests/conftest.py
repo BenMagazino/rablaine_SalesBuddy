@@ -156,6 +156,12 @@ def client(app):
 
 
 @pytest.fixture
+def dashboard_sources_ready(monkeypatch):
+    """Isolate widget presentation/filter tests from separately tested source readiness."""
+    monkeypatch.setattr('app.services.dashboard_sync.get_source_sync', lambda *args: None)
+
+
+@pytest.fixture
 def runner(app):
     """Create a test CLI runner."""
     return app.test_cli_runner()

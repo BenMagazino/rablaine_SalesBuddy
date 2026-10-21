@@ -179,14 +179,16 @@
                             (grouped ? row.rows[0] : row)?.cells[column.index], column.type,
                         )]))]));
                     if (next) {
-                        const type = columns.find(column => column.index === next.column).type;
+                        const column = columns.find(column => column.index === next.column);
+                        const type = column.type;
+                        const emptyFirst = column.header.hasAttribute('data-sb-sort-empty-first');
                         const ordinals = new Map(original.map((row, index) => [row, index]));
                         movable.sort((left, right) => {
                             const a = values.get(left).get(next.column);
                             const b = values.get(right).get(next.column);
                             if (a === null || b === null) {
                                 return a === b ? ordinals.get(left) - ordinals.get(right) :
-                                    a === null ? 1 : -1;
+                                    (a === null ? 1 : -1) * (emptyFirst ? -1 : 1);
                             }
                             const delta = type === 'text' ? collator.compare(a, b) :
                                 type === 'date' ? (a > b ? 1 : a < b ? -1 : 0) : a - b;

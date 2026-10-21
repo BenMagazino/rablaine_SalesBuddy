@@ -67,6 +67,52 @@ def _payload(tpids):
     }
 
 
+def test_fabric_widgets_share_one_overview_without_changing_results(
+    app, client, fabric_accounts, monkeypatch, dashboard_sources_ready,
+):
+    """Expansion, trial and RTI reuse one overview but keep independent output and scope."""
+    from app.services.rti import get_rti_widget
+    from app.services.request_cache import shared_read_scope
+    from app.models import Dashboard, DashboardWidget
+
+    monkeypatch.setattr(service, "pull_fabric_consumption", lambda tpids, progress: _payload(tpids))
+    service.sync_fabric_consumption()
+    reference = date(2026, 10, 8)
+    providers = (
+        service.get_fabric_expansion_widget, service.get_fabric_trial_conversion_widget,
+        get_rti_widget,
+    )
+    expected = [provider(reference) for provider in providers]
+    report = Mock(wraps=service.get_fabric_report)
+    monkeypatch.setattr(service, 'get_fabric_report', report)
+    with app.test_request_context(), shared_read_scope():
+        actual = [provider(reference) for provider in providers]
+        assert actual == expected
+        assert report.call_count == 1
+        assert service.get_fabric_expansion_widget(reference, customer_ids=())['details']['rows'] == []
+        assert service.get_fabric_trial_conversion_widget(
+            reference, customer_ids=(),
+        )['counts']['customers_with_trials'] == 0
+        assert get_rti_widget(reference, customer_ids=())['rows'] == []
+        assert [provider(reference) for provider in providers] == expected
+        assert report.call_count == 1
+    with app.test_request_context(), shared_read_scope():
+        assert service.get_fabric_expansion_widget(reference) == expected[0]
+    assert report.call_count == 2
+    dashboard = Dashboard(name='Shared Fabric reads')
+    for index, key in enumerate(('fabric.expansion', 'fabric.trial_conversion', 'fabric.rti')):
+        dashboard.widgets.append(DashboardWidget(
+            widget_key=key, variant_key='detailed', layout_row=index * 8,
+        ))
+    db.session.add(dashboard)
+    db.session.commit()
+    for expected_calls in (3, 4):
+        response = client.get(f'/api/reports/dashboards/{dashboard.id}')
+        assert response.status_code == 200
+        assert all(widget['data'] is not None for widget in response.json['dashboard']['widgets'])
+        assert report.call_count == expected_calls
+
+
 def test_manual_import_and_read_preserve_nulls_and_true_denominator(fabric_accounts, monkeypatch):
     """Import all accounts and retain nulls, capacity detail, and UTC series."""
     first, empty = fabric_accounts

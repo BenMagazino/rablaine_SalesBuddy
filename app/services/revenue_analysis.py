@@ -921,16 +921,64 @@ def get_revenue_attention_widget(
     reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
 ) -> dict:
     """Read the complete unreviewed analyzer queue without running revenue analysis."""
+    return _get_revenue_attention_data(customer_ids)
+
+
+def get_database_expansion_widget(
+    reference: date | None = None, *, customer_ids: tuple[int, ...] | None = None,
+) -> dict:
+    """Present existing database growth and risk recommendations, without new analysis."""
+    return _get_revenue_attention_data(customer_ids, database_motion=True)
+
+
+def _revenue_seller_name() -> str | None:
+    """Resolve the active seller without broadening an invalid seller-mode selection."""
     from app.services.seller_mode import get_seller_mode_seller_id
 
     seller_id = get_seller_mode_seller_id() if has_request_context() else None
     seller = db.session.get(Seller, seller_id) if seller_id else None
     if seller_id and seller is None:
         raise ValueError('The selected seller no longer exists.')
-    seller_name = seller.name if seller else None
+    return seller.name if seller else None
+
+
+def _database_expansion_query(
+    customer_ids: tuple[int, ...] | None, seller_name: str | None,
+) -> Query[RevenueAnalysis]:
+    """Share pending database outreach eligibility between the widget and analyzer preset."""
+    return get_actionable_analysis_query(
+        min_priority=20, seller_name=seller_name, customer_ids=customer_ids,
+    ).filter(
+        RevenueAnalysis.bucket == 'Databases',
+        RevenueAnalysis.review_status.in_(('new', 'to_be_reviewed')),
+        db.or_(
+            RevenueAnalysis.recommended_action == 'EXPANSION OUTREACH',
+            RevenueAnalysis.recommended_action.like('CHECK-IN%'),
+        ),
+    )
+
+
+def get_database_expansion_analyses(
+    *, customer_ids: tuple[int, ...] | None = None,
+) -> list[RevenueAnalysis]:
+    """Read every matching saved signal before any cross-bucket display limit."""
+    return _database_expansion_query(customer_ids, _revenue_seller_name()).options(
+        joinedload(RevenueAnalysis.customer).joinedload(Customer.seller),
+    ).order_by(RevenueAnalysis.priority_score.desc(), RevenueAnalysis.id).all()
+
+
+def _get_revenue_attention_data(
+    customer_ids: tuple[int, ...] | None, *, database_motion: bool = False,
+) -> dict:
+    """Serialize saved analyzer signals for general or database-focused presentations."""
+    from app.services.dashboard_filters import group_rows_by_seller
+
+    seller_name = _revenue_seller_name()
     query = get_actionable_analysis_query(min_priority=20, seller_name=seller_name)
     if customer_ids is not None:
         query = query.filter(RevenueAnalysis.customer_id.in_(customer_ids))
+    if database_motion:
+        query = _database_expansion_query(customer_ids, seller_name)
     analyses = query.options(
         joinedload(RevenueAnalysis.customer).joinedload(Customer.seller),
     ).filter(RevenueAnalysis.review_status.in_(['new', 'to_be_reviewed'])).order_by(
@@ -942,6 +990,8 @@ def get_revenue_attention_widget(
         coverage = coverage.filter(RevenueAnalysis.customer_id.in_(customer_ids))
     if seller_name:
         coverage = coverage.filter(RevenueAnalysis.seller_name == seller_name)
+    if database_motion:
+        coverage = coverage.filter(RevenueAnalysis.bucket == 'Databases')
     timestamps = [analysis.analyzed_at for analysis in analyses]
     notices = [
         f'Last {label} {status["state"]}; showing saved analysis.'
@@ -951,8 +1001,9 @@ def get_revenue_attention_widget(
         )
         if status and status['state'] in ('failed', 'incomplete')
     ]
-    return {
+    data = {
         'destination': '/reports/revenue', 'rows': rows,
+        'seller_groups': group_rows_by_seller(rows),
         'has_analysis': coverage.first() is not None, 'pending_count': len(rows),
         'at_risk': _attention_total(rows, 'at_risk'),
         'opportunity': _attention_total(rows, 'opportunity'),
@@ -962,6 +1013,14 @@ def get_revenue_attention_widget(
         if timestamps else None,
         'seller_name': seller_name, 'notices': notices,
     }
+    if database_motion:
+        data.update(
+            database_motion=True,
+            destination='/reports/revenue?view=database-expansion',
+            growth_count=sum(row['action'] == 'EXPANSION OUTREACH' for row in rows),
+            risk_count=sum(row['action'].startswith('CHECK-IN') for row in rows),
+        )
+    return data
 
 
 def _attention_total(rows: list[dict], key: str) -> float | None:
@@ -979,7 +1038,9 @@ def _attention_row(analysis: RevenueAnalysis) -> dict:
         'customer_name': customer.get_display_name() if customer else analysis.customer_name,
         'seller_id': seller.id if seller else None,
         'seller_name': seller.name if seller else analysis.seller_name,
+        'seller': {'id': seller.id, 'name': seller.name} if seller else None,
         'bucket': analysis.bucket, 'category': analysis.category,
+        'action': analysis.recommended_action,
         'priority': analysis.priority_score, 'at_risk': analysis.dollars_at_risk,
         'opportunity': analysis.dollars_opportunity,
         'rationale': analysis.engagement_rationale,

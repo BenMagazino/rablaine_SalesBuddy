@@ -1,6 +1,7 @@
 """Tests for FY27 Data Connect Goals calculations."""
 from datetime import date, datetime, timezone
 import json
+from unittest.mock import Mock
 
 from bs4 import BeautifulSoup
 import pytest
@@ -74,10 +75,52 @@ def _milestone(customer_id: int, *, number: str, on_team: bool,
     )
 
 
+def test_team_and_hva_share_one_scoped_milestone_load(app, monkeypatch):
+    """Reuse the population, not results from a different customer selection."""
+    from app.services.request_cache import shared_read_scope
+
+    with app.app_context():
+        customer = Customer(name='Shared milestone scope', tpid=98920101)
+        db.session.add(customer)
+        db.session.flush()
+        db.session.add_all([
+            _milestone(customer.id, number='SHARED-TEAM', on_team=True, monthly_usage=100),
+            _milestone(customer.id, number='SHARED-OFF', on_team=False, monthly_usage=300),
+        ])
+        db.session.commit()
+        reference, scope = date(2026, 10, 21), (customer.id,)
+        expected = [
+            provider(reference, customer_ids=scope) for provider in (
+                connect_goals.get_team_coverage_widget, connect_goals.get_hva_coverage_widget,
+            )
+        ]
+        query = Mock(wraps=connect_goals._milestone_scope)
+        monkeypatch.setattr(connect_goals, '_milestone_scope', query)
+        with app.test_request_context(), shared_read_scope():
+            assert connect_goals.get_team_coverage_widget(
+                reference, customer_ids=scope,
+            ) == expected[0]
+            assert connect_goals.get_hva_coverage_widget(
+                reference, customer_ids=scope,
+            ) == expected[1]
+            assert query.call_count == 1
+            assert connect_goals.get_hva_coverage_widget(
+                reference, customer_ids=(),
+            )['total_count'] == 0
+            assert query.call_count == 2
+        with app.test_request_context(), shared_read_scope():
+            assert connect_goals.get_team_coverage_widget(
+                reference, customer_ids=scope,
+            ) == expected[0]
+        assert query.call_count == 3
+
+
 @pytest.mark.parametrize('selected', [
     ['Databases'], ['Fabric'], ['Infra'], ['Infra', 'AI'],
 ])
-def test_setup_accepts_any_confirmed_compensation_buckets(client, app, selected):
+def test_setup_accepts_any_confirmed_compensation_buckets(
+    client, app, selected, dashboard_sources_ready,
+):
     """Compensation choices need not contain either of the Data report's goal buckets."""
     with app.app_context():
         imported = RevenueImport(filename='setup-test')
@@ -115,14 +158,14 @@ def test_setup_accepts_any_confirmed_compensation_buckets(client, app, selected)
     )
 
 
-def test_connect_goals_dashboard_shows_widget_setup_gate(client):
+def test_connect_goals_dashboard_shows_widget_setup_gate(client, dashboard_sources_ready):
     """The template uses widget-level setup rather than rendering fake values."""
     page = _goals_dashboard_page(client)
     assert len(page.select('.db-widget [data-widget-requirement]')) == 4
     assert 'Confirm your FY27 compensation buckets' in page.get_text()
 
 
-def test_connect_goals_template_renders_action_metrics(client, app):
+def test_connect_goals_template_renders_action_metrics(client, app, dashboard_sources_ready):
     """The normal dashboard preserves all shared metric and drill-through content."""
     with app.app_context():
         _seed_revenue_buckets()

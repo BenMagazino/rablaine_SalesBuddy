@@ -322,7 +322,9 @@ def test_new_widgets_append_below_and_removal_does_not_compact_holes(client):
     assert [(item['id'], item['layout_row']) for item in items] == [(second, 20), (third, 28)]
 
 
-def test_preview_and_placed_metric_use_same_renderer_without_a_write(client, monkeypatch):
+def test_preview_and_placed_metric_use_same_renderer_without_a_write(
+    client, monkeypatch, dashboard_sources_ready,
+):
     """The library uses shared live providers, with no sample figures or new placements."""
     monkeypatch.setattr(
         connect_goals, 'get_setup_state', lambda reference=None: {'ready': True},

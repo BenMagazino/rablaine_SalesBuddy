@@ -2,7 +2,10 @@
 Revenue routes for Sales Buddy.
 Handles revenue data import, analysis, and attention dashboard.
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, Response, stream_with_context
+from flask import (
+    Blueprint, Response, abort, flash, g, jsonify, redirect, render_template, request,
+    stream_with_context, url_for,
+)
 import csv
 import json
 import time
@@ -38,12 +41,12 @@ def _redirect_revenue_dashboard():
 
 @revenue_bp.route('/revenue/reports/new-synapse-users')
 def _redirect_new_synapse_users():
-    return redirect(url_for('revenue.report_synapse_customers', mode='new'), code=301)
+    return redirect(url_for('reports.report_fabric_modernization'), code=301)
 
 
 @revenue_bp.route('/reports/new-synapse-users')
 def _redirect_new_synapse_users_short():
-    return redirect(url_for('revenue.report_synapse_customers', mode='new'), code=301)
+    return redirect(url_for('reports.report_fabric_modernization'), code=301)
 
 
 @revenue_bp.route('/revenue/reports')
@@ -59,6 +62,19 @@ def _redirect_revenue_import():
 @revenue_bp.route('/reports/revenue')
 def revenue_dashboard():
     """Main revenue attention dashboard."""
+    from app.services.dashboard_filters import report_customer_scope
+    from app.services.revenue_analysis import get_database_expansion_analyses
+    from app.services.se_specialty import has_specialty_access
+
+    motion = request.args.get('view') == 'database-expansion'
+    customer_scope = None
+    if motion:
+        if not has_specialty_access('data'):
+            abort(403, description='Database Expansion is available for Data SEs and sellers.')
+        try:
+            customer_scope = report_customer_scope(request.args)
+        except ValueError as exc:
+            return jsonify(success=False, error=str(exc)), 400
     seller_mode_sid = get_seller_mode_seller_id()
     seller_mode_name = None
     if seller_mode_sid:
@@ -66,8 +82,10 @@ def revenue_dashboard():
         seller_mode_name = seller_obj.name if seller_obj else None
 
     # Get actionable analyses (scoped to seller in seller mode)
-    analyses = get_actionable_analyses(
-        min_priority=20, limit=50, seller_name=seller_mode_name
+    analyses = get_database_expansion_analyses(customer_ids=customer_scope) if motion else (
+        get_actionable_analyses(
+            min_priority=20, limit=50, seller_name=seller_mode_name,
+        )
     )
     
     # Group by category for summary
@@ -114,6 +132,8 @@ def revenue_dashboard():
         import_status=import_status,
         analysis_status=analysis_status,
         seller_id_map=seller_id_map,
+        database_motion=motion,
+        dashboard_customer_scope=customer_scope,
     )
 
 
@@ -935,11 +955,11 @@ def reports_list():
     """List of available bespoke reports."""
     reports = [
         {
-            'id': 'synapse-customers',
-            'name': 'Synapse Customers',
-            'description': 'New and current customers using Azure Synapse Analytics, grouped by seller.',
+            'id': 'fabric-modernization',
+            'name': 'Fabric Modernization',
+            'description': 'Recent Synapse, AAS, ADX and Azure Databricks revenue with Fabric spend.',
             'icon': 'bi-database-gear',
-            'url': url_for('revenue.report_synapse_customers')
+            'url': url_for('reports.report_fabric_modernization')
         },
     ]
     
@@ -948,73 +968,7 @@ def reports_list():
 
 @revenue_bp.route('/reports/synapse-customers')
 def report_synapse_customers():
-    """Report: New and current customers using Azure Synapse Analytics."""
-    mode = request.args.get('mode', 'new').lower()
-    if mode not in ('new', 'current'):
-        mode = 'new'
-
-    product_name = 'Azure Synapse Analytics'
-    from app.services.revenue_sync import has_revenue_data as _has_revenue
-    has_revenue_data = _has_revenue()
-
-    if not has_revenue_data:
-        return render_template(
-            'revenue_report_synapse_customers.html',
-            has_revenue_data=False,
-            mode=mode,
-            sellers={},
-            users=[],
-            total_count=0,
-            lookback_months=[],
-            product_name=product_name,
-        )
-
-    from app.services.revenue_import import (
-        get_new_product_users,
-        get_current_product_users,
-        get_months_in_database,
-    )
-
-    if mode == 'current':
-        users = get_current_product_users(product_name)
-    else:
-        users = get_new_product_users(product_name, months_lookback=6)
-
-    # Group by seller
-    sellers: dict = {}
-    for user in users:
-        seller = user['seller_name'] or '(No Seller Assigned)'
-        sellers.setdefault(seller, []).append(user)
-
-    # In current mode, sort each seller group by latest month revenue desc
-    if mode == 'current':
-        for seller_customers in sellers.values():
-            seller_customers.sort(
-                key=lambda c: c.get('latest_month_revenue') or 0,
-                reverse=True,
-            )
-
-    months = get_months_in_database()
-    # months is sorted newest -> oldest. Drop the current (in-progress) calendar
-    # month so "latest" means latest *complete* month (matches the service-side
-    # filter used to compute latest_month_revenue and avg_4mo_revenue).
-    from datetime import date as _date
-    _today = _date.today()
-    months_complete = [
-        m for m in months
-        if not (m['month_date'].year == _today.year and m['month_date'].month == _today.month)
-    ]
-    # Take the most recent 6 complete months in chronological order for the
-    # header range label (oldest -> newest).
-    lookback_months = list(reversed(months_complete[:6]))
-
-    return render_template(
-        'revenue_report_synapse_customers.html',
-        has_revenue_data=True,
-        mode=mode,
-        sellers=sellers,
-        users=users,
-        total_count=len(users),
-        lookback_months=lookback_months,
-        product_name=product_name,
-    )
+    """Keep existing report bookmarks pointed at the replacement report."""
+    return redirect(url_for(
+        'reports.report_fabric_modernization', embed=request.args.get('embed'),
+    ), code=301)

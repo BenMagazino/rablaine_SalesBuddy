@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const {selections, configuration} = require('../../static/js/ui-dashboard-filters.js');
+const {selections, liveSelections, configuration} = require('../../static/js/ui-dashboard-filters.js');
 const {validate} = require('../../static/js/ui-dashboard-drafts.js');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -28,6 +28,19 @@ test('invalid filters cannot become unrestricted selections', () => {
         {live_filters: {}}, {live_filters: [['customer_ids']]}, {scope: []}, {scope: null}]) {
         assert.throws(() => configuration(value), /Invalid/);
     }
+});
+
+test('seller grouping is a strict live choice, not a customer scope', () => {
+    assert.deepEqual(liveSelections({seller_ids: [7], group_by_seller: true}),
+        {customer_ids: [], seller_ids: [7], group_by_seller: true});
+    assert.deepEqual(liveSelections({group_by_seller: false}), selections());
+    for (const value of [null, 0, 1, 'true', [], {}]) {
+        assert.throws(() => liveSelections({group_by_seller: value}), /boolean/);
+    }
+    assert.throws(() => selections({group_by_seller: true}), /Invalid/);
+    assert.throws(() => configuration({scope: {group_by_seller: true}}), /Invalid/);
+    assert.deepEqual(configuration({live_filters: ['group_by_seller']}).live_filters,
+        ['group_by_seller']);
 });
 
 function draft() {
@@ -60,11 +73,22 @@ test('corrupted draft filters produce errors instead of clearing saved boundarie
     assert.throws(() => validate(current), /filter/);
 });
 
+test('drafts preserve grouping availability, not the current viewer grouping selection', () => {
+    const current = draft();
+    current.filter_config.live_filters.push('group_by_seller');
+    assert.equal(validate(current), current);
+    current.widgets[0].filters.group_by_seller = true;
+    assert.throws(() => validate(current), /filter/);
+    delete current.widgets[0].filters.group_by_seller;
+    current.filter_config.scope.group_by_seller = true;
+    assert.throws(() => validate(current), /filter/);
+});
+
 function filterUI(editing = true, liveFilters = ['customer_ids', 'seller_ids']) {
     const all = [];
     const document = {
         readyState: 'complete',
-        addEventListener() {},
+        addEventListener(type, handler) { this[type] = handler; },
         createTextNode(text) { return {textContent: text}; },
         querySelectorAll(selector) {
             if (selector === '[data-live-filter]') return inputs;
@@ -95,6 +119,10 @@ function filterUI(editing = true, liveFilters = ['customer_ids', 'seller_ids']) 
             getAttribute(key) { return this.attributes[key]; },
             addEventListener(type, handler) { this[type] = handler; },
             contains(target) { return target === this || this.children.some(c => c.contains?.(target)); },
+            closest(selector) {
+                return this.className?.split(' ').includes(selector.slice(1))
+                    ? this : this.parentElement?.closest(selector) || null;
+            },
             querySelectorAll(selector) {
                 return all.filter(child => this.contains(child)
                     && child.className === 'db-filter-picker' && child.open);
@@ -123,15 +151,18 @@ function filterUI(editing = true, liveFilters = ['customer_ids', 'seller_ids']) 
         editing, config: {scope: {}, live_filters: liveFilters},
         live: {}, choices: {customer_ids: [{id: 1, name: 'First account'},
             {id: 2, name: 'Second account'}], seller_ids: [{id: 7, name: 'First owner'}]},
-        widgets: [{supported: ['customer_ids', 'seller_ids']}],
+        widgets: [{supported: ['customer_ids', 'seller_ids',
+            ...(liveFilters.includes('group_by_seller') ? ['group_by_seller'] : [])]}],
         catalog: [{key: 'test.widget', title: 'Test widget'}],
     });
-    const inputs = editing ? ['customer_ids', 'seller_ids'].map(key => {
+    const inputs = editing ? ['customer_ids', 'seller_ids', 'group_by_seller'].map(key => {
         const input = node();
         input.dataset.liveFilter = key;
         return input;
     }) : [];
+    nodes.dashboardFiltersPanel.className = 'db-filters-panel';
     nodes.dashboardFiltersPanel.hidden = true;
+    nodes.dashboardLiveFilters.append(nodes.dashboardLiveControls);
     nodes.dashboardFiltersPanel.append(nodes.dashboardFiltersTitle, nodes.dashboardLiveFilters,
         nodes.dashboardViewerActions);
     if (editing) {
@@ -206,6 +237,125 @@ test('widget filters show inheritance and retain open checkboxes across edits', 
     await new Promise(setImmediate);
 });
 
+test('one viewer grouping checkbox updates all supported widgets without editing defaults', async () => {
+    const {api, nodes, trigger, editor, refreshes} = filterUI(true, ['group_by_seller']);
+    const supported = ['customer_ids', 'seller_ids', 'group_by_seller'];
+    editor.setWidgetFilters = () => assert.fail('Temporary grouping must not edit widget filters');
+    editor.setFilterConfig = () => assert.fail('Temporary grouping must not edit dashboard settings');
+    api.configure([{supported}, {supported: ['customer_ids', 'seller_ids']}], false);
+    api.select({id: 1, key: 'test.widget', filters: {}}, supported);
+    assert.equal(nodes.widgetFilterControls.children.length, 2);
+    const before = JSON.stringify(api.context().dashboard);
+    api.setPreview(true);
+    const label = nodes.dashboardLiveControls.children[0];
+    assert.equal(nodes.dashboardLiveControls.children.length, 1);
+    assert.equal(label.className, 'db-live-group-filter');
+    assert.equal(label.children[1].textContent, 'Group by seller');
+    const checkbox = label.children[0];
+    assert.equal(checkbox.checked, false);
+    checkbox.checked = true;
+    trigger(checkbox, 'change');
+    assert.equal(api.context().live.group_by_seller, true);
+    assert.equal(Object.hasOwn(api.context().widget, 'group_by_seller'), false);
+    assert.equal(nodes.dashboardFilterCount.textContent, '1');
+    assert.equal(nodes.dashboardFilterCoverage.textContent, 'Applies to 1 of 2 widgets');
+    assert.equal(nodes.resetDashboardFilters.disabled, false);
+    checkbox.checked = false;
+    trigger(checkbox, 'change');
+    assert.equal(Object.hasOwn(api.context().live, 'group_by_seller'), false);
+    assert.equal(nodes.dashboardFilterCount.hidden, true);
+    checkbox.checked = true;
+    trigger(checkbox, 'change');
+    trigger(nodes.resetDashboardFilters, 'click');
+    assert.equal(Object.hasOwn(api.context().live, 'group_by_seller'), false);
+    assert.equal(nodes.dashboardLiveControls.children[0].children[0].checked, false);
+    assert.equal(nodes.resetDashboardFilters.disabled, true);
+    assert.equal(JSON.stringify(api.context().dashboard), before);
+    assert.equal(nodes.dashboardScopeControls.children.length, 2);
+    await new Promise(setImmediate);
+    assert.equal(refreshes(), 4);
+});
+
+test('editor can enable and disable grouping as an available viewer filter', async () => {
+    const {api, nodes, trigger, inputs, editor} = filterUI();
+    api.configure([{supported: ['customer_ids', 'seller_ids', 'group_by_seller']}], false);
+    const changes = [];
+    editor.setFilterConfig = value => {
+        changes.push(JSON.parse(JSON.stringify(value)));
+        api.restore(value);
+    };
+    const checkbox = inputs.find(input => input.dataset.liveFilter === 'group_by_seller');
+    assert.equal(checkbox.disabled, false);
+    checkbox.checked = true;
+    trigger(checkbox, 'change');
+    assert.deepEqual(changes[0].live_filters, ['customer_ids', 'seller_ids', 'group_by_seller']);
+    assert.equal(checkbox.checked, true);
+    assert.equal(nodes.dashboardLiveControls.children.length, 3);
+    assert.match(nodes.dashboardViewerFilterHint.textContent, /Group by seller/);
+    assert.equal(Object.hasOwn(api.context().live, 'group_by_seller'), false);
+    checkbox.checked = false;
+    trigger(checkbox, 'change');
+    assert.deepEqual(changes[1].live_filters, ['customer_ids', 'seller_ids']);
+    assert.equal(nodes.dashboardLiveControls.children.length, 2);
+    await new Promise(setImmediate);
+});
+
+test('expanded seller list stays open when grouping is clicked, retaining search and scroll', async () => {
+    const {api, nodes, document, trigger} = filterUI(false, ['seller_ids', 'group_by_seller']);
+    trigger(nodes.openDashboardFilters, 'click');
+    const seller = nodes.dashboardLiveControls.children[0];
+    const search = seller.children[1].children[0];
+    const list = seller.children[1].children[2];
+    seller.open = true;
+    search.value = 'owner';
+    trigger(search, 'input');
+    list.scrollTop = 36;
+    const checkbox = nodes.dashboardLiveControls.children[1].children[0];
+    assert.equal(document.pointerdown, undefined);
+    assert.equal(seller.open, true);
+    checkbox.checked = true;
+    trigger(checkbox, 'change');
+    await new Promise(setImmediate);
+    assert.equal(api.context().live.group_by_seller, true);
+    assert.equal(nodes.dashboardLiveControls.children[0], seller);
+    assert.equal(seller.open, true);
+    assert.equal(search.value, 'owner');
+    assert.equal(list.scrollTop, 36);
+    trigger(seller, 'keydown', {key: 'Escape'});
+    assert.equal(seller.open, false);
+    assert.equal(document.activeElement, seller.children[0]);
+});
+
+test('sidebar lists stay open independently until explicitly collapsed', () => {
+    const {nodes, document, trigger} = filterUI(false);
+    const [customer, seller] = nodes.dashboardLiveControls.children;
+    customer.open = true;
+    seller.open = true;
+    assert.equal(customer.open, true);
+    assert.equal(seller.open, true);
+    assert.equal(document.pointerdown, undefined);
+    assert.equal(customer.open, true);
+    assert.equal(seller.open, true);
+    trigger(nodes.closeDashboardFilters, 'click');
+    assert.equal(customer.open, false);
+    assert.equal(seller.open, false);
+});
+
+test('published viewer exposes grouping without any editor-only widget controls', () => {
+    const {api, nodes, trigger} = filterUI(false, ['group_by_seller']);
+    assert.equal(nodes.openDashboardFilters.hidden, false);
+    trigger(nodes.openDashboardFilters, 'click');
+    const checkbox = nodes.dashboardLiveControls.children[0].children[0];
+    checkbox.checked = true;
+    trigger(checkbox, 'change');
+    assert.equal(api.context().live.group_by_seller, true);
+    assert.equal(nodes.widgetFilterControls, undefined);
+    api.configure([{supported: ['customer_ids']}], false);
+    assert.equal(nodes.dashboardLiveControls.children.length, 0);
+    assert.equal(nodes.openDashboardFilters.hidden, true);
+    assert.equal(Object.hasOwn(api.context().live, 'group_by_seller'), false);
+});
+
 test('preview switches the open panel to temporary filters without exposing saved settings', async () => {
     const {api, nodes, trigger} = filterUI();
     trigger(nodes.openDashboardFilters, 'click');
@@ -233,15 +383,54 @@ test('preview switches the open panel to temporary filters without exposing save
     assert.equal(nodes.openDashboardFilters.hidden, true);
     assert.equal(nodes.dashboardLiveFilters.hidden, true);
     assert.equal(nodes.dashboardFilterSettings.hidden, false);
+    assert.equal(nodes.dashboardViewerActions.hidden, true);
+    assert.equal(nodes.dashboardFilterCount.hidden, true);
+    assert.equal(nodes.openDashboardFilters.classList.values.has('is-active'), false);
+    assert.equal(api.context().live.customer_ids[0], 1);
+    api.setPreview(true);
+    assert.equal(nodes.dashboardFilterCount.textContent, '1');
+    assert.equal(nodes.dashboardFilterCount.hidden, false);
     assert.equal(nodes.dashboardViewerActions.hidden, false);
-    assert.match(nodes.dashboardTemporaryFilterHint.textContent, /Preview filters are still applied/);
     trigger(nodes.resetDashboardFilters, 'click');
+    api.setPreview(false);
     assert.equal(nodes.dashboardLiveFilters.hidden, true);
     assert.equal(nodes.resetDashboardFilters.disabled, true);
     assert.equal(nodes.dashboardViewerActions.hidden, true);
     assert.equal(nodes.dashboardFilterCount.hidden, true);
     assert.equal(JSON.stringify(api.context().dashboard), before);
     await new Promise(setImmediate);
+});
+
+test('active filter indications are viewer-only while preview selections are retained', async () => {
+    for (const key of ['customer_ids', 'seller_ids', 'group_by_seller']) {
+        const {api, nodes, trigger} = filterUI(true,
+            ['customer_ids', 'seller_ids', 'group_by_seller']);
+        const before = JSON.stringify(api.context().dashboard);
+        api.setPreview(true);
+        const index = ['customer_ids', 'seller_ids', 'group_by_seller'].indexOf(key);
+        const control = nodes.dashboardLiveControls.children[index];
+        const checkbox = key === 'group_by_seller' ? control.children[0]
+            : control.children[1].children[2].children[0].children[0];
+        checkbox.checked = true;
+        trigger(checkbox, 'change');
+        assert.equal(nodes.dashboardFilterCount.textContent, '1');
+        assert.equal(nodes.openDashboardFilters.classList.values.has('is-active'), true);
+        api.setPreview(false);
+        assert.equal(nodes.dashboardFilterCount.hidden, true);
+        assert.equal(nodes.openDashboardFilters.classList.values.has('is-active'), false);
+        assert.equal(nodes.openDashboardFilters.attributes['aria-label'], 'Filters');
+        assert.equal(nodes.openDashboardFilters.title, 'Open filters');
+        assert.equal(nodes.dashboardViewerActions.hidden, true);
+        assert.equal(nodes.dashboardLiveFilters.hidden, true);
+        api.setPreview(true);
+        assert.equal(nodes.dashboardFilterCount.hidden, false);
+        assert.equal(nodes.dashboardFilterCount.textContent, '1');
+        assert.equal(nodes.openDashboardFilters.classList.values.has('is-active'), true);
+        assert.equal(nodes.dashboardViewerActions.hidden, false);
+        assert.equal(checkbox.checked, true);
+        assert.equal(JSON.stringify(api.context().dashboard), before);
+        await new Promise(setImmediate);
+    }
 });
 
 test('published panel contains only temporary filters and read-only scope', () => {

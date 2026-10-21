@@ -141,7 +141,12 @@ standalone UI iterations using entirely fictional data. See the
 [archive guide](design-studies/README.md) for validation and capture instructions.
 
 - **Native desktop workbench** - application-owned layouts, browser defaults, controls and Graphite, Midnight, Harbor and Carbon dark/light themes replace the Bootstrap UI framework. Choose your theme in Settings > Appearance; the palette saves independently of the Light/Dark switch and follows you across pages and restarts. Independent Bootstrap Icons remain. Shared shortcuts respect guarded editors and dialogs, and closed overlays do not consume the reading area. Ctrl+Enter saves notes from the rich-text editor through the normal Save button, including validation and pending-save guards.
-- **SE specialty preference** - Settings > SE Mode lets you choose Data SE, Infra SE, Apps and AI SE, or Other. The choice saves immediately, defaults to Data SE, and survives backups and switching modes. Data SE enables the customer Fabric tab and weekly Fabric 360 refreshes.
+- **SE specialty preference** - Settings > SE Mode lets you choose Data SE, Infra SE, Apps and AI SE, or Other. The choice saves immediately, defaults to Data SE, and survives backups and switching modes. Sellers receive features for every SE specialty, regardless of their saved SE selection. Data SEs and sellers get the customer Fabric tab and weekly Fabric 360 refreshes.
+- **Fabric Acquisition** - Whitespace Analysis includes a Data SE/seller acquisition tab and shared dashboard Summary/Details widgets. Compare average monthly AI, Databases and Other Analytics ACR across the current month plus the previous three calendar months, dividing the four-month total by four. The current month is partial. Other Analytics excludes Fabric Capacity. The queue excludes positive monthly net Fabric ACR, including this month, and treats missing revenue observations as $0. Enable **All customers with no Fabric spend** to include all current customers regardless of other spend, even without any revenue records. Accounts flagged stale after dropping out of account sync are excluded from the report and widgets, without deleting their saved data. Widgets still require at least $2,000/month combined AI, Databases and Other Analytics ACR. Missing data does not prove non-adoption.
+- **Fabric Modernization** - Report and Summary/Details widgets show analytics and pipeline modernization signals over the last three complete months. Other Analytics retains Synapse, AAS, ADX and Databricks; ADF is separate, covering Azure Data Factory v2, Data Flow and Managed Airflow. The widget includes report-qualified customers whose combined Other Analytics plus ADF spend exceeds Fabric, including ADF-only prospects. Details shows Customer, Other Analytics, ADF and Fabric. Other Analytics amounts with positive net Synapse spend have a dotted underline and an "Includes Synapse" tooltip. Three-month source-volume cutoffs remain $50, or $100 with positive Fabric spend. Monthly averages divide by each customer's available months within that window, returning $0 with no months; Summary sums those customer-level averages.
+- **Trial to Paid** - Summary/Details widgets surface customers with saved trial capacities and no paid F SKU, retaining P-SKU context and the existing utilization queues. The widget links to the matching Trial to Paid audit in Fabric Consumption. The broader Trial audit remains available, while the All customers overview option is removed. Active means a trial is present in the latest synced snapshot; users create engagements and track conversion to an F SKU manually.
+- **Real-Time Intelligence** - A report and Summary/Details dashboard widgets surface current accounts with zero RTI usage and positive Event Hubs, Stream Analytics or IoT ACR, without a spend cutoff. Missing RTI measurements count as 0 on every surface, including eligibility, so customers without Fabric capacity are included as Fabric entry-point prospects. Existing RTI users are excluded. Native RTI CU-hours and workload share cover rolling 28 days. Revenue covers the last three complete calendar months, divided by three; the current month is excluded. IoT includes IoT-prefixed products and Device Update for IoT Hub; Event Grid is not Event Hubs. Missing revenue observations count as $0. Widgets support customer/seller scope, seller grouping and automatic sync of both sources. Users create engagements and track trial-to-F-SKU conversion manually. Consumption signals do not establish architecture or migration readiness.
+- **Sync-aware dashboard widgets** - Widgets queue or join their required background syncs, show measured or indeterminate progress in place, and reload automatically when ready. Existing usable imports and successful empty syncs do not trigger repeated imports. Missing workload choices sync first; once choices exist, shared setup must be confirmed before remaining widget syncs start. Failed syncs offer an explicit retry and a Sync Status link. Progress and refreshes preserve dashboard layouts, filters, and unpublished drafts.
 - **Customer dossier** - native Engagements, Notes, Opportunities and Revenue tabs keep full account identity, ownership, contacts, relationships and rich notes. Commands and counts stay visible, data headings sort raw values both ways, and Back restores the selected tab, pipeline search and reading context. Account context and contact edits remain manual with protected drafts; original photo paste and Auto-fill saves remain explicit. Done saves and exits contact editing. A new contact's Save persists it immediately, so Cancel discards only unsaved entries and edits, not contacts already saved.
 - **Opportunity detail** - native standalone and MSX Workspace previews share complete cached/fresh details, linked milestones and original forecast editors. Read-only opening updates the local MSX-detail cache, not remote team or business records. Milestone headings sort raw values; Back retains reading and sorting. Comment/team/favorite writes remain explicit, with protected drafts, pending guards and honest failures.
 - **Notes directory** - a native chronological stream keeps original customer identity, local call dates, excerpts and every relationship link. All/Customer/General filters retain seller scope; page size is remembered locally and pagination preserves scope. Commands, displayed range and total stay visible, and Back restores reading position. Shared previews retain the canonical rich note body.
@@ -188,15 +193,57 @@ standalone UI iterations using entirely fictional data. See the
   averages retain the latest three imported months; reverse lookup and penetration
   retain historical positive-spend coverage. Product previews use the same official
   pillar classifications, with recent revenue and full monthly history.
+  Focus whitespace targets customers without coverage in a chosen pillar and with
+  coverage in another, independently of the visible spend columns. The focused
+  pillar's zero-only column is automatically hidden without changing saved selections.
+  Use the existing seller grouping to organize the filtered list. Any selected pillar retains the
+  original selected-pillar exploration.
+- **Database Whitespace** - Summary and Details dashboard widgets reuse the existing
+  Whitespace Grid's Databases coverage and recent monthly averages, with no minimum-spend
+  cutoff. Candidates need positive AI, Analytics or Apps coverage and no Databases coverage.
+  Details ranks and totals only AI, Analytics (including Fabric) and Apps spend,
+  with optional seller grouping. Developer, Infra and Security alone do not qualify. Widgets
+  support customer/seller filters. Their report link opens the Databases-focused
+  candidate list with AI, Analytics and Apps columns, without overwriting normal
+  focus, column or sort preferences. The same candidates are available through SalesIQ.
+- **Database Expansion** - Summary and Details widgets reuse Revenue Analyzer's
+  saved Databases bucket, scores and recommendations. Pending New/To be reviewed
+  alerts at priority 20+ qualify only for Expansion Outreach or Check-in actions;
+  monitor-only and previously handled signals are excluded. Growth and risk counts
+  and dollar estimates stay separate. Details ranks by existing priority, not a
+  new small-spend heuristic. Sellers appear only as group headers when Group by seller
+  is enabled in dashboard Filters; seller scoping alone does not show them.
+  The report link opens a database-focused view of
+  Revenue Analyzer with the identical complete queue, before its normal top-50
+  limit, preserving dashboard customer/seller scope, including empty intersections.
+  The focused visit does not read or overwrite normal bucket preferences. Existing
+  product drill-downs, review notes, statuses and exports remain available.
+  Data SEs and sellers can also query the same signals through SalesIQ.
+- **SQL Motions** - SQL Renewals and SQL 2016 EOS / ESU each provide a report,
+  Summary/Details widgets and a SalesIQ read tool. One shared sync pulls Azure
+  Migrations and ADS Accelerate Arc version data for current account TPIDs.
+  Available to Data SEs and all sellers, with automatic weekly refreshes using
+  the existing scheduled-sync settings.
+  Both feeds must succeed before the saved snapshot changes; failures retain
+  the previous complete snapshot. Run it from either report or Sync Status.
+  Renewals lists all future SQL expirations, nearest first, including zero and
+  unknown amounts. Its 90-day count is not a queue cutoff. Licensed footprint
+  means on-prem SQL cores with SA; modeled monthly ACR is not qualified pipeline.
+  SQL 2016 candidates require explicit version evidence and positive All Discovered
+  counts. Subscription details preserve the evidence without adding overlapping
+  license categories. Discovery units and ESU protection remain unverified;
+  missing observations mean unknown, not no exposure. The EOS view focuses on
+  SQL 2016 discovery and subscription evidence. Both widgets preserve customer/
+  seller click-through scope and show sellers only when explicitly grouped.
 - **Fabric Consumption** - import customer-scoped Fabric workload CU-hour
   shares and capacity/SKU utilization from MSXi. Reports > Fabric Consumption
   includes capacities, throttling, utilization history, and customer-wide reserved-instance
   versus PAYG revenue with fiscal YTD totals and monthly splits. Revenue share is not
   per-capacity reservation coverage. Import uses customer
-  TPIDs and your corporate Azure sign-in. In SE Mode with Data SE selected, a full
+  TPIDs and your corporate Azure sign-in. For Data SEs and sellers, a full
   refresh runs weekly with on-boot catch-up, independently of milestone auto-sync.
   Failed or interrupted overdue imports retry after an hour, retaining the last good
-  snapshot. Other specialties and DSS Mode do not sync automatically. Data SEs also
+  snapshot. Non-Data SEs do not sync automatically. Data SEs and sellers also
   have a Fabric tab on each customer with the same workload, capacity and revenue
   details, loaded from saved data only when the tab is opened.
 - **P to F** - Reports > P to F imports Power BI Premium renewal details and the
@@ -205,7 +252,7 @@ standalone UI iterations using entirely fictional data. See the
   Fabric tab, even when that customer has no consumption snapshot. The report has
   a shared Fabric 360 refresh and progress indicator. One job updates workloads,
   capacities, revenue and renewals. Startup and weekly catch-up refresh both if
-  either snapshot is stale or missing, only in SE Mode with the Data SE specialty. Source statuses,
+  either snapshot is stale or missing, for Data SEs and sellers. Source statuses,
   blank amounts and percentages above 100% are preserved. See [P to F](docs/p_to_f.md).
 - **Milestone Tracker** - native desktop queue and calendar with MSX sync, task management, and AI matching from call notes. Search all saved milestone fields (including cached forecast comments) and use the searchable customer dropdown alongside the existing filters. Data headings sort both ways with raw values; CSV, Clipboard and Email preserve the filtered list. Back restores filters, view, calendar month, sorting and reading position.
 - **Milestones directory** - browse customer-linked records in the native desktop frame, preserving newest-added order, source URLs and linked-call counts. Sort each data heading both ways; Back restores sorting and reading position. Open the existing details, New Milestone or Milestone Tracker without changing the cached data.
@@ -256,7 +303,13 @@ standalone UI iterations using entirely fictional data. See the
   on a 12-column grid by dragging anywhere on a widget, using its bottom-right resize
   handle, or setting explicit position and size controls. Focus a widget and use arrow
   keys to move it, or focus its resize handle to resize with arrow keys. A click selects
-  without moving it; Escape cancels a drag. Quarter, third, half, and full-width metric
+  without moving it. Dropping onto an occupied position swaps widgets when both fit;
+  otherwise overlapping neighbors shift down, including any affected chain. The full
+  result previews while dragging. Escape restores every previewed position, and one
+  Undo reverses the entire drop. Resizing still leaves neighbors in place.
+  Downward drag scrolling stops at the existing list plus room to append the widget,
+  rather than extending the canvas indefinitely.
+  Quarter, third, half, and full-width metric
   variations and half/full-width detailed variations share the four Connect Goals
   calculations. The searchable widget-library dialog shows actual-size previews using
   current synced data, with report, width, and variation filters. New widgets start at
@@ -275,6 +328,8 @@ standalone UI iterations using entirely fictional data. See the
   The library also includes **Hygiene gaps**, **Meeting activity coverage**,
   **Revenue risk / opportunity**, **Upcoming P-to-F renewals**, and
   **Fabric capacity pressure**, each with compact Summary and detailed views.
+  P-to-F Summary covers the next 90 days; Details lists all dated future renewals
+  in the saved report, with counts and annual SA amounts for that full date scope.
   They read the same saved data as their reports and link back to existing workflows;
   opening a dashboard never starts an external refresh. Revenue totals cover the complete
   unreviewed priority-20+ queue, rather than just the report's first page.
@@ -379,6 +434,12 @@ standalone UI iterations using entirely fictional data. See the
   to create another copy or restore the original starting layout. Copies are
   independent and can be renamed, rearranged, or deleted. Old Connect Goals bookmarks
   open the starter while it exists; otherwise they offer explicit template recreation.
+  **FY27 Data Motions** is also installed once on upgrade as an editable starter,
+  with ten report-backed widgets in the approved two-column layout and live Seller
+  and Group by seller controls. It uses each user's own account scope and data,
+  not the template creator's records. Existing exact copies are adopted; customized
+  dashboards are left alone, and deleting the starter does not recreate it.
+  It is also available through **Add from template** for independent copies.
   The template has a stable key and version, separate from ordinary dashboard IDs.
   Installation history lives in `dashboard_template_installations` so deletion remains
   intentional across restarts. There is no dashboard-specific F1 editor or scope toolbar.
@@ -389,6 +450,11 @@ standalone UI iterations using entirely fictional data. See the
   stable widget definitions and presentation support live in the code-owned catalog,
   independently of menu placement. Geometry uses zero-based `layout_column` and
   `layout_row`, plus `column_span`, `row_span` (64px rows with 12px gaps), and `variant_key`.
+  Dashboard rendering shares read-only loader results for identical inputs within
+  that render. Fabric expansion, trial conversion and RTI reuse one capacity
+  overview; Connect team/HVA coverage reuse their scoped milestone population.
+  The shared-read scope always ends with the render, including failures. Ordinary
+  standalone reads, background jobs and write requests do not retain cached data.
 - **Reports Navigation** - Dashboards precedes Reports, separating personal overviews
   from their drill-through reports. Reports uses divider-separated groups for planning
   and reviews, execution and coverage, pipeline health, and account insights. Goal action reports
@@ -605,10 +671,22 @@ pytest
 pytest --cov=app tests/  # with coverage
 ```
 
+## Building Dashboard Widgets
+
+Start with the [Dashboard Widget Authoring Guide](docs/DASHBOARD_WIDGET_AUTHORING.md),
+written for contributors and their coding agents. It covers report-backed providers,
+filter capabilities and scope, shared query loading, setup/sync progress, Summary and
+Details layouts, actionable full-report links, and testing/integration checklists.
+
+Agents also have [scoped widget instructions](.github/instructions/dashboard-widgets.instructions.md)
+that point to the same guide. Give your agent the guide path when starting a widget
+so it follows the framework instead of inventing a parallel implementation.
+
 ## Documentation
 
 | Guide | Description |
 |-------|-------------|
+| [Dashboard Widget Authoring](docs/DASHBOARD_WIDGET_AUTHORING.md) | Human and agent guide to widget data, filters, shared queries, setup, sync, UI and actions |
 | [MSX Integration](docs/MSX_INTEGRATION.md) | Account imports, milestone sync, API details |
 | [WorkIQ Integration](docs/WORKIQ_INTEGRATION.md) | Meeting import setup and customization |
 | [Connect Features](docs/CONNECT_FEATURES.md) | Self-eval export and impact signals |

@@ -20,11 +20,15 @@ REPORT_PAGES = [
     ("reports.report_msx_workspace", "MSX Workspace"),
     ("reports.report_marketing_insights", "Marketing Insights"),
     ("reports.report_fabric_consumption", "Fabric Consumption"),
+    ("reports.report_fabric_capacity_pressure", "Fabric Capacity Pressure"),
     ("reports.report_ptof", "P to F"),
     ("reports.report_u2c", "U2C Attainment"),
     ("reports.report_connect_impact", "Connect Impact"),
     ("revenue.reports_list", "Revenue Reports"),
-    ("revenue.report_synapse_customers", "Synapse Customers"),
+    ("reports.report_fabric_modernization", "Fabric Modernization"),
+    ("reports.report_rti", "Real-Time Intelligence"),
+    ("reports.report_sql_renewals", "SQL Renewals"),
+    ("reports.report_sql_eos", "SQL 2016 EOS / ESU"),
 ]
 
 

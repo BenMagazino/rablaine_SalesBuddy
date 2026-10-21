@@ -39,7 +39,8 @@ def test_navigation_preserves_report_and_browse_destinations(app):
         "/reports/milestone-tracker", "/reports/activity-coverage", "/reports/whitespace",
         "/reports/hygiene", "/reports/msx-workspace", "/reports/whats-new",
         "/reports/revenue", "/reports/workload", "/reports/marketing-insights",
-        "/reports/synapse-customers", "/reports/p-to-f", "/reports/fabric-consumption",
+        "/reports/fabric-modernization", "/reports/p-to-f", "/reports/fabric-consumption",
+        "/reports/fabric-capacity-pressure",
     }
     browse = {a["href"] for a in soup.select("#browseMenu a")}
     assert browse == {

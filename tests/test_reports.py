@@ -33,7 +33,7 @@ class TestReportsHub:
         """Reports hub should link to revenue reports."""
         with app.app_context():
             resp = client.get('/reports')
-            assert b'Synapse Customers' in resp.data
+            assert b'Fabric Modernization' in resp.data
 
     def test_reports_dropdown_groups_planning_and_backing_reports(self, client):
         """Keep hub sections and Browse-style menu groups aligned, without duplicate links."""
@@ -60,21 +60,22 @@ class TestReportsHub:
             ['Initiative Tracker', '1:1 Report', 'Connect Impact'],
             ['U2C Attainment', 'Milestone Tracker', 'Activity Coverage', 'Whitespace Analysis'],
             ['Hygiene Report', 'MSX Workspace', "What's New"],
-            ['Revenue Analyzer', 'Workload Report', 'P to F', 'Fabric Consumption', 'Marketing Insights',
-             'Synapse Customers'],
+            ['Revenue Analyzer', 'Workload Report', 'Marketing Insights'],
+            ['P to F', 'Fabric Consumption', 'Fabric Capacity Pressure',
+             'Fabric Modernization', 'Real-Time Intelligence'],
         ]
-        assert len(links) == len(set(links)) == 17
+        assert len(links) == len(set(links)) == 19
         hub_links = {link['href'] for link in soup.select('main a[href]')}
         assert set(links[1:]).issubset(hub_links)
         assert [heading.get_text(strip=True) for heading in menu.select('.sb-menu-heading')] == [
             'Overview', 'Planning and reviews', 'Execution and coverage',
-            'Pipeline health', 'Account insights',
+            'Pipeline health', 'Account insights', 'FY27 Data Motions',
         ]
         sections = soup.select('main .sb-reports-group')
         headings = [section.select_one('h2') for section in sections]
         assert [heading.get_text(strip=True) for heading in headings] == [
             'Planning & Reviews', 'Execution & Coverage', 'Pipeline Health',
-            'Account Insights',
+            'Account Insights', 'FY27 Data Motions',
         ]
         for section, expected in zip(sections, grouped_links[1:]):
             assert [link['href'] for link in section.select('.sb-reports-entry')] == expected
@@ -764,26 +765,26 @@ class TestReportRoutes:
             assert resp.status_code == 200
             assert b'Revenue Analyzer' in resp.data
 
-    def test_new_synapse_customers_loads(self, client, app):
-        """Synapse Customers report (new mode) should return 200."""
+    def test_modernization_report_loads(self, client, app):
+        """Fabric Modernization report should return 200."""
         with app.app_context():
-            resp = client.get('/reports/synapse-customers?mode=new')
+            resp = client.get('/reports/fabric-modernization')
             assert resp.status_code == 200
-            assert b'New Synapse Customers' in resp.data
+            assert b'Fabric Modernization' in resp.data
 
-    def test_current_synapse_customers_loads(self, client, app):
-        """Synapse Customers report (current mode) should return 200."""
+    def test_synapse_bookmark_redirects(self, client, app):
+        """Old current-mode bookmarks should point to the replacement report."""
         with app.app_context():
-            resp = client.get('/reports/synapse-customers?mode=current')
+            resp = client.get('/reports/synapse-customers?mode=current', follow_redirects=True)
             assert resp.status_code == 200
-            assert b'Current Synapse Customers' in resp.data
+            assert b'Fabric Modernization' in resp.data
 
     def test_old_synapse_users_url_redirects(self, client, app):
         """Old /reports/new-synapse-users should 301 to new URL."""
         with app.app_context():
             resp = client.get('/reports/new-synapse-users')
             assert resp.status_code == 301
-            assert '/reports/synapse-customers' in resp.headers['Location']
+            assert '/reports/fabric-modernization' in resp.headers['Location']
 
 
 class TestReportRedirects:
@@ -808,7 +809,7 @@ class TestReportRedirects:
         with app.app_context():
             resp = client.get('/revenue/reports/new-synapse-users')
             assert resp.status_code == 301
-            assert '/reports/synapse-customers' in resp.headers['Location']
+            assert '/reports/fabric-modernization' in resp.headers['Location']
 
 
 class TestReportExportPartial:

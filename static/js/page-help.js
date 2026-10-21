@@ -11,6 +11,21 @@ const PageHelp = (function () {
   // Use {id} as a placeholder for numeric path segments.
 
   const helpMap = [
+    { pattern: /^\/reports\/sql-(renewals|eos)$/, title: 'SQL Motions', content: `
+      <p>SQL Renewals and SQL 2016 EOS / ESU share one SQL Motions sync.
+      Both source reports must succeed before the saved snapshot changes.</p>
+      <ul>
+        <li>Renewals includes every future SQL expiration, nearest first, including
+        zero and unknown amounts. The 90-day count is a summary, not a queue cutoff.</li>
+        <li>SQL 2016 candidates require explicit version evidence and positive
+        All Discovered counts. Overlapping license categories are not added again.</li>
+        <li>ESU protection and discovery units are unverified. Missing source data
+        means unknown. The EOS view focuses only on version discovery and subscriptions.</li>
+        <li>Dashboard click-through preserves customer scope. Group by seller
+        changes presentation only. CSV, clipboard and email export the visible queue.</li>
+        <li>SQL license cores are on-prem licenses with SA. Modeled monthly ACR
+        is an estimate, not qualified pipeline or a forecast.</li>
+      </ul>` },
     { pattern: /^\/templates\/(?:new|\d+\/edit)$/, title: 'Note Template Form', content: `
       <p>Create or edit reusable rich-text content for notes. Template name and
       content are required. Nothing saves until Create Template or Update Template.</p>
@@ -766,8 +781,15 @@ const PageHelp = (function () {
     `},
     { pattern: /^\/reports\/?$/, title: 'Reports', content: `
       <p>Open reports from the same groups and order used in the Reports menu.</p>
+      <p>FY27 Data Motions brings together P to F, Fabric Consumption, Fabric Capacity Pressure, Fabric Modernization and Real-Time Intelligence.</p>
       <p>Use Find a report to match names, purposes or groups. Clear restores the full directory. The status bar shows how many reports match; filtering does not change report data.</p>
       <p>Each row opens its named report. Back restores your filter and reading position. Embedded directories keep their filter local and do not change the parent page's history.</p>
+    `},
+    { pattern: /^\/reports\/revenue\/?$/, title: 'Revenue Analyzer', content: `
+      <p>Review saved revenue signals, ordered by existing priority, with product drill-downs, recommended actions and review history. Use Re-analyze to refresh the analysis after imports or configuration changes.</p>
+      <p><strong>Database Expansion</strong> widget links open this analyzer's focused database view: Databases bucket, priority 20+, New or To be reviewed status, and Expansion Outreach or Check-in recommendations. Monitor-only, reviewed, actioned and dismissed alerts are excluded. Growth and consumption risks support the same motion but are not qualified opportunities.</p>
+      <p>The focused view loads every matching alert before the normal top-50 cross-bucket limit. Dashboard customer/seller restrictions carry through, including an empty scope. It does not change your usual bucket selection. All revenue alerts returns to the normal analyzer and its saved bucket preferences.</p>
+      <p>Open an alert for existing product details, then record review notes and set its status. Reviewed, actioned or dismissed signals leave the motion queue on its next load. CSV, Copy and Email export the current view. Risk and growth estimates are separate, not a net forecast.</p>
     `},
     // ── Revenue ──
     { pattern: /^\/revenue\/import/, title: 'Revenue Import', content: `
@@ -852,17 +874,20 @@ const PageHelp = (function () {
       <p>CSV, Clipboard and Email include both lists' expanded rows in their current order, retaining section, seller and customer context. Collapsed rows are excluded. Back restores scope, grouping, sorts and each pane's reading position. Embedded reports stack the lists without changing their parent's view history.</p>
     `},
     { pattern: /^\/reports\/whitespace/, title: 'Whitespace Analysis', content: `
-      <p>Three views answer different adoption questions. They intentionally use different time scopes.</p>
+      <p>Analysis views answer different adoption questions. They intentionally use different time scopes.</p>
       <ul>
         <li>Whitespace uses the source's SuperStrategicPillars: AI, Analytics, Apps, Databases, Developer, Infra and Security. Pillar/product data refreshes with the regular ACR import, independently of Revenue Analyzer service buckets.</li>
-        <li>Whitespace Grid averages monthly pillar totals within 62 days of the latest imported month. Missing months are not filled with zero. Changing the pillar checkboxes automatically updates the grid.</li>
-        <li>Multiple pillars show customers with some, but not all, selected pillars. Include fully covered customers adds the remaining spenders. A single pillar shows its spenders. Customers with no spend in any selected pillar are not part of the grid.</li>
+        <li>Whitespace Grid averages monthly pillar totals within 62 days of the latest imported month. Missing months are not filled with zero. Changing the spend-column checkboxes automatically updates the grid.</li>
+        <li>Focus whitespace selects a pillar to target and excludes customers with coverage in that pillar. Customers need positive coverage in at least one other pillar. The focused pillar is hidden from the grid; clearing or changing focus restores it if selected. Spend columns only changes the surrounding context while focused, so hiding a column does not change the candidate list. Group by seller organizes those candidates using the existing checkbox. Include fully covered customers is disabled while a focus is active.</li>
+        <li>With Any selected pillar, multiple spend columns show customers with some, but not all, selected pillars. Include fully covered customers adds the remaining spenders. A single pillar shows its spenders. Customers with no spend in any selected pillar are not part of this view.</li>
         <li>Initial selection includes all seven pillars. This report does not change the saved Revenue filter.</li>
+        <li>The Database whitespace dashboard widgets require positive AI, Analytics or Apps coverage and no Databases coverage, using this grid's recent window with no additional spend cutoff. Developer, Infra and Security alone do not qualify a customer. Summary counts the same candidates as Details, which ranks monthly AI, Analytics (including Fabric) and Apps spend and totals only those three pillars. Both support customer/seller scope and seller grouping. The widget link opens that same candidate list with AI, Analytics and Apps columns, hiding the zero-only Databases column. Changing the spend columns does not change this linked Database cohort. Normal report visits remember your focus, spend columns and sorts. This linked visit does not overwrite those preferences; Back retains changes within the visit.</li>
         <li>Reverse Lookup searches name, nickname or TPID after two characters. Arrow keys and Enter select a match. Missing pillars and products use positive spend at any time in imported history, not the grid's recent window.</li>
         <li>Pillar Penetration counts historical positive spend. Its denominator includes every customer with imported pillar revenue, including zero-only customers. Click a pillar for the with-spend and without-spend lists.</li>
-        <li>Data headings sort both directions using raw values. Missing amounts stay last. Click a grid amount for existing product details and full history without losing this report.</li>
+        <li>Fabric Acquisition is available for Data SEs and sellers. It shows positive AI, Databases or Other Analytics spend, with no positive monthly net Fabric ACR observed in the current partial calendar month or previous three months. Other Analytics excludes Fabric Capacity from the source Analytics pillar. All amounts are four-month totals divided by 4. Missing revenue observations count as $0. All customers with no Fabric spend includes all current customers regardless of other spend, even without any imported revenue records. Accounts flagged stale after dropping out of account sync are excluded from the report and widgets, without deleting their saved data. No observed revenue does not establish licensing or non-adoption. Dashboard Summary and Details widgets include only customers with at least $2,000/month combined AI, Databases and Other Analytics ACR, using unrounded amounts. The report has no $2,000 minimum and the widget links directly to this broader tab.</li>
+        <li>Data headings sort both directions using raw values. Click a grid amount for existing product details and full history without losing this report.</li>
       </ul>
-      <p>CSV, Clipboard and Email export only the loaded grid, in its current order and coverage scope, even when another analysis tab is selected. Pillar selections and column sorting are saved on this device and restored on future visits. Sorts are kept separately for each set of columns. Back also restores the analysis view and reading positions. Failed reads or preference saves offer Retry.</p>
+      <p>Whitespace Grid and Fabric Acquisition each have a Group by seller toggle. Groups use current local ownership, keep unassigned customers together, and sort customers within each seller. CSV, Clipboard and Email export only the loaded grid, in its current order and coverage scope, for the original analysis views. On Fabric Acquisition, they export that queue instead, with monthly ACR and period labels. Group headings are included when grouping is enabled. Pillar selections and column sorting are saved on this device and restored on future visits. Sorts are kept separately for each set of columns. Back also restores the analysis view, each view's seller grouping and reading positions. Failed reads or preference saves offer Retry.</p>
     `},
     { pattern: /^\/reports\/connect-impact/, title: 'Connect Impact', content: `
       <p>Customers rank by total estimated monthly ACR from committed milestones you are on the team for. Committed since uses the commitment date, inclusively, not the due date. All execution statuses qualify, including Completed and Cancelled.</p>
@@ -886,13 +911,31 @@ const PageHelp = (function () {
       <p>Summary-only accounts remain selectable. Empty results and incomplete or failed syncs are explicit. Embedded reports stack the chooser and details without owning the page frame.</p>
     `},
     { pattern: /^\/reports\/revenue-reports/, title: 'Revenue Reports', content: `
-      <p>Open Synapse Customers to review adoption grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>
+      <p>Open Fabric Modernization to compare recent source-product and Fabric spend grouped by seller. Revenue Analyzer returns to the broader revenue review.</p>
     `},
-    { pattern: /^\/reports\/synapse-customers/, title: 'Synapse Customers', content: `
-      <p>New shows customers whose first imported Synapse usage is within the last six complete imported months. Current includes customers with any Synapse spend in imported history.</p>
-      <p>The report remembers New or Current when you visit without an explicit mode. A mode supplied in the URL always wins.</p>
-      <p>Click any table heading to sort ascending or descending within its seller group. First Usage uses calendar dates, not fiscal-label text.</p>
-      <p>Total Revenue includes all imported history. Latest Month excludes the in-progress calendar month; Avg (Last 4mo) uses up to four complete imported months. A dash means no positive amount for that measure.</p>
+    { pattern: /^\/reports\/rti(?:\/|$)/, title: 'Real-Time Intelligence', content: `
+      <p>Use Group by seller to switch between seller sections and one sortable customer list. The page URL retains your selection on reload and Back. CSV, Clipboard and Email export the currently displayed tables.</p>
+      <p>Current accounts qualify with zero RTI usage and positive net Event Hubs, Stream Analytics or IoT revenue. Missing RTI measurements count as 0, so accounts without Fabric capacity are included. This can be an entry point to Fabric or a new workload for an existing Fabric customer. Customers already using RTI are excluded. No minimum spend cutoff applies.</p>
+      <p>RTI CU-hours and RTI workload share come from Fabric 360's native rolling 28-day measurements. They are customer-wide, not per capacity.</p>
+      <p>Dollar amounts are average monthly ACR across the last three complete calendar months: three-month totals divided by 3. The current month is excluded. Missing revenue observations count as $0. Credits are included. IoT includes IoT-prefixed products and Device Update for IoT Hub. Event Grid and unrelated products are excluded.</p>
+      <p>Accounts that dropped out of account sync are excluded without deleting their saved history. Customer links open Fabric details; Total / mo links open customer Revenue. Sortable headings and exports retain source precision and customer links.</p>
+      <p>Summary and Details dashboard widgets use the same queue, with customer/seller scope, optional seller grouping and automatic sync of both sources. Signals support discovery, not architecture assessments, external Kafka inventory or migration recommendations.</p>
+      <p>Tables show customer, streaming ACR and the combined monthly total. RTI usage is an eligibility filter, not a redundant zero-only column. Create an engagement for a surfaced insight and track trial-to-F-SKU conversion manually; this queue does not track conversion outcomes automatically.</p>
+    `},
+    { pattern: /^\/reports\/fabric-consumption(?:\/|$)/, title: 'Fabric Consumption', content: `
+      <p>Capacity overview offers customers with capacities, Trial audit, Trial to Paid audit and F-SKU audit. Search, One row per customer and Group by seller work with each audit. Use the separate P to F report for P-SKU renewal audits.</p>
+      <p>Trial to Paid audit includes customers with FTL4 or FTL64 and no paid F-number SKU. P-SKU customers remain eligible. The Trial to Paid dashboard widget uses the same eligibility and links here. The broader Trial audit also includes customers already running paid F SKUs.</p>
+      <p>Both trial audits retain other capacity context and average trial utilization in customer mode. The widget's Getting started and Building momentum queues use its existing saved 15-day history and 0.1% cutoff.</p>
+      <p>A trial in the latest synced snapshot is active for this workflow. Create an engagement from a surfaced insight and track conversion to an F SKU manually; neither the widget nor audit detects conversion outcomes automatically.</p>
+    `},
+    { pattern: /^\/reports\/fabric-modernization/, title: 'Fabric Modernization', content: `
+      <p>One row per customer with positive net revenue in Synapse, Azure Analysis Services (AAS), Azure Data Explorer (ADX), Azure Databricks or Azure Data Factory (ADF) over the last three complete calendar months.</p>
+      <p>Other Analytics combines Synapse, AAS, ADX and Azure Databricks revenue, excluding ADF and Fabric. ADF is a separate column, covering Azure Data Factory v2, Data Flow and Managed Airflow. Synapse-branded pipelines stay under Synapse, without double-counting as ADF. Eligibility requires combined Other Analytics plus ADF three-month totals of at least $50, or at least $100 when Fabric revenue is positive. Cutoffs use unrounded net amounts, including credits.</p>
+      <p>All displayed dollar amounts are average monthly ACR: each customer's net total divided by the number of months with saved product revenue within the period shown. A month counts once across all products; products without spend contribute $0. No observed months means $0. The current partial month, future months and older history are excluded.</p>
+      <p>Fabric revenue indicates an observed paid footprint, not proof of migration or readiness. No observed revenue is not proof of no adoption. Azure Databricks does not establish non-Azure Databricks inventory.</p>
+      <p>Partial coverage is flagged, but available-month averages still display. Eligibility cutoffs continue to use the saved three-month totals.</p>
+      <p>The Fabric modernization dashboard widget includes qualifying customers whose three-month Other Analytics plus ADF spend is strictly greater than Fabric spend, including ADF-only prospects. Summary shows their count and separate average monthly Other Analytics and ADF ACR, summing the customer-level averages even when month counts differ. Details shows Customer, Other Analytics, ADF and Fabric. A dotted underline on an Other Analytics amount identifies positive net Synapse spend; hover to see "Includes Synapse". These amounts describe existing consumption, not projected incremental Fabric benefit. Both presentations follow dashboard customer and seller scope. Use the dashboard's Group by seller viewer filter to show seller names.</p>
+      <p>Click any table heading to sort ascending or descending within its seller group. Revenue sorts at source precision, not rounded display values.</p>
       <p>Customer links open matched Revenue pages. CSV, Clipboard and Email export all seller tables in their visible order; formatted exports retain account links.</p>
     `},
     { pattern: /^\/reports\/revenue\/?$/, title: 'Revenue Dashboard', content: `

@@ -170,6 +170,208 @@ def report_fabric_consumption(customer_id: int | None = None, overview: bool = F
 
 
 @tool(
+    'report_fabric_acquisition',
+    'Read the Fabric Acquisition tab of Whitespace Analysis for Data SEs and sellers. '
+    'Returns customers with positive AI, Databases or Analytics excluding Fabric '
+    'and no positive monthly net Fabric ACR in the current partial calendar month or previous '
+    'three months. All displayed amounts are four-month totals divided by 4. '
+    'Set include_no_other_spend=true to include all current customers regardless of other spend. '
+    'Accounts flagged stale after dropping out of account sync are excluded. '
+    'Missing customer, product and month revenue observations count as zero. '
+    'Saved observations do not prove non-adoption.',
+    {'type': 'object', 'properties': {
+        'include_no_other_spend': {
+            'type': 'boolean',
+            'description': 'Include all customers with no Fabric spend regardless of other spend.',
+        },
+    }},
+)
+def report_fabric_acquisition(include_no_other_spend: bool = False) -> dict:
+    """Reuse the report acquisition queue and its optional expansion without importing data."""
+    from app.services.fabric_acquisition import get_fabric_acquisition_report
+
+    data = get_fabric_acquisition_report(include_no_other_spend=include_no_other_spend)
+    if not data['available']:
+        return {'error': 'Fabric Acquisition is available for Data SEs and sellers.'}
+    return data
+
+
+@tool(
+    'report_database_whitespace',
+    'Read Database whitespace candidates for Data SEs and sellers from the existing '
+    'Whitespace Analysis grid. Uses the source-defined Databases pillar and the same '
+    'latest imported month minus 62 days window, averaging stored monthly pillar totals. '
+    'Includes customers with positive AI, Analytics or Apps coverage and no Databases coverage. '
+    'No added minimum spend or new stale-account rule. Returns count, ranked customer rows, '
+    'AI, Analytics (including Fabric), Apps and their total monthly spend, and seller groups. '
+    'A discovery queue, not confirmed opportunities or achieved consumption wins.',
+    {'type': 'object', 'properties': {}},
+)
+def report_database_whitespace() -> dict:
+    """Reuse the existing grid-backed widget calculation without refreshing source data."""
+    from app.services.whitespace import get_database_whitespace_widget
+
+    data = get_database_whitespace_widget()
+    if not data['available']:
+        return {'error': 'Database whitespace is available for Data SEs and sellers.'}
+    return data
+
+
+@tool(
+    'report_database_expansion',
+    'Read Database Expansion signals from the existing Revenue Analyzer for Data SEs '
+    'and sellers. Databases bucket only, priority 20+, New or To be reviewed status, '
+    'with EXPANSION OUTREACH or CHECK-IN recommendations. Monitor-only signals excluded. '
+    'Returns the complete priority-ranked queue, separate growth/risk counts and monthly '
+    'impact estimates. Uses existing saved scores, not new propensity or qualified outcomes.',
+    {'type': 'object', 'properties': {}},
+)
+def report_database_expansion() -> dict:
+    """Reuse the analyzer-backed motion widget without rerunning revenue analysis."""
+    from app.services.revenue_analysis import get_database_expansion_widget
+    from app.services.se_specialty import has_specialty_access
+
+    if not has_specialty_access('data'):
+        return {'error': 'Database Expansion is available for Data SEs and sellers.'}
+    return get_database_expansion_widget()
+
+
+@tool(
+    'report_sql_renewals',
+    'Read upcoming SQL expirations for current customers from the saved shared SQL Motions '
+    'snapshot. Includes exact source dates, unknown amounts, on-prem SA license cores, '
+    'estimated capped Azure IaaS cores and modeled monthly ACR opportunity. '
+    'Modeled ACR is not qualified pipeline. Does not refresh data.',
+    {'type': 'object', 'properties': {}},
+)
+def report_sql_renewals() -> dict:
+    """Reuse the saved report queue and its current customer and seller scope."""
+    from app.services.se_specialty import has_specialty_access
+    from app.services.sql_motions import get_sql_motion_report
+
+    if not has_specialty_access('data'):
+        return {'error': 'SQL motions are available for Data SEs and sellers.'}
+    return get_sql_motion_report('renewals')
+
+
+@tool(
+    'report_sql_eos',
+    'Read customers with explicit SQL Server 2016 Arc discovery in the saved shared SQL '
+    'Motions snapshot. Uses only positive All Discovered counts, never overlapping category '
+    'totals. Includes subscription evidence and source processing dates. '
+    'Discovery units and ESU protection are unverified. No observation means unknown, '
+    'not proof of no exposure. Does not refresh data.',
+    {'type': 'object', 'properties': {}},
+)
+def report_sql_eos() -> dict:
+    """Reuse the report without inferring entitlement from paid license fields."""
+    from app.services.se_specialty import has_specialty_access
+    from app.services.sql_motions import get_sql_motion_report
+
+    if not has_specialty_access('data'):
+        return {'error': 'SQL motions are available for Data SEs and sellers.'}
+    return get_sql_motion_report('eos')
+
+
+@tool(
+    'report_rti',
+    'Read Real-Time Intelligence customer discovery signals: native rolling 28-day RTI '
+    'CU-hours and workload share alongside Event Hubs, Stream Analytics and IoT ACR. '
+    'ACR covers the last three complete calendar months, divided by 3; current month excluded. '
+    'Current accounts qualify with zero RTI usage and a positive Azure streaming product-family '
+    'total, including accounts without Fabric capacity. Missing RTI measurements and revenue '
+    'observations count as zero. Includes seller groups. Saved data only, not architecture '
+    'or migration readiness.',
+    {'type': 'object', 'properties': {}},
+)
+def report_rti() -> dict:
+    """Reuse RTI report calculation without refreshing source data."""
+    from app.services.rti import get_rti_report
+
+    return get_rti_report()
+
+
+@tool(
+    'report_fabric_modernization',
+    'Read Fabric Modernization: one row per customer with positive recent Synapse, '
+    'Azure Analysis Services, Azure Data Explorer, Azure Databricks, or Azure Data Factory revenue. '
+    'Displays average monthly ACR across the last three complete calendar months. '
+    'Other Analytics combines Synapse, AAS, ADX and Databricks; ADF is separate. Eligibility uses '
+    'combined Other Analytics plus ADF three-month totals of at least $50, or $100 '
+    'with positive Fabric spend. '
+    'Rows retain spend and source_revenue as three-month totals; monthly_spend and '
+    'monthly_source_revenue divide by each customer\'s available months within that period, '
+    'returning zero with no observed months. '
+    'Includes seller groups and monthly coverage. Saved data only, not evidence of '
+    'migration, readiness, or non-Azure Databricks inventory.',
+    {'type': 'object', 'properties': {}},
+)
+def report_fabric_modernization() -> dict:
+    """Reuse the report's recent-product revenue calculation."""
+    from app.services.fabric_modernization import get_fabric_modernization_report
+
+    return get_fabric_modernization_report()
+
+
+@tool(
+    'report_fabric_modernization_candidates',
+    'Read the Fabric modernization widget: report-qualified customers whose last three '
+    'complete months of Other Analytics (Synapse, AAS, ADX and Azure Databricks) plus ADF '
+    'strictly exceed '
+    'Fabric spend. Includes matching customers, count, seller groups and coverage. '
+    'monthly_other_analytics_revenue and monthly_adf_revenue are separate monthly averages; '
+    'monthly_source_revenue combines them. Summary averages sum each customer\'s monthly '
+    'average using that customer\'s available months, or zero without observations. '
+    'source_revenue retains the combined three-month total. '
+    'has_synapse marks positive net Synapse consumption, not confirmed migration. '
+    'Saved observations only, not proof of migration or readiness.',
+    {'type': 'object', 'properties': {}},
+)
+def report_fabric_modernization_candidates() -> dict:
+    """Reuse the widget's report-backed candidate calculation."""
+    from app.services.fabric_modernization import get_fabric_modernization_widget
+
+    return get_fabric_modernization_widget()
+
+
+@tool(
+    'report_fabric_expansion',
+    'Read saved Power BI-led Fabric expansion signals for customers with paid F-SKUs. '
+    'One row per customer with the largest paid F-SKU by CU size, P/trial capacity flags, '
+    'equal-weight average capacity '
+    'utilization and customer-wide '
+    'rolling 28-day workload shares. Power BI-led means at least 80% Power BI. '
+    'Includes the same customer rows grouped by seller. Missing or unreconciled '
+    'workload mixes are excluded and counted separately. Includes known workloads above 1% for discovery '
+    'conversations, not validated workload fit or readiness. Does not import or refresh data.',
+    {'type': 'object', 'properties': {}},
+)
+def report_fabric_expansion() -> dict:
+    """Reuse the Capacity overview-backed dashboard expansion calculations."""
+    from app.services.fabric_consumption import get_fabric_expansion_widget
+
+    return get_fabric_expansion_widget()
+
+
+@tool(
+    'report_fabric_trial_conversion',
+    'Find Trial to Paid prospects: distinct customers with saved Fabric trial SKUs '
+    '(FTL4/FTL64) and no paid F-SKU capacities. P-SKU customers remain eligible. '
+    'Includes customer queues split at 0.1% average trial utilization over the saved '
+    'source trailing 15-day window, averaging trial capacity means equally. '
+    'Includes P-SKU context, average observed days across trials, and customer detail links. '
+    'A trial present in the latest snapshot is active for this workflow. Engagement creation '
+    'and trial-to-F-SKU conversion tracking are manual, not automatic outcome detection.',
+    {'type': 'object', 'properties': {}},
+)
+def report_fabric_trial_conversion() -> dict:
+    """Reuse the dashboard trial cohort counts without refreshing Fabric data."""
+    from app.services.fabric_consumption import get_fabric_trial_conversion_widget
+
+    return get_fabric_trial_conversion_widget()
+
+
+@tool(
     'report_fabric_capacity_pressure',
     'Investigate the full saved Fabric capacity pressure report, including recorded throttling, '
     'latest utilization, historical peaks, incomplete data, timestamps, and exact capacity links. '
@@ -1079,7 +1281,9 @@ def get_dashboards(dashboard_id: int | None = None, live_filters: dict | None = 
     'Read a dashboard widget calculation without creating a dashboard or refreshing data. '
     'Use widget_key from the get_dashboards catalog. Includes hygiene.gaps, '
     'activity_coverage.meetings, revenue.attention, ptof.upcoming_renewals, and '
-    'fabric.capacity_pressure. Returns saved-data scope, missing data, source timestamps, '
+    'fabric.capacity_pressure, fabric.trial_conversion, and fabric.expansion. '
+    'Returns saved-data scope, '
+    'missing data, source timestamps, '
     'and drill-through destinations alongside each signal. Shared prerequisites are preserved.',
     {'type': 'object', 'properties': {
         'widget_key': {'type': 'string', 'description': 'Registered widget key.'},

@@ -10,6 +10,18 @@ description: "Use when committing code, creating branches, merging branches, pus
 - Create feature branches from `main` for all changes
 - Merge back to `main` only when feature is complete and tested
 
+## Remote Branch Policy
+
+- **Keep feature, fix, and chore branches local unless the user explicitly asks to publish them.**
+- "Tag and ship", "merge", or "push the release" means merge the approved work
+  locally and push **`main` only**, including its changelog tag commit.
+- Never push a completed feature branch just to preserve its history. The
+  `--no-ff` merge already preserves that history on `main`.
+- Do not use `git push --all`, `git push --mirror`, or include feature branch
+  refspecs in a release push without explicit authorization to publish those branches.
+- When asked to clean up origin, delete only branches verified as fully merged
+  into `origin/main`. Preserve `main` and unmerged branches.
+
 ## Branch Naming
 
 - **Do not pause to ask the user for a feature branch name.**
@@ -37,7 +49,7 @@ description: "Use when committing code, creating branches, merging branches, pus
 5. Commit to feature branch with descriptive message
 6. **Update `CHANGELOG.md`** for any user-visible functionality change (see "Changelog Updates" below)
 7. **STOP AND WAIT for user confirmation** before merging to `main` - **NEVER merge to main without explicit user approval**
-8. When user says ready: merge to `main` with `--no-ff` and push
+8. When user says ready: merge to `main` with `--no-ff` and push `main` only
    - **Always use `git merge --no-ff`** to preserve feature branch history
 
 ## Changelog Updates
@@ -68,9 +80,9 @@ Multiple sections on the same date are fine and expected - one per merge commit.
 
    - what you did
    ```
-   Leave the heading without a hash. Commit + push.
+   Leave the heading without a hash. Commit locally; do not push the feature branch.
 3. After the user signs off and you merge to `main` with `git merge --no-ff` (which creates a merge commit), run `.\scripts\tag-changelog.ps1` from the repo root. It looks up the most recent merge commit on the current branch and rewrites the topmost untagged heading to `## 4/29/2026 - <merge-hash>`, then creates a separate "Tag changelog for <hash>" commit on `main`.
-4. Push the tag commit.
+4. Push `main`, including the merge and tag commit. Do not push the feature branch.
 
 You can also tag manually if you prefer: `git log --merges -1 --format=%h`, then edit the heading.
 

@@ -45,10 +45,11 @@ def add_snapshot(imported_at: datetime) -> None:
 
 @pytest.mark.parametrize(('role', 'specialty', 'visible'), [
     ('se', 'data', True), (None, 'data', True), ('se', 'infra', False),
-    ('se', 'apps_ai', False), ('se', 'other', False), ('dss', 'data', False),
+    ('se', 'apps_ai', False), ('se', 'other', False), ('dss', 'data', True),
+    ('dss', 'infra', True),
 ])
 def test_customer_fabric_tab_visibility(client, fabric_user, monkeypatch, role, specialty, visible):
-    """Only Data SEs get a pinned, lazy-loaded tab; page rendering never imports."""
+    """Data SEs and all sellers get the pinned tab; page rendering never imports."""
     pref, customer = fabric_user
     pref.user_role, pref.se_specialty = role, specialty
     db.session.commit()
@@ -88,14 +89,20 @@ def test_non_data_specialties_never_start_automatic_import(app, fabric_user, mon
     sync.assert_not_called()
 
 
-def test_dss_does_not_sync_saved_data_specialty(app, fabric_user, monkeypatch):
-    """Switching to DSS pauses automation without erasing the saved Data specialty."""
+@pytest.mark.parametrize('specialty', ['data', 'infra', 'apps_ai', 'other'])
+def test_sellers_receive_automatic_fabric_refresh_for_every_saved_specialty(
+    app, fabric_user, monkeypatch, specialty,
+):
+    """Sellers inherit Data-specialty imports regardless of their saved SE selection."""
     pref, _ = fabric_user
     pref.user_role = 'dss'
+    pref.se_specialty = specialty
     db.session.commit()
     sync = Mock()
     monkeypatch.setattr(fabric_consumption, 'sync_fabric_360', sync)
-    assert scheduled_sync.run_fabric_sync_if_due(app) is None
+    assert scheduled_sync._fabric_sync_due()
+    assert scheduled_sync.run_fabric_sync_if_due(app)['accepted']
+    assert Job.query.filter_by(job_type='sync:fabric').count() == 1
     sync.assert_not_called()
 
 
@@ -110,19 +117,21 @@ def test_no_valid_tpids_skips_import(app, fabric_user, monkeypatch):
     sync.assert_not_called()
 
 
-@pytest.mark.parametrize('specialty', ['data', 'infra'])
-def test_report_explains_current_sync_schedule(client, fabric_user, specialty):
+@pytest.mark.parametrize(('role', 'specialty', 'automatic'), [
+    ('se', 'data', True), ('se', 'infra', False),
+    ('dss', 'data', True), ('dss', 'infra', True), (None, 'data', True),
+])
+def test_report_explains_current_sync_schedule(client, fabric_user, role, specialty, automatic):
     """Both Fabric views accurately describe the specialty-gated automatic schedule."""
     pref, _ = fabric_user
-    pref.se_specialty = specialty
+    pref.user_role, pref.se_specialty = role, specialty
     db.session.commit()
-    for suffix in ('', '?view=overview'):
-        page = BeautifulSoup(client.get('/reports/fabric-consumption' + suffix).data,
-                             'html.parser')
+    for url in ('/reports/fabric-consumption', '/reports/fabric-consumption?view=overview',
+                '/reports/p-to-f'):
+        page = BeautifulSoup(client.get(url).data, 'html.parser')
         footer = page.select_one('.sb-page-status').text
-        assert ('Refreshes weekly' in footer) is (specialty == 'data')
-        assert ('available in SE Mode with the Data SE specialty' in footer) is (
-            specialty != 'data')
+        assert ('Refreshes weekly' in footer) is automatic
+        assert ('available for Data SEs and sellers' in footer) is (not automatic)
 
 
 @pytest.mark.parametrize(('age', 'due'), [

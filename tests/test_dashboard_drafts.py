@@ -157,7 +157,9 @@ def test_metadata_race_after_loading_dashboard_cannot_be_overwritten(client, app
         assert dashboard.name == 'Other window'
 
 
-def test_draft_preview_uses_unique_widget_ids_without_creating_saved_widgets(client, monkeypatch):
+def test_draft_preview_uses_unique_widget_ids_without_creating_saved_widgets(
+    client, monkeypatch, dashboard_sources_ready,
+):
     """Restoring several draft widgets cannot duplicate chart or navigation element IDs."""
     monkeypatch.setattr(connect_goals, 'get_setup_state', lambda reference=None: {'ready': True})
     dashboard_id = create_dashboard(client)

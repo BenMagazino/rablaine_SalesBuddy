@@ -53,6 +53,29 @@ def payload(tpids: list[int]) -> dict:
     }
 
 
+def test_renewal_widget_future_scope_respects_customer_selection(accounts, monkeypatch):
+    """The full future list keeps scoped and explicitly empty selections restrictive."""
+    customer, other, _ = accounts
+    source = payload([customer.tpid, other.tpid])
+    source["details"][0]["expiration_date"] = "2027-06-01"
+    source["details"].append({
+        **source["details"][0], "tpid": other.tpid, "expiration_date": "2028-01-01",
+    })
+    monkeypatch.setattr(ptof, "pull_ptof", lambda tpids, progress: source)
+    ptof.sync_ptof()
+    reference = date(2026, 10, 19)
+    all_accounts = ptof.get_ptof_renewals_widget(reference)
+    assert all_accounts["counts"]["upcoming"] == 0
+    assert all_accounts["future"]["counts"]["customers"] == 2
+    selected = ptof.get_ptof_renewals_widget(reference, customer_ids=(customer.id,))
+    assert selected["future"]["counts"]["customers"] == 1
+    assert selected["future"]["rows"][0]["customer_id"] == customer.id
+    assert selected["future"]["sa_expiration_amount"] == 100
+    empty = ptof.get_ptof_renewals_widget(reference, customer_ids=())
+    assert empty["future"]["rows"] == []
+    assert empty["future"]["counts"]["customers"] == 0
+
+
 def test_queries_preserve_visual_grains_and_scope():
     """The source already contains full dates; do not recreate status thresholds locally."""
     summary = ptof_pull.build_query([123], ['FY27'], detail=False)
@@ -177,15 +200,17 @@ def test_complete_empty_scope_can_remove_outdated_renewals(accounts, monkeypatch
     assert ptof.get_ptof_report()['snapshot'] is not None
 
 
-@pytest.mark.parametrize(('role', 'specialty'), [
-    ('se', 'infra'), ('se', 'apps_ai'), ('se', 'other'), ('dss', 'data'),
+@pytest.mark.parametrize(('role', 'specialty', 'due'), [
+    ('se', 'infra', False), ('se', 'apps_ai', False), ('se', 'other', False),
+    ('se', 'data', True), ('dss', 'data', True), ('dss', 'infra', True),
+    ('dss', 'apps_ai', True), ('dss', 'other', True), (None, 'data', True),
 ])
-def test_weekly_refresh_is_gated_to_current_data_se(accounts, role, specialty):
-    """Saved Data specialty cannot enable automation while running in DSS Mode."""
+def test_weekly_refresh_includes_data_ses_and_all_sellers(accounts, role, specialty, due):
+    """Non-Data SEs stay manual; all sellers inherit Data-specialty scheduling."""
     pref = accounts[2]
     pref.user_role, pref.se_specialty = role, specialty
     db.session.commit()
-    assert not scheduled_sync._fabric_sync_due()
+    assert scheduled_sync._fabric_sync_due() is due
 
 
 def test_renewals_share_the_fabric_schedule(accounts):
@@ -195,20 +220,35 @@ def test_renewals_share_the_fabric_schedule(accounts):
     assert 'ptof' not in sync_jobs.operation_schedules()
 
 
-def test_queued_automatic_import_rechecks_specialty_before_execution(accounts, monkeypatch):
-    """Changing specialty after admission skips both automatic source reads."""
+@pytest.mark.parametrize(('role', 'specialty', 'skipped'), [
+    ('se', 'infra', True), ('se', 'apps_ai', True), ('se', 'other', True),
+    ('dss', 'data', False), ('dss', 'infra', False),
+    ('dss', 'apps_ai', False), ('dss', 'other', False),
+])
+def test_queued_automatic_import_rechecks_specialty_before_execution(
+    accounts, monkeypatch, role, specialty, skipped,
+):
+    """Queued work skips non-Data SEs but keeps all source reads enabled for sellers."""
     from app.services.job_queue import CURRENT_JOB_ID
 
-    telemetry = Mock(side_effect=AssertionError('Scheduled work must be skipped'))
+    telemetry = Mock(return_value={'success': True})
+    renewals = Mock(return_value={'success': True})
     monkeypatch.setattr(fabric_consumption, 'sync_fabric_consumption', telemetry)
+    monkeypatch.setattr(ptof, 'sync_ptof', renewals)
     job = Job(job_type='sync:fabric', initiator='scheduled', payload='{}')
     db.session.add(job)
-    accounts[2].se_specialty = 'infra'
+    accounts[2].user_role, accounts[2].se_specialty = role, specialty
     db.session.commit()
     token = CURRENT_JOB_ID.set(job.id)
     try:
-        assert fabric_consumption.sync_fabric_360()['skipped']
-        telemetry.assert_not_called()
+        result = fabric_consumption.sync_fabric_360()
+        assert bool(result.get('skipped')) is skipped
+        if skipped:
+            telemetry.assert_not_called()
+            renewals.assert_not_called()
+        else:
+            telemetry.assert_called_once()
+            renewals.assert_called_once()
         assert PToFImport.query.count() == 0
     finally:
         CURRENT_JOB_ID.reset(token)

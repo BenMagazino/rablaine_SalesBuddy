@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% from 'partials/_sync_progress.html' import sync_progress %}
+{% block title %}{{ report.title }} - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-revenue-reports.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="Report status">
+    <span>{% if report.snapshot %}{{ report.count }} customers{% else %}No saved snapshot{% endif %}</span><span>Source signals, not qualified migration outcomes.</span>
+</footer>
+{% endblock %}
+{% block content %}
+<section class="sb-revenue-reports sb-sql-report sb-directory-frame sb-directory-frame-wide"
+         data-sb-page-surface data-sb-report-key="sql-{{ report.motion }}"
+         aria-labelledby="sqlTitle">
+    <header class="sb-revenue-reports-header" data-sb-page-band>
+        <div><h1 id="sqlTitle">{{ report.title }}</h1>
+            <p>{% if not report.snapshot %}Import both SQL sources to see your queue.{% elif report.motion == 'renewals' %}{{ report.count }} upcoming customers, {{ report.within_90_count }} within 90 days.{% else %}{{ report.count }} customers with explicit SQL Server 2016 discovery evidence.{% endif %}</p>
+            <form method="get" class="sb-rti-grouping">
+                {% for key, value in request.args.items(multi=true) if key != 'group_by_seller' %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endfor %}
+                <label><input type="checkbox" name="group_by_seller" value="true"{% if group_by_seller %} checked{% endif %} onchange="this.form.requestSubmit()"> Group by seller</label>
+                <input type="hidden" name="group_by_seller" value="false">
+                <noscript><button type="submit" class="sb-revenue-command">Apply</button></noscript>
+            </form>
+        </div>
+        <div class="sb-sql-report-actions">
+            <button type="button" id="syncSqlMotions" class="sb-revenue-command">Sync SQL Motions</button>
+            {% set export_table_id = '.sb-sql-table' %}
+            {% set export_filename = 'sql-' ~ report.motion %}
+            {% set export_title = report.title %}
+            {% include 'partials/_report_export.html' %}
+        </div>
+    </header>
+    {{ sync_progress('sql-motions', '#syncSqlMotions', 'sql-') }}
+    <p class="sb-revenue-report-notice" data-sb-report-context-notice data-sb-page-band role="alert" hidden></p>
+    <p class="sb-modernization-context" data-sb-page-band>
+        {% if report.motion == 'renewals' %}
+        All future SQL expirations from <a href="https://msxinsights.microsoft.com/User/report/dd4b53f0-63b6-45a6-9ae7-eb11d07469e6?reportTab=050d3d569057cbc4c357" target="_blank" rel="noopener noreferrer">Azure Migrations</a>, nearest first. SQL license cores represent licenses with SA, not server counts.
+        Modeled monthly ACR is a scenario estimate, not qualified pipeline. Blank amounts remain unknown.
+        {% else %}
+        SQL Server 2016 detected by <a href="https://msxinsights.microsoft.com/User/report/a1b4fb49-ca8b-401d-b511-64138045add2?reportTab=034c66e050dcc8b88490" target="_blank" rel="noopener noreferrer">ADS Accelerate Arc discovery</a>. ESU protection, eligibility and production footprint remain unverified.
+        Discovery counts use only All Discovered, not its overlapping categories; the source unit is not verified.
+        Missing discovery is unknown, not proof of no exposure.
+        <a href="https://learn.microsoft.com/en-us/lifecycle/products/sql-server-2016" target="_blank" rel="noopener noreferrer">SQL 2016 lifecycle</a>.
+        {% endif %}
+        {% if report.snapshot %}Both sources imported <span class="local-datetime" data-utc="{{ report.snapshot.imported_at }}">{{ report.snapshot.imported_at }}</span>.{% endif %}
+        {% if request.args.get('customer_scope') or request.args.get('customer_ids') or request.args.get('seller_ids') %}Dashboard customer scope applied.{% endif %}
+    </p>
+    {% if report.snapshot %}
+    {% set sources = report.snapshot.sources %}
+    <details class="sb-sql-source-context" data-sb-page-band>
+        <summary>Source refresh details{% if report.notices %} and quality notes{% endif %}</summary>
+        <ul>
+            {% if report.motion == 'renewals' %}
+            {% for source in sources.get('azure_migrations', {}).get('refresh_rows', []) %}
+            <li>Azure Migrations, {{ source.data }}:
+                {% if source.refresh_date %}<span class="local-datetime" data-utc="{{ source.refresh_date }}">{{ source.refresh_date }}</span>{% else %}Refresh date not supplied{% endif %}
+                {% if source.frequency %}({{ source.frequency }}){% endif %}
+            </li>
+            {% else %}<li>Azure Migrations refresh dates not supplied.</li>{% endfor %}
+            {% endif %}
+            {% for check in sources.get('ads_accelerate', {}).get('quality_latest', []) %}
+            <li>ADS Accelerate, {{ check.table_name }}: {{ check.result }} quality check
+                {% if check.last_refresh %}<span class="local-datetime" data-utc="{{ check.last_refresh }}">{{ check.last_refresh }}</span>{% else %}(date not supplied){% endif %}
+            </li>
+            {% else %}<li>ADS Accelerate quality-check dates not supplied.</li>{% endfor %}
+        </ul>
+        <p>Source refreshes and quality checks do not verify the customer's current estate.</p>
+        {% for notice in report.notices %}<p>{{ notice }}</p>{% endfor %}
+    </details>
+    {% endif %}
+    <div class="sb-revenue-reports-body" data-sb-page-body tabindex="0" role="region" aria-label="{{ report.title }} customers">
+        {% if not report.snapshot %}
+        <div class="sb-revenue-empty"><h2>No SQL snapshot yet</h2><p>Sync SQL Motions to pull both source reports together.</p></div>
+        {% elif not report.rows %}
+        <div class="sb-revenue-empty"><h2>No matching customers</h2><p>{% if report.motion == 'renewals' %}No future SQL expirations were reported for current customers in this scope.{% else %}No SQL 2016 discovery was reported in this scope. Unobserved estates remain unknown.{% endif %}</p></div>
+        {% else %}
+        {% set sql_widget = false %}
+        {% set seller_group_columns = 6 if report.motion == 'renewals' else 3 %}
+        <table class="sb-modernization-table sb-rti-flat sb-sql-table" data-sb-sortable
+               data-sb-sort-key="sql-{{ report.motion }}{{ '-v2' if report.motion == 'eos' else '' }}-{{ 'sellers' if group_by_seller else 'flat' }}"
+               data-sb-sort-default-column="1" data-sb-sort-default-direction="{{ 'ascending' if report.motion == 'renewals' else 'descending' }}">
+            <thead><tr>{% include 'partials/_sql_motion_headers.html' %}</tr></thead>
+            {% for group in (report.seller_groups if group_by_seller else [{'rows': report.rows}]) %}
+            <tbody>
+                {% if group_by_seller %}{% include 'partials/widgets/_seller_group_header.html' %}{% endif %}
+                {% set rows = group.rows %}{% include 'partials/_sql_motion_rows.html' %}
+            </tbody>
+            {% endfor %}
+        </table>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-revenue-reports.js') }}"></script>
+<script>
+(() => {
+    const button = document.getElementById('syncSqlMotions');
+    const progress = window.SBSyncProgress.create(
+        document.querySelector('[data-sb-sync-progress="sql-motions"]'),
+        {onComplete: () => window.location.reload()}
+    );
+    button.addEventListener('click', () => {
+        progress.start().catch(error => console.error('SQL Motions sync failed.', error));
+    });
+})();
+</script>
+{% endblock %}

@@ -9,9 +9,16 @@
         return '$' + (amount >= 1000 ? (amount / 1000).toFixed(1) + 'K' : Math.round(amount));
     }
 
-    function visibleCustomers(customers, buckets, showAll) {
+    function visibleBuckets(buckets, focus = '') {
+        return buckets.filter(bucket => bucket !== focus);
+    }
+
+    function visibleCustomers(customers, buckets, showAll, focus = '', qualifyingBuckets = null) {
         return customers.filter(customer => {
             const coverage = Object.keys(customer.buckets).length;
+            if (focus) return !Object.hasOwn(customer.buckets, focus) && (qualifyingBuckets
+                ? qualifyingBuckets.some(bucket => Object.hasOwn(customer.buckets, bucket))
+                : coverage > 0);
             return showAll || buckets.length === 1 || (coverage > 0 && coverage < buckets.length);
         }).sort((a, b) => Object.keys(a.buckets).length - Object.keys(b.buckets).length
             || a.name.localeCompare(b.name));
@@ -22,6 +29,19 @@
         if (term.length < 2) return [];
         return customers.filter(customer => [customer.name, customer.nickname, customer.tpid]
             .some(value => value != null && String(value).toLowerCase().includes(term))).slice(0, 15);
+    }
+
+    function sellerGroups(items) {
+        const groups = new Map();
+        items.forEach(item => {
+            const key = item.seller?.id ?? null;
+            if (!groups.has(key)) groups.set(key, {seller: item.seller, rows: []});
+            groups.get(key).rows.push(item);
+        });
+        return [...groups.values()].sort((a, b) =>
+            (a.seller == null) - (b.seller == null)
+            || (a.seller?.name ?? '').localeCompare(b.seller?.name ?? '')
+            || (a.seller?.id ?? 0) - (b.seller?.id ?? 0));
     }
 
     function createLatestReader(fetcher) {
@@ -71,6 +91,8 @@
         if (JSON.stringify(data.buckets) !== JSON.stringify(buckets)
             || data.customers.some(customer => !customer.buckets
                 || Array.isArray(customer.buckets)
+                || (customer.seller != null && (!Number.isInteger(customer.seller.id)
+                    || customer.seller.id <= 0 || typeof customer.seller.name !== 'string'))
                 || Object.entries(customer.buckets).some(([bucket, amount]) =>
                     !buckets.includes(bucket) || !Number.isFinite(amount)))) {
             throw new Error('Invalid whitespace grid response');
@@ -80,6 +102,16 @@
 
     const PREFERENCES_KEY = 'salesbuddy_whitespace_preferences';
 
+    function entryPreset(search) {
+        if (new URLSearchParams(search).get('view') !== 'database-whitespace') return null;
+        return {
+            key: 'database-whitespace-v2',
+            pillars: ['AI', 'Analytics', 'Apps', 'Databases'],
+            sortPillar: 'Databases',
+            focus: 'Databases',
+        };
+    }
+
     function parsePreferences(raw) {
         if (raw === null) return {version: 1, sorts: {}};
         const value = JSON.parse(raw);
@@ -88,6 +120,9 @@
             throw new Error('Invalid whitespace preferences');
         }
         if (value.pillars !== undefined) requireStrings(value.pillars);
+        if (value.focus !== undefined && typeof value.focus !== 'string') {
+            throw new Error('Invalid whitespace focus preference');
+        }
         for (const [key, state] of Object.entries(value.sorts)) {
             const match = /^whitespace:(gridTable|penetrationTable):(.+)$/.exec(key);
             const columns = match ? JSON.parse(match[2]) : null;
@@ -103,8 +138,8 @@
         return value;
     }
 
-    const helpers = {displayName, formatRevenue, visibleCustomers, matchingCustomers,
-        createLatestReader, requireGrid, parsePreferences};
+    const helpers = {displayName, formatRevenue, visibleBuckets, visibleCustomers, matchingCustomers,
+        createLatestReader, requireGrid, parsePreferences, sellerGroups, entryPreset};
     if (typeof module !== 'undefined' && module.exports) module.exports = helpers;
     if (!global.document) return;
     const root = document.querySelector('[data-sb-whitespace]');
@@ -119,6 +154,7 @@
     const frame = find('[data-bucket-frame]');
     const retries = {};
     const sorts = {};
+    let acquisitionTemplate = find('#fabricAcquisitionTable')?.cloneNode(true);
     let preferences = parsePreferences(null);
     const restoredReadings = new Set();
     let availableBuckets = [];
@@ -136,6 +172,8 @@
     let defaultsVersion = 0;
     const saved = history.state?.sbWhitespace?.dimension === 'SuperStrategicPillar'
         ? history.state.sbWhitespace : {};
+    const preset = entryPreset(global.location.search);
+    const restoringPreset = preset && saved.entry === preset.key;
 
     function element(tag, text, className) {
         const node = document.createElement(tag);
@@ -199,8 +237,14 @@
             });
             history.replaceState({...history.state, sbWhitespace: {
                 dimension: 'SuperStrategicPillar',
+                entry: preset?.key ?? null,
                 mode, buckets: selectedBuckets(),
+                focus: find('#whitespaceFocus').value,
                 showAll: find('#showAllCustomers').checked,
+                groupBySeller: {
+                    grid: find('#gridGroupBySeller').checked,
+                    acquisition: find('#acquisitionGroupBySeller')?.checked ?? false,
+                },
                 customer: selectedCustomer, query: search.value, scrolls,
                 sorts: Object.fromEntries(Object.entries(sorts).map(([key, sort]) =>
                     [key, sort.state])),
@@ -241,10 +285,12 @@
     }
 
     function savePreferences() {
+        if (preset) return;
         const pillars = availableBuckets.length ? selectedBuckets() : preferences.pillars;
         preferences = {
             version: 1,
             ...(pillars === undefined ? {} : {pillars}),
+            focus: find('#whitespaceFocus').value,
             sorts: {...preferences.sorts, ...Object.fromEntries(
                 Object.entries(sorts).map(([key, sort]) => [key, sort.state]))},
         };
@@ -265,10 +311,47 @@
         }
     }
 
-    function makeTable(id, columns, host, rows) {
+    function setTableBodies(table, rows, grouped) {
+        const items = rows.map(row => ({
+            row,
+            seller: row.dataset.sellerId ? {
+                id: Number(row.dataset.sellerId), name: row.dataset.sellerName,
+            } : null,
+        }));
+        const groups = grouped ? sellerGroups(items) : [{rows: items}];
+        for (const group of groups) {
+            const body = table.createTBody();
+            if (grouped) {
+                const heading = element('tr', undefined, 'sb-whitespace-seller-heading');
+                heading.setAttribute('data-sb-sort-fixed', '');
+                const label = element('th');
+                label.colSpan = table.tHead.rows[0].cells.length;
+                label.scope = 'rowgroup';
+                if (group.seller) {
+                    const link = element('a', undefined,
+                        'badge bg-primary text-decoration-none');
+                    link.href = '/seller/' + group.seller.id;
+                    const icon = element('i', undefined, 'bi bi-person');
+                    icon.setAttribute('aria-hidden', 'true');
+                    link.append(icon, document.createTextNode(' ' + group.seller.name));
+                    label.append(link);
+                } else label.textContent = 'No seller assigned';
+                heading.append(label);
+                body.append(heading);
+            }
+            group.rows.forEach(item => body.append(item.row));
+        }
+        if (!table.tBodies.length) table.createTBody();
+    }
+
+    function makeTable(id, columns, host, rows, grouped = false) {
         const key = 'whitespace:' + id + ':' + JSON.stringify(columns);
-        const previousSort = Object.hasOwn(preferences.sorts, key) ? preferences.sorts[key] :
-            Object.hasOwn(sorts, key) ? sorts[key].state : saved.sorts?.[key];
+        const presetGrid = id === 'gridTable' && preset;
+        const previousSort = presetGrid
+            ? Object.hasOwn(sorts, key) ? sorts[key].state :
+                restoringPreset ? saved.sorts?.[key] : undefined
+            : Object.hasOwn(preferences.sorts, key) ? preferences.sorts[key] :
+                Object.hasOwn(sorts, key) ? sorts[key].state : saved.sorts?.[key];
         const table = element('table');
         table.id = id;
         table.setAttribute('data-sb-sortable', '');
@@ -279,17 +362,62 @@
             th.scope = 'col';
             th.dataset.sbSortType = type;
             th.dataset.exportLabel = label;
+            if (presetGrid && label === preset.sortPillar) th.dataset.sbSortEmptyFirst = '';
             head.append(th);
         });
-        const body = table.createTBody();
-        rows.forEach(row => body.append(row));
+        setTableBodies(table, rows, grouped);
         host.replaceChildren(table);
         sorts[key] = global.SBTableSort.create(table);
         if (previousSort !== undefined) sorts[key].restore(previousSort);
+        else if (presetGrid) {
+            const column = columns.findIndex(([label]) => label === preset.sortPillar);
+            if (column >= 0) sorts[key].restore({column, direction: 'ascending'});
+        }
         table.addEventListener('click', event => {
             if (event.target.closest('[data-sb-table-sort]')) savePreferences();
         });
         return table;
+    }
+
+    function renderAcquisition() {
+        if (!acquisitionTemplate) return;
+        const previous = find('#fabricAcquisitionTable');
+        const state = previous ? global.SBTableSort.create(previous).state : null;
+        const table = acquisitionTemplate.cloneNode(true);
+        const rows = [...table.querySelectorAll('tr[data-row-key]')];
+        table.querySelectorAll('thead th').forEach(header => {
+            header.textContent = header.textContent.trim();
+        });
+        [...table.tBodies].forEach(body => body.remove());
+        setTableBodies(table, rows, find('#acquisitionGroupBySeller').checked);
+        table.dataset.exportVisible = String(mode === 'acquisition');
+        const reading = find('#acquisitionPanel .sb-whitespace-reading');
+        const scrollTop = reading.scrollTop;
+        reading.replaceChildren(table);
+        global.SBTableSort.create(table).restore(state);
+        reading.scrollTop = scrollTop;
+        if (!rows.length) {
+            reading.replaceChildren(element('p', 'No customers match the acquisition criteria.',
+                'sb-whitespace-empty'));
+        }
+    }
+
+    function loadAcquisition() {
+        const reading = find('#acquisitionPanel .sb-whitespace-reading');
+        reading.hidden = true;
+        const include = find('#acquisitionIncludeNoOtherSpend').checked;
+        return read('acquisition', '/api/reports/whitespace/fabric-acquisition?'
+            + 'include_no_other_spend=' + include, data => {
+            const fragment = document.createElement('template');
+            fragment.innerHTML = data.table_html;
+            acquisitionTemplate = fragment.content.querySelector('#fabricAcquisitionTable');
+            if (!acquisitionTemplate) throw new Error('Invalid acquisition table response');
+            renderAcquisition();
+            reading.hidden = false;
+            const summary = data.count + ' customers | Avg monthly ACR, ' + data.period_label;
+            find('#acquisitionSummary').textContent = summary;
+            if (mode === 'acquisition') updateStatus(summary);
+        });
     }
 
     function cell(row, text, value) {
@@ -307,16 +435,23 @@
 
     function renderGrid() {
         if (!grid) return;
-        const rows = visibleCustomers(grid.customers, grid.buckets,
-            find('#showAllCustomers').checked);
+        const focus = find('#whitespaceFocus').value;
+        const buckets = visibleBuckets(selectedBuckets(), focus);
+        const rows = visibleCustomers(grid.customers, buckets,
+            find('#showAllCustomers').checked, focus,
+            preset && focus === preset.focus ? preset.pillars : null);
         const host = find('#gridResults');
         const table = makeTable('gridTable', [['Customer', 'text'],
-            ...grid.buckets.map(bucket => [bucket, 'number']), ['Gaps', 'number']], host,
+            ...buckets.map(bucket => [bucket, 'number']), ['Gaps', 'number']], host,
         rows.map(customer => {
             const row = element('tr');
             row.dataset.customerId = customer.id;
+            if (customer.seller) {
+                row.dataset.sellerId = customer.seller.id;
+                row.dataset.sellerName = customer.seller.name;
+            }
             cell(row, '', customer.name).append(customerLink(customer));
-            grid.buckets.forEach(bucket => {
+            buckets.forEach(bucket => {
                 const amount = customer.buckets[bucket];
                 const td = cell(row, '', amount);
                 if (amount === undefined) {
@@ -332,14 +467,16 @@
                     td.append(button);
                 }
             });
-            cell(row, grid.buckets.length - Object.keys(customer.buckets).length);
+            cell(row, buckets.filter(bucket => !Object.hasOwn(customer.buckets, bucket)).length);
             return row;
-        }));
-        table.dataset.exportVisible = String(rows.length > 0);
+        }), find('#gridGroupBySeller').checked);
+        table.dataset.exportVisible = String(rows.length > 0 && mode !== 'acquisition');
         host.hidden = rows.length === 0;
         find('#gridEmpty').hidden = rows.length > 0;
         find('#gridEmpty').textContent = 'No customers match this pillar scope.';
-        const scope = rows.length + ' customers | ' + grid.buckets.join(', ')
+        const scope = rows.length + ' customers'
+            + (focus ? ' | ' + focus + ' whitespace' : '')
+            + (buckets.length ? ' | ' + buckets.join(', ') : '')
             + ' | Recent average spend';
         find('#gridSummary').textContent = scope;
         if (mode === 'grid') updateStatus(scope);
@@ -347,6 +484,9 @@
     }
 
     function loadGrid(buckets = selectedBuckets()) {
+        const focused = Boolean(find('#whitespaceFocus').value);
+        find('#showAllCustomers').disabled = focused;
+        if (focused) buckets = availableBuckets;
         if (!buckets.length) {
             reader.cancel('grid');
             grid = null;
@@ -358,7 +498,7 @@
             find('#gridSummary').textContent = 'No pillar scope loaded.';
             find('[data-error="grid"]').hidden = true;
             setLoading('grid', false);
-            updateStatus('Choose pillars to begin');
+            if (mode === 'grid') updateStatus('Choose pillars to begin');
             return;
         }
         gridRequest = [...buckets];
@@ -367,7 +507,7 @@
         find('#gridResults table')?.setAttribute('data-export-visible', 'false');
         find('#gridEmpty').hidden = true;
         find('#gridSummary').textContent = 'Loading | ' + buckets.join(', ');
-        updateStatus('Loading whitespace grid');
+        if (mode === 'grid') updateStatus('Loading whitespace grid');
         retries.grid = () => loadGrid(gridRequest);
         return read('grid', '/api/reports/whitespace?buckets='
             + encodeURIComponent(buckets.join(',')) + '&show_all=1', data => {
@@ -381,8 +521,15 @@
         const loaded = await read('defaults', '/api/reports/whitespace/pillars', data => {
             availableBuckets = requireStrings(data);
             const host = find('#bucketCheckboxes');
+            const focus = find('#whitespaceFocus');
+            const any = element('option', 'Any selected pillar');
+            any.value = '';
+            focus.replaceChildren(any);
             host.replaceChildren();
             availableBuckets.forEach(bucket => {
+                const option = element('option', bucket);
+                option.value = bucket;
+                focus.append(option);
                 const label = element('label');
                 const input = element('input');
                 input.type = 'checkbox';
@@ -398,12 +545,23 @@
         });
         if (!loaded || version !== defaultsVersion || !availableBuckets.length) return;
         try {
-            const defaults = preferences.pillars ?? (Array.isArray(saved.buckets)
-                ? requireStrings(saved.buckets) : availableBuckets);
+            const defaults = preset
+                ? restoringPreset && Array.isArray(saved.buckets)
+                    ? requireStrings(saved.buckets) : preset.pillars
+                : preferences.pillars ?? (Array.isArray(saved.buckets)
+                    ? requireStrings(saved.buckets) : availableBuckets);
             find('#bucketCheckboxes').querySelectorAll('input').forEach(input => {
                 input.checked = defaults.includes(input.value);
             });
-            find('#showAllCustomers').checked = Boolean(saved.showAll);
+            const focus = preset
+                ? restoringPreset ? saved.focus ?? preset.focus : preset.focus
+                : preferences.focus ?? saved.focus ?? '';
+            if (focus && !availableBuckets.includes(focus)) {
+                throw new Error('Saved whitespace focus is not an available pillar');
+            }
+            find('#whitespaceFocus').value = focus;
+            find('#showAllCustomers').checked = preset && !restoringPreset
+                ? true : Boolean(saved.showAll);
             await loadGrid();
         } catch (error) {
             showError('defaults', error);
@@ -620,7 +778,8 @@
     }
 
     function setMode(next, focus = false) {
-        if (!['grid', 'reverse', 'penetration'].includes(next)) next = 'grid';
+        const modes = Array.from(root.querySelectorAll('[data-mode]'), button => button.dataset.mode);
+        if (!modes.includes(next)) next = 'grid';
         mode = next;
         root.querySelectorAll('[data-mode]').forEach(button => {
             const active = button.dataset.mode === mode;
@@ -630,6 +789,15 @@
             if (active && focus) button.focus();
         });
         if (mode === 'penetration' && !penetrationLoaded) loadPenetration();
+        find('#fabricAcquisitionTable')?.setAttribute(
+            'data-export-visible', String(mode === 'acquisition'));
+        if (mode === 'acquisition') {
+            find('#gridTable')?.setAttribute('data-export-visible', 'false');
+            updateStatus(find('#acquisitionSummary').textContent);
+            restoreReading(mode);
+            return;
+        }
+        if (grid) renderGrid();
         if ((mode === 'grid' && grid) || (mode === 'penetration' && penetrationLoaded)
             || (mode === 'reverse' && !find('#reverseResults').hidden
                 && find('#reverseResults .sb-whitespace-reverse-section'))) {
@@ -644,13 +812,14 @@
     root.querySelectorAll('[data-mode]').forEach(button => {
         button.addEventListener('click', () => setMode(button.dataset.mode));
         button.addEventListener('keydown', event => {
-            const modes = ['grid', 'reverse', 'penetration'];
+            const modes = Array.from(root.querySelectorAll('[data-mode]'),
+                item => item.dataset.mode);
             const index = modes.indexOf(mode);
             let next;
             if (event.key === 'ArrowRight') next = modes[(index + 1) % modes.length];
-            if (event.key === 'ArrowLeft') next = modes[(index + 2) % modes.length];
+            if (event.key === 'ArrowLeft') next = modes[(index + modes.length - 1) % modes.length];
             if (event.key === 'Home') next = modes[0];
-            if (event.key === 'End') next = modes[2];
+            if (event.key === 'End') next = modes[modes.length - 1];
             if (next) { event.preventDefault(); setMode(next, true); }
         });
     });
@@ -663,7 +832,23 @@
         savePreferences();
         loadGrid();
     });
+    find('#whitespaceFocus').addEventListener('change', () => {
+        cancelDefaults();
+        savePreferences();
+        loadGrid();
+    });
     find('#showAllCustomers').addEventListener('change', renderGrid);
+    find('#gridGroupBySeller').addEventListener('change', () => {
+        renderGrid();
+        saveView();
+    });
+    find('#acquisitionGroupBySeller')?.addEventListener('change', () => {
+        renderAcquisition();
+        saveView();
+    });
+    find('#acquisitionIncludeNoOtherSpend')?.addEventListener('change', loadAcquisition);
+    retries.acquisition = loadAcquisition;
+    document.addEventListener('DOMContentLoaded', renderAcquisition);
     search.addEventListener('input', searchCustomers);
     search.addEventListener('keydown', event => {
         if (event.key === 'Escape') { ++searchVersion; hideMatches(); }
@@ -710,7 +895,11 @@
         selectedCustomer = saved.customer;
         loadReverse();
     }
-    setMode(saved.mode || 'grid');
+    find('#gridGroupBySeller').checked = saved.groupBySeller?.grid === true;
+    if (find('#acquisitionGroupBySeller')) {
+        find('#acquisitionGroupBySeller').checked = saved.groupBySeller?.acquisition === true;
+    }
+    setMode(preset && !restoringPreset ? 'grid' : saved.mode || root.dataset.initialMode || 'grid');
     restorePreferences();
     loadDefaults();
 })(typeof window === 'undefined' ? globalThis : window);

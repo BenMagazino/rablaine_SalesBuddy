@@ -156,10 +156,29 @@ class TestToolCoverage:
         """Saved Fabric measurements must be available without starting an import."""
         assert 'report_fabric_consumption' in self._tool_names()
         assert 'report_fabric_capacity_pressure' in self._tool_names()
+        assert 'report_fabric_trial_conversion' in self._tool_names()
+        assert 'report_fabric_expansion' in self._tool_names()
+        assert 'report_fabric_modernization' in self._tool_names()
+        assert 'report_fabric_modernization_candidates' in self._tool_names()
+        assert 'report_fabric_acquisition' in self._tool_names()
+        assert 'report_rti' in self._tool_names()
 
     def test_ptof_report_tool_exists(self):
         """Renewal assessments and details must be queryable without refreshing."""
         assert 'report_ptof' in self._tool_names()
+
+    def test_database_whitespace_tool_exists(self):
+        """Database discovery must expose the same grid-backed candidates as its widget."""
+        assert 'report_database_whitespace' in self._tool_names()
+
+    def test_database_expansion_tool_exists(self):
+        """Database motion signals reuse the saved analyzer queue."""
+        assert 'report_database_expansion' in self._tool_names()
+
+    def test_sql_motion_tools_exist(self):
+        """Both SQL motions must expose their shared saved-source report calculation."""
+        assert 'report_sql_renewals' in self._tool_names()
+        assert 'report_sql_eos' in self._tool_names()
 
     def test_caip_coverage_report_tool_exists(self):
         """CAIP analytical view should be available to SalesIQ."""

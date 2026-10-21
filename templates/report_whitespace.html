@@ -16,10 +16,11 @@
 {% block content %}
 <section class="sb-whitespace{% if not request.args.get('embed') %} sb-directory-frame sb-directory-frame-wide{% endif %}" data-sb-whitespace data-sb-page-surface
          data-embedded="{{ 'true' if request.args.get('embed') else 'false' }}"
+         data-initial-mode="{{ initial_mode }}"
          aria-labelledby="whitespaceTitle">
     <header class="sb-whitespace-header" data-sb-page-band>
         <div><h1 id="whitespaceTitle">Whitespace Analysis</h1><p>Find customer adoption gaps across strategic pillars.</p></div>
-        {% set export_table_id = '#gridTable[data-export-visible=true]' %}
+        {% set export_table_id = '#gridTable[data-export-visible=true], #fabricAcquisitionTable[data-export-visible=true]' %}
         {% set export_filename = 'whitespace-analysis' %}
         {% set export_title = 'Whitespace Analysis' %}
         {% include 'partials/_report_export.html' %}
@@ -39,16 +40,44 @@
                 aria-controls="{{ key }}Panel" aria-selected="{{ 'true' if key == 'grid' else 'false' }}"
                 tabindex="{{ 0 if key == 'grid' else -1 }}">{{ label }}</button>
         {% endfor %}
+        {% if acquisition %}
+        <button type="button" id="acquisition-tab" role="tab" data-mode="acquisition"
+                aria-controls="acquisitionPanel" aria-selected="false" tabindex="-1">Fabric Acquisition</button>
+        {% endif %}
     </nav>
     <div class="sb-whitespace-workarea" data-sb-page-body>
+        {% if acquisition %}
+        <section id="acquisitionPanel" role="tabpanel" aria-labelledby="acquisition-tab"
+                 class="sb-whitespace-panel" hidden>
+            <div class="sb-whitespace-scope">
+                <span id="acquisitionSummary">{{ acquisition.count }} customers | Avg monthly ACR, {{ acquisition.period_label }}</span>
+                <label><input type="checkbox" id="acquisitionIncludeNoOtherSpend"> All customers with no Fabric spend</label>
+                <label><input type="checkbox" id="acquisitionGroupBySeller"> Group by seller</label>
+            </div>
+            <div class="sb-whitespace-notice" data-error="acquisition" hidden><span role="alert"></span><button type="button" data-retry="acquisition">Retry acquisition</button></div>
+            <p data-loading="acquisition" role="status" hidden>Loading acquisition customers...</p>
+            <div class="sb-whitespace-reading" tabindex="0" role="region" aria-label="Fabric acquisition whitespace">
+                {% if acquisition.rows %}
+                {% set acquisition_table_id = 'fabricAcquisitionTable' %}
+                {% include 'partials/_fabric_acquisition_table.html' %}
+                {% else %}
+                <p class="sb-whitespace-empty">No customers match the acquisition criteria.</p>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
         <section id="gridPanel" role="tabpanel" aria-labelledby="grid-tab" class="sb-whitespace-panel">
             <div class="sb-whitespace-tools">
-                <span class="sb-whitespace-label">Pillars</span><div id="bucketCheckboxes" role="group" aria-label="Selected strategic pillars"><span>Loading pillars...</span></div>
+                <label class="sb-whitespace-focus" for="whitespaceFocus">Focus whitespace
+                    <select id="whitespaceFocus"><option value="">Any selected pillar</option></select>
+                </label>
+                <span class="sb-whitespace-label">Spend columns</span><div id="bucketCheckboxes" role="group" aria-label="Selected strategic pillars"><span>Loading pillars...</span></div>
             </div>
             <div class="sb-whitespace-notice" data-error="defaults" hidden><span role="alert"></span><button type="button" data-retry="defaults">Retry pillars</button></div>
             <div class="sb-whitespace-scope">
                 <span id="gridSummary">Select pillars to compare customer spend.</span>
                 <label><input type="checkbox" id="showAllCustomers"> Include fully covered customers</label>
+                <label><input type="checkbox" id="gridGroupBySeller"> Group by seller</label>
             </div>
             <div class="sb-whitespace-notice" data-error="grid" hidden><span role="alert"></span><button type="button" data-retry="grid">Retry grid</button></div>
             <div class="sb-whitespace-reading" tabindex="0" role="region" aria-label="Customer whitespace grid">

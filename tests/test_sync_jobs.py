@@ -102,8 +102,8 @@ def test_console_groups_every_operation_once_in_workflow_order(client):
     assert [row.h3.get_text(' ', strip=True) for row in groups[0].select('article')][:3] == [
         'Account Sync', 'Milestone Sync (Milestone Tracker)', 'Revenue Sync (Revenue Analyzer)',
     ]
-    assert [row['data-sync-operation'] for row in groups[1].select('article')][:3] == [
-        'u2c', 'fabric', 'marketing',
+    assert [row['data-sync-operation'] for row in groups[1].select('article')][:4] == [
+        'u2c', 'fabric', 'sql-motions', 'marketing',
     ]
     assert groups[1].select_one('[data-sync-operation="meeting-preparation"]') is not None
     assert groups[0].select_one('[data-sync-operation="meeting-preparation"]') is None
@@ -125,6 +125,7 @@ def test_report_sync_titles_link_to_their_reports(client):
     expected = {
         'u2c': '/reports/u2c',
         'fabric': '/reports/fabric-consumption',
+        'sql-motions': '/reports/sql-renewals',
         'marketing': '/reports/marketing-insights',
         'activity-reconciliation': '/reports/activity-coverage',
         'meeting-preparation': '/reports/activity-coverage',
@@ -267,24 +268,78 @@ def test_schedules_reflect_real_cadences_without_assigning_a_time(client):
     assert not db.session.dirty
 
 
+@pytest.mark.parametrize(('role', 'specialty'), [
+    ('se', 'data'), ('se', 'infra'), ('se', 'apps_ai'), ('se', 'other'),
+    ('dss', 'data'), ('dss', 'infra'), ('dss', 'apps_ai'), ('dss', 'other'),
+    (None, 'data'),
+])
 @pytest.mark.parametrize('enabled', [True, False])
-def test_schedules_follow_user_settings(client, enabled):
+def test_schedules_follow_user_settings(client, enabled, role, specialty):
     """Saved local times, disabled automatic syncs and specialty gates stay truthful."""
     preference = UserPreference.query.first()
     preference.milestone_auto_sync = enabled
     preference.copilot_actions_enabled = enabled
     preference.milestone_sync_hour = 14
     preference.milestone_sync_minute = 35
-    preference.user_role = 'se'
-    preference.se_specialty = 'data' if enabled else 'infra'
+    preference.user_role, preference.se_specialty = role, specialty
     db.session.commit()
     schedules = sync_jobs.operation_schedules()
     assert schedules['milestones']['label'] == (
         'Mon, Wed, Fri · 2:35 PM local' if enabled else 'Disabled')
     assert schedules['copilot-actions']['label'] == (
         'Daily · 6:00 AM local' if enabled else 'Disabled')
-    assert schedules['fabric']['label'] == ('Every 7 days' if enabled else 'On demand')
+    automatic = role == 'dss' or specialty == 'data'
+    for operation in ('fabric', 'sql-motions'):
+        assert schedules[operation]['label'] == ('Every 7 days' if automatic else 'On demand')
+        assert 'Data SEs and sellers' in schedules[operation]['detail']
     assert Job.query.count() == 0
+
+
+@pytest.mark.parametrize(('operation', 'widget_keys', 'scheduler_name'), [
+    ('fabric', ('fabric.expansion', 'fabric.trial_conversion', 'ptof.upcoming_renewals'),
+     'run_fabric_sync_if_due'),
+    ('sql-motions', ('sql.renewals', 'sql.eos'), 'run_sql_motions_sync_if_due'),
+])
+def test_report_widgets_manual_and_scheduled_sync_share_one_worker_job(
+    client, app, executor, operation, widget_keys, scheduler_name,
+):
+    """Every launcher joins one durable import and observes the worker's persisted result."""
+    from app.services import scheduled_sync
+
+    preference = UserPreference.query.first()
+    preference.user_role, preference.se_specialty = 'se', 'data'
+    db.session.add(Customer(name='Shared report sync customer', tpid=12345))
+    db.session.commit()
+
+    scheduled = getattr(scheduled_sync, scheduler_name)(app)
+    job_id = scheduled['job_id']
+    manual = client.post(f'/api/jobs/start/{operation}', json={})
+    assert manual.status_code == 202
+    assert manual.json['job_id'] == job_id
+    for key in widget_keys:
+        response = client.post(
+            f'/api/reports/dashboards/widgets/{key}/sync', json={'retry': False},
+        )
+        assert response.status_code == 200
+        assert response.json['sync']['operation'] == operation
+        assert response.json['sync']['job']['id'] == job_id
+    if operation == 'fabric':
+        report = client.post('/api/reports/fabric-consumption/import', json={})
+        assert report.status_code == 202
+        assert report.json['job_id'] == job_id
+    assert getattr(scheduled_sync, scheduler_name)(app) is None
+    assert Job.query.count() == 1
+    assert executor == []
+
+    assert job_queue.process_one('shared-report-worker', app=app, with_heartbeat=False)
+    observed = client.get(f'/api/jobs/{job_id}').json
+    assert observed['job']['status'] == Job.STATUS_DONE
+    assert observed['job']['initiator'] == 'scheduled'
+    assert observed['job']['progress']['percent'] == 100
+    assert observed['job']['result']['items_synced'] == 2
+    assert any(json.loads(event['data']).get('progress') == 50 for event in observed['events'])
+    assert executor == [(operation, {})]
+    assert Job.query.count() == 1
 
 
 def test_start_after_failure_uses_current_options_and_keeps_failed_history(client, monkeypatch):

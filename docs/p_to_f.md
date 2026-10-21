@@ -61,9 +61,9 @@ P to F is part of the durable `fabric` sync. Refreshing from either the Fabric
 one progress indicator and no separate P to F operation in Sync Status.
 The weekly scheduler checks at startup and every five minutes. If either the
 Fabric or renewal snapshot is missing or at least seven days old, it queues the
-shared job. Automatic work requires the current Data SE specialty in SE Mode,
-including a recheck when a queued job executes. Other specialties and DSS Mode
-can refresh manually. Failed/interrupted overdue attempts wait an hour before
+shared job. Automatic work is available for Data SEs and sellers, regardless of a
+seller's saved SE specialty, including a recheck when a queued job executes.
+Non-Data SEs can refresh manually. Failed/interrupted overdue attempts wait an hour before
 the scheduler retries.
 
 The existing complete-pagination Power BI reader uses a report-isolated token
@@ -85,3 +85,27 @@ the four summary metrics, rolling-window caption, or expandable workload tables;
 those remain on the standalone Fabric report.
 Use the standalone reports or Sync Status to refresh data.
 The `report_ptof` SalesIQ tool reuses the same read service.
+
+## Dashboard widget
+
+**Upcoming P-to-F renewals** has two scopes:
+
+- **Summary** retains subscription expirations from today through 90 days ahead,
+  inclusive.
+- **Details** lists every dated subscription expiration from today onward in the
+  saved report, without the 90-day cutoff or a preview row limit.
+
+Summary displays expiration and customer counts and the annual SA total.
+Details keeps only the heading, report link, and renewal table, without summary
+metrics, date-range copy, or the saved-snapshot footer. Data-quality notices remain
+visible when applicable. Past and undated subscriptions are excluded; missing SA
+amounts remain explicit. Details sorts by expiration date initially, with sortable
+Customer, SKU, Expires, and Status columns. SKU uses compact labels such as P1
+and P2 rather than repeating Power BI Premium. Annual SA amounts remain in
+Summary and the full report, not the Details table. Status shows only
+the account renewal assessment, using the report's same colors, icons, and
+hover/focus explanations. Multiple assessments remain separate status indicators;
+missing assessments show Not supplied.
+Customer/Seller dashboard and widget filters apply to both scopes.
+The full future list is still bounded by the saved source snapshot, not a claim
+that all future subscriptions outside the report's fiscal window were imported.

@@ -60,7 +60,7 @@ def test_empty_hub_and_catalog(client):
     payload = client.get(BASE).json
     assert payload['dashboards'] == []
     assert [item['key'] for item in payload['catalog']] == list(dashboards.WIDGET_DEFINITIONS)
-    assert len(payload['catalog']) == 10
+    assert len(payload['catalog']) == 19
 
 
 def test_create_rename_multiple_dashboards_and_reload(client, app):
@@ -152,6 +152,9 @@ def test_invalid_widget_actions_do_not_change_layout(client):
 def test_setup_gate_is_shared_and_blocks_calculations(client, monkeypatch):
     """Unconfirmed priorities show a useful setup path rather than fabricated values."""
     dashboard_id = create_dashboard(client)
+    monkeypatch.setattr(connect_goals, 'get_setup_state', lambda reference=None: {
+        'ready': False, 'available_buckets': ['Fabric'], 'fiscal_year': 'FY27',
+    })
     provider = Mock(side_effect=AssertionError('A gated widget must not calculate'))
     definition = dashboards.WIDGET_DEFINITIONS['connect_goals.u2c']
     monkeypatch.setitem(
@@ -167,7 +170,9 @@ def test_setup_gate_is_shared_and_blocks_calculations(client, monkeypatch):
     provider.assert_not_called()
 
 
-def test_widgets_reuse_shared_calculations_once_per_definition(app, monkeypatch):
+def test_widgets_reuse_shared_calculations_once_per_definition(
+    app, monkeypatch, dashboard_sources_ready,
+):
     """Repeated instances use the existing calculation and share one result per read."""
     reference = date(2026, 10, 16)
     monkeypatch.setattr(connect_goals, 'get_setup_state', lambda reference=None: {'ready': True})
@@ -195,7 +200,9 @@ def test_widgets_reuse_shared_calculations_once_per_definition(app, monkeypatch)
         provider.assert_called_once_with(reference)
 
 
-def test_duplicate_widget_markup_has_unique_ids_and_scoped_actions(client, monkeypatch):
+def test_duplicate_widget_markup_has_unique_ids_and_scoped_actions(
+    client, monkeypatch, dashboard_sources_ready,
+):
     """Reusable fragments remain valid when the same widget is placed more than once."""
     monkeypatch.setattr(
         connect_goals, 'get_setup_state', lambda reference=None: {'ready': True},
@@ -221,7 +228,9 @@ def test_duplicate_widget_markup_has_unique_ids_and_scoped_actions(client, monke
             ]
 
 
-def test_report_view_has_no_management_markup_and_keeps_widget_content(client, monkeypatch):
+def test_report_view_has_no_management_markup_and_keeps_widget_content(
+    client, monkeypatch, dashboard_sources_ready,
+):
     """A dashboard destination is a report, not an editor with hidden commands."""
     monkeypatch.setattr(connect_goals, 'get_setup_state', lambda reference=None: {'ready': True})
     dashboard_id = create_dashboard(client)
@@ -411,7 +420,7 @@ def test_read_tool_uses_shared_dashboard_data(client, app):
         listing = execute_tool('get_dashboards', {})
         result = execute_tool('get_dashboards', {'dashboard_id': dashboard_id})
         assert listing['dashboards'][0]['id'] == dashboard_id
-        assert len(listing['catalog']) == 10
+        assert len(listing['catalog']) == 19
         assert result['widgets'][0]['id'] == widget_id
         assert result['setup']['ready'] is False
         assert result['url'].endswith(f'/reports/dashboards/{dashboard_id}')

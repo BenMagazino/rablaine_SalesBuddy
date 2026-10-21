@@ -17,13 +17,16 @@
     <div class="sb-fabric-import-band" data-sb-page-band>
         <label>Find customer or capacity <input type="search" data-overview-search placeholder="Name, TPID, capacity or SKU"></label>
         <div class="sb-fabric-mode" role="group" aria-label="Show customers" data-overview-mode>
-            <button type="button" data-mode="all" aria-pressed="false">All customers</button>
             <button type="button" data-mode="capacities" aria-pressed="true">Only customers with capacities</button>
             <button type="button" data-mode="trials" aria-pressed="false"
                     title="Customers with FTL4 or FTL64, including all their other capacities">Trial audit</button>
-            <button type="button" data-mode="p" aria-pressed="false"
-                    title="Customers with P SKUs, including all their other capacities">P-SKU audit</button>
+            <button type="button" data-mode="trial_to_paid" aria-pressed="false"
+                    title="Customers with FTL4 or FTL64 and no paid F SKU, including their P-SKU context">Trial to Paid audit</button>
+            <button type="button" data-mode="f" aria-pressed="false"
+                    title="Customers with paid F SKUs, including all their other capacities">F-SKU audit</button>
         </div>
+        <label class="sb-fabric-customer-toggle"><input type="checkbox" data-overview-customers checked> One row per customer</label>
+        <label class="sb-fabric-customer-toggle"><input type="checkbox" data-overview-sellers> Group by seller</label>
         <p class="sb-fabric-overview-count" data-overview-status role="status">Loading saved data...</p>
     </div>
     <p class="sb-fabric-error sb-fabric-error-band" data-sb-page-band

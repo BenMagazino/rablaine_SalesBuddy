@@ -1,0 +1,10 @@
+{% for row in rows %}
+<tr data-row-key="{{ row.row_key }}">
+    <td><a href="{{ row.destination }}">{{ row.name }}</a></td>
+    {% for product in products %}
+    {% set amount = row.monthly_spend[product.key] %}
+    <td data-sb-sort-value="{{ amount if amount is not none else '' }}">{% if amount is none %}Unavailable{% elif 0 < amount < 1 %}&lt;$1{% elif -1 < amount < 0 %}-&lt;$1{% else %}${{ '{:,.0f}'.format(amount) }}{% endif %}</td>
+    {% endfor %}
+    <td data-sb-sort-value="{{ row.monthly_acr if row.monthly_acr is not none else '' }}">{% if row.monthly_acr is none %}Unavailable{% else %}<a href="{{ row.revenue_destination }}">{% if 0 < row.monthly_acr < 1 %}&lt;$1{% elif -1 < row.monthly_acr < 0 %}-&lt;$1{% else %}${{ '{:,.0f}'.format(row.monthly_acr) }}{% endif %}</a>{% endif %}</td>
+</tr>
+{% endfor %}

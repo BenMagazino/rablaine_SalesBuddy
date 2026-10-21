@@ -1,0 +1,26 @@
+{% set acquisition = instance.data %}
+{% set prefix = widget_id_prefix|default('fabric-acquisition-') %}
+{% set detailed = instance.variant_key|default('metric') == 'detailed' %}
+<section class="db-report-widget{% if detailed %} db-acquisition-details{% endif %}" aria-labelledby="{{ prefix }}title">
+    <header class="db-report-heading">
+        <h2 id="{{ prefix }}title">Fabric acquisition</h2>
+        <a href="{{ acquisition.destination }}">View report <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>
+    </header>
+    {% if not acquisition.available %}
+    <p class="db-report-notice">Available for Data SEs and sellers.</p>
+    {% else %}
+    <p class="db-report-caption">Avg monthly ACR, {{ acquisition.period_label }}. Four-month total divided by 4. No positive monthly Fabric ACR observed.</p>
+    {% if detailed %}
+        {% if acquisition.rows %}
+        <div class="db-acquisition-table-scroll" tabindex="0" role="region" aria-label="Fabric acquisition customers">
+            {% set acquisition_table_class = 'db-report-table db-acquisition-table' %}
+            {% set acquisition_table_key = prefix ~ 'acquisition-v3-' ~ ('sellers' if instance.group_by_seller|default(false) else 'flat') %}
+            {% set acquisition_grouped = instance.group_by_seller|default(false) %}
+            {% include 'partials/_fabric_acquisition_table.html' %}
+        </div>
+        {% else %}<p class="db-report-empty">No customers match the acquisition criteria.</p>{% endif %}
+    {% else %}
+    <dl class="db-report-metrics"><div><dt>Customers with Fabric whitespace</dt><dd class="db-acquisition-count">{{ acquisition.count }}</dd></div></dl>
+    {% endif %}
+    {% endif %}
+</section>

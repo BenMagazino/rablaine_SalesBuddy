@@ -67,6 +67,8 @@ OPERATIONS = {
                         'fabric', {}, True, True, 'fabric_consumption'),
     'fabric-revenue': Operation('Fabric revenue', 'Refresh only saved Fabric revenue.',
                                 'fabric', {}, True, True),
+    'sql-motions': Operation('SQL Motions', 'SQL renewals and Arc SQL version discovery.',
+                             'sql-motions', {}, True, True, 'sql_motions'),
     'meetings': Operation('Meetings for a date', 'WorkIQ calendar and attendee cache.',
                           'meetings', {'date': None}, recovery_safe=True),
     'meeting-aura': Operation('Meeting sync',
@@ -174,7 +176,11 @@ def validate_options(operation: str, options: dict | None) -> dict:
                 not isinstance(value, dict) for value in result[key]
             ):
                 raise SyncAdmissionError(f'{key} must be a list of account/territory objects.')
-    if operation in ('fabric', 'fabric-revenue', 'revenue', 'marketing'):
+    if operation == 'sql-motions':
+        from app.services.sql_motions_sync import active_customers
+        if not active_customers():
+            raise SyncAdmissionError('No active customers with valid TPIDs. Import accounts first.')
+    elif operation in ('fabric', 'fabric-revenue', 'revenue', 'marketing'):
         from app.services.revenue_pull import get_customer_tpids
         if not get_customer_tpids():
             raise SyncAdmissionError('No customers with valid TPIDs. Import your accounts first.')
@@ -374,6 +380,14 @@ def _execute_operation(operation: str, options: dict) -> dict:
         )
         fn = sync_fabric_360 if operation == 'fabric' else refresh_fabric_revenue
         return fn(progress=publish_progress)
+    if operation == 'sql-motions':
+        from app.services.sql_motions_sync import sync_sql_motions
+        try:
+            return sync_sql_motions(progress_callback=publish_progress)
+        except Exception as exc:
+            if is_transient_failure(exc):
+                raise requests.ConnectionError('SQL source connection failed; retry is safe.') from exc
+            raise
     if operation == 'copilot-actions':
         from app.services.copilot_actions import sync_copilot_action_items
         return sync_copilot_action_items()
@@ -615,10 +629,16 @@ def operation_schedules() -> dict[str, dict[str, Any]]:
     }
     schedules['fabric'] = {
         'label': f'Every {FABRIC_SYNC_INTERVAL_DAYS} days' if is_data_se() else 'On demand',
-        'detail': 'Automatic refresh is for Data SEs only. Checked at startup and every '
+        'detail': 'Automatic refresh is for Data SEs and sellers. Checked at startup and every '
                   'five minutes; refreshes telemetry, revenue and P to F together when '
                   'either snapshot is stale or missing. Requires customer TPIDs. '
                   'Failed attempts wait one hour.',
+    }
+    schedules['sql-motions'] = {
+        'label': 'Every 7 days' if is_data_se() else 'On demand',
+        'detail': 'Automatic refresh is for Data SEs and sellers. Checked at startup and every '
+                  'five minutes. Refreshes Azure Migrations and ADS Accelerate together. '
+                  'Requires active customer TPIDs; failed attempts wait one hour.',
     }
     for key, hour, detail in (
         ('meeting-aura', meeting_hour, 'Catches up at startup when cached meetings are stale '
