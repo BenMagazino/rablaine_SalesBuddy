@@ -8,7 +8,7 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/21/2026
+## 10/21/2026 - d2ece58e
 
 - Get an editable FY27 Data Motions dashboard automatically on upgrade, with ten report-backed widgets for Fabric acquisition, modernization, expansion, trials and RTI, database whitespace and growth, P-to-F renewals, and SQL motions. Add another copy anytime from dashboard templates and follow each widget to its full report.
 - Find upcoming SQL renewals and SQL 2016 EOS / ESU discovery candidates in separate reports. One SQL Motions sync refreshes both sources together; ESU protection remains unverified. Data SEs and all sellers receive weekly Fabric, P-to-F and SQL refreshes, and widgets show shared setup, sync progress and retry options when data is missing.
