@@ -381,6 +381,14 @@
 .db-initiative-empty { padding: 24px 0 8px; }
 .db-initiative-empty p { margin: 10px 0; }
 .db-report-widget { padding: 16px; font-variant-numeric: tabular-nums; }
+.db-widget-body:has(> .db-revenue-motion-details) { display: flex; flex-direction: column; overflow: hidden; scrollbar-gutter: auto; }
+.db-widget-body:has(> .db-revenue-motion-details) > :is(.db-filter-scope, .db-filter-exception) { flex-shrink: 0; }
+.db-revenue-motion-details { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.db-revenue-motion-details > :is(.db-report-heading, .db-report-caption, .db-report-notice) { flex-shrink: 0; }
+.db-revenue-motion-scroll { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
+.db-revenue-motion-scroll .db-report-table { margin-top: 0; }
+.db-revenue-motion-scroll .db-report-table :is(th, td):last-child { padding-right: 16px; }
+.db-revenue-motion-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); }
 .db-report-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
 .db-report-heading h2 { margin: 0; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
 .db-report-heading > a { flex-shrink: 0; font-size: 12px; }
@@ -390,6 +398,8 @@
 .db-report-metrics dt { color: var(--sb-ui-muted); font-size: 12px; font-weight: 400; }
 .db-report-metrics dd { margin: 0; text-align: right; font-size: 14px; font-weight: 600; }
 .db-report-metrics dd small { display: block; color: var(--sb-ui-warning); font-size: 11px; font-weight: 400; }
+.db-report-widget [data-tone="danger"] { color: var(--sb-ui-danger); }
+.db-report-widget [data-tone="positive"] { color: var(--sb-ui-milestone-rail); }
 .db-trial-metrics, .db-expansion-metrics, .db-modernization-metrics { display: flex; gap: 16px; margin: 24px 0 16px; }
 :is(.db-trial-metrics, .db-expansion-metrics, .db-modernization-metrics) > div { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 8px; }
 :is(.db-trial-metrics, .db-expansion-metrics, .db-modernization-metrics) > div + div { padding-left: 16px; border-left: 1px solid var(--sb-ui-grid-line); }

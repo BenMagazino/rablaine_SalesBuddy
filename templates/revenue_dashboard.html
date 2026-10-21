@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Revenue Analyzer - Sales Buddy{% endblock %}
+{% block title %}Revenue Analyzer{% if database_motion %}: Database Expansion{% endif %} - Sales Buddy{% endblock %}
 
 {% block body_class %}{% if not request.args.get('embed') %}sb-page-frame{% endif %}{% endblock %}
 {% block extra_css %}
@@ -63,13 +63,18 @@ Last import: {{ latest_import.imported_at.strftime('%b %d, %Y') }}
 
     <header class="sb-revenue-page-header" data-sb-page-band>
         <div>
-            <h1>Revenue Analyzer</h1>
+            <h1>Revenue Analyzer{% if database_motion %}: Database Expansion{% endif %}</h1>
+            {% if database_motion %}
+            <p>Databases · Growth opportunities and consumption risks · Unreviewed outreach · Priority 20+</p>
+            <p class="sb-revenue-page-meta">Monitor-only signals excluded. Existing analyzer scores and recommendations, not qualified opportunities.{% if dashboard_customer_scope is not none %} Dashboard scope: {{ dashboard_customer_scope|length }} customers.{% endif %}</p>
+            {% else %}
             <p>Customers needing attention based on revenue trends</p>
+            {% endif %}
         </div>
         <div class="sb-revenue-page-commands">
             {% set export_table_id = '#alertsTable' %}
-            {% set export_filename = 'revenue-analyzer' %}
-            {% set export_title = 'Revenue Analyzer' %}
+            {% set export_filename = 'database-expansion' if database_motion else 'revenue-analyzer' %}
+            {% set export_title = 'Database Expansion - Revenue Analyzer' if database_motion else 'Revenue Analyzer' %}
             {% include 'partials/_report_export.html' %}
             <div class="sb-revenue-command-group" role="group" aria-label="Revenue data commands">
                 <a href="{{ url_for('revenue.revenue_import') }}" class="sb-revenue-command">
@@ -118,8 +123,12 @@ Last import: {{ latest_import.imported_at.strftime('%b %d, %Y') }}
                 {% endif %}
             </div>
             <div class="sb-revenue-command-group">
+                {% if database_motion %}
+                <a class="sb-revenue-command" href="{{ url_for('revenue.revenue_dashboard') }}">All revenue alerts</a>
+                {% else %}
                 <span id="bucketFilterContainer"></span>
-                {% if sellers_with_alerts and not seller_mode %}
+                {% endif %}
+                {% if sellers_with_alerts and not seller_mode and not database_motion %}
                 <button class="sb-revenue-command" type="button" data-sb-menu="revenueSellersMenu" data-sb-menu-anchor="trigger" aria-controls="revenueSellersMenu" aria-haspopup="menu" aria-expanded="false">
                     <i class="bi bi-people" aria-hidden="true"></i> Sellers ({{ sellers_with_alerts|length }})
                     <i class="bi bi-chevron-down" aria-hidden="true"></i>
@@ -141,8 +150,13 @@ Last import: {{ latest_import.imported_at.strftime('%b %d, %Y') }}
         {% include 'partials/revenue_alerts_content.html' %}
         {% else %}
         <div class="sb-revenue-page-empty">
+            {% if database_motion %}
+            <h3>No pending database outreach</h3>
+            <p>No matching growth or risk signals at priority 20+. Reviewed, actioned, dismissed and monitor-only alerts are excluded. Import revenue and run analysis if database analysis is missing.</p>
+            {% else %}
             <h3>No alerts yet</h3>
             <p>Import revenue data to see customer alerts.</p>
+            {% endif %}
             <a href="{{ url_for('revenue.revenue_import') }}" class="sb-revenue-command">
                 <i class="bi bi-upload" aria-hidden="true"></i> Import Data
             </a>
@@ -152,6 +166,8 @@ Last import: {{ latest_import.imported_at.strftime('%b %d, %Y') }}
 </div>
 
 {% include 'partials/revenue_alert_preview.html' %}
+{% if not database_motion %}
 <script src="{{ url_for('static', filename='js/revenue-bucket-filter.js') }}"></script>
 <script>RevenueBucketFilter.init({ containerId: 'bucketFilterContainer' });</script>
+{% endif %}
 {% endblock %}

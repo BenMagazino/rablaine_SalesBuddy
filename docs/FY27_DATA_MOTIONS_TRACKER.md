@@ -172,16 +172,29 @@ Dashboard placement stays unchecked until you confirm it.
 - **Report/widget:**
 - **Notes / follow-up:**
 
-### 9. [ ] DB modernization
+### 9. [x] Database expansion
 
-- [ ] Coded
-- [ ] Added to dashboard
-- **Starting scope:** Database pillar/product footprint, growth/decline,
-  and linked modernization engagements or milestones.
-- **Boundary:** A proxy worklist is not validated propensity, topology,
-  compatibility, migration readiness, or a target-architecture recommendation.
-- **Report/widget:**
-- **Notes / follow-up:**
+- [x] Coded
+- [x] Added to dashboard
+- **Status:** User confirmed coded and added to the dashboard on October 21, 2026.
+- **Direction:** Use the existing Revenue Analyzer for database consumption signals,
+  with a report-backed widget, not a separate report or trend engine.
+- **Starting scope:** The analyzer already exposes a Databases bucket and product
+  drill-downs. The motion view shows pending database alerts recommending expansion
+  outreach or check-ins, using the existing priority and review workflow.
+- **Boundary:** Low spend, flat revenue or decline alone does not establish a
+  growth opportunity. Retention signals remain distinct from expansion discovery.
+- **Report/widget:** Database Expansion Summary/Details reuse the existing revenue
+  widget presentation and saved analyzer query. Pending Databases alerts at priority
+  20+ with Expansion Outreach or Check-in actions qualify. Monitor-only and handled
+  alerts do not. Growth and risk counts and monthly impact estimates stay separate.
+- **Notes / follow-up:** Click-through opens Revenue Analyzer's focused preset with
+  every matching row, before the normal top-50 limit, and preserves customer/seller
+  scope without changing bucket preferences. No standalone report or new scoring.
+  Verified 216 scoped Python and 37 JavaScript tests plus live report/widget parity:
+  3 growth and 2 risk alerts. Half-width Details is saved beside Database Whitespace,
+  preserving existing placements and filters; user confirmed placement and review.
+  Qualification, engagement links and achieved-outcome tracking remain manual.
 
 ### 10. [ ] Arc bridge
 

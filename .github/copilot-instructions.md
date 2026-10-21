@@ -303,6 +303,25 @@ pytest --cov=app tests/  # with coverage
 
 ## UI/UX Conventions
 
+### Dashboard Widget Table Spacing
+
+- Keep the rightmost table header and data cells padded away from the widget's
+  vertical scrollbar. Use at least 16px of right-side cell padding, following
+  existing widget tables; reserving a scrollbar gutter alone is not enough.
+- Verify the rightmost label, sort control, and values remain readable with the
+  scrollbar present, including when seller grouping is enabled.
+
+### Dashboard Widget Seller Display
+
+- Do not show seller names, badges, columns, or seller labels in dashboard widgets
+  unless the viewer explicitly enables **Group by seller** in the Filters panel.
+- Filtering to a seller, seller mode, or having seller data available does not
+  enable seller display. Seller scope and seller presentation are separate.
+- When grouping is enabled, use the shared seller group header once per group,
+  not repeated seller badges on every customer row.
+- For widget changes, test grouping off and on. The default ungrouped render must
+  contain no seller identity. Keep full-report seller displays unchanged unless requested.
+
 ### Platform Scope
 - **Sales Buddy is a desktop-only Electron application.** Mobile and tablet layouts are out of scope unless the user explicitly requests them.
 - **Never implement, test, screenshot, inspect, or discuss mobile/responsive behavior by default.** Validate UI only at the current desktop Electron viewport.

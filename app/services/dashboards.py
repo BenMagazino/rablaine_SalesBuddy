@@ -24,7 +24,9 @@ from app.services.rti import get_rti_widget
 from app.services.se_specialty import has_specialty_access
 from app.services.manager_one_on_one import get_initiative_tracker_widget
 from app.services.ptof import get_ptof_renewals_widget
-from app.services.revenue_analysis import get_revenue_attention_widget
+from app.services.revenue_analysis import (
+    get_database_expansion_widget, get_revenue_attention_widget,
+)
 from app.services.dashboard_filters import (
     FILTER_LABELS, LIVE_FILTER_LABELS, normalize_filters, normalize_live_filters,
     normalize_filter_config,
@@ -209,7 +211,24 @@ WIDGET_DEFINITIONS = {
             'Unreviewed revenue risks and expansion opportunities.',
             'Revenue Analyzer', _report_variants('partials/widgets/revenue_attention.html'),
             get_revenue_attention_widget, scope='Saved unreviewed analysis',
-            supported_filters=tuple(FILTER_LABELS),
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'),
+        ),
+        WidgetDefinition(
+            'database.expansion', 'Database Expansion',
+            'Prioritized, unreviewed database growth opportunities and consumption risks '
+            'from Revenue Analyzer. Monitor-only signals are excluded.',
+            'Revenue Analyzer / Databases', (
+                WidgetVariant(
+                    'metric', 'Summary', 'partials/widgets/revenue_attention.html',
+                    (3, 4, 6, 12), MIN_WIDGET_HEIGHT, 4,
+                ),
+                WidgetVariant(
+                    'detailed', 'Details', 'partials/widgets/revenue_attention.html',
+                    (6, 12), MIN_WIDGET_HEIGHT, 5,
+                ),
+            ),
+            get_database_expansion_widget, scope='Saved database outreach / priority 20+',
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'), specialty='data',
         ),
         WidgetDefinition(
             'ptof.upcoming_renewals', 'Upcoming P-to-F renewals',

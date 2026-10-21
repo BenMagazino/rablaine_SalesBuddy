@@ -123,7 +123,8 @@ def test_revenue_widget_matches_active_seller_scope(app, client):
     assert 'In scope' in page.get_text()
     assert 'Other account' not in page.get_text()
     assert '$2,000' in page.get_text()
-    assert page.select_one('a.db-report-seller .bi-person')
+    assert not page.select_one('.db-report-seller')
+    assert 'Scope seller' not in page.get_text()
 
 
 @pytest.mark.parametrize('key', SIGNAL_KEYS)

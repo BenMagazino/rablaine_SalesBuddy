@@ -57,6 +57,7 @@ the result unique customers.
 | Fabric modernization | [x] | [x] | Keep as modernization signals; add named source submotions. |
 | Real-Time Intelligence | [x] | [x] | Streaming customers without RTI usage, including Fabric entry points. |
 | Database whitespace | [x] | [x] | Grid-backed Database gaps with AI, Analytics or Apps spend; user confirmed complete. |
+| Database expansion | [x] | [x] | Analyzer-backed growth and consumption-risk signals; user confirmed complete on October 21. |
 
 Fabric Capacity Pressure is also an existing supporting report/widget, not a new
 database motion or proof of a qualified expansion opportunity.
@@ -65,8 +66,9 @@ database motion or proof of a qualified expansion opportunity.
 
 1. SQL Renewals.
 2. SQL EOS / ESU.
-3. Database Expansion.
 
+The database growth motion reuses Revenue Analyzer. Its motion widget includes
+growth opportunities and consumption risks, without a separate report or scoring engine.
 Database Whitespace is complete. Named-source Fabric Modernization refinements are
 implemented. On October 20, the user confirmed that existing Fabric Acquisition
 is sufficient for AI attach; no separate addition is planned.
@@ -294,14 +296,25 @@ separate dashboard tiles:
 
 ### Expand: Database Consumption Growth - priority 3
 
-**Direction:** Replace the old generic DB modernization concept with a distinct
-existing-consumer expansion queue.
+**Direction:** Reuse the existing Revenue Analyzer for this motion, not a separate
+report, widget or set of trend calculations.
 
-- [ ] Define the database consumption measure and comparable complete-month windows.
-- [ ] Identify existing consumers with low, stagnant or declining consumption as
-  discovery signals; validate whether low penetration is actually known.
-- [ ] Show month-over-month growth and customer-confirmed expansion/modernization work.
-- [ ] Build shared report/widget/read tool; test and add to the dashboard.
+- [x] Agree to reuse the analyzer; the separate implementation was discarded on October 21.
+- [x] Confirm the analyzer already has a Databases bucket and product drill-downs.
+- [x] Agree to include both growth opportunities and consumption risks, keeping
+  their labels and estimates separate. Small/flat spend alone does not qualify.
+- [x] Reuse saved Databases alerts with priority 20+, New/To be reviewed status and
+  Expansion Outreach or Check-in recommendations, excluding Monitor/No action.
+- [x] Apply motion scope before the normal top-50 limit, with identical report and
+  widget membership. Existing normal analyzer bucket filtering remains unchanged.
+- [x] Reuse the revenue widget presentation in Database Expansion Summary/Details,
+  linking to the existing analyzer preset with customer/seller scope preserved and
+  normal bucket preferences untouched. No new trend calculation or standalone report.
+- [x] Verify 216 scoped Python and 37 JavaScript tests, live five-row parity
+  (3 growth, 2 risk), scoped/empty click-throughs, exports and product/review dialogs.
+  Save half-width Details beside Database Whitespace without changing other widgets.
+- [x] Confirm live widget placement and user review on October 21, 2026.
+- [ ] Link customer-confirmed expansion/modernization work and achieved outcomes.
 - [ ] Assess database + Fabric attach through mirroring/OneLake where appropriate.
 
 The response cites a managerial example of consumers below $5,000/month. This is

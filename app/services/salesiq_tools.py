@@ -218,6 +218,25 @@ def report_database_whitespace() -> dict:
 
 
 @tool(
+    'report_database_expansion',
+    'Read Database Expansion signals from the existing Revenue Analyzer for Data SEs '
+    'and sellers. Databases bucket only, priority 20+, New or To be reviewed status, '
+    'with EXPANSION OUTREACH or CHECK-IN recommendations. Monitor-only signals excluded. '
+    'Returns the complete priority-ranked queue, separate growth/risk counts and monthly '
+    'impact estimates. Uses existing saved scores, not new propensity or qualified outcomes.',
+    {'type': 'object', 'properties': {}},
+)
+def report_database_expansion() -> dict:
+    """Reuse the analyzer-backed motion widget without rerunning revenue analysis."""
+    from app.services.revenue_analysis import get_database_expansion_widget
+    from app.services.se_specialty import has_specialty_access
+
+    if not has_specialty_access('data'):
+        return {'error': 'Database Expansion is available for Data SEs and sellers.'}
+    return get_database_expansion_widget()
+
+
+@tool(
     'report_rti',
     'Read Real-Time Intelligence customer discovery signals: native rolling 28-day RTI '
     'CU-hours and workload share alongside Event Hubs, Stream Analytics and IoT ACR. '

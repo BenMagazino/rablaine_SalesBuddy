@@ -171,6 +171,10 @@ class TestToolCoverage:
         """Database discovery must expose the same grid-backed candidates as its widget."""
         assert 'report_database_whitespace' in self._tool_names()
 
+    def test_database_expansion_tool_exists(self):
+        """Database motion signals reuse the saved analyzer queue."""
+        assert 'report_database_expansion' in self._tool_names()
+
     def test_caip_coverage_report_tool_exists(self):
         """CAIP analytical view should be available to SalesIQ."""
         names = {item['name'] for item in get_mcp_tools()}

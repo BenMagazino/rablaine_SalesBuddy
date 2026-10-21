@@ -2,7 +2,10 @@
 Revenue routes for Sales Buddy.
 Handles revenue data import, analysis, and attention dashboard.
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, Response, stream_with_context
+from flask import (
+    Blueprint, Response, abort, flash, g, jsonify, redirect, render_template, request,
+    stream_with_context, url_for,
+)
 import csv
 import json
 import time
@@ -59,6 +62,19 @@ def _redirect_revenue_import():
 @revenue_bp.route('/reports/revenue')
 def revenue_dashboard():
     """Main revenue attention dashboard."""
+    from app.services.dashboard_filters import report_customer_scope
+    from app.services.revenue_analysis import get_database_expansion_analyses
+    from app.services.se_specialty import has_specialty_access
+
+    motion = request.args.get('view') == 'database-expansion'
+    customer_scope = None
+    if motion:
+        if not has_specialty_access('data'):
+            abort(403, description='Database Expansion is available for Data SEs and sellers.')
+        try:
+            customer_scope = report_customer_scope(request.args)
+        except ValueError as exc:
+            return jsonify(success=False, error=str(exc)), 400
     seller_mode_sid = get_seller_mode_seller_id()
     seller_mode_name = None
     if seller_mode_sid:
@@ -66,8 +82,10 @@ def revenue_dashboard():
         seller_mode_name = seller_obj.name if seller_obj else None
 
     # Get actionable analyses (scoped to seller in seller mode)
-    analyses = get_actionable_analyses(
-        min_priority=20, limit=50, seller_name=seller_mode_name
+    analyses = get_database_expansion_analyses(customer_ids=customer_scope) if motion else (
+        get_actionable_analyses(
+            min_priority=20, limit=50, seller_name=seller_mode_name,
+        )
     )
     
     # Group by category for summary
@@ -114,6 +132,8 @@ def revenue_dashboard():
         import_status=import_status,
         analysis_status=analysis_status,
         seller_id_map=seller_id_map,
+        database_motion=motion,
+        dashboard_customer_scope=customer_scope,
     )
 
 

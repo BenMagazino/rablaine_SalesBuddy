@@ -770,6 +770,12 @@ const PageHelp = (function () {
       <p>Use Find a report to match names, purposes or groups. Clear restores the full directory. The status bar shows how many reports match; filtering does not change report data.</p>
       <p>Each row opens its named report. Back restores your filter and reading position. Embedded directories keep their filter local and do not change the parent page's history.</p>
     `},
+    { pattern: /^\/reports\/revenue\/?$/, title: 'Revenue Analyzer', content: `
+      <p>Review saved revenue signals, ordered by existing priority, with product drill-downs, recommended actions and review history. Use Re-analyze to refresh the analysis after imports or configuration changes.</p>
+      <p><strong>Database Expansion</strong> widget links open this analyzer's focused database view: Databases bucket, priority 20+, New or To be reviewed status, and Expansion Outreach or Check-in recommendations. Monitor-only, reviewed, actioned and dismissed alerts are excluded. Growth and consumption risks support the same motion but are not qualified opportunities.</p>
+      <p>The focused view loads every matching alert before the normal top-50 cross-bucket limit. Dashboard customer/seller restrictions carry through, including an empty scope. It does not change your usual bucket selection. All revenue alerts returns to the normal analyzer and its saved bucket preferences.</p>
+      <p>Open an alert for existing product details, then record review notes and set its status. Reviewed, actioned or dismissed signals leave the motion queue on its next load. CSV, Copy and Email export the current view. Risk and growth estimates are separate, not a net forecast.</p>
+    `},
     // ── Revenue ──
     { pattern: /^\/revenue\/import/, title: 'Revenue Import', content: `
       <p>Pull ACR (Azure Consumed Revenue) straight from MSXI using your Azure sign-in.</p>

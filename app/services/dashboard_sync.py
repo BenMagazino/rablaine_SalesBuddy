@@ -21,6 +21,7 @@ WIDGET_SOURCES = {
     'hygiene.gaps': ('milestones',),
     'activity_coverage.meetings': ('milestones', 'calendar-population', 'activity-reconciliation'),
     'revenue.attention': ('revenue-analysis',),
+    'database.expansion': ('revenue-analysis',),
     'ptof.upcoming_renewals': ('ptof',),
     'fabric.acquisition': ('pillars',),
     'database.whitespace': ('pillars',),

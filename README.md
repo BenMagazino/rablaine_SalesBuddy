@@ -206,6 +206,19 @@ standalone UI iterations using entirely fictional data. See the
   support customer/seller filters. Their report link opens the Databases-focused
   candidate list with AI, Analytics and Apps columns, without overwriting normal
   focus, column or sort preferences. The same candidates are available through SalesIQ.
+- **Database Expansion** - Summary and Details widgets reuse Revenue Analyzer's
+  saved Databases bucket, scores and recommendations. Pending New/To be reviewed
+  alerts at priority 20+ qualify only for Expansion Outreach or Check-in actions;
+  monitor-only and previously handled signals are excluded. Growth and risk counts
+  and dollar estimates stay separate. Details ranks by existing priority, not a
+  new small-spend heuristic. Sellers appear only as group headers when Group by seller
+  is enabled in dashboard Filters; seller scoping alone does not show them.
+  The report link opens a database-focused view of
+  Revenue Analyzer with the identical complete queue, before its normal top-50
+  limit, preserving dashboard customer/seller scope, including empty intersections.
+  The focused visit does not read or overwrite normal bucket preferences. Existing
+  product drill-downs, review notes, statuses and exports remain available.
+  Data SEs and sellers can also query the same signals through SalesIQ.
 - **Fabric Consumption** - import customer-scoped Fabric workload CU-hour
   shares and capacity/SKU utilization from MSXi. Reports > Fabric Consumption
   includes capacities, throttling, utilization history, and customer-wide reserved-instance
