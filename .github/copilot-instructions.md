@@ -238,6 +238,17 @@ cp .env.example .env
 - Never run `flask run` or `python` without activating venv first
 - When running Flask in background, combine: `& C:\dev\SalesBuddy\venv\Scripts\Activate.ps1 ; flask run`
 
+**IMPORTANT - Development Authentication:**
+- Sales Buddy dev has its own corporate Azure CLI context at
+  `%USERPROFILE%\SalesBuddyDev\.azure`, separate from the shell's default account.
+- Before development MSX/Power BI auth probes or standalone pull scripts, set
+  `$env:AZURE_CONFIG_DIR = Join-Path $env:USERPROFILE 'SalesBuddyDev\.azure'`
+  and `$env:FLASK_ENV = 'development'` in the same process as the command.
+- Reuse that existing sign-in. Do not diagnose the default CLI account as an app
+  auth failure, change the default account, log out, or copy credential caches.
+- Keep this environment process-scoped. Follow `scripts/dev.ps1` and
+  `app/services/azure_profile.py`; never print tokens or replay HAR credentials.
+
 **Testing:**
 ```powershell
 pytest

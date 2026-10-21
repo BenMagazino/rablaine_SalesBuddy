@@ -102,8 +102,8 @@ def test_console_groups_every_operation_once_in_workflow_order(client):
     assert [row.h3.get_text(' ', strip=True) for row in groups[0].select('article')][:3] == [
         'Account Sync', 'Milestone Sync (Milestone Tracker)', 'Revenue Sync (Revenue Analyzer)',
     ]
-    assert [row['data-sync-operation'] for row in groups[1].select('article')][:3] == [
-        'u2c', 'fabric', 'marketing',
+    assert [row['data-sync-operation'] for row in groups[1].select('article')][:4] == [
+        'u2c', 'fabric', 'sql-motions', 'marketing',
     ]
     assert groups[1].select_one('[data-sync-operation="meeting-preparation"]') is not None
     assert groups[0].select_one('[data-sync-operation="meeting-preparation"]') is None
@@ -125,6 +125,7 @@ def test_report_sync_titles_link_to_their_reports(client):
     expected = {
         'u2c': '/reports/u2c',
         'fabric': '/reports/fabric-consumption',
+        'sql-motions': '/reports/sql-renewals',
         'marketing': '/reports/marketing-insights',
         'activity-reconciliation': '/reports/activity-coverage',
         'meeting-preparation': '/reports/activity-coverage',

@@ -10,6 +10,8 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 ## 10/20/2026
 
+- Get an editable FY27 Data Motions dashboard automatically on upgrade, with ten report-backed widgets and seller filters. Add another copy anytime from the dashboard templates.
+- Find upcoming SQL renewals and SQL 2016 EOS / ESU discovery candidates in separate, focused reports and dashboard widgets. One SQL Motions sync refreshes both sources together; ESU protection remains unverified.
 - Surface prioritized database growth and consumption-risk alerts in Database Expansion widgets, with a matching scoped view of Revenue Analyzer and its existing review workflow.
 - Find customers with AI, Analytics or Apps spend but no database spend using Database whitespace widgets and their matching report view. In Whitespace Analysis, focus a pillar to exclude existing users and hide its zero-only column, choose surrounding spend columns independently, and group candidates by seller.
 - Find P to F and Fabric reports together under FY27 Data Motions in Reports.

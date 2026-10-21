@@ -3111,3 +3111,59 @@ class PToFRecord(db.Model):
     kind = db.Column(db.String(12), nullable=False)
     data_json = db.Column(db.JSON, nullable=False)
     snapshot = db.relationship('PToFImport', back_populates='records')
+
+
+class SqlMotionImport(db.Model):
+    """One validated, complete Azure Migrations and ADS Accelerate snapshot."""
+
+    __tablename__ = 'sql_motion_imports'
+
+    id = db.Column(db.Integer, primary_key=True)
+    imported_at = db.Column(db.DateTime, default=utc_now, nullable=False, index=True)
+    customer_count = db.Column(db.Integer, default=0, nullable=False)
+    source_metadata = db.Column(db.Text, default='{}', nullable=False)
+    renewals = db.relationship(
+        'SqlRenewal', back_populates='snapshot', cascade='all, delete-orphan',
+    )
+    arc_versions = db.relationship(
+        'SqlArcVersion', back_populates='snapshot', cascade='all, delete-orphan',
+    )
+
+
+class SqlRenewal(db.Model):
+    """Published next SQL expiration and last-closed-month migration measures."""
+
+    __tablename__ = 'sql_renewals'
+
+    id = db.Column(db.Integer, primary_key=True)
+    import_id = db.Column(
+        db.Integer, db.ForeignKey('sql_motion_imports.id'), nullable=False, index=True,
+    )
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
+    expiration_date = db.Column(db.Date, nullable=True)
+    expiration_amount = db.Column(db.Float, nullable=True)
+    install_base_cores = db.Column(db.Float, nullable=True)
+    sql_iaas_cores = db.Column(db.Float, nullable=True)
+    monthly_opportunity = db.Column(db.Float, nullable=True)
+    snapshot = db.relationship('SqlMotionImport', back_populates='renewals')
+    customer = db.relationship('Customer')
+
+
+class SqlArcVersion(db.Model):
+    """Discovery counts at the source subscription, version, category and timestamp grain."""
+
+    __tablename__ = 'sql_arc_versions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    import_id = db.Column(
+        db.Integer, db.ForeignKey('sql_motion_imports.id'), nullable=False, index=True,
+    )
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
+    subscription_id = db.Column(db.String(100), nullable=True)
+    subscription_name = db.Column(db.String(500), nullable=True)
+    sql_version = db.Column(db.String(100), nullable=True)
+    discovery_type = db.Column(db.String(100), nullable=True)
+    discovered_count = db.Column(db.Float, nullable=True)
+    processed_at = db.Column(db.DateTime, nullable=True)
+    snapshot = db.relationship('SqlMotionImport', back_populates='arc_versions')
+    customer = db.relationship('Customer')

@@ -160,17 +160,29 @@ Dashboard placement stays unchecked until you confirm it.
 - **Decision:** On October 20, 2026, the user confirmed that existing Fabric Acquisition
   is sufficient for AI attach. No separate report, widget or targeting view is planned.
 
-### 8. [ ] SQL migration
+### 8. [x] SQL migration
 
-- [ ] Coded
-- [ ] Added to dashboard
-- **Starting scope:** Observed Azure SQL/SQL VM/Arc footprints and explicitly
-  recorded migration work as conversation starters.
-- **Boundary:** Renewal-driven on-prem qualification is blocked without an
-  authoritative inventory/renewal source. No server counts, EOS qualification,
-  or progress against the 40% migration target can be inferred from cloud ACR.
-- **Report/widget:**
-- **Notes / follow-up:**
+- [x] Coded
+- [x] Added to dashboard
+- **Starting scope:** Source-reported future SQL expirations from Azure Migrations,
+  nearest first, including zero/unknown dollars and renewal dates beyond 90 days.
+- **Boundary:** On-prem footprint means SA license cores, not server counts.
+  Modeled monthly ACR is not qualified pipeline. Neither source timestamps nor
+  renewal events prove a complete, current customer estate or achieved migration.
+- **Report/widget:** SQL Renewals report and Summary/Details widgets share the same
+  complete queue and SalesIQ tool. One atomic SQL Motions sync also pulls the Arc
+  version feed. Customer/seller scope carries into the report; sellers only display
+  when explicitly grouped. Source details retain freshness and quality caveats.
+- **Notes / follow-up:** October 21 live source audit matched all 206 active dev
+  customers: 56 had next SQL expiration dates and 44 positive expiration amounts.
+  The glossary defines install base as license cores with SA, not server counts.
+  A second ADS Accelerate Arc source supplies SQL 2016 discovery evidence on 26
+  active accounts; ESU protection/eligibility is still unverified. App-side renewal
+  and Arc pulls now work using the existing isolated SalesBuddyDev Azure profile.
+  See the aligned tracker's source audits for freshness, count semantics and
+  remaining validation. Live shared import and native previews now verify
+  56 future renewals, 8 within 90 days. User approved the saved placement and
+  ten-widget FY27 Data Motions v1 template on October 21, 2026.
 
 ### 9. [x] Database expansion
 
@@ -196,17 +208,25 @@ Dashboard placement stays unchecked until you confirm it.
   preserving existing placements and filters; user confirmed placement and review.
   Qualification, engagement links and achieved-outcome tracking remain manual.
 
-### 10. [ ] Arc bridge
+### 10. [x] SQL 2016 EOS / ESU
 
-- [ ] Coded
-- [ ] Added to dashboard
-- **Starting scope:** Observed Arc-related consumption and manually confirmed
-  bridge engagements.
-- **Boundary:** Arc spend does not necessarily represent SQL or explain why
-  the customer cannot migrate this cycle. Automatic bridge qualification is
-  blocked without explicit customer-confirmed constraints.
-- **Report/widget:**
-- **Notes / follow-up:**
+- [x] Coded
+- [x] Added to dashboard
+- **Starting scope:** Explicit SQL Server 2016 version observations with positive
+  All Discovered values from ADS Accelerate Arc, not generic Arc consumption.
+- **Boundary:** Discovery count units, ESU protection/eligibility and estate
+  completeness remain unverified. Missing rows mean unknown. Do not add overlapping
+  Enterprise/Standard/Non Production categories to All Discovered.
+- **Report/widget:** SQL 2016 EOS / ESU report, Summary/Details widgets and shared
+  SalesIQ tool. The same SQL Motions sync loads both report sources atomically.
+  The EOS view includes only version discovery and subscription evidence;
+  account renewal signals belong in SQL Renewals.
+- **Notes / follow-up:** This replaces the initial Arc bridge tile placeholder.
+  Customer-confirmed Arc/ESU bridge, migrate, modernize and deferred paths remain
+  follow-ups, not automatic qualification. Live cohort: 26 customers and 295
+  source-defined counts. User approved the saved placement and ten-widget FY27
+  Data Motions v1 template on October 21, 2026. The template installs once on upgrade
+  and remains available for independent copies.
 
 ## Before checking a motion complete
 

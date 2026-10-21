@@ -95,3 +95,17 @@
 .sb-modernization-table tbody tr:nth-child(even) { background: color-mix(in oklch, var(--sb-ui-context) 40%, var(--sb-ui-surface)); }
 .sb-modernization-table tbody tr:hover { background: var(--sb-ui-control-hover); }
 .sb-modernization-fabric { background: color-mix(in oklch, var(--sb-ui-selection) 35%, transparent); }
+.sb-sql-report-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.sb-sql-table thead th { top: 0; }
+.sb-sql-report[data-sb-report-key="sql-eos"] .sb-sql-table thead th:first-child { width: 60%; }
+.sb-sql-table .db-report-seller-heading th { padding: 8px 12px; text-align: left; background: var(--sb-ui-context); position: static; }
+.sb-sql-table :is(th, td):last-child { padding-right: 16px; }
+.sb-sql-subscriptions { margin-top: 4px; font-size: 12px; color: var(--sb-ui-muted); }
+.sb-sql-subscriptions summary { cursor: pointer; }
+.sb-sql-subscriptions ul { margin: 6px 0 0; padding-left: 16px; overflow-wrap: anywhere; }
+.sb-sql-subscriptions li + li { margin-top: 6px; }
+.sb-sql-subscriptions small { display: block; }
+.sb-sql-source-context { padding: 8px 24px; font-size: 12px; color: var(--sb-ui-muted); border-bottom: 1px solid var(--sb-ui-line); }
+.sb-sql-source-context summary { cursor: pointer; }
+.sb-sql-source-context ul { margin: 6px 0; padding-left: 16px; }
+.sb-sql-source-context p { margin: 0; }

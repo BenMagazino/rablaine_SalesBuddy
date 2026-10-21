@@ -26,6 +26,9 @@ REPORT_PAGES = [
     ("reports.report_connect_impact", "Connect Impact"),
     ("revenue.reports_list", "Revenue Reports"),
     ("reports.report_fabric_modernization", "Fabric Modernization"),
+    ("reports.report_rti", "Real-Time Intelligence"),
+    ("reports.report_sql_renewals", "SQL Renewals"),
+    ("reports.report_sql_eos", "SQL 2016 EOS / ESU"),
 ]
 
 

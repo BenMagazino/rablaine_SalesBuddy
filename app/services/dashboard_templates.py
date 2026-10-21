@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import Dashboard, DashboardTemplateInstallation, DashboardWidget, db
+from app.services.dashboard_filters import normalize_filter_config, normalize_filters
 from app.services.dashboards import get_variant, validate_footprint
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,34 @@ DASHBOARD_TEMPLATES = {
             ('connect_goals.whitespace', 'detailed', 0, 11, 12, 9),
         ),
     },
+    'fy27-data-motions': {
+        'key': 'fy27-data-motions',
+        'version': 1,
+        'name': 'FY27 Data Motions',
+        'subtitle': 'Track and action your FY27 goals and proactively engage your customers',
+        'description': (
+            'Find Fabric and database acquisition, expansion and modernization prospects, '
+            'upcoming renewals, and SQL 2016 discovery signals.'
+        ),
+        'content_width': 'wide',
+        'display_style': 'cards',
+        'filter_config': {
+            'scope': {'customer_ids': [], 'seller_ids': []},
+            'live_filters': ['seller_ids', 'group_by_seller'],
+        },
+        'widgets': (
+            ('fabric.modernization', 'detailed', 0, 0, 6, 5),
+            ('fabric.acquisition', 'detailed', 6, 0, 6, 5),
+            ('fabric.expansion', 'detailed', 0, 5, 6, 5),
+            ('fabric.trial_conversion', 'detailed', 6, 5, 6, 5),
+            ('ptof.upcoming_renewals', 'detailed', 0, 10, 6, 5),
+            ('fabric.rti', 'detailed', 6, 10, 6, 5),
+            ('database.whitespace', 'detailed', 0, 15, 6, 5),
+            ('database.expansion', 'detailed', 6, 15, 6, 5),
+            ('sql.eos', 'detailed', 0, 20, 6, 8),
+            ('sql.renewals', 'detailed', 6, 20, 6, 8),
+        ),
+    },
 }
 
 
@@ -45,7 +74,7 @@ def create_dashboard_from_template(key: str) -> Dashboard:
     template = DASHBOARD_TEMPLATES.get(key)
     if template is None:
         raise ValueError('Choose an available dashboard template.')
-    dashboard = Dashboard(**{
+    dashboard = Dashboard(filter_config=normalize_filter_config(template.get('filter_config')), **{
         field: template[field] for field in (
             'name', 'subtitle', 'content_width', 'display_style',
         )
@@ -65,6 +94,11 @@ def _matches_template(dashboard: Dashboard, template: dict[str, Any]) -> bool:
     if any(getattr(dashboard, field) != template[field] for field in (
         'name', 'subtitle', 'content_width', 'display_style',
     )):
+        return False
+    if (normalize_filter_config(dashboard.filter_config)
+            != normalize_filter_config(template.get('filter_config'))
+            or any(normalize_filters(widget.filters) != normalize_filters()
+                   for widget in dashboard.widgets)):
         return False
     placements = sorted(
         (widget.widget_key, widget.variant_key, widget.layout_column,
@@ -104,4 +138,3 @@ def get_template_dashboard_url(key: str) -> str:
     if installation is not None and installation.dashboard is not None:
         return f'/reports/dashboards/{installation.dashboard_id}'
     return f'/reports/dashboards?template={key}'
-

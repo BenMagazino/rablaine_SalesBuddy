@@ -237,6 +237,43 @@ def report_database_expansion() -> dict:
 
 
 @tool(
+    'report_sql_renewals',
+    'Read upcoming SQL expirations for current customers from the saved shared SQL Motions '
+    'snapshot. Includes exact source dates, unknown amounts, on-prem SA license cores, '
+    'estimated capped Azure IaaS cores and modeled monthly ACR opportunity. '
+    'Modeled ACR is not qualified pipeline. Does not refresh data.',
+    {'type': 'object', 'properties': {}},
+)
+def report_sql_renewals() -> dict:
+    """Reuse the saved report queue and its current customer and seller scope."""
+    from app.services.se_specialty import has_specialty_access
+    from app.services.sql_motions import get_sql_motion_report
+
+    if not has_specialty_access('data'):
+        return {'error': 'SQL motions are available for Data SEs and sellers.'}
+    return get_sql_motion_report('renewals')
+
+
+@tool(
+    'report_sql_eos',
+    'Read customers with explicit SQL Server 2016 Arc discovery in the saved shared SQL '
+    'Motions snapshot. Uses only positive All Discovered counts, never overlapping category '
+    'totals. Includes subscription evidence and source processing dates. '
+    'Discovery units and ESU protection are unverified. No observation means unknown, '
+    'not proof of no exposure. Does not refresh data.',
+    {'type': 'object', 'properties': {}},
+)
+def report_sql_eos() -> dict:
+    """Reuse the report without inferring entitlement from paid license fields."""
+    from app.services.se_specialty import has_specialty_access
+    from app.services.sql_motions import get_sql_motion_report
+
+    if not has_specialty_access('data'):
+        return {'error': 'SQL motions are available for Data SEs and sellers.'}
+    return get_sql_motion_report('eos')
+
+
+@tool(
     'report_rti',
     'Read Real-Time Intelligence customer discovery signals: native rolling 28-day RTI '
     'CU-hours and workload share alongside Event Hubs, Stream Analytics and IoT ACR. '

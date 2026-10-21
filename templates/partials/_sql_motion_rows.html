@@ -1,0 +1,31 @@
+{% macro money(value) %}{{ '${:,.0f}'.format(value) if value is not none else 'Not supplied' }}{% endmacro %}
+{% macro number(value) %}{{ '{:,.0f}'.format(value) if value is not none else 'Not supplied' }}{% endmacro %}
+{% for row in rows %}
+<tr data-customer-id="{{ row.id }}">
+    <td data-sb-sort-value="{{ row.name }}" data-export-label="{{ row.name }}">
+        <a href="{{ row.destination }}">{{ row.name }}</a>
+        {% if not sql_widget and report.motion == 'eos' %}
+        <details class="sb-sql-subscriptions">
+            <summary>Subscription evidence</summary>
+            <ul>{% for subscription in row.subscriptions %}
+                <li>{{ subscription.name or subscription.id or 'Subscription not supplied' }}:
+                    {{ number(subscription.discovered_count) }}
+                </li>
+            {% endfor %}</ul>
+        </details>
+        {% endif %}
+    </td>
+    {% if report.motion == 'renewals' %}
+    <td data-sb-sort-value="{{ row.expiration_date }}">{{ row.expiration_date }}</td>
+    <td data-sb-sort-value="{{ row.expiration_amount if row.expiration_amount is not none else '' }}">{{ money(row.expiration_amount) }}</td>
+    {% if not sql_widget %}
+    <td data-sb-sort-value="{{ row.install_base_cores if row.install_base_cores is not none else '' }}">{{ number(row.install_base_cores) }}</td>
+    <td data-sb-sort-value="{{ row.sql_iaas_cores if row.sql_iaas_cores is not none else '' }}">{{ number(row.sql_iaas_cores) }}</td>
+    <td data-sb-sort-value="{{ row.monthly_opportunity if row.monthly_opportunity is not none else '' }}">{{ money(row.monthly_opportunity) }}</td>
+    {% endif %}
+    {% else %}
+    <td data-sb-sort-value="{{ row.discovered_count }}">{{ number(row.discovered_count) }}</td>
+    <td data-sb-sort-value="{{ row.subscription_count if row.subscription_count is not none else '' }}">{{ number(row.subscription_count) }}</td>
+    {% endif %}
+</tr>
+{% endfor %}

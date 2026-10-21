@@ -165,7 +165,10 @@ def scope_report_destination(
     """Carry scope only into reports with end-to-end scoped rendering."""
     if customer_ids is None:
         return data
-    supported = key in ('hygiene.gaps', 'fabric.capacity_pressure', 'database.expansion')
+    supported = key in (
+        'hygiene.gaps', 'fabric.capacity_pressure', 'database.expansion',
+        'sql.renewals', 'sql.eos',
+    )
     result = {**data, 'report_follows_scope': supported}
     if supported and result.get('destination'):
         separator = '&' if '?' in result['destination'] else '?'

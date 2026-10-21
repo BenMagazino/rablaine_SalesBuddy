@@ -101,7 +101,7 @@ def sync_console():
          ('accounts', 'milestones', 'revenue', 'meeting-aura',
           'meetings', 'copilot-actions')),
         ('Report syncs', 'Refresh the data behind individual reports.',
-         ('u2c', 'fabric', 'marketing', 'activity-reconciliation',
+         ('u2c', 'fabric', 'sql-motions', 'marketing', 'activity-reconciliation',
           'meeting-preparation', 'milestone-dates')),
         ('Specific use case syncs', 'Target a selection, refresh part of a dataset, '
          'or run occasional maintenance.',
@@ -111,6 +111,7 @@ def sync_console():
     report_endpoints = {
         'u2c': 'reports.report_u2c',
         'fabric': 'reports.report_fabric_consumption',
+        'sql-motions': 'reports.report_sql_renewals',
         'marketing': 'reports.report_marketing_insights',
         'activity-reconciliation': 'reports.report_activity_coverage',
         'meeting-preparation': 'reports.report_activity_coverage',

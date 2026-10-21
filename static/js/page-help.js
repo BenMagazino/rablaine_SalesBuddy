@@ -11,6 +11,21 @@ const PageHelp = (function () {
   // Use {id} as a placeholder for numeric path segments.
 
   const helpMap = [
+    { pattern: /^\/reports\/sql-(renewals|eos)$/, title: 'SQL Motions', content: `
+      <p>SQL Renewals and SQL 2016 EOS / ESU share one SQL Motions sync.
+      Both source reports must succeed before the saved snapshot changes.</p>
+      <ul>
+        <li>Renewals includes every future SQL expiration, nearest first, including
+        zero and unknown amounts. The 90-day count is a summary, not a queue cutoff.</li>
+        <li>SQL 2016 candidates require explicit version evidence and positive
+        All Discovered counts. Overlapping license categories are not added again.</li>
+        <li>ESU protection and discovery units are unverified. Missing source data
+        means unknown. The EOS view focuses only on version discovery and subscriptions.</li>
+        <li>Dashboard click-through preserves customer scope. Group by seller
+        changes presentation only. CSV, clipboard and email export the visible queue.</li>
+        <li>SQL license cores are on-prem licenses with SA. Modeled monthly ACR
+        is an estimate, not qualified pipeline or a forecast.</li>
+      </ul>` },
     { pattern: /^\/templates\/(?:new|\d+\/edit)$/, title: 'Note Template Form', content: `
       <p>Create or edit reusable rich-text content for notes. Template name and
       content are required. Nothing saves until Create Template or Update Template.</p>

@@ -365,6 +365,10 @@ def create_app():
             start_fabric_sync_scheduler(app)
             schedulers_started.append('fabric_sync')
 
+            from app.services.scheduled_sync import start_sql_motions_sync_scheduler
+            start_sql_motions_sync_scheduler(app)
+            schedulers_started.append('sql_motions_sync')
+
             # Start daily meeting cache (catchup on startup, then daily at 7 AM)
             from app.services.meeting_sync import start_meeting_sync_background, start_daily_meeting_scheduler
             start_meeting_sync_background(app)

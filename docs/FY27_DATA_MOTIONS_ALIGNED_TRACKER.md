@@ -258,25 +258,181 @@ analogous candidate logic and continuous-consumption outcomes, not identical rul
 
 **Direction:** Replace generic SQL-consumption prospecting with a compelling-event queue.
 
-- [ ] Establish renewal dates, on-prem SQL evidence and source freshness/provenance.
-- [ ] Prioritize upcoming renewals, EOS/ESU exposure and assessment/migration evidence.
-- [ ] Use existing Azure SQL consumption as context, not the source population.
+- [x] Establish source-reported renewal dates, on-prem SA license cores and source
+  freshness/provenance, without claiming the feed is a verified customer estate.
+- [x] List all future SQL expirations nearest first, including zero and unknown
+  amounts; show the inclusive next-90-day count without capping the full queue.
+- [x] Show capped SQL-on-IaaS cores and modeled monthly ACR as context, not the
+  source population or qualified migration pipeline.
+- [ ] Add customer-confirmed assessment and migration evidence.
 - [ ] Show linked MSX opportunities, milestones and confirmed customer work.
-- [ ] Build shared report/widget/read tool; test and add to the dashboard.
+- [x] Build SQL Renewals report, Summary/Details widgets and shared SalesIQ read
+  tool. Apply current customer/seller scope to the complete calculation and carry
+  exact scope into the report. Sellers display only when explicitly grouped.
+- [x] Pull Azure Migrations and ADS Accelerate Arc together through one atomic
+  SQL Motions job, manual report controls, widget readiness and weekly scheduling.
+  Both sources must validate before a saved snapshot changes; successful empty
+  snapshots are ready and failed imports preserve the previous complete snapshot.
+- [x] Verify live shared import: 206 current accounts, 206 account-level migration
+  rows, 850 subscription/version/category Arc rows; 56 future renewal customers,
+  8 within 90 days. Verify native library previews, grouping, padding and reports.
+- [x] Pass 551 scoped Python and 74 JavaScript tests across the new SQL source,
+  atomic sync, reports/tools, queue/scheduling, dashboard integration and shared
+  widget/export regressions. Verify live one-customer/empty scope parity and
+  unchanged saved dashboard layout and local editor draft.
+- [x] User approved the saved widget placement on October 21, 2026. Capture the
+  ten-widget FY27 Data Motions v1 dashboard as a template installed once on upgrade.
 
 **Source warning:** The response says management could not verify the discovered
 on-prem report and considered it more than a month stale. Do not use it as
 authoritative eligibility evidence without validation.
 
+#### SQL source audit: October 21, 2026
+
+Live read-only Power BI queries succeeded against the Azure Migrations model
+`6fabe7d5-5892-4900-ae69-a1664e35ab8d`, backing Power BI report
+`638cab13-868e-4b0b-8c63-45818ba14848`. The MSXi wrapper report is
+`dd4b53f0-63b6-45a6-9ae7-eb11d07469e6`, SQL Renewals tab.
+
+All 206 active development customer TPIDs matched. This audit used explicit
+customer scope without copying the report's segment/geography exclusions:
+
+| Available signal | Active customers with evidence |
+| --- | ---: |
+| Next SQL expiration date | 56 |
+| Positive next SQL expiration amount | 44 |
+| Positive SQL install-base measure | 121 |
+| Positive modeled monthly SQL opportunity | 113 |
+| Positive SQL-on-IaaS capped cores | 56 |
+
+These populations overlap and are not qualified migration opportunities.
+
+- **Renewal feed:** Next-up date/amount measures and raw expiration date, renewal
+  date, product categories, annual exit revenue and record-modification timestamps
+  are queryable. Renewal records were stamped October 21. Validate next-up measure
+  logic and dollar semantics before labeling amounts as contract value.
+- **Estate definitions:** The report glossary defines SQL install base as on-prem
+  SQL license cores with Software Assurance, not server or instance counts.
+  SQL-on-IaaS capped cores are an estimated Azure footprint capped at that base.
+  Monthly SQL opportunity is a finance-assumption model, not customer-qualified
+  pipeline. Reuse native measures rather than summing monthly snapshots.
+- **Freshness:** The source status lists on-prem install base refreshed October 7
+  on a monthly cadence; its raw processing stamp is October 6. Account/pipeline
+  data refreshed October 20 and Arc metrics October 21. SQL attributes were
+  stamped October 20. These timestamps do not verify the customer's actual estate.
+- **Azure Migrations EOS gap:** The seven observed SQL attribute labels include
+  `SQL ESU (2012 or 2014)`, not SQL 2016. Explicit ESU consumption fields concern
+  SQL 2012. No SQL 2016 version inventory, affected cores, entitlement or ESU
+  coverage was established from this model. The additional Arc source below
+  supplies version-specific evidence. An old-version label is not proof of
+  uncovered exposure.
+- **Workflow context:** Assessment type/status, migration stage/tools and
+  opportunity/milestone identifiers exist in the schema/capture. Additional live
+  queries for that context returned Power BI internal errors, so current retrieval
+  and joins remain unverified.
+- **App integration, corrected after user guidance:** The initial 401 probe used
+  the wrong CLI context. The existing `%USERPROFILE%\SalesBuddyDev\.azure`
+  corporate sign-in works. With that process-scoped context, the existing QES
+  client successfully pulled renewal evidence for 56 active customers, without
+  product-code changes or a new sign-in. Next-up amounts arrive as numbers or
+  numeric strings; dates arrive as epoch milliseconds. Normalize these explicitly
+  when implementing the importer.
+
+Next: validate renewal measure definitions and report filter behavior, then
+implement the renewal queue. Use the Arc evidence below for SQL 2016 candidates,
+without assuming uncovered ESU exposure or complete estate coverage.
+
+#### Additional Arc version source audit: October 21, 2026
+
+The user supplied `sqlarcversion.har`, capturing **ADS Accelerate Execution**,
+MSXi wrapper report `a1b4fb49-ca8b-401d-b511-64138045add2`. Its Power BI report is
+`c91bff6e-45ab-477b-90dc-5226a19ea1e2`, model
+`4a6b504b-b557-4012-9aa3-d875cb9252b2`
+(`WWBI_MSXI_ADSAccelerateInitiative_OneAMP`).
+
+- **Version evidence found:** `ARC BY License Type` provides TPID, subscription
+  ID/display name, SQLVersion, DiscoveryType, Value and processed_timestamp.
+  Additional fields include paid Standard/Enterprise, nonproduction, blocked,
+  unknown-state and missing-SQL-extension counts. Their presence does not establish
+  SQL 2016 ESU coverage or entitlement.
+- **Live application pull verified:** The existing QES client, with the isolated
+  dev identity, returned 711 account/version/category rows across 47 of the 206
+  active dev customers. SQL Server 2016 has positive `All Discovered` values on
+  **26 accounts**, totaling **295 source-defined discovery counts**. The count
+  unit still needs confirmation; do not call it license cores or physical servers.
+  Accounts without rows are unknown, not verified free of old SQL versions.
+- **No double counting:** Discovery categories include All Discovered, Enterprise,
+  Standard, Non Production and NA. Count only All Discovered for overall discovery
+  totals, not All Discovered plus its component categories. The captured detail
+  visual explicitly excludes All Discovered, unlike the version chart.
+- **Scope:** Audit pulls used explicit active TPIDs, without the captured report's
+  nonblank pipeline-stage and HQ/DS filters. Do not silently require an existing
+  opportunity to discover an account's SQL 2016 footprint.
+- **Freshness:** Scoped Arc data was processed October 21 at 12:14:25 UTC.
+  The source quality table reports `RptARCByLicenseTypeVersionOneLake` as Pass
+  at 11:51:12 UTC. Separately, `RptConsumptionOpportunity` reports
+  `Fail: Row count variance > 15.0%`; do not imply all supporting pipeline data
+  passed just because the Arc feed did.
+- **Access:** Power BI Copilot schema access rejected this model's Read-only
+  permission level. Normal report reads through the app's QES transport succeeded;
+  no captured credentials, permission changes or access-control workarounds were used.
+
+This closes the missing SQL 2016 candidate-discovery evidence, not the entire
+EOS/ESU qualification gap. Still establish count semantics, eligible production
+footprint, actual ESU coverage/entitlement, lifecycle mapping and customer validation.
+
+**Source consolidation check:** A live comparison using the same 206 active TPIDs
+found 33 accounts in ADS Expirations and 9 in ADS Subscription Renewals, with
+positive amounts in each respective population. Only 27 of Azure Migrations'
+56 next-SQL-expiration accounts appeared in ADS Expirations; 28 of the 56 were
+absent from both ADS renewal tables. Populations overlap and must not be added.
+ADS expiration data is month-level, whereas the original source exposes exact
+expiration/renewal dates. The models may differ in eligibility or upstream
+definitions; no equivalence was established. Keep Azure Migrations for renewal
+coverage and ADS Accelerate for version-specific Arc evidence rather than silently
+substituting the latter for both motions.
+
+**Historical workbook reconciliation:** Read the user's `FY27 Motions.xlsx`
+without saving or changing it, and compared `SQLRenewalsESU` with fresh live pulls
+on October 21. Its 1,375 rows represent 1,373 TPIDs overall; 114 accounts remain
+in the current 206-account active dev scope. All 114 are present as unique account
+rows in the ADS estate feed, and 95 have identical Enterprise/Standard core pairs
+(including any zero pairs). Of the 29 scoped workbook rows with expiration dates,
+10 dates are already past. All 19 remaining future expiration dates exactly match
+Azure Migrations' next-SQL-expiration date; 15 also match the expiration amount
+within one cent. Four amount comparisons do not match and remain to be explained.
+This is strong renewal-source reconciliation, not proof of unchanged amounts.
+The workbook's ESU labels do not state SQL version or ESU coverage. Of 26 current
+SQL 2016 candidate accounts, 22 appear somewhere in its SQL tab; do not equate
+the workbook's generic ESU cohort with the version-specific SQL 2016 queue.
+
 ### Modernize: SQL EOS / ESU - priority 2
 
 **Direction:** Make SQL 2016 EOS/ESU an explicit queue, not a generic Arc tile.
 
+**Candidate source:** The audited ADS Accelerate Arc feed above supplies explicit
+SQL 2016 evidence for 26 active dev accounts. ESU coverage and eligibility are
+still unverified; missing discovery rows must not imply no exposure.
+
 - [ ] Establish authoritative SQL-version/EOS/ESU exposure and relevant dates.
-- [ ] Show affected footprint, renewal timing, Arc presence and existing Azure SQL.
+- [x] Build an explicit SQL Server 2016 discovery queue from positive All Discovered
+  observations only. Do not add overlapping license categories or historical
+  processing snapshots. Other old SQL versions do not qualify.
+- [x] Show account totals, observed subscription counts and expandable subscription
+  evidence. Keep this queue focused on SQL 2016
+  discovery rather than unrelated account-level renewal signals.
+- [ ] Confirm affected production footprint, ESU protection and customer estate completeness.
 - [ ] Link assessments, migration work and MSX opportunity/milestone status.
 - [ ] Support customer-confirmed paths: migrate, modernize, Arc/ESU bridge or blocked/deferred.
-- [ ] Build shared report/widget/read tool; test and add to the dashboard.
+- [x] Build SQL 2016 EOS / ESU report, Summary/Details widgets and shared SalesIQ
+  read tool, using the same SQL Motions snapshot and scope rules as SQL Renewals.
+  Keep ESU protection explicitly unknown and the discovery unit unverified.
+- [x] Verify live 26-customer cohort and 295 source-defined discovery counts against
+  the earlier audit. Verify grouped/ungrouped native previews and subscription detail.
+  Upstream quality notes and refresh dates are available in the report, without
+  implying that passing checks prove a current or complete customer estate.
+- [x] User approved the saved widget placement on October 21, 2026. The FY27 Data
+  Motions v1 template preserves the approved layout and seller/grouping controls.
 
 Do not infer SQL version, EOS exposure or ESU eligibility from cloud/Arc spend alone.
 

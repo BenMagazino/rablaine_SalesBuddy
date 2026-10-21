@@ -175,6 +175,11 @@ class TestToolCoverage:
         """Database motion signals reuse the saved analyzer queue."""
         assert 'report_database_expansion' in self._tool_names()
 
+    def test_sql_motion_tools_exist(self):
+        """Both SQL motions must expose their shared saved-source report calculation."""
+        assert 'report_sql_renewals' in self._tool_names()
+        assert 'report_sql_eos' in self._tool_names()
+
     def test_caip_coverage_report_tool_exists(self):
         """CAIP analytical view should be available to SalesIQ."""
         names = {item['name'] for item in get_mcp_tools()}

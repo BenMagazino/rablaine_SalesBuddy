@@ -1,4 +1,5 @@
-<tr class="db-report-seller-heading" data-sb-sort-fixed>
+<tr class="db-report-seller-heading" data-sb-sort-fixed
+    data-export-group-label="Seller: {{ group.seller.name if group.seller else group.name|default('No seller assigned', true) }}">
     <th colspan="{{ seller_group_columns }}" scope="rowgroup">
         {% if group.seller %}
         <a href="/seller/{{ group.seller.id }}" class="badge bg-primary text-decoration-none db-report-seller"><i class="bi bi-person" aria-hidden="true"></i> {{ group.seller.name }}</a>

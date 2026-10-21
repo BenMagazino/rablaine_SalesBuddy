@@ -21,6 +21,7 @@ from app.services.fabric_modernization import get_fabric_modernization_widget
 from app.services.fabric_acquisition import get_fabric_acquisition_widget
 from app.services.whitespace import get_database_whitespace_widget
 from app.services.rti import get_rti_widget
+from app.services.sql_motions import get_sql_eos_widget, get_sql_renewals_widget
 from app.services.se_specialty import has_specialty_access
 from app.services.manager_one_on_one import get_initiative_tracker_widget
 from app.services.ptof import get_ptof_renewals_widget
@@ -287,6 +288,22 @@ WIDGET_DEFINITIONS = {
             ),
             get_rti_widget, scope='RTI / rolling 28 days; ACR / last 3 complete months',
             supported_filters=(*FILTER_LABELS, 'group_by_seller'),
+        ),
+        WidgetDefinition(
+            'sql.renewals', 'SQL Renewals',
+            'Upcoming SQL expirations, nearest first, including unknown renewal amounts. '
+            'One shared SQL Motions sync also loads SQL 2016 discovery.',
+            'SQL Renewals', _report_variants('partials/widgets/sql_motion.html'),
+            get_sql_renewals_widget, scope='Upcoming dates / saved Azure Migrations snapshot',
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'), specialty='data',
+        ),
+        WidgetDefinition(
+            'sql.eos', 'SQL 2016 EOS / ESU',
+            'Customers with explicit SQL Server 2016 discovery. ESU protection is unknown. '
+            'One shared SQL Motions sync also loads renewals.',
+            'SQL 2016 EOS / ESU', _report_variants('partials/widgets/sql_motion.html'),
+            get_sql_eos_widget, scope='SQL Server 2016 / Arc All Discovered',
+            supported_filters=(*FILTER_LABELS, 'group_by_seller'), specialty='data',
         ),
         WidgetDefinition(
             'fabric.modernization', 'Fabric modernization',

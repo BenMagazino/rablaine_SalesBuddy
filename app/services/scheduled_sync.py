@@ -151,6 +151,61 @@ def _run_sync(app):
 REVENUE_SYNC_INTERVAL_DAYS = 7
 FABRIC_SYNC_INTERVAL_DAYS = 7
 FABRIC_RETRY_INTERVAL_HOURS = 1
+SQL_MOTIONS_SYNC_INTERVAL_DAYS = 7
+SQL_MOTIONS_RETRY_INTERVAL_HOURS = 1
+
+
+def _sql_motions_sync_due(now: datetime | None = None) -> bool:
+    """Refresh the complete SQL snapshot weekly for Data SEs and every seller."""
+    from app.models import Job, SqlMotionImport
+    from app.services.se_specialty import is_data_se
+    from app.services.sql_motions_sync import active_customers
+    from app.services.sync_jobs import ACTIVE_STATES
+
+    if not is_data_se() or not active_customers():
+        return False
+    runs = Job.query.filter_by(job_type='sync:sql-motions')
+    if runs.filter(Job.status.in_(ACTIVE_STATES)).first():
+        return False
+    now = now or datetime.now(timezone.utc)
+    latest_run = runs.order_by(Job.id.desc()).first()
+    if latest_run and latest_run.status == Job.STATUS_FAILED:
+        attempted = latest_run.finished_at or latest_run.started_at or latest_run.created_at
+        attempted = attempted.replace(tzinfo=attempted.tzinfo or timezone.utc)
+        if now - attempted < timedelta(hours=SQL_MOTIONS_RETRY_INTERVAL_HOURS):
+            return False
+    snapshot = SqlMotionImport.query.order_by(SqlMotionImport.id.desc()).first()
+    if snapshot is None:
+        return True
+    imported = snapshot.imported_at.replace(tzinfo=snapshot.imported_at.tzinfo or timezone.utc)
+    return now - imported >= timedelta(days=SQL_MOTIONS_SYNC_INTERVAL_DAYS)
+
+
+def run_sql_motions_sync_if_due(app: Flask) -> dict | None:
+    """Admit one weekly SQL operation through the shared durable resource owner."""
+    from app.services.sync_jobs import admit_sync
+
+    with app.app_context():
+        if not _sql_motions_sync_due():
+            return None
+        job = admit_sync('sql-motions', initiator='scheduled')
+        return {'success': True, 'accepted': True, 'job_id': job.id}
+
+
+def start_sql_motions_sync_scheduler(app: Flask) -> threading.Thread:
+    """Catch up missing SQL sources at startup, then recheck every five minutes."""
+    def scheduler() -> None:
+        """Recheck role, account scope and weekly freshness independently of Fabric."""
+        while True:
+            try:
+                run_sql_motions_sync_if_due(app)
+            except Exception:
+                logger.exception('Error in SQL motions scheduler')
+            time.sleep(300)
+
+    thread = threading.Thread(target=scheduler, name='sql-motions-sync', daemon=True)
+    thread.start()
+    return thread
 
 
 def _fabric_sync_due(now: datetime | None = None) -> bool:

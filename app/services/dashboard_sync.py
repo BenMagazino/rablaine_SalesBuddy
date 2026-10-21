@@ -8,7 +8,7 @@ from typing import Any
 from app.models import (
     Customer, CustomerRevenueData, FabricConsumptionImport, Job, Milestone, PToFImport,
     ProductRevenueData, RevenueAnalysis, RevenueImport, StrategicPillarRevenueData,
-    SyncStatus, U2CSnapshot,
+    SqlMotionImport, SyncStatus, U2CSnapshot,
 )
 from app.services.sync_jobs import ACTIVE_STATES, OPERATIONS, admit_sync, job_snapshot, operation_runs
 
@@ -22,6 +22,8 @@ WIDGET_SOURCES = {
     'activity_coverage.meetings': ('milestones', 'calendar-population', 'activity-reconciliation'),
     'revenue.attention': ('revenue-analysis',),
     'database.expansion': ('revenue-analysis',),
+    'sql.renewals': ('sql-motions',),
+    'sql.eos': ('sql-motions',),
     'ptof.upcoming_renewals': ('ptof',),
     'fabric.acquisition': ('pillars',),
     'database.whitespace': ('pillars',),
@@ -39,6 +41,7 @@ SOURCE_MODELS = {
     'accounts': Customer, 'milestones': Milestone, 'revenue': CustomerRevenueData,
     'pillars': StrategicPillarRevenueData, 'products': ProductRevenueData,
     'fabric': FabricConsumptionImport, 'ptof': PToFImport, 'revenue-analysis': RevenueAnalysis,
+    'sql-motions': SqlMotionImport,
 }
 
 

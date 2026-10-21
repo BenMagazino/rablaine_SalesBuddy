@@ -6,13 +6,14 @@ const vm = require('node:vm');
 const template = fs.readFileSync(path.join(__dirname,
     '../../templates/partials/_report_export.html'), 'utf8');
 
-async function copyFixture(failHtml = false, customTitle = 'Hygiene') {
+async function copyFixture(failHtml = false, customTitle = 'Hygiene', grouped = false) {
     const cell = label => ({
         hasAttribute: key => key === 'data-export-label',
         getAttribute: key => key === 'data-export-label' ? label : null,
         querySelector: () => null,
     });
-    const row = (values, display = '') => ({style: {display}, offsetParent: {},
+    const row = (values, display = '', groupLabel = null) => ({style: {display}, offsetParent: {},
+        getAttribute: () => groupLabel,
         querySelectorAll: () => values.map(cell), closest: () => null});
     const table = (heading, rows, dialog = false) => ({
         querySelector: () => null,
@@ -21,7 +22,10 @@ async function copyFixture(failHtml = false, customTitle = 'Hygiene') {
             [cell(heading), cell('Reason / Notes')] : rows,
     });
     const tables = [
-        table('Engagement', [row(['SQL Migration', 'Confirmed <reason>'])]),
+        table('Engagement', [
+            ...(grouped ? [row([], '', 'Seller: SQL <owner>')] : []),
+            row(['SQL Migration', 'Confirmed <reason>']),
+        ]),
         table('Milestone (Seller: Rick Bowles)', [
             row(['SQLMI migration', '']), row(['Filtered off-team', ''], 'none'),
         ]),
@@ -60,8 +64,20 @@ async function copyFixture(failHtml = false, customTitle = 'Hygiene') {
         setTimeout() {}, requestAnimationFrame() {}});
     window.copyReportForEmail();
     for (let i = 0; i < 8; i++) await Promise.resolve();
-    return {copied, fallback, downloads, downloadEmail: window.downloadReportEmail};
+    return {copied, fallback, downloads, downloadEmail: window.downloadReportEmail,
+        exportCSV: window.exportReportCSV};
 }
+test('grouped report exports retain seller labels in CSV, HTML and plain text', async () => {
+    const h = await copyFixture(false, 'SQL Motions', true);
+    assert.ok((await h.copied[0].types['text/html'].text()).includes(
+        'Seller: SQL &lt;owner&gt;'));
+    assert.ok((await h.copied[0].types['text/plain'].text()).includes('Seller: SQL <owner>'));
+    h.exportCSV();
+    const csv = await h.downloads[0].text();
+    assert.ok(csv.includes('Seller: SQL <owner>'));
+    assert.ok(csv.includes('SQL Migration'));
+    assert.ok(!csv.includes('Filtered off-team'));
+});
 test('native clipboard exports both queues in HTML and text with seller and confirmed-note context', async () => {
     const h = await copyFixture();
     const html = await h.copied[0].types['text/html'].text();

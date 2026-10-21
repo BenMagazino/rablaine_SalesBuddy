@@ -470,6 +470,15 @@
 .db-rti-table-scroll th:nth-child(4) { width: 54px; }
 .db-rti-table-scroll .db-report-table :is(th, td):first-child { width: 40%; overflow-wrap: anywhere; }
 .db-rti-table-scroll .db-report-table :is(th, td):last-child { padding-right: 16px; }
+.db-widget-body:has(> .db-sql-details) { display: flex; flex-direction: column; overflow: hidden; scrollbar-gutter: auto; }
+.db-widget-body:has(> .db-sql-details) > :is(.db-filter-scope, .db-filter-exception) { flex-shrink: 0; }
+.db-sql-details { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.db-sql-details > :is(.db-report-heading, .db-report-caption, .db-report-notice) { flex-shrink: 0; }
+.db-sql-table-scroll { flex: 1; min-height: 0; overflow: auto; margin-top: 12px; border: 1px solid var(--sb-ui-grid-line); scrollbar-gutter: stable; }
+.db-sql-table-scroll .db-report-table { margin: 0; border: 0; }
+.db-sql-table-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--sb-ui-surface); }
+.db-sql-table-scroll .db-report-table :is(th, td):first-child { width: 46%; overflow-wrap: anywhere; }
+.db-sql-table-scroll .db-report-table :is(th, td):last-child { padding-right: 16px; }
 .db-widget-body:has(> .db-acquisition-details) { display: flex; flex-direction: column; overflow: hidden; scrollbar-gutter: auto; }
 .db-widget-body:has(> .db-acquisition-details) > :is(.db-filter-scope, .db-filter-exception) { flex-shrink: 0; }
 .db-acquisition-details { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }

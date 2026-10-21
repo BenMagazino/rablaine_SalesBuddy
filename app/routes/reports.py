@@ -22,6 +22,42 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('reports', __name__)
 
 
+def _read_sql_motion(motion: str) -> dict:
+    """Validate report scope and apply the same specialty gate as its widgets."""
+    from app.services.dashboard_filters import report_customer_scope
+    from app.services.se_specialty import has_specialty_access
+    from app.services.sql_motions import get_sql_motion_report
+
+    if not has_specialty_access('data'):
+        abort(403, description='SQL motions are available for Data SEs and sellers.')
+    try:
+        customer_ids = report_customer_scope(request.args)
+    except ValueError as exc:
+        abort(400, description=str(exc))
+    return get_sql_motion_report(motion, customer_ids=customer_ids)
+
+
+@bp.route('/reports/sql-renewals', defaults={'motion': 'renewals'}, endpoint='report_sql_renewals')
+@bp.route('/reports/sql-eos', defaults={'motion': 'eos'}, endpoint='report_sql_eos')
+def report_sql_motion(motion: str) -> str:
+    """Show source-backed SQL renewal or SQL 2016 discovery candidates."""
+    grouping = request.args.get('group_by_seller', 'false')
+    if grouping not in ('true', 'false'):
+        abort(400, description='Group by seller must be true or false.')
+    report = _read_sql_motion(motion)
+    return render_template(
+        'report_sql_motion.html', report=report, title=report['title'],
+        group_by_seller=grouping == 'true',
+    )
+
+
+@bp.route('/api/reports/sql-renewals', defaults={'motion': 'renewals'}, endpoint='api_sql_renewals')
+@bp.route('/api/reports/sql-eos', defaults={'motion': 'eos'}, endpoint='api_sql_eos')
+def api_sql_motion(motion: str) -> Response:
+    """Expose the same saved SQL queues without starting a remote pull."""
+    return jsonify(_read_sql_motion(motion))
+
+
 @bp.route('/reports/fabric-modernization')
 def report_fabric_modernization():
     """Compare recent modernization-source revenue with Fabric on the same period."""
@@ -912,6 +948,26 @@ def reports_hub():
                     ),
                     'icon': 'bi-broadcast',
                     'url': url_for('reports.report_rti'),
+                },
+                {
+                    'id': 'sql-renewals',
+                    'name': 'SQL Renewals',
+                    'description': (
+                        'Upcoming SQL expirations, licensed footprint and modeled '
+                        'migration opportunity from Azure Migrations.'
+                    ),
+                    'icon': 'bi-calendar-event',
+                    'url': url_for('reports.report_sql_renewals'),
+                },
+                {
+                    'id': 'sql-eos',
+                    'name': 'SQL 2016 EOS / ESU',
+                    'description': (
+                        'Explicit SQL Server 2016 discovery from Arc, with subscription '
+                        'evidence. ESU protection remains unverified.'
+                    ),
+                    'icon': 'bi-database-exclamation',
+                    'url': url_for('reports.report_sql_eos'),
                 },
             ],
         },

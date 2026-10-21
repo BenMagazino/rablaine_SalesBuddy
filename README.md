@@ -219,6 +219,22 @@ standalone UI iterations using entirely fictional data. See the
   The focused visit does not read or overwrite normal bucket preferences. Existing
   product drill-downs, review notes, statuses and exports remain available.
   Data SEs and sellers can also query the same signals through SalesIQ.
+- **SQL Motions** - SQL Renewals and SQL 2016 EOS / ESU each provide a report,
+  Summary/Details widgets and a SalesIQ read tool. One shared sync pulls Azure
+  Migrations and ADS Accelerate Arc version data for current account TPIDs.
+  Available to Data SEs and all sellers, with automatic weekly refreshes using
+  the existing scheduled-sync settings.
+  Both feeds must succeed before the saved snapshot changes; failures retain
+  the previous complete snapshot. Run it from either report or Sync Status.
+  Renewals lists all future SQL expirations, nearest first, including zero and
+  unknown amounts. Its 90-day count is not a queue cutoff. Licensed footprint
+  means on-prem SQL cores with SA; modeled monthly ACR is not qualified pipeline.
+  SQL 2016 candidates require explicit version evidence and positive All Discovered
+  counts. Subscription details preserve the evidence without adding overlapping
+  license categories. Discovery units and ESU protection remain unverified;
+  missing observations mean unknown, not no exposure. The EOS view focuses on
+  SQL 2016 discovery and subscription evidence. Both widgets preserve customer/
+  seller click-through scope and show sellers only when explicitly grouped.
 - **Fabric Consumption** - import customer-scoped Fabric workload CU-hour
   shares and capacity/SKU utilization from MSXi. Reports > Fabric Consumption
   includes capacities, throttling, utilization history, and customer-wide reserved-instance
@@ -418,6 +434,12 @@ standalone UI iterations using entirely fictional data. See the
   to create another copy or restore the original starting layout. Copies are
   independent and can be renamed, rearranged, or deleted. Old Connect Goals bookmarks
   open the starter while it exists; otherwise they offer explicit template recreation.
+  **FY27 Data Motions** is also installed once on upgrade as an editable starter,
+  with ten report-backed widgets in the approved two-column layout and live Seller
+  and Group by seller controls. It uses each user's own account scope and data,
+  not the template creator's records. Existing exact copies are adopted; customized
+  dashboards are left alone, and deleting the starter does not recreate it.
+  It is also available through **Add from template** for independent copies.
   The template has a stable key and version, separate from ordinary dashboard IDs.
   Installation history lives in `dashboard_template_installations` so deletion remains
   intentional across restarts. There is no dashboard-specific F1 editor or scope toolbar.
