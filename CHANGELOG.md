@@ -8,27 +8,11 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
-## 10/20/2026
+## 10/21/2026
 
-- Get an editable FY27 Data Motions dashboard automatically on upgrade, with ten report-backed widgets and seller filters. Add another copy anytime from the dashboard templates.
-- Find upcoming SQL renewals and SQL 2016 EOS / ESU discovery candidates in separate, focused reports and dashboard widgets. One SQL Motions sync refreshes both sources together; ESU protection remains unverified.
-- Surface prioritized database growth and consumption-risk alerts in Database Expansion widgets, with a matching scoped view of Revenue Analyzer and its existing review workflow.
-- Find customers with AI, Analytics or Apps spend but no database spend using Database whitespace widgets and their matching report view. In Whitespace Analysis, focus a pillar to exclude existing users and hide its zero-only column, choose surrounding spend columns independently, and group candidates by seller.
-- Find P to F and Fabric reports together under FY27 Data Motions in Reports.
-- Find streaming customers without RTI usage in the Real-Time Intelligence report and widgets, including customers without Fabric capacity. Tables focus on average monthly Event Hubs, Stream Analytics and IoT spend over the last three complete months, without zero-only RTI columns; missing RTI counts as zero.
-- Dashboard widgets automatically load missing source data, show sync progress, and refresh when ready, with workload setup in the right order.
-- Fabric Acquisition checks this month's Fabric spend as well as the previous three months, treats missing revenue as $0, excludes accounts that dropped out of your sync, and offers a report option to include all current customers with no Fabric spend, regardless of other spend.
-- Rearrange dashboard widgets by dropping onto occupied space: swap when both fit, otherwise shift neighbors down, with a live preview, bounded drag scrolling and one-step Undo.
-- Sellers receive specialty-specific features, including the customer Fabric tab and automatic weekly Fabric and P-to-F refreshes.
-- Add Fabric Acquisition to Whitespace Analysis, with report-backed dashboard widgets for AI, Database and non-Fabric Analytics customers without positive Fabric ACR. Widgets focus on customers with at least $2,000/month combined spend; the report retains smaller customers.
-- Group Whitespace Grid and Fabric Acquisition customers by seller, with sorting within each group.
-- Find analytics and pipeline modernization prospects with separate Other Analytics, ADF and Fabric spend, plus an "Includes Synapse" hover indicator on matching Other Analytics amounts. ADF-only prospects can qualify; monthly averages use each customer's available months within the last three complete months, with the existing source-volume cutoffs.
-- Configure widget customer and seller restrictions in the Filters flyout after placing a widget, rather than in the widget library.
-- P-to-F renewal widget Details lists all future renewals with the report's status indicators and hover help. Summary keeps its 90-day window.
-- Find Trial to Paid prospects with trial capacities and no paid F SKU, showing utilization and history with a matching Fabric Consumption audit. Capacity overview removes redundant portfolio selections; use P to F for P-SKU renewal audits.
-- Add Fabric expansion Summary and Details widgets for Power BI-led paid Fabric customers, with P/trial context and Capacity overview drill-throughs.
-- Let viewers group Fabric expansion, trial conversion, and upcoming P-to-F renewal Details by seller using one dashboard filter.
-- Capacity overview defaults to one row per customer, with wrapping capacity mixes, average utilization, and optional seller grouping. Your view choices are remembered.
+- Get an editable FY27 Data Motions dashboard automatically on upgrade, with ten report-backed widgets for Fabric acquisition, modernization, expansion, trials and RTI, database whitespace and growth, P-to-F renewals, and SQL motions. Add another copy anytime from dashboard templates and follow each widget to its full report.
+- Find upcoming SQL renewals and SQL 2016 EOS / ESU discovery candidates in separate reports. One SQL Motions sync refreshes both sources together; ESU protection remains unverified. Data SEs and all sellers receive weekly Fabric, P-to-F and SQL refreshes, and widgets show shared setup, sync progress and retry options when data is missing.
+- Load dashboards faster, filter by customer or seller, and group Details by seller. Rearrange widgets with drag-and-drop swaps, automatic neighbor placement and Undo. Use focused Whitespace Analysis and Revenue Analyzer views to investigate opportunities, and audit Fabric trials, expansion and capacity by customer.
 
 ## 10/20/2026 - bea40fcc
 
