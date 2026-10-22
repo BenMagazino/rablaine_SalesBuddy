@@ -8,6 +8,10 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/21/2026
+
+- Fix startup migration failures on older databases while preserving existing task and note links.
+
 ## 10/21/2026 - 0ed52240
 
 - Contact photos in the note editor open in a compact window without an empty right half.
