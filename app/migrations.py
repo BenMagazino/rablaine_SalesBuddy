@@ -672,6 +672,7 @@ def _migrate_owned_task_inventory(db) -> None:
     legacy_parents = {
         ('milestone_id', '_old_milestones'): 'milestones',
         ('note_id', 'call_logs_backup'): 'notes',
+        ('note_id', '_old_call_logs'): 'notes',
     }
     parent_repairs = {
         fk['referred_table']: legacy_parents[(fk['constrained_columns'][0], fk['referred_table'])]

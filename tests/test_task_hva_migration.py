@@ -59,21 +59,29 @@ def seed_tasks(database, classification_sql: str, milestone_nullable: bool = Fal
 
 @pytest.mark.parametrize("nullable", [False, True])
 @pytest.mark.parametrize("missing_parent", [False, True])
+@pytest.mark.parametrize("legacy_milestone", [False, True])
+@pytest.mark.parametrize("note_parent", ["call_logs_backup", "_old_call_logs"])
 def test_owned_inventory_repairs_legacy_parent_names_only_when_ids_are_valid(
-    migration_db, nullable, missing_parent,
+    migration_db, nullable, missing_parent, legacy_milestone, note_parent,
 ):
     """Old rename damage is corrected without losing IDs or hiding genuinely orphaned links."""
     seed_tasks(migration_db, 'is_hva BOOLEAN NOT NULL DEFAULT 0', nullable)
     with migration_db.engine.connect() as connection:
         raw = connection.connection.driver_connection
-        raw.executescript("""
-            ALTER TABLE milestones RENAME TO _old_milestones;
-            CREATE TABLE milestones (id INTEGER PRIMARY KEY);
-            INSERT INTO milestones VALUES (3);
-            DROP TABLE _old_milestones;
+        if legacy_milestone:
+            raw.executescript("""
+                ALTER TABLE milestones RENAME TO _old_milestones;
+                CREATE TABLE milestones (id INTEGER PRIMARY KEY);
+                INSERT INTO milestones VALUES (3);
+                DROP TABLE _old_milestones;
+            """)
+        raw.executescript(f"""
+            CREATE TABLE call_logs (id INTEGER PRIMARY KEY);
+            ALTER TABLE msx_tasks ADD COLUMN note_id INTEGER REFERENCES call_logs(id);
+            ALTER TABLE call_logs RENAME TO "{note_parent}";
+            DROP TABLE "{note_parent}";
             CREATE TABLE notes (id INTEGER PRIMARY KEY);
             INSERT INTO notes VALUES (31);
-            ALTER TABLE msx_tasks ADD COLUMN note_id INTEGER REFERENCES call_logs_backup(id);
         """)
         raw.execute("PRAGMA foreign_keys=OFF")
         raw.execute("INSERT INTO msx_tasks "
@@ -84,7 +92,9 @@ def test_owned_inventory_repairs_legacy_parent_names_only_when_ids_are_valid(
             raw.execute("DELETE FROM notes WHERE id=31")
         raw.commit()
         raw.execute("PRAGMA foreign_keys=ON")
-        assert len(raw.execute("PRAGMA foreign_key_check(msx_tasks)").fetchall()) == 2
+        assert len(raw.execute("PRAGMA foreign_key_check(msx_tasks)").fetchall()) == (
+            2 if legacy_milestone else 1
+        )
     if missing_parent:
         with pytest.raises(RuntimeError, match="failed; rolled back"):
             _migrate_owned_task_inventory(migration_db)
@@ -99,11 +109,20 @@ def test_owned_inventory_repairs_legacy_parent_names_only_when_ids_are_valid(
         ]
         assert raw.execute("SELECT task_id FROM task_links").fetchall() == [(7,)]
         targets = {fk[3]: fk[2] for fk in raw.execute("PRAGMA foreign_key_list(msx_tasks)")}
-        assert targets["note_id"] == ("call_logs_backup" if missing_parent else "notes")
-        assert targets["milestone_id"] == ("_old_milestones" if missing_parent else "milestones")
+        assert targets["note_id"] == (note_parent if missing_parent else "notes")
+        assert targets["milestone_id"] == (
+            "_old_milestones" if missing_parent and legacy_milestone else "milestones"
+        )
         if not missing_parent:
             assert raw.execute("PRAGMA foreign_key_check").fetchall() == []
     assert len(list(migration_db.directory.glob("*.owned-tasks-*.bak"))) == 1
+    backup = next(migration_db.directory.glob("*.owned-tasks-*.bak"))
+    with closing(sqlite3.connect(backup)) as saved:
+        assert saved.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        assert saved.execute("SELECT id, milestone_id, note_id FROM msx_tasks").fetchall() == [
+            (7, 3, 31),
+        ]
+        assert saved.execute("SELECT task_id FROM task_links").fetchall() == [(7,)]
 
 
 def test_owned_inventory_migration_backs_up_and_preserves_all_task_links_and_schema(migration_db):
