@@ -999,6 +999,8 @@ def link_existing_activity(meeting_id: int, task_id: int) -> MsxTask:
         raise ValueError('Meeting already has an MSX activity')
     if task.meeting_id and task.meeting_id != meeting.id:
         raise ValueError('Activity is already linked to another meeting')
+    if task.milestone is None:
+        raise ValueError('Activity needs a locally synced milestone before linking it to a meeting')
     if meeting.customer_id and task.milestone.customer_id != meeting.customer_id:
         raise ValueError('Activity belongs to a different customer')
     task.meeting_id = meeting.id

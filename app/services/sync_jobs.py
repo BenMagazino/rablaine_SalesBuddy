@@ -51,7 +51,7 @@ OPERATIONS = {
     'milestones': Operation('Milestones', 'All customers, opportunities, tasks and comments.',
                             'milestones', {}, True, legacy_status='milestones'),
     'customer-milestones': Operation('Customer milestones', 'Milestones for one customer.',
-                                     'milestones', {'customer_id': None}, True),
+                                     'milestones', {'customer_id': None, 'picker_only': False}, True),
     'customer-data': Operation('Customer MSX data', 'Opportunities, milestones and comments.',
                                'milestones', {'customer_id': None}, True),
     'revenue': Operation('ACR', 'MSXI revenue, strategic pillar whitespace and trend analysis.',
@@ -82,7 +82,7 @@ OPERATIONS = {
     'milestone-dates': Operation('Milestone audit dates', 'Committed and completed MSX dates.',
                                  'milestones', {}),
     'activity-reconciliation': Operation('Activity reconciliation',
-                                         'Refresh MSX activities and match saved meetings.',
+                                         'Refresh all owned MSX tasks and match saved meetings.',
                                          'milestones', {}),
     'calendar-population': Operation('Fiscal-year calendar',
                                      'Resume calendar population from its saved checkpoint.',
@@ -132,7 +132,7 @@ def validate_options(operation: str, options: dict | None) -> dict:
     if not isinstance(options, dict) or options.keys() - spec.defaults.keys():
         raise SyncAdmissionError('Use only the supported options for this sync.')
     result = {**spec.defaults, **options}
-    for key in ('force', 'skip_aura', 'run_analysis', 'missing_only'):
+    for key in ('force', 'skip_aura', 'run_analysis', 'missing_only', 'picker_only'):
         if key in result and not isinstance(result[key], bool):
             raise SyncAdmissionError(f'{key} must be true or false.')
     for key in ('date', 'anchor', 'through'):
@@ -336,6 +336,10 @@ def _execute_operation(operation: str, options: dict) -> dict:
             sync_customer_comments, sync_customer_milestones, sync_customer_opportunities,
         )
         customer = db.session.get(Customer, options['customer_id'])
+        if operation == 'customer-milestones' and options.get('picker_only'):
+            from app.services.milestone_picker import get_customer_milestone_choices
+            publish_progress({'phase': 'fetching', 'message': 'Reading milestones from MSX.'})
+            return get_customer_milestone_choices(customer)
         result = {}
         stages = {}
         functions = [sync_customer_milestones]

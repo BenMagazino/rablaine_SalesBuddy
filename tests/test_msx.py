@@ -318,8 +318,11 @@ class TestMsxRoutes:
         assert data['success'] is False
         assert 'not found' in data['error'].lower()
     
-    @patch('app.routes.msx.get_milestones_by_account')
-    def test_milestones_for_customer_success(self, mock_get_milestones, client, app, db_session, sample_customer):
+    @patch('app.services.milestone_picker.get_my_milestone_team_ids')
+    @patch('app.services.milestone_picker.get_milestones_by_account')
+    def test_milestones_for_customer_success(
+        self, mock_get_milestones, mock_get_team_ids, client, app, db_session, sample_customer,
+    ):
         """Test milestones endpoint returns MSX milestones."""
         # Set up customer with valid TPID URL (needs proper GUID format)
         with app.app_context():
@@ -339,6 +342,7 @@ class TestMsxRoutes:
                 }
             ]
         }
+        mock_get_team_ids.return_value = {'success': True, 'milestone_ids': set()}
         
         response = client.get(f'/api/msx/milestones-for-customer/{sample_customer.id}')
         assert response.status_code == 200
@@ -348,8 +352,8 @@ class TestMsxRoutes:
         assert len(data['milestones']) == 1
         assert data['milestones'][0]['msp_name'] == 'Test Milestone'
     
-    @patch('app.routes.msx.get_my_milestone_team_ids')
-    @patch('app.routes.msx.get_milestones_by_account')
+    @patch('app.services.milestone_picker.get_my_milestone_team_ids')
+    @patch('app.services.milestone_picker.get_milestones_by_account')
     def test_milestones_for_customer_on_my_team_from_msx(
         self, mock_get_milestones, mock_get_team_ids, client, app, db_session, sample_customer
     ):
@@ -382,8 +386,8 @@ class TestMsxRoutes:
         assert data['milestones'][0]['on_my_team'] is True
         assert data['milestones'][1]['on_my_team'] is False
     
-    @patch('app.routes.msx.get_my_milestone_team_ids')
-    @patch('app.routes.msx.get_milestones_by_account')
+    @patch('app.services.milestone_picker.get_my_milestone_team_ids')
+    @patch('app.services.milestone_picker.get_milestones_by_account')
     def test_milestones_for_customer_team_check_failure_falls_back(
         self, mock_get_milestones, mock_get_team_ids, client, app, db_session, sample_customer
     ):
@@ -549,8 +553,7 @@ class TestNoteMilestoneTaskFlow:
         """Test saving note with milestone and task creation fields."""
         msx_milestone_id = 'flow-test-milestone'
         
-        # Note: Task creation won't succeed without MSX auth, 
-        # but the milestone should still be linked
+        # Authentication is isolated; failed task creation must still link the milestone.
         response = client.post(f'/note/new?customer_id={sample_customer.id}', data={
             'customer_id': sample_customer.id,
             'call_date': '2026-02-19',

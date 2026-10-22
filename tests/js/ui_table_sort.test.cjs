@@ -106,6 +106,9 @@ function fixture(specs = [{}], historyState = null) {
             (this.handlers[name] ??= []).push(handler);
         }
         click() { for (const handler of this.handlers.click ?? []) handler(); }
+        dispatchEvent(event) {
+            for (const handler of this.handlers[event.type] ?? []) handler(event);
+        }
         focus(options) { document.activeElement = this; this.focusOptions = options; }
     }
     document = new Node('document');
@@ -114,6 +117,7 @@ function fixture(specs = [{}], historyState = null) {
     function makeTable(spec = {}) {
         const table = new Node('table');
         table.setAttribute('data-sb-sortable', '');
+        if (spec.server) table.setAttribute('data-sb-sort-server', '');
         if (spec.key !== null) table.setAttribute('data-sb-sort-key', spec.key ?? 'table-1');
         if (spec.column !== undefined) {
             table.setAttribute('data-sb-sort-default-column', spec.column);
@@ -168,7 +172,11 @@ function fixture(specs = [{}], historyState = null) {
     return {
         ...tables[0], tables, document, window, history, errors, writes, Node, makeTable,
         run() {
-            vm.runInNewContext(source, {window, document, console: {error: (...args) => {
+            vm.runInNewContext(source, {window, document,
+                CustomEvent: class {
+                    constructor(type, options) { this.type = type; this.detail = options.detail; }
+                },
+                console: {error: (...args) => {
                 errors.push(args);
             }}});
             return window.SBTableSort;
@@ -191,6 +199,24 @@ test('opt-in mounting preserves source order and original header content nodes',
     assert.equal(h.button(0).getAttribute('aria-label'), 'Column 0: sort ascending');
     assert.equal(h.button(0).querySelector('i').getAttribute('aria-hidden'), 'true');
     assert.equal(h.button(0).querySelector('i').className, 'bi bi-chevron-expand');
+});
+
+test('server sorting emits global sort requests without reordering a page or saving local state', () => {
+    const h = fixture([{server: true, column: 0, direction: 'descending'}], {
+        sbTableSort: {'table-1': {column: 0, direction: 'ascending'}},
+    });
+    const requests = [];
+    h.table.addEventListener('sb:table-sort', event => requests.push(event.detail));
+    h.run();
+    assert.deepEqual(h.order(), ['r0', 'r1', 'r2']);
+    assert.equal(h.headers[0].getAttribute('aria-sort'), 'descending');
+    h.button(0).click();
+    assert.equal(requests[0].column, 0);
+    assert.equal(requests[0].direction, 'ascending');
+    assert.equal(h.writes.length, 0);
+    assert.deepEqual(h.order(), ['r0', 'r1', 'r2']);
+    h.dispatch('pageshow'); h.flush();
+    assert.equal(h.headers[0].getAttribute('aria-sort'), 'descending');
 });
 
 test('raw numbers retain fractional, negative, zero and exponent values', () => {

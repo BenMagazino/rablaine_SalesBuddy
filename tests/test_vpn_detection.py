@@ -259,8 +259,8 @@ class TestVpnStatusEndpoints:
         assert data["success"] is False
         assert is_vpn_blocked() is True
 
-    @patch('app.routes.msx.get_milestones_by_account')
-    @patch('app.routes.msx.extract_account_id_from_url', return_value='00000000-0000-0000-0000-000000000001')
+    @patch('app.services.milestone_picker.get_milestones_by_account')
+    @patch('app.services.milestone_picker.extract_account_id_from_url', return_value='00000000-0000-0000-0000-000000000001')
     def test_after_request_promotes_vpn_blocked_to_403(self, mock_extract, mock_milestones, client):
         """MSX routes returning 200 with vpn_blocked should become 403."""
         mock_milestones.return_value = {

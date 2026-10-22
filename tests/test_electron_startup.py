@@ -9,9 +9,11 @@ import pytest
 
 @pytest.mark.skipif(shutil.which('node') is None, reason='Node.js is required for shell tests')
 def test_electron_startup_recovery() -> None:
-    """Exercise slow readiness, failed navigation recovery, and cancellation."""
-    test_file = Path(__file__).parent / 'js' / 'electron_startup.test.cjs'
+    """Exercise readiness, recovery, cancellation, and private bounded focus diagnostics."""
+    test_dir = Path(__file__).parent / 'js'
+    test_files = [test_dir / 'electron_startup.test.cjs',
+                  test_dir / 'electron_input_focus.test.cjs']
     result = subprocess.run(
-        ['node', '--test', str(test_file)], capture_output=True, text=True, check=False,
+        ['node', '--test', *map(str, test_files)], capture_output=True, text=True, check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr

@@ -12,6 +12,9 @@ Format: `## M/D/YYYY - <merge-short-sha>`. See
 
 - Contact photos in the note editor open in a compact window without an empty right half.
 - Calendar refreshes accept repeated copies of the same WorkIQ result, avoiding false errors on days without matching customer meetings.
+- *Electron Shell Update* - Capture private, local input-focus diagnostics through Help when text fields stop responding, so we can investigate without recording what you type.
+- Refresh milestone choices while writing a note, without saving it or losing your selections.
+- Browse your owned HVAs under Browse > Work, with counts, status, activity dates and inline completion for open or unknown-status activities. The existing activity refresh now includes tasks outside milestones already in Sales Buddy.
 
 ## 10/21/2026 - d2ece58e
 

@@ -114,6 +114,7 @@ def run_migrations(db):
 
     # Migration: Store the task's actual MSX creation timestamp
     _migrate_msx_tasks_created_on(db, inspector)
+    _migrate_owned_task_inventory(db)
     
     # Migration: Create sync_status table for tracking sync completion
     _migrate_sync_status_table(db, inspector)
@@ -518,10 +519,6 @@ def _migrate_initiative_project_links(db) -> None:
     the database; in-memory databases retain an in-memory backup until completion.
     """
     import re
-    import sqlite3
-    from datetime import datetime, timezone
-    from pathlib import Path
-    from uuid import uuid4
 
     table = 'manager_initiative_items'
     inspector = inspect(db.engine)
@@ -556,6 +553,25 @@ def _migrate_initiative_project_links(db) -> None:
             and all(check in normalized for check in expected_checks)):
         return
 
+    with db.engine.connect() as connection:
+        create_sql = connection.execute(text(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=:table",
+        ), {'table': table}).scalar_one()
+    new_sql = _initiative_project_schema_sql(create_sql, inspector)
+    _rebuild_sqlite_table(
+        db, table, new_sql, '_initiative_items_project_new', 'initiative-projects',
+    )
+    print("  Added project links to initiative items, preserving discussion history")
+
+
+def _rebuild_sqlite_table(db, table: str, new_sql: str, new_table: str, label: str) -> None:
+    """Back up and atomically replace a table, preserving IDs, indexes, triggers and FKs."""
+    import sqlite3
+    from datetime import datetime, timezone
+    from pathlib import Path
+    from uuid import uuid4
+
+    columns = inspect(db.engine).get_columns(table)
     db.session.commit()
     connection = db.engine.raw_connection()
     raw = connection.driver_connection
@@ -563,17 +579,13 @@ def _migrate_initiative_project_links(db) -> None:
     backup = None
     backup_path = None
     try:
-        create_sql = raw.execute(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,),
-        ).fetchone()[0]
-        new_sql = _initiative_project_schema_sql(create_sql, inspector)
         database_path = next(
             row[2] for row in raw.execute('PRAGMA database_list') if row[1] == 'main'
         )
         if database_path:
             timestamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
             backup_path = Path(database_path).with_name(
-                f'{Path(database_path).name}.initiative-projects-{timestamp}-{uuid4().hex}.bak'
+                f'{Path(database_path).name}.{label}-{timestamp}-{uuid4().hex}.bak'
             )
             backup_path.touch(exist_ok=False)
             backup = sqlite3.connect(str(backup_path))
@@ -581,12 +593,12 @@ def _migrate_initiative_project_links(db) -> None:
             backup = sqlite3.connect(':memory:')
         raw.backup(backup)
         if backup.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
-            raise RuntimeError('Initiative migration backup failed integrity verification')
-        print(f"  Initiative project migration backup: {backup_path or 'isolated in-memory copy'}")
+            raise RuntimeError(f'{label} migration backup failed integrity verification')
+        print(f"  {label} migration backup: {backup_path or 'isolated in-memory copy'}")
 
         raw.execute('PRAGMA foreign_keys=OFF')
         if raw.execute('PRAGMA foreign_keys').fetchone()[0]:
-            raise RuntimeError('Could not disable foreign keys for initiative migration')
+            raise RuntimeError(f'Could not disable foreign keys for {label} migration')
         raw.execute('BEGIN IMMEDIATE')
         objects = raw.execute(
             "SELECT sql FROM sqlite_master WHERE tbl_name=? "
@@ -595,10 +607,14 @@ def _migrate_initiative_project_links(db) -> None:
         raw.execute(new_sql)
         names = ', '.join('"' + column['name'].replace('"', '""') + '"' for column in columns)
         raw.execute(
-            f'INSERT INTO "_initiative_items_project_new" ({names}) SELECT {names} FROM "{table}"'
+            f'INSERT INTO "{new_table}" ({names}) SELECT {names} FROM "{table}"'
         )
+        before_count = raw.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+        after_count = raw.execute(f'SELECT COUNT(*) FROM "{new_table}"').fetchone()[0]
+        if before_count != after_count:
+            raise RuntimeError(f'{label} migration row count mismatch')
         raw.execute(f'DROP TABLE "{table}"')
-        raw.execute(f'ALTER TABLE "_initiative_items_project_new" RENAME TO "{table}"')
+        raw.execute(f'ALTER TABLE "{new_table}" RENAME TO "{table}"')
         for (object_sql,) in objects:
             raw.execute(object_sql)
         # Older migrations left unrelated dangling FKs in some deployed databases.
@@ -618,23 +634,81 @@ def _migrate_initiative_project_links(db) -> None:
             quoted_table = '"' + affected_table.replace('"', '""') + '"'
             violations.extend(raw.execute(f'PRAGMA foreign_key_check({quoted_table})').fetchall())
         if violations:
-            raise RuntimeError(f'Initiative migration foreign key violations: {violations!r}')
+            raise RuntimeError(f'{label} migration foreign key violations: {violations!r}')
         raw.commit()
-        print("  Added project links to initiative items, preserving discussion history")
     except Exception as error:
         raw.rollback()
         raise RuntimeError(
-            f'Initiative project migration failed; rolled back. Backup: {backup_path or "memory"}'
+            f'{label} migration failed; rolled back. Backup: {backup_path or "memory"}'
         ) from error
     finally:
         try:
             raw.execute(f'PRAGMA foreign_keys={foreign_keys}')
             if raw.execute('PRAGMA foreign_keys').fetchone()[0] != foreign_keys:
-                raise RuntimeError('Could not restore initiative migration foreign key state')
+                raise RuntimeError(f'Could not restore {label} migration foreign key state')
         finally:
             if backup is not None:
                 backup.close()
             connection.close()
+
+
+def _migrate_owned_task_inventory(db) -> None:
+    """Allow owned tasks outside local milestones, after a verified SQLite backup."""
+    import re
+
+    inspector = inspect(db.engine)
+    if 'msx_tasks' not in inspector.get_table_names():
+        return
+    for name, definition in (
+        ('is_current_owner', 'BOOLEAN NOT NULL DEFAULT 1'),
+        ('msx_regarding_id', 'VARCHAR(50)'),
+        ('msx_regarding_type', 'VARCHAR(100)'),
+        ('msx_regarding_name', 'VARCHAR(500)'),
+    ):
+        _add_column_if_not_exists(db, inspector, 'msx_tasks', name, definition)
+    inspector = inspect(db.engine)
+    column = next(c for c in inspector.get_columns('msx_tasks')
+                  if c['name'] == 'milestone_id')
+    legacy_parents = {
+        ('milestone_id', '_old_milestones'): 'milestones',
+        ('note_id', 'call_logs_backup'): 'notes',
+    }
+    parent_repairs = {
+        fk['referred_table']: legacy_parents[(fk['constrained_columns'][0], fk['referred_table'])]
+        for fk in inspector.get_foreign_keys('msx_tasks')
+        if len(fk['constrained_columns']) == 1
+        and (fk['constrained_columns'][0], fk['referred_table']) in legacy_parents
+        and fk['referred_columns'] == ['id']
+    }
+    if column['nullable'] and not parent_repairs:
+        return
+    with db.engine.connect() as connection:
+        create_sql = connection.execute(text(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='msx_tasks'",
+        )).scalar_one()
+    new_sql = create_sql
+    if not column['nullable']:
+        new_sql, replaced = re.subn(
+            r'((?:"milestone_id"|milestone_id)\s+INTEGER)\s+NOT\s+NULL',
+            r'\1', new_sql, count=1, flags=re.IGNORECASE,
+        )
+        if replaced != 1:
+            raise RuntimeError('Could not safely relax the MSX task milestone constraint')
+    for old_parent, canonical_parent in parent_repairs.items():
+        new_sql, replaced = re.subn(
+            rf'(\bREFERENCES\s+)(?:"{old_parent}"|{old_parent})(?=\s*\()',
+            rf'\1"{canonical_parent}"', new_sql, flags=re.IGNORECASE,
+        )
+        if replaced != 1:
+            raise RuntimeError(f'Could not safely repair the MSX task {old_parent} reference')
+    new_sql, renamed = re.subn(
+        r'^(CREATE TABLE\s+)(?:"msx_tasks"|msx_tasks)',
+        r'\1"_msx_tasks_owned_new"', new_sql, count=1, flags=re.IGNORECASE,
+    )
+    if renamed != 1:
+        raise RuntimeError('Could not safely prepare the owned MSX task table')
+    _rebuild_sqlite_table(db, 'msx_tasks', new_sql, '_msx_tasks_owned_new', 'owned-tasks')
+    print('  MSX tasks now support work outside local milestones')
 
 
 def _migrate_se_specialty(db, inspector) -> None:

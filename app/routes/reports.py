@@ -807,6 +807,14 @@ def reports_hub():
                     'url': url_for('reports.report_activity_coverage'),
                 },
                 {
+                    'id': 'hvas',
+                    'name': 'HVAs',
+                    'description': 'Browse your owned high-value activities, including completed '
+                                   'tasks, with status, creation dates, due dates and related work.',
+                    'icon': 'bi-lightning-charge',
+                    'url': url_for('reports.report_hvas'),
+                },
+                {
                     'id': 'whitespace',
                     'name': 'Whitespace Analysis',
                     'description': (
@@ -2126,6 +2134,90 @@ def api_whitespace_penetration_customers():
 # =============================================================================
 # MSX Workspace
 # =============================================================================
+
+def _read_hva_inventory() -> dict:
+    """Validate browser/API filters through the shared inventory service."""
+    from app.services.hva_inventory import get_hva_inventory
+
+    return get_hva_inventory(
+        search=request.args.get('search', ''), status=request.args.get('status', ''),
+        customer_id=int(request.args['customer_id']) if request.args.get('customer_id') else None,
+        category=int(request.args['category']) if request.args.get('category') else None,
+        date_field=request.args.get('date_field', 'created'),
+        date_from=request.args.get('date_from'), date_to=request.args.get('date_to'),
+        sort=request.args.get('sort', 'created'), direction=request.args.get('direction', 'desc'),
+        page=int(request.args.get('page', '1')), per_page=int(request.args.get('per_page', '50')),
+    )
+
+
+@bp.route('/reports/hvas')
+def report_hvas():
+    """Browse every owned HVA task without starting from a meeting or milestone."""
+    from app.services.msx_api import TASK_CATEGORIES
+
+    try:
+        data = _read_hva_inventory()
+    except ValueError as exc:
+        logger.info('Invalid HVA inventory filters: %s', exc)
+        abort(400, description=str(exc))
+
+    def inventory_url(**changes) -> str:
+        """Preserve current filters across global sorting and pagination."""
+        return url_for('reports.report_hvas', **{**request.args.to_dict(), **changes})
+
+    return render_template(
+        'report_hvas.html', **data, inventory_url=inventory_url,
+        customers=Customer.query.order_by(Customer.name).all(),
+        categories=[category for category in TASK_CATEGORIES if category['is_hva']],
+    )
+
+
+@bp.route('/api/reports/hvas')
+def api_hvas():
+    """Read the same bounded HVA inventory used by the browse view."""
+    try:
+        return jsonify(success=True, **_read_hva_inventory())
+    except ValueError as exc:
+        logger.info('Invalid HVA inventory filters: %s', exc)
+        return jsonify(success=False, error=str(exc)), 400
+
+
+@bp.post('/api/reports/hvas/<int:task_id>/complete')
+def complete_hva(task_id: int) -> Response | tuple[Response, int]:
+    """Complete an owned HVA in MSX, retaining its cached record and historical links."""
+    from app.services.msx_api import HVA_TASK_CATEGORIES, close_task
+
+    task = MsxTask.query.filter(
+        MsxTask.id == task_id, MsxTask.is_current_owner.is_(True),
+        MsxTask.is_hva.is_(True), MsxTask.task_category.in_(HVA_TASK_CATEGORIES),
+    ).one_or_none()
+    if task is None:
+        logger.info('HVA completion rejected for missing or ineligible task %s', task_id)
+        return jsonify(success=False, error='Owned HVA not found. Refresh MSX tasks.'), 404
+    if task.statecode == 2:
+        logger.info('HVA completion rejected for canceled task %s', task_id)
+        return jsonify(success=False, error='Canceled HVAs are left unchanged.'), 409
+    if task.statecode == 1:
+        return jsonify(success=True, already_completed=True)
+    result = close_task(task.msx_task_id)
+    if not result.get('success'):
+        error = result.get('error') or 'MSX could not complete this HVA.'
+        logger.warning('MSX completion failed for HVA %s: %s', task_id, error)
+        return jsonify(success=False, error=error), 502
+    try:
+        task.statecode = 1
+        task.statuscode = 5
+        task.actual_end = datetime.now(timezone.utc)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('MSX completed HVA %s but the local cache could not be saved', task_id)
+        return jsonify(success=False, remote_changed=True, error=(
+            'Completed in MSX, but Sales Buddy could not save the updated status. '
+            'Refresh MSX tasks before retrying.'
+        )), 500
+    return jsonify(success=True)
+
 
 @bp.route('/reports/msx-workspace')
 def report_msx_workspace():

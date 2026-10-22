@@ -1501,7 +1501,7 @@ class Milestone(db.Model):
 
 
 class MsxTask(db.Model):
-    """Task created in MSX linked to a milestone, note, or calendar meeting."""
+    """Owned MSX task, optionally linked to a local milestone, note, or meeting."""
     __tablename__ = 'msx_tasks'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -1522,6 +1522,10 @@ class MsxTask(db.Model):
     actual_end = db.Column(db.DateTime, nullable=True)
     statecode = db.Column(db.Integer, nullable=True)  # 0=Open, 1=Completed
     statuscode = db.Column(db.Integer, nullable=True)  # 5=Completed
+    is_current_owner = db.Column(db.Boolean, default=True, nullable=False)
+    msx_regarding_id = db.Column(db.String(50), nullable=True)
+    msx_regarding_type = db.Column(db.String(100), nullable=True)
+    msx_regarding_name = db.Column(db.String(500), nullable=True)
     
     # Relationships
     note_id = db.Column(db.Integer, db.ForeignKey('notes.id'), nullable=True)
@@ -1531,7 +1535,7 @@ class MsxTask(db.Model):
         nullable=True,
         unique=True,
     )
-    milestone_id = db.Column(db.Integer, db.ForeignKey('milestones.id'), nullable=False)
+    milestone_id = db.Column(db.Integer, db.ForeignKey('milestones.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     
     # Relationships

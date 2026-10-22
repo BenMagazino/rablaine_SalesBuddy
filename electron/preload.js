@@ -14,6 +14,133 @@
 
 const { ipcRenderer } = require('electron');
 
+function startInputFocusDiagnostics() {
+  if (window !== window.top) return;
+  const targetIds = new Set([
+    'editor', 'content', 'task_subject', 'task_description', 'task_category', 'task_due_date',
+    'engTaskTitle', 'engTaskDescription', 'salesbuddy-find-bar', 'sb-shell-menubar',
+  ]);
+  const tags = new Set([
+    'INPUT', 'TEXTAREA', 'SELECT', 'DIV', 'BUTTON', 'BODY', 'A', 'IFRAME', 'HTML',
+    'DOCUMENT', 'WINDOW',
+  ]);
+  const inputTypes = new Set([
+    'text', 'search', 'email', 'password', 'url', 'tel', 'number', 'date', 'time',
+    'datetime-local', 'checkbox', 'radio', 'file', 'submit', 'button', 'hidden', 'range',
+    'color', 'month', 'week', 'reset',
+  ]);
+  const eventTypes = [
+    'focus', 'blur', 'focusin', 'focusout', 'pointerdown', 'keydown', 'beforeinput', 'input',
+    'compositionstart', 'compositionend', 'visibilitychange',
+  ];
+  const aggregateTypes = new Set(['keydown', 'beforeinput', 'input']);
+  const aggregates = new Map();
+  let events = [];
+  let dropped = 0;
+  let maxDelayMs = 0;
+  let lastTick = performance.now();
+  let lastHeartbeat = lastTick;
+  let stopped = false;
+  let failed = false;
+
+  function targetInfo(element) {
+    const id = targetIds.has(element?.id) ? element.id : '';
+    const name = targetIds.has(element?.name) ? element.name : '';
+    let area = 'other';
+    if (element?.closest) {
+      if (element.closest('.ql-editor, #editor')) area = 'note-editor';
+      else if (['task_subject', 'task_description', 'task_category', 'task_due_date']
+        .includes(id)) area = 'milestone-task';
+      else if (element.closest('#salesbuddy-find-bar')) area = 'shell-find';
+      else if (element.closest('#sb-shell-menubar')) area = 'shell-menu';
+    }
+    const tag = element === window ? 'WINDOW' : element === document ? 'DOCUMENT'
+      : tags.has(element?.tagName) ? element.tagName : 'OTHER';
+    return {
+      tag, id, name, area, type: inputTypes.has(element?.type) ? element.type : '',
+      editable: element?.isContentEditable === true,
+      disabled: element?.disabled === true, readOnly: element?.readOnly === true,
+    };
+  }
+  function add(type, target) {
+    const info = targetInfo(target);
+    const key = aggregateTypes.has(type) ? type + JSON.stringify(info) : null;
+    const previous = key && aggregates.get(key);
+    if (previous) {
+      previous.count = Math.min(1000000, previous.count + 1);
+      return;
+    }
+    const entry = {type, at: Date.now(), count: 1, target: info};
+    if (events.length === 64) {
+      const removed = events.shift();
+      for (const [storedKey, stored] of aggregates) {
+        if (stored === removed) aggregates.delete(storedKey);
+      }
+      dropped++;
+    }
+    events.push(entry);
+    if (key) aggregates.set(key, entry);
+  }
+  function flush() {
+    if (!events.length && !dropped) return;
+    try {
+      ipcRenderer.send('shell:input-focus', {
+        events, dropped, maxDelayMs, focused: document.hasFocus(),
+        visibility: document.visibilityState, active: targetInfo(document.activeElement),
+      });
+      events = [];
+      aggregates.clear();
+      dropped = 0;
+      maxDelayMs = 0;
+      failed = false;
+    } catch {
+      if (!failed) console.error('Could not send input focus diagnostics to the desktop shell.');
+      failed = true;
+    }
+  }
+  function onEvent(event) {
+    add(event.type, event.target);
+  }
+  function snapshot() {
+    if (stopped) return;
+    add('snapshot', document.activeElement);
+    flush();
+  }
+  for (const type of eventTypes) document.addEventListener(type, onEvent, true);
+  window.addEventListener('focus', onEvent);
+  window.addEventListener('blur', onEvent);
+  ipcRenderer.on('shell:input-focus-snapshot', snapshot);
+  const timer = setInterval(() => {
+    const tick = performance.now();
+    maxDelayMs = Math.max(maxDelayMs, tick - lastTick - 1000, 0);
+    lastTick = tick;
+    if (tick - lastHeartbeat >= 15000) {
+      add('heartbeat', document.activeElement);
+      lastHeartbeat = tick;
+    }
+    flush();
+  }, 1000);
+  function stop() {
+    if (stopped) return;
+    add('pagehide', document.activeElement);
+    flush();
+    stopped = true;
+    clearInterval(timer);
+    for (const type of eventTypes) document.removeEventListener(type, onEvent, true);
+    window.removeEventListener('focus', onEvent);
+    window.removeEventListener('blur', onEvent);
+    ipcRenderer.removeListener('shell:input-focus-snapshot', snapshot);
+    window.removeEventListener('pagehide', stop);
+  }
+  window.addEventListener('pagehide', stop);
+  snapshot();
+}
+
+startInputFocusDiagnostics();
+window.addEventListener('pageshow', event => {
+  if (event.persisted) startInputFocusDiagnostics();
+});
+
 ipcRenderer.on('shell:loading', (_event, loading) => {
   if (!document.documentElement) return;
   document.documentElement.dataset.sbShellLoading = String(loading === true);

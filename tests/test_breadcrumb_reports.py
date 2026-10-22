@@ -12,6 +12,7 @@ from app.services.breadcrumb_reports import HANDLED_ENDPOINTS, get_report_breadc
 REPORT_PAGES = [
     ("reports.report_manager_one_on_one", "Initiative Tracker"),
     ("reports.report_activity_coverage", "Activity Coverage"),
+    ("reports.report_hvas", "HVAs"),
     ("reports.report_one_on_one", "1:1 Report"),
     ("reports.report_workload", "Workload Report"),
     ("reports.report_hygiene", "Engagement / Milestone Hygiene"),

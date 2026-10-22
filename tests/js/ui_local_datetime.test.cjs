@@ -9,6 +9,7 @@ test('initial and injected timestamps preserve all formats, naive UTC and explic
     const entries = [
         ['2026-10-02T18:30:00', 'datetime'], ['2026-10-02T18:30:00Z', 'short'],
         ['2026-10-02T11:30:00-07:00', 'time'], ['2026-10-02T20:30:00+02:00', 'datetime'],
+        ['2026-10-02T18:30:00Z', 'date'],
     ].map(([utc, format]) => ({utc, format,
         getAttribute(name) { return name === 'data-utc' ? this.utc : this.format; }}));
     const label = {}, warnings = [];
@@ -25,6 +26,9 @@ test('initial and injected timestamps preserve all formats, naive UTC and explic
     assert.equal(entries[2].textContent, date.toLocaleTimeString('en-US', {
         hour: 'numeric', minute: '2-digit', hour12: true}));
     assert.equal(entries[3].textContent, entries[0].textContent);
+    assert.equal(entries[4].textContent, date.toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+    }));
     const original = entries.map(entry => entry.textContent);
     window.SBLocalDateTime.render(document);
     assert.deepEqual(entries.map(entry => entry.textContent), original);

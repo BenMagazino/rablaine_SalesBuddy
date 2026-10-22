@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.migrations import _migrate_msx_task_hva_column
+from app.migrations import _migrate_msx_task_hva_column, _migrate_owned_task_inventory
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def migration_db(tmp_path):
     engine.dispose()
 
 
-def seed_tasks(database, classification_sql: str) -> None:
+def seed_tasks(database, classification_sql: str, milestone_nullable: bool = False) -> None:
     """Seed stable task IDs, inbound links, indexes, and a trigger."""
     with database.engine.connect() as connection:
         raw = connection.connection.driver_connection
@@ -41,7 +41,8 @@ def seed_tasks(database, classification_sql: str) -> None:
                 id INTEGER PRIMARY KEY,
                 msx_task_id TEXT NOT NULL UNIQUE,
                 subject TEXT NOT NULL,
-                milestone_id INTEGER NOT NULL REFERENCES milestones(id),
+                milestone_id INTEGER {'NULL' if milestone_nullable else 'NOT NULL'}
+                    REFERENCES milestones(id),
                 {classification_sql},
                 extra_value TEXT DEFAULT 'keep me'
             );
@@ -54,6 +55,115 @@ def seed_tasks(database, classification_sql: str) -> None:
             WHEN EXISTS (SELECT 1 FROM task_links WHERE task_id = OLD.id)
             BEGIN SELECT RAISE(ABORT, 'task is linked'); END;
         """)
+
+
+@pytest.mark.parametrize("nullable", [False, True])
+@pytest.mark.parametrize("missing_parent", [False, True])
+def test_owned_inventory_repairs_legacy_parent_names_only_when_ids_are_valid(
+    migration_db, nullable, missing_parent,
+):
+    """Old rename damage is corrected without losing IDs or hiding genuinely orphaned links."""
+    seed_tasks(migration_db, 'is_hva BOOLEAN NOT NULL DEFAULT 0', nullable)
+    with migration_db.engine.connect() as connection:
+        raw = connection.connection.driver_connection
+        raw.executescript("""
+            ALTER TABLE milestones RENAME TO _old_milestones;
+            CREATE TABLE milestones (id INTEGER PRIMARY KEY);
+            INSERT INTO milestones VALUES (3);
+            DROP TABLE _old_milestones;
+            CREATE TABLE notes (id INTEGER PRIMARY KEY);
+            INSERT INTO notes VALUES (31);
+            ALTER TABLE msx_tasks ADD COLUMN note_id INTEGER REFERENCES call_logs_backup(id);
+        """)
+        raw.execute("PRAGMA foreign_keys=OFF")
+        raw.execute("INSERT INTO msx_tasks "
+                    "(id, msx_task_id, subject, milestone_id, is_hva, note_id) "
+                    "VALUES (7, 'legacy', 'Preserve links', 3, 1, 31)")
+        raw.execute("INSERT INTO task_links VALUES (9, 7)")
+        if missing_parent:
+            raw.execute("DELETE FROM notes WHERE id=31")
+        raw.commit()
+        raw.execute("PRAGMA foreign_keys=ON")
+        assert len(raw.execute("PRAGMA foreign_key_check(msx_tasks)").fetchall()) == 2
+    if missing_parent:
+        with pytest.raises(RuntimeError, match="failed; rolled back"):
+            _migrate_owned_task_inventory(migration_db)
+    else:
+        _migrate_owned_task_inventory(migration_db)
+        _migrate_owned_task_inventory(migration_db)
+    with migration_db.engine.connect() as connection:
+        raw = connection.connection.driver_connection
+        assert raw.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert raw.execute("SELECT id, milestone_id, note_id FROM msx_tasks").fetchall() == [
+            (7, 3, 31),
+        ]
+        assert raw.execute("SELECT task_id FROM task_links").fetchall() == [(7,)]
+        targets = {fk[3]: fk[2] for fk in raw.execute("PRAGMA foreign_key_list(msx_tasks)")}
+        assert targets["note_id"] == ("call_logs_backup" if missing_parent else "notes")
+        assert targets["milestone_id"] == ("_old_milestones" if missing_parent else "milestones")
+        if not missing_parent:
+            assert raw.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert len(list(migration_db.directory.glob("*.owned-tasks-*.bak"))) == 1
+
+
+def test_owned_inventory_migration_backs_up_and_preserves_all_task_links_and_schema(migration_db):
+    """The approved nullable-link rebuild preserves rows, inbound FKs, triggers and indexes."""
+    seed_tasks(migration_db, 'is_hva BOOLEAN NOT NULL DEFAULT 0')
+    with migration_db.engine.connect() as connection:
+        raw = connection.connection.driver_connection
+        raw.execute("INSERT INTO msx_tasks VALUES (7, 'linked', 'Demo', 3, 1, 'custom')")
+        raw.execute("INSERT INTO task_links VALUES (9, 7)")
+        raw.commit()
+    _migrate_owned_task_inventory(migration_db)
+    _migrate_owned_task_inventory(migration_db)
+    columns = {column["name"]: column for column in inspect(migration_db.engine).get_columns(
+        "msx_tasks",
+    )}
+    assert columns["milestone_id"]["nullable"] is True
+    assert "msx_regarding_name" in columns
+    assert len(list(migration_db.directory.glob("*.owned-tasks-*.bak"))) == 1
+    backup = next(migration_db.directory.glob("*.owned-tasks-*.bak"))
+    with closing(sqlite3.connect(backup)) as saved:
+        assert saved.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        assert saved.execute("SELECT id, milestone_id FROM msx_tasks").fetchall() == [(7, 3)]
+    with migration_db.engine.connect() as connection:
+        raw = connection.connection.driver_connection
+        assert raw.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert raw.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert raw.execute("SELECT task_id FROM task_links").fetchall() == [(7,)]
+        assert raw.execute("SELECT extra_value, is_current_owner FROM msx_tasks").fetchone() == (
+            "custom", 1,
+        )
+        assert raw.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='ix_task_subject'",
+        ).fetchone()
+        raw.execute("INSERT INTO msx_tasks (id, msx_task_id, subject, is_hva) "
+                    "VALUES (8, 'outside', 'Outside SB', 1)")
+        raw.commit()
+        with pytest.raises(sqlite3.IntegrityError, match="task is linked"):
+            raw.execute("DELETE FROM msx_tasks WHERE id=7")
+        raw.rollback()
+
+
+def test_owned_inventory_rebuild_failure_rolls_back_and_restores_foreign_keys(migration_db):
+    """A failed replacement leaves the original task table and a usable backup."""
+    seed_tasks(migration_db, 'is_hva BOOLEAN NOT NULL DEFAULT 0')
+    with migration_db.engine.connect() as connection:
+        raw = connection.connection.driver_connection
+        raw.execute("INSERT INTO msx_tasks VALUES (7, 'linked', 'Demo', 3, 1, 'custom')")
+        raw.commit()
+        raw.set_authorizer(
+            lambda action, name, *args: sqlite3.SQLITE_DENY
+            if action == sqlite3.SQLITE_DROP_TABLE and name == "msx_tasks" else sqlite3.SQLITE_OK,
+        )
+        try:
+            with pytest.raises(RuntimeError, match="failed; rolled back"):
+                _migrate_owned_task_inventory(migration_db)
+        finally:
+            raw.set_authorizer(None)
+        assert raw.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert raw.execute("SELECT id, subject FROM msx_tasks").fetchall() == [(7, "Demo")]
+    assert len(list(migration_db.directory.glob("*.owned-tasks-*.bak"))) == 1
 
 
 @pytest.mark.parametrize('partial', [False, True])

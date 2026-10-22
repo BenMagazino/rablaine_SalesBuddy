@@ -2882,10 +2882,10 @@ def create_task(
 
 
 def get_tasks_for_milestones(
-    milestone_msx_ids: List[str],
+    milestone_msx_ids: Optional[List[str]],
 ) -> Dict[str, Any]:
     """
-    Fetch the current user's tasks from MSX for a list of milestones.
+    Fetch owned tasks, either for specified milestones or the complete owner inventory.
 
     Queries the tasks entity filtered by ownerid = current user AND
     regardingobjectid in the given milestone GUIDs. OData doesn't support
@@ -2893,7 +2893,8 @@ def get_tasks_for_milestones(
     to stay within Dynamics 365 filter-length limits.
 
     Args:
-        milestone_msx_ids: List of milestone GUIDs (msp_engagementmilestoneid).
+        milestone_msx_ids: Milestone GUIDs, or None for every owned task.
+            An empty list still returns no tasks.
 
     Returns:
         Dict with:
@@ -2901,7 +2902,7 @@ def get_tasks_for_milestones(
         - tasks: List of task dicts (keyed by milestone GUID)
         - error: str if failed
     """
-    if not milestone_msx_ids:
+    if milestone_msx_ids == []:
         return {"success": True, "tasks": []}
 
     user_id = get_current_user_id()
@@ -2919,17 +2920,19 @@ def get_tasks_for_milestones(
     # Batch milestones in groups of 75 to keep OData filter length sane
     # (~4KB per filter, well under Dynamics 365's ~32KB limit)
     batch_size = 75
-    for i in range(0, len(milestone_msx_ids), batch_size):
-        batch = milestone_msx_ids[i:i + batch_size]
+    batches = ([None] if milestone_msx_ids is None else [
+        milestone_msx_ids[i:i + batch_size]
+        for i in range(0, len(milestone_msx_ids), batch_size)
+    ])
+    for batch in batches:
 
         # Build OR clause for regarding milestone IDs
         regarding_clauses = " or ".join(
-            f"_regardingobjectid_value eq '{mid}'" for mid in batch
+            f"_regardingobjectid_value eq '{mid}'" for mid in (batch or [])
         )
-        filter_str = (
-            f"_ownerid_value eq '{user_id}'"
-            f" and ({regarding_clauses})"
-        )
+        filter_str = f"_ownerid_value eq '{user_id}'"
+        if batch is not None:
+            filter_str += f" and ({regarding_clauses})"
 
         url = (
             f"{CRM_BASE_URL}/tasks"
@@ -2946,6 +2949,13 @@ def get_tasks_for_milestones(
 
             if response.status_code == 200:
                 data = response.json()
+                if milestone_msx_ids is None and (
+                    not isinstance(data.get("value"), list)
+                    or any(not isinstance(row, dict) or not row.get("activityid")
+                           for row in data["value"])
+                ):
+                    return {"success": False, "tasks": [],
+                            "error": "MSX returned an invalid owned-task inventory."}
                 for raw in data.get("value", []):
                     task_id = raw.get("activityid")
                     if not task_id:
@@ -2972,15 +2982,33 @@ def get_tasks_for_milestones(
                         "milestone_msx_id": (
                             raw.get("_regardingobjectid_value") or ""
                         ).lower(),
+                        "regarding_type": raw.get(
+                            "_regardingobjectid_value@Microsoft.Dynamics.CRM.lookuplogicalname"
+                        ),
+                        "regarding_name": raw.get(
+                            "_regardingobjectid_value@OData.Community.Display.V1.FormattedValue"
+                        ),
                         "task_url": build_task_url(task_id),
                     })
 
                 # Follow pagination
                 next_link = data.get("@odata.nextLink")
+                seen_links = {url}
                 while next_link:
+                    if next_link in seen_links:
+                        return {"success": False, "tasks": [],
+                                "error": "MSX task pagination repeated a page."}
+                    seen_links.add(next_link)
                     resp = _msx_request('GET', next_link)
                     if resp.status_code == 200:
                         page_data = resp.json()
+                        if milestone_msx_ids is None and (
+                            not isinstance(page_data.get("value"), list)
+                            or any(not isinstance(row, dict) or not row.get("activityid")
+                                   for row in page_data["value"])
+                        ):
+                            return {"success": False, "tasks": [],
+                                    "error": "MSX returned an invalid owned-task page."}
                         for raw in page_data.get("value", []):
                             task_id = raw.get("activityid")
                             if not task_id:
@@ -3003,11 +3031,20 @@ def get_tasks_for_milestones(
                                 "milestone_msx_id": (
                                     raw.get("_regardingobjectid_value") or ""
                                 ).lower(),
+                                "regarding_type": raw.get(
+                                    "_regardingobjectid_value"
+                                    "@Microsoft.Dynamics.CRM.lookuplogicalname"
+                                ),
+                                "regarding_name": raw.get(
+                                    "_regardingobjectid_value"
+                                    "@OData.Community.Display.V1.FormattedValue"
+                                ),
                                 "task_url": build_task_url(task_id),
                             })
                         next_link = page_data.get("@odata.nextLink")
                     else:
-                        break
+                        return {"success": False, "tasks": [],
+                                "error": f"MSX task page failed: HTTP {resp.status_code}"}
 
             elif response.status_code == 401:
                 return {"success": False, "tasks": [], "error": "Not authenticated. Run 'az login' first."}
@@ -3029,7 +3066,8 @@ def get_tasks_for_milestones(
             logger.exception("Error fetching tasks for milestones")
             return {"success": False, "tasks": [], "error": str(e)}
 
-    logger.info(f"Fetched {len(all_tasks)} user tasks across {len(milestone_msx_ids)} milestones")
+    logger.info("Fetched %s owned tasks (%s)", len(all_tasks),
+                'all milestones' if milestone_msx_ids is None else 'selected milestones')
     return {"success": True, "tasks": all_tasks}
 
 

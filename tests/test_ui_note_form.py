@@ -128,11 +128,17 @@ def test_note_form_retains_fields_commands_and_native_dialogs(
         for field in ["title", "description", "type", "due_date", "status"]:
             assert main.find(id=f"flyout_project_{field}")
         assert not main.find(id="noteFormRightCol")
+        assert not main.find(id="refreshMilestonesBtn")
     else:
         assert form.select_one('#customer_id[name="customer_id"]')
         assert form.select_one('#engagement_ids[name="engagement_ids"][multiple]')
         for field in ["milestone_search", "task_subject", "task_category", "task_due_date"]:
             assert form.find(id=field)
+        refresh = form.select_one('#refreshMilestonesBtn[type="button"]')
+        assert refresh.has_attr("disabled")
+        assert refresh["aria-label"] == "Refresh milestones from MSX"
+        assert refresh["aria-describedby"] == "milestone_help_text"
+        assert form.find(id="milestone_help_text")["role"] == "status"
         assert main.find(id="relatedNotesContainer")
         assert main.find(id="inlineEngContainer")
         for dialog_id in ["contactsFlyout", "customerInfoFlyout", "engagementFlyout"]:
