@@ -32,7 +32,7 @@
         return [...menu.querySelectorAll('a[href]')];
     }
 
-    function close(returnFocus = false) {
+    function close(returnFocus = false, reason = 'menu-switch') {
         clearTimeout(openTimer);
         clearTimeout(closeTimer);
         if (!active) return;
@@ -40,6 +40,7 @@
         active = null;
         menuFor(previous).hidePopover();
         previous.setAttribute('aria-expanded', 'false');
+        window.SBNavDiagnostics?.menu('close', previous, reason);
         if (returnFocus) previous.focus({preventScroll: true});
     }
 
@@ -56,7 +57,7 @@
         menu.style.top = `${top}px`;
     }
 
-    function open(trigger, index = null) {
+    function open(trigger, index = null, reason = 'trigger') {
         clearTimeout(openTimer);
         clearTimeout(closeTimer);
         if (active !== trigger) {
@@ -66,6 +67,7 @@
             menuFor(trigger).showPopover();
         }
         place();
+        window.SBNavDiagnostics?.menu('open', trigger, reason);
         if (index !== null) entries(menuFor(trigger)).at(index)?.focus();
     }
 
@@ -73,7 +75,9 @@
         clearTimeout(openTimer);
         clearTimeout(closeTimer);
         closeTimer = setTimeout(() => {
-            if (active && !menuFor(active).contains(document.activeElement)) close();
+            if (active && !menuFor(active).contains(document.activeElement)) {
+                close(false, 'pointer-leave');
+            }
         }, 240);
     }
 
@@ -87,34 +91,34 @@
             link.setAttribute('tabindex', '-1');
         });
         trigger.addEventListener('click', () => {
-            if (active === trigger) close(true);
+            if (active === trigger) close(true, 'trigger');
             else open(trigger);
         });
         trigger.addEventListener('pointerenter', () => {
             clearTimeout(closeTimer);
             clearTimeout(openTimer);
-            openTimer = setTimeout(() => open(trigger), 160);
+            openTimer = setTimeout(() => open(trigger, null, 'hover'), 160);
         });
         trigger.addEventListener('pointerleave', scheduleClose);
         menu.addEventListener('pointerenter', () => clearTimeout(closeTimer));
         menu.addEventListener('pointerleave', scheduleClose);
         menu.addEventListener('click', event => {
-            if (event.target.closest('a[href]')) close();
+            if (event.target.closest('a[href]')) close(false, 'link-click');
         });
     });
 
     document.addEventListener('pointerdown', event => {
         if (active && !active.contains(event.target) &&
-            !menuFor(active).contains(event.target)) close();
+            !menuFor(active).contains(event.target)) close(false, 'outside-pointer');
     });
     document.addEventListener('focusin', event => {
         if (active && !active.contains(event.target) &&
-            !menuFor(active).contains(event.target)) close();
+            !menuFor(active).contains(event.target)) close(false, 'outside-focus');
     });
     document.addEventListener('scroll', event => {
         if (active && active.dataset.sbMenuAnchor === 'trigger' &&
             !menuFor(active).contains(event.target)) {
-            close(menuFor(active).contains(document.activeElement));
+            close(menuFor(active).contains(document.activeElement), 'scroll');
         }
     }, true);
     document.addEventListener('keydown', event => {
@@ -123,10 +127,10 @@
         if (event.key === 'Escape' && active) {
             event.preventDefault();
             event.stopImmediatePropagation();
-            close(true);
+            close(true, 'escape');
         } else if (trigger && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
             event.preventDefault();
-            open(trigger, event.key === 'ArrowUp' ? -1 : 0);
+            open(trigger, event.key === 'ArrowUp' ? -1 : 0, 'keyboard');
         } else if (inMenu && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
             event.preventDefault();
             const links = entries(menuFor(active));
@@ -135,10 +139,10 @@
                 (index + (event.key === 'ArrowDown' ? 1 : -1) + links.length) % links.length;
             links[next]?.focus();
         } else if (inMenu && event.key === 'Tab') {
-            close(true);
+            close(true, 'tab');
         }
     }, true);
     document.addEventListener('sb:dialog-opening', () =>
-        close(Boolean(active && menuFor(active).contains(document.activeElement))));
+        close(Boolean(active && menuFor(active).contains(document.activeElement)), 'dialog-opening'));
     window.addEventListener('resize', place);
 })();

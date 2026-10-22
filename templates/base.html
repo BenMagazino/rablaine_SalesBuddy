@@ -704,6 +704,19 @@
                         {% endif %}
                     </tbody>
                 </table>
+                {% if not request.args.get('embed') %}
+                <section class="sb-nav-diagnostics" aria-labelledby="navDiagnosticsTitle">
+                    <h3 id="navDiagnosticsTitle">Navigation troubleshooting</h3>
+                    <p>If a menu closes without navigating, download the recent diagnostics
+                        before closing this tab or restarting the app.</p>
+                    <button type="button" class="sb-dialog-button" id="navDiagnosticsDownload">
+                        Download navbar diagnostics
+                    </button>
+                    <p id="navDiagnosticsStatus" role="status" aria-live="polite">
+                        Recorded locally. No note text, field values, customer names or URLs.
+                    </p>
+                </section>
+                {% endif %}
             </div>
             {% if 'sb-page-frame' in self.body_class() %}
             <div class="sb-dialog-footer">
@@ -771,6 +784,7 @@
         </footer>
     </dialog>
     
+    <script src="{{ url_for('static', filename='js/ui-navigation-diagnostics.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-navigation.js') }}" defer></script>
 
     <!-- Navbar active state highlighting -->

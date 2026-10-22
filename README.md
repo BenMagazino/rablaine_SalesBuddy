@@ -141,6 +141,17 @@ save promptly because older entries are overwritten. This requires a shell
 rebuild and does not change focus or attempt automatic recovery. See the
 [input-focus investigation plan](docs/PLAN_ELECTRON_INPUT_FOCUS.md) for details.
 
+For intermittent navbar clicks that close a menu without navigating, open the
+**Help and keyboard shortcuts (?)** window and choose **Download navbar diagnostics**.
+This works in Chrome and Electron without a shell rebuild. Download promptly after
+the failure, before closing the tab or restarting the app. A rolling history of
+at most 256 metadata events stays in that tab's session storage across page changes;
+it is not uploaded. It records menu-close reasons, focus regions, click cancellation,
+and navigation start/abort events, never note text, field values, customer names,
+record IDs or URLs. If browser storage is blocked, Help reports that only the current
+page's history is available. This is diagnostic capture, not a fix for the
+intermittent failure.
+
 For desktop shell development, start the live backend with `scripts\dev.ps1 start`,
 then run `electron\node_modules\electron\dist\electron.exe electron --dev-client`.
 Client-only mode connects to port 5000 with a separate shell profile. It leaves
