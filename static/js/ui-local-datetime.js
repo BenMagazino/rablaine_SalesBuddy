@@ -17,7 +17,11 @@
                 return;
             }
             const format = element.getAttribute('data-fmt') || 'datetime';
-            if (format === 'short') {
+            if (format === 'date') {
+                element.textContent = date.toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                });
+            } else if (format === 'short') {
                 element.textContent = date.toLocaleString('en-US', {
                     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true,
                 });

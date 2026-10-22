@@ -137,6 +137,36 @@ def _build_prompt(date_str: str) -> str:
     )
 
 
+def _normalize_calendar_payload(value: Any) -> Any:
+    """Canonicalize WorkIQ's collapsed keys before comparing repeated calendar results."""
+    if isinstance(value, list):
+        return [_normalize_calendar_payload(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    aliases = {
+        'calendarquerystatus': 'calendar_query_status',
+        'starttime': 'start_time',
+        'endtime': 'end_time',
+        'organizeremail': 'organizer_email',
+        'isrecurring': 'is_recurring',
+        'externalcompany': 'external_company',
+    }
+    normalized = {}
+    for key, item in value.items():
+        canonical_key = aliases.get(key.replace('_', '').lower(), key)
+        item = _normalize_calendar_payload(item)
+        if canonical_key == 'calendar_query_status' and isinstance(item, str):
+            item = {
+                'meetingsfound': 'meetings_found',
+                'nomeetings': 'no_meetings',
+                'calendarlookupfailed': 'calendar_lookup_failed',
+            }.get(item.replace('_', '').lower(), item)
+        if canonical_key in normalized and normalized[canonical_key] != item:
+            raise ValueError(f"conflicting calendar field: {canonical_key}")
+        normalized[canonical_key] = item
+    return normalized
+
+
 def _extract_json_array(response: str) -> List[Dict[str, Any]]:
     """Pull the JSON meeting array out of a WorkIQ prose response.
 
@@ -145,7 +175,8 @@ def _extract_json_array(response: str) -> List[Dict[str, Any]]:
     confirmed empty calendar from a failed lookup. Legacy non-empty arrays
     remain supported, but bare ``[]`` is rejected because WorkIQ emits it
     for both conditions. Complete envelopes may have surrounding prose or
-    citations, but conflicting envelopes and truncated JSON are rejected.
+    citations or equivalent repeated envelopes, but conflicting envelopes
+    and truncated JSON are rejected.
     """
     if not response:
         raise ValueError("empty WorkIQ response")
@@ -154,7 +185,7 @@ def _extract_json_array(response: str) -> List[Dict[str, Any]]:
     code_blocks = _JSON_CODE_BLOCK_RE.findall(response)
     candidate = '\n'.join(code_blocks).strip() if code_blocks else response
 
-    if '"calendar_query_status"' in candidate:
+    if re.search(r'"calendar_?query_?status"\s*:', candidate, re.IGNORECASE):
         start = candidate.find('{')
         if start < 0:
             raise ValueError("calendar response envelope is not an object")
@@ -163,10 +194,18 @@ def _extract_json_array(response: str) -> List[Dict[str, Any]]:
             envelope, end = json.JSONDecoder().raw_decode(raw)
         except json.JSONDecodeError as exc:
             raise ValueError(f"JSON envelope parse failed: {exc}") from exc
-        if re.search(r'\{\s*"', raw[end:]):
-            raise ValueError("multiple calendar response payloads")
+        envelope = _normalize_calendar_payload(envelope)
         if not isinstance(envelope, dict):
             raise ValueError("calendar response envelope is not an object")
+        while match := re.search(r'\{\s*"|\[\s*(?:\{|\])', raw[end:]):
+            start = end + match.start()
+            try:
+                repeated, length = json.JSONDecoder().raw_decode(raw[start:])
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"JSON envelope parse failed: {exc}") from exc
+            if _normalize_calendar_payload(repeated) != envelope:
+                raise ValueError("multiple calendar response payloads")
+            end = start + length
 
         status = envelope.get('calendar_query_status')
         meetings = envelope.get('meetings')
@@ -207,21 +246,7 @@ def _extract_json_array(response: str) -> List[Dict[str, Any]]:
 
     if not isinstance(data, list):
         raise ValueError("parsed JSON is not a list")
-    aliases = {
-        'starttime': 'start_time',
-        'endtime': 'end_time',
-        'organizeremail': 'organizer_email',
-        'isrecurring': 'is_recurring',
-        'externalcompany': 'external_company',
-    }
-    for item in data:
-        if not isinstance(item, dict):
-            continue
-        for key in list(item):
-            canonical_key = aliases.get(key.replace('_', '').lower())
-            if canonical_key and canonical_key not in item:
-                item[canonical_key] = item[key]
-    return data
+    return _normalize_calendar_payload(data)
 
 
 def _known_internal_name(email: str) -> Optional[str]:

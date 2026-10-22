@@ -16,6 +16,7 @@ test('header customer search keeps one field focus indicator without an inner in
 
 function navigation({
     embedded = false, missingMenu = false, pageMenu = false, headerBottom = 46,
+    diagnostics = false,
 } = {}) {
     const listeners = new Map();
     const windowListeners = new Map();
@@ -68,6 +69,10 @@ function navigation({
             windowListeners.get(name).push(callback);
         },
     };
+    const diagnosticEvents = [];
+    if (diagnostics) window.SBNavDiagnostics = {
+        menu(action, trigger, reason) { diagnosticEvents.push({action, trigger, reason}); },
+    };
     vm.runInNewContext(script, {
         document, window,
         MutationObserver: class {
@@ -88,11 +93,37 @@ function navigation({
         listeners.get(name)?.(event);
         return event;
     }
-    return {document, triggers, menus, emit, properties, observers,
+    return {document, triggers, menus, emit, properties, observers, diagnosticEvents,
         moveHeader(bottom) { headerBottom = bottom; },
         windowEvent(name) { windowListeners.get(name)?.forEach(callback => callback()); },
         flushTimers() { const pending = [...timers.values()]; timers.clear(); pending.forEach(fn => fn()); }};
 }
+
+test('diagnostic hooks identify hover and link close without canceling the click or moving focus', () => {
+    const nav = navigation({diagnostics: true});
+    nav.triggers[0].emit('pointerenter');
+    assert.equal(nav.menus[0].open, undefined);
+    nav.flushTimers();
+    assert.equal(nav.diagnosticEvents[0].reason, 'hover');
+    const event = {target: nav.menus[0].links[1],
+        preventDefault() { assert.fail('Navigation must not be canceled by diagnostics'); }};
+    nav.menus[0].emit('click', event);
+    assert.equal(nav.menus[0].open, false);
+    assert.equal(nav.document.activeElement, null);
+    assert.equal(nav.diagnosticEvents.at(-1).reason, 'link-click');
+});
+
+test('diagnostic close reasons preserve escape focus and outside dismissal behavior', () => {
+    const nav = navigation({diagnostics: true});
+    nav.emit('keydown', nav.triggers[0], 'ArrowDown');
+    assert.equal(nav.diagnosticEvents.at(-1).reason, 'keyboard');
+    nav.emit('keydown', nav.document.activeElement, 'Escape');
+    assert.equal(nav.diagnosticEvents.at(-1).reason, 'escape');
+    assert.equal(nav.document.activeElement, nav.triggers[0]);
+    nav.triggers[0].emit('click');
+    nav.emit('pointerdown', {});
+    assert.equal(nav.diagnosticEvents.at(-1).reason, 'outside-pointer');
+});
 
 test('flyouts use the actual navbar bottom including desktop title and menu chrome', () => {
     const nav = navigation({headerBottom: 106});

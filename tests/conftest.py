@@ -19,6 +19,13 @@ os.environ['FLASK_ENV'] = 'production'
 
 
 @pytest.fixture(autouse=True)
+def _isolate_msx_api_auth():
+    """Remote API tests must explicitly mock tokens; never acquire real user credentials."""
+    with patch('app.services.msx_api.get_msx_token', return_value=None):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def _block_msx_comment_calls():
     """Prevent any test from making real MSX milestone comment API calls.
 

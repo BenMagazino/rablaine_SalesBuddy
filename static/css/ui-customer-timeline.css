@@ -39,16 +39,16 @@
 }
 .ct-events { list-style: none; margin: 0; padding: 0; }
 .ct-year {
-    padding: 16px 0 8px 66px; font-size: 11px; color: var(--sb-ui-muted);
+    padding: 16px 0 8px 42px; font-size: 11px; color: var(--sb-ui-muted);
     font-weight: 600; letter-spacing: .08em;
 }
 .ct-event {
-    display: grid; grid-template-columns: 48px 24px minmax(0, 1fr);
+    display: grid; grid-template-columns: 24px 24px minmax(0, 1fr);
     column-gap: 6px; position: relative; min-height: 48px;
     padding-bottom: var(--ct-gap, 4px);
 }
 .ct-event::before {
-    content: ""; position: absolute; top: 20px; bottom: -20px; left: 65px;
+    content: ""; position: absolute; top: 20px; bottom: -20px; left: 41px;
     width: 1px; background: var(--sb-ui-control-line);
 }
 .ct-event:last-child::before { bottom: 18px; }

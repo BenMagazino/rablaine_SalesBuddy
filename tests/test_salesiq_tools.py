@@ -143,6 +143,10 @@ class TestToolCoverage:
         names = self._tool_names()
         assert 'report_activity_coverage' in names
 
+    def test_hva_inventory_tool_exists(self):
+        """The HVA-first inventory has a read tool over its shared service."""
+        assert 'report_hvas' in self._tool_names()
+
     def test_connect_goals_report_tool_exists(self):
         """Connect Goals should expose its shared calculations."""
         assert 'report_connect_goals' in self._tool_names()

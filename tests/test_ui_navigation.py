@@ -1,11 +1,13 @@
 """Parity checks for the redesigned shared desktop navigation."""
 
 import re
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 import pytest
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from flask import flash, render_template
 
 
@@ -21,6 +23,16 @@ def render_navigation(
                    return_value={"last_checked": "cached", "available": False}):
             html = render_template("base.html", first_run_modal_dismissed=True, **context)
     return BeautifulSoup(html, "html.parser")
+
+
+def find_asset(soup: BeautifulSoup, path: str) -> Tag | None:
+    """Find a static asset independently of its cache-busting version query."""
+    attribute = "src" if path.endswith(".js") else "href"
+    return next(
+        (node for node in soup.select(f"[{attribute}]")
+         if urlsplit(node[attribute]).path == path),
+        None,
+    )
 
 
 def test_control_menu_contains_only_settings_and_admin(app):
@@ -41,6 +53,7 @@ def test_navigation_preserves_report_and_browse_destinations(app):
         "/reports/revenue", "/reports/workload", "/reports/marketing-insights",
         "/reports/fabric-modernization", "/reports/p-to-f", "/reports/fabric-consumption",
         "/reports/fabric-capacity-pressure",
+        "/reports/hvas", "/reports/rti", "/reports/sql-renewals", "/reports/sql-eos",
     }
     browse = {a["href"] for a in soup.select("#browseMenu a")}
     assert browse == {
@@ -48,6 +61,7 @@ def test_navigation_preserves_report_and_browse_destinations(app):
         "/notes", "/engagements", "/action-items", "/reports/msx-workspace?tab=opps",
         "/reports/milestone-tracker", "/territories", "/pods", "/topics", "/products",
         "/revenue/import", "/connect-export", "/search", "/analytics",
+        "/reports/hvas",
     }
     assert {a["href"] for a in soup.select("#settingsMenu a")} == {"/preferences", "/admin"}
     assert soup.select_one(".sb-home")["href"] == "/"
@@ -156,11 +170,41 @@ def test_help_dialogs_preserve_shortcuts_and_use_owned_components(app, debug, mo
         assert not dialog.select("[data-bs-dismiss], .modal-content, .table")
     rows = soup.select("#keyboardShortcutsModal tr")
     assert [row.select_one("td:last-child").get_text(strip=True) for row in rows] == [
-        "Page help", "Customer search", "Create new note", "Submit form",
+        "Page help", "Customer search", "Quick launcher", "Create new note", "Submit form",
         "Close modal / go back", "Show this help",
     ] + (["Toggle SalesIQ Chat"] if debug else [])
-    scripts = [script.get("src", "") for script in soup.select("script[src]")]
+    scripts = [urlsplit(script["src"]).path for script in soup.select("script[src]")]
     assert scripts.index("/static/js/ui-dialog.js") < scripts.index("/static/js/page-help.js")
+
+
+def test_navbar_diagnostics_help_and_initialization_order(app) -> None:
+    """Chrome and Electron share a download control and early diagnostic observer."""
+    soup = render_navigation(app)
+    button = soup.select_one("#keyboardShortcutsModal #navDiagnosticsDownload")
+    assert button and button["type"] == "button"
+    assert "Download navbar diagnostics" in button.get_text()
+    assert soup.select_one("#navDiagnosticsStatus")["role"] == "status"
+    assert "customer names or URLs" in soup.select_one("#navDiagnosticsStatus").get_text()
+    scripts = [urlsplit(script["src"]).path for script in soup.select("script[src]")]
+    diagnostics = "/static/js/ui-navigation-diagnostics.js"
+    assert find_asset(soup, diagnostics).has_attr("defer")
+    assert scripts.count(diagnostics) == 1
+    assert scripts.index(diagnostics) < scripts.index("/static/js/ui-navigation.js")
+    with app.test_request_context("/?embed=1"):
+        app.preprocess_request()
+        embedded = BeautifulSoup(render_template("base.html"), "html.parser")
+    assert not embedded.find(id="navDiagnosticsDownload")
+
+
+def test_navbar_diagnostics_and_navigation_controllers() -> None:
+    """Exercise metadata privacy, storage, downloads and unchanged menu interactions."""
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        ["node", "--test", str(root / "tests" / "js" / "ui_navigation.test.cjs"),
+         str(root / "tests" / "js" / "ui_navigation_diagnostics.test.cjs")],
+        cwd=root, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_help_dialog_source_has_balanced_shells() -> None:
@@ -253,7 +297,7 @@ def test_image_viewer_owned_markup(app) -> None:
     assert dialog.select_one("#imageZoomRetry")["type"] == "button"
     assert len(dialog.select("[data-sb-dialog-close]")) == 3
     assert not dialog.select(".modal, .modal-dialog, .modal-content, [data-bs-dismiss], [onclick]")
-    scripts = [script.get("src", "") for script in soup.select("script[src]")]
+    scripts = [urlsplit(script["src"]).path for script in soup.select("script[src]")]
     assert scripts.index("/static/js/ui-dialog.js") < scripts.index("/static/js/ui-image-viewer.js")
 
 
@@ -267,11 +311,11 @@ def test_record_discard_dialog_and_deferred_modules(app) -> None:
     assert dialog.select_one("[autofocus][data-sb-dialog-close]").get_text(strip=True) == "Keep editing"
     assert dialog.find(id="recordDiscardConfirm")["type"] == "button"
     assert not dialog.select(".modal, .modal-content, [data-bs-dismiss], [onclick]")
-    scripts = [script.get("src", "") for script in soup.select("script[src]")]
+    scripts = [urlsplit(script["src"]).path for script in soup.select("script[src]")]
     for filename in ("ui-note-actions.js", "ui-local-datetime.js", "ui-record-dialog.js"):
-        script = soup.select_one(f'script[src="/static/js/{filename}"]')
+        script = find_asset(soup, f"/static/js/{filename}")
         assert script.has_attr("defer")
-        assert scripts.index("/static/js/ui-dialog.js") < scripts.index(script["src"])
+        assert scripts.index("/static/js/ui-dialog.js") < scripts.index(urlsplit(script["src"]).path)
 
 
 @pytest.mark.parametrize(
@@ -301,8 +345,8 @@ def test_flash_notices_preserve_categories_and_use_owned_controls(
     assert dismiss["aria-label"] == "Dismiss notification"
     assert not notice.select(".alert, .btn-close, [data-bs-dismiss]")
     assert soup.select_one("#main-content")["tabindex"] == "-1"
-    assert soup.select_one('script[src="/static/js/ui-feedback.js"]')
-    assert soup.select_one('link[href="/static/css/ui-feedback.css"]')
+    assert find_asset(soup, "/static/js/ui-feedback.js")
+    assert find_asset(soup, "/static/css/ui-feedback.css")
 
 
 def test_flash_notices_preserve_order_full_text_and_escaping(app) -> None:
@@ -454,6 +498,6 @@ def test_meeting_sync_status_preserves_ids_with_native_nonmodal_controls(app) ->
         assert not any(attribute.startswith("data-bs-") for attribute in button.attrs)
     assert "sync continues in background" in card.find(id="syncStatusDismiss")["title"]
     assert not card.select(".card, .card-header, .card-body, .btn-close, .spinner-border")
-    controller = soup.select_one('script[src="/static/js/ui-sync-status.js"]')
+    controller = find_asset(soup, "/static/js/ui-sync-status.js")
     assert controller
     assert str(soup).index('id="syncStatusCard"') < str(soup).index(controller["src"])

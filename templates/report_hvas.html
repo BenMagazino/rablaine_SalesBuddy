@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% from 'partials/_sync_progress.html' import sync_progress %}
+{% block title %}HVAs - Sales Buddy{% endblock %}
+{% block body_class %}sb-page-frame{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-page-frame.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-hvas.css') }}">
+{% endblock %}
+{% block footer %}
+<footer class="sb-page-status" aria-label="HVA inventory status">
+    <span>{{ summary.total }} matching HVA{{ 's' if summary.total != 1 else '' }} · Owned MSX tasks · All milestone scopes</span>
+    <span>{% if last_synced %}Tasks synced <time class="local-datetime" data-utc="{{ last_synced }}">{{ last_synced }}</time>{% else %}Complete inventory not synced yet{% endif %}</span>
+</footer>
+{% endblock %}
+{% block content %}
+<section class="sb-hvas sb-directory-frame sb-directory-frame-wide" data-sb-page-surface aria-labelledby="hvaTitle">
+    <header class="hva-heading" data-sb-page-band>
+        <div>
+            <h1 id="hvaTitle">HVAs</h1>
+            <p>Your owned high-value activities, including completed tasks and work outside local milestones.</p>
+        </div>
+        <nav class="hva-commands" aria-label="HVA commands">
+            <a class="hva-command" href="{{ url_for('reports.report_activity_coverage') }}">Activity Coverage</a>
+            <button type="button" class="hva-command" id="hvaRefresh" disabled>
+                <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh MSX tasks
+            </button>
+        </nav>
+    </header>
+    <div class="hva-summary" data-sb-page-band aria-label="Matching HVA counts">
+        <strong>{{ summary.total }} matching</strong>
+        <span>{{ summary.open }} open</span>
+        <span>{{ summary.completed }} completed</span>
+        <span>{{ summary.canceled }} canceled</span>
+        {% if summary.unknown %}<span>{{ summary.unknown }} unknown status</span>{% endif %}
+    </div>
+    <form class="hva-filters" id="hvaFilters" method="get" data-sb-page-band aria-label="Filter HVAs">
+        <label class="hva-search" for="hvaSearch">Search
+            <input id="hvaSearch" type="search" name="search" value="{{ request.args.get('search', '') }}" placeholder="Task, customer or related work">
+        </label>
+        <label for="hvaStatus">Status
+            <select name="status" id="hvaStatus">
+                {% for value, label in [('', 'All statuses'), ('open', 'Open'), ('completed', 'Completed'), ('canceled', 'Canceled'), ('unknown', 'Unknown')] %}
+                <option value="{{ value }}"{% if request.args.get('status', '') == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label for="hvaCategory">Category
+            <select name="category" id="hvaCategory">
+                <option value="">All HVA categories</option>
+                {% for category in categories %}
+                <option value="{{ category.value }}"{% if request.args.get('category') == category.value|string %} selected{% endif %}>{{ category.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label for="hvaCustomer">Customer
+            <select name="customer_id" id="hvaCustomer">
+                <option value="">All customers and unlinked tasks</option>
+                {% for customer in customers %}
+                <option value="{{ customer.id }}"{% if request.args.get('customer_id') == customer.id|string %} selected{% endif %}>{{ customer.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <div class="hva-date-window">
+            <label for="hvaDateField">Date window (UTC)
+                <select name="date_field" id="hvaDateField">
+                    {% for key, label in [('created', 'Created'), ('due', 'Due'), ('completed', 'Completed')] %}
+                    <option value="{{ key }}"{% if request.args.get('date_field', 'created') == key %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label for="hvaFrom">From<input type="date" name="date_from" id="hvaFrom" value="{{ request.args.get('date_from', '') }}"></label>
+            <label for="hvaThrough">Through<input type="date" name="date_to" id="hvaThrough" value="{{ request.args.get('date_to', '') }}"></label>
+        </div>
+        <input type="hidden" name="sort" value="{{ request.args.get('sort', 'created') }}">
+        <input type="hidden" name="direction" value="{{ request.args.get('direction', 'desc') }}">
+        <input type="hidden" name="per_page" value="{{ per_page }}">
+        <button class="hva-command" type="submit">Apply</button>
+        <a class="hva-reset" href="{{ url_for('reports.report_hvas') }}">Reset</a>
+    </form>
+    {% if not complete_inventory %}
+    <p class="hva-notice" data-sb-page-band role="status">Refresh MSX tasks to load your complete inventory. Older synced records may cover only milestones already in Sales Buddy.</p>
+    {% endif %}
+    {{ sync_progress('activity-reconciliation', '#hvaRefresh', 'hva-', true) }}
+    <div class="hva-reading" data-sb-page-body tabindex="0" role="region" aria-label="HVA tasks">
+    {% if rows %}
+        {% set columns = [('subject', 'Name', 'text'), ('status', 'Status', 'text'), ('category', 'Category', 'text'), ('customer', 'Customer', 'text'), ('related', 'Related work', 'text'), ('created', 'Created', 'date'), ('due', 'Due', 'date'), ('completed', 'Completed', 'date')] %}
+        {% set fields = ['subject', 'status', 'category', 'customer', 'related', 'created', 'due', 'completed'] %}
+        <table id="hvaTable" class="hva-table" data-sb-sortable data-sb-sort-key="hva-inventory" data-sb-sort-server
+               data-sb-sort-default-column="{{ fields.index(request.args.get('sort', 'created')) }}"
+               data-sb-sort-default-direction="{{ 'ascending' if request.args.get('direction', 'desc') == 'asc' else 'descending' }}">
+            <caption>Owned HVA tasks. Counts cover every matching task, not just this page.</caption>
+            <thead><tr>
+                {% for key, label, type in columns %}
+                <th scope="col" data-hva-sort="{{ key }}" data-sb-sort-type="{{ type }}">{{ label }}</th>
+                {% endfor %}
+            </tr></thead>
+            <tbody>
+            {% for row in rows %}
+                <tr data-task-id="{{ row.id }}">
+                    <td data-sb-sort-value="{{ row.subject }}">
+                        <a class="hva-subject" href="{{ row.url }}" target="_blank" rel="noopener noreferrer" title="{{ row.description or row.subject }}">{{ row.subject }} <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                        {% if row.status not in ['Completed', 'Canceled'] %}
+                        <div class="hva-task-action" data-hva-action data-complete-url="{{ url_for('reports.complete_hva', task_id=row.id) }}">
+                            <button type="button" class="hva-command" data-hva-complete aria-label="Complete {{ row.subject }}"><i class="bi bi-check2" aria-hidden="true"></i> Complete</button>
+                            <div class="hva-confirm" data-hva-confirmation hidden>
+                                <span>Complete in MSX?</span>
+                                <button type="button" class="hva-command" data-hva-confirm>Complete</button>
+                                <button type="button" class="hva-command" data-hva-cancel>Cancel</button>
+                            </div>
+                            <p class="hva-result" data-hva-result role="status" aria-live="polite" hidden></p>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td data-sb-sort-value="{{ row.status }}"><span class="hva-state" data-state="{{ row.status|lower }}">{{ row.status }}</span></td>
+                    <td data-sb-sort-value="{{ row.category }}">{{ row.category }}</td>
+                    <td data-sb-sort-value="{{ row.customer or '' }}">{% if row.customer_id %}<a href="{{ url_for('customers.customer_view', id=row.customer_id) }}">{{ row.customer }}</a>{% else %}<span class="hva-muted">Not linked in SB</span>{% endif %}</td>
+                    <td data-sb-sort-value="{{ row.related or '' }}">{% if row.milestone_id %}<a href="{{ url_for('milestones.milestone_view', id=row.milestone_id) }}">{{ row.related }}</a>{% else %}<span class="hva-muted">{{ row.related or 'No related record' }}</span>{% endif %}</td>
+                    {% for field in ['created', 'due', 'completed'] %}
+                    <td class="hva-date" data-sb-sort-value="{{ row[field][:10] if row[field] else '' }}">{% if row[field] %}<time class="local-datetime" data-utc="{{ row[field] }}" data-fmt="date" title="{{ row[field] }}">{{ row[field][:10] }}</time>{% else %}<span class="hva-muted">{{ 'Not completed' if field == 'completed' and row.status != 'Completed' else ('Not set' if field == 'due' else 'Not recorded') }}</span>{% endif %}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="hva-empty">
+            <h2>{{ 'No HVAs match these filters' if complete_inventory else 'No HVA tasks synced yet' }}</h2>
+            <p>{% if complete_inventory %}Adjust the filters or refresh MSX tasks to check for recent changes.{% else %}Use Refresh MSX tasks to fetch your owned activities, including completed tasks. No note or meeting needs to be selected.{% endif %}</p>
+        </div>
+    {% endif %}
+    </div>
+    <nav class="hva-pagination" data-sb-page-band aria-label="HVA pages">
+        <span>{% if rows %}{{ (page - 1) * per_page + 1 }}-{{ (page - 1) * per_page + rows|length }} of {{ summary.total }}{% else %}0 matching{% endif %} · Page {{ page }} of {{ pages }}</span>
+        <div class="hva-commands">
+            <label for="hvaPageSize">Rows</label>
+            <select id="hvaPageSize" aria-label="Rows per page">{% for size in [25, 50, 100, per_page]|unique|sort %}<option value="{{ size }}"{% if per_page == size %} selected{% endif %}>{{ size }}</option>{% endfor %}</select>
+            {% if page > 1 %}<a class="hva-command" rel="prev" href="{{ inventory_url(page=page-1) }}">Previous</a>{% endif %}
+            {% if page < pages %}<a class="hva-command" rel="next" href="{{ inventory_url(page=page+1) }}">Next</a>{% endif %}
+        </div>
+    </nav>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ui-hvas.js') }}" defer></script>
+{% endblock %}

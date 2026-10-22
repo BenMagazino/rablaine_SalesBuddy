@@ -1212,180 +1212,87 @@ def _sync_all_tasks() -> Generator[
     Tuple[int, int, str, str], None, Dict[str, Any]
 ]:
     """
-    Batch-sync all MSX tasks, yielding progress per API batch.
+    Sync every owned MSX task through the existing task stage.
 
-    Collects all milestone MSX IDs across all customers, fetches tasks
-    in batched API calls (75 IDs per request), upserting MsxTask records
-    after each batch.
+    A complete owner query includes tasks outside the local milestone inventory.
+    Existing milestone, note and meeting links remain intact.
 
-    Yields (batch_num, total_batches, info_str) tuples for progress.
+    Yields (current_step, total_steps, info_str, state) tuples for progress.
 
     Returns (via generator .value after StopIteration):
         Dict with success, tasks_created, tasks_updated, error.
     """
     result = {"success": False, "tasks_created": 0, "tasks_updated": 0, "error": ""}
 
-    # Collect all synced milestone MSX IDs -> local milestone ID
-    all_milestones = Milestone.query.filter(
-        Milestone.msx_milestone_id.isnot(None),
-    ).all()
-
-    if not all_milestones:
-        result["success"] = True
+    yield (0, 1, "Reading all owned MSX tasks", 'fetching')
+    try:
+        fetch_result = get_tasks_for_milestones(None)
+    except Exception as exc:
+        logger.exception("Owned-task inventory fetch crashed")
+        result["error"] = f"MSX task fetch failed: {exc}"
+        yield (1, 1, result["error"], 'error')
+        return result
+    msx_tasks = fetch_result.get("tasks")
+    if not fetch_result.get("success"):
+        result["error"] = fetch_result.get("error") or "MSX task fetch failed"
+    elif not isinstance(msx_tasks, list):
+        result["error"] = "MSX did not return a complete owned-task inventory"
+    if result["error"]:
+        logger.warning("Owned-task inventory fetch failed: %s", result["error"])
+        yield (1, 1, result["error"], 'error')
         return result
 
-    ms_id_map: Dict[str, int] = {
-        ms.msx_milestone_id.lower(): ms.id for ms in all_milestones
-    }
-
-    all_msx_ids = list(ms_id_map.keys())
-    batch_size = 75
-    total_batches = math.ceil(len(all_msx_ids) / batch_size)
-    batches = [
-        all_msx_ids[i:i + batch_size]
-        for i in range(0, len(all_msx_ids), batch_size)
-    ]
-
-    # Pre-load existing MsxTask records for faster upserts
-    existing_tasks_map: Dict[str, MsxTask] = {}
-    for task in MsxTask.query.all():
-        if task.msx_task_id:
-            existing_tasks_map[task.msx_task_id] = task
-
-    cat_lookup = {
-        c["value"]: {"name": c["label"], "is_hva": c["is_hva"]}
-        for c in TASK_CATEGORIES
-    }
-
-    # Phase 4: parallelize fetches with 3 workers. Each batch is 75 milestone
-    # IDs; we still keep the main thread responsible for DB writes so we
-    # don't have to worry about session safety.
-    completed = 0
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        future_to_batch = {
-            executor.submit(get_tasks_for_milestones, batch): batch
-            for batch in batches
-        }
-        for future in as_completed(future_to_batch):
-            completed += 1
-            batch_ids = future_to_batch[future]
-
-            yield (
-                completed,
-                total_batches,
-                f"Tasks batch {completed}/{total_batches} ({len(batch_ids)} milestones)",
-                'fetching',
-            )
-
-            try:
-                fetch_result = future.result()
-            except Exception as e:
-                logger.exception("Task batch %d crashed", completed)
-                if not result["error"]:
-                    result["error"] = str(e)
-                yield (
-                    completed,
-                    total_batches,
-                    f"Tasks batch {completed}/{total_batches} - crashed",
-                    'error',
-                )
-                continue
-
-            if not fetch_result.get("success"):
-                logger.warning(
-                    f"Task batch {completed} failed: {fetch_result.get('error')}"
-                )
-                if not result["error"]:
-                    result["error"] = fetch_result.get(
-                        "error", "Task fetch failed"
-                    )
-                yield (
-                    completed,
-                    total_batches,
-                    f"Tasks batch {completed}/{total_batches} - failed",
-                    'error',
-                )
-                continue
-
-            msx_tasks = fetch_result.get("tasks", [])
-            batch_created = 0
-            batch_updated = 0
-            for t in msx_tasks:
-                task_id = t["task_id"]
-                milestone_msx_id = t.get("milestone_msx_id", "").lower()
-                local_milestone_id = ms_id_map.get(milestone_msx_id)
-                if not local_milestone_id:
-                    continue
-
-                category_code = t.get("task_category")
-                cat_info = cat_lookup.get(category_code, {})
-                due_date = _parse_msx_date(t.get("due_date"))
-                created_on = _parse_msx_date(t.get("created_on"))
-                actual_end = _parse_msx_date(t.get("actual_end"))
-
-                existing = existing_tasks_map.get(task_id)
-                if existing:
-                    existing.subject = t.get("subject") or existing.subject
-                    existing.description = t.get("description")
-                    existing.task_category = (
-                        category_code or existing.task_category
-                    )
-                    existing.task_category_name = (
-                        cat_info.get("name") or existing.task_category_name
-                    )
-                    existing.is_hva = cat_info.get("is_hva", existing.is_hva)
-                    existing.duration_minutes = (
-                        t.get("duration_minutes") or existing.duration_minutes
-                    )
-                    existing.due_date = due_date
-                    existing.msx_created_on = created_on
-                    existing.actual_end = actual_end
-                    existing.statecode = t.get("statecode")
-                    existing.statuscode = t.get("statuscode")
-                    existing.msx_task_url = (
-                        t.get("task_url") or existing.msx_task_url
-                    )
-                    existing.milestone_id = local_milestone_id
-                    result["tasks_updated"] += 1
-                    batch_updated += 1
-                else:
-                    new_task = MsxTask(
-                        msx_task_id=task_id,
-                        msx_task_url=t.get("task_url"),
-                        subject=t.get("subject", ""),
-                        description=t.get("description"),
-                        task_category=category_code or 0,
-                        task_category_name=cat_info.get("name"),
-                        is_hva=cat_info.get("is_hva", False),
-                        duration_minutes=t.get("duration_minutes") or 60,
-                        due_date=due_date,
-                        msx_created_on=created_on,
-                        actual_end=actual_end,
-                        statecode=t.get("statecode"),
-                        statuscode=t.get("statuscode"),
-                        milestone_id=local_milestone_id,
-                    )
-                    db.session.add(new_task)
-                    existing_tasks_map[task_id] = new_task
-                    result["tasks_created"] += 1
-                    batch_created += 1
-
-            yield (
-                completed,
-                total_batches,
-                f"Tasks batch {completed}/{total_batches} done"
-                f" ({batch_created} new, {batch_updated} updated)",
-                'ok',
-            )
-
     try:
-        db.session.commit()
+        ms_id_map = {
+            ms.msx_milestone_id.lower(): ms.id
+            for ms in Milestone.query.filter(Milestone.msx_milestone_id.isnot(None)).all()
+        }
+        existing_tasks_map = {
+            task.msx_task_id: task for task in MsxTask.query.all() if task.msx_task_id
+        }
+        cat_lookup = {category["value"]: category for category in TASK_CATEGORIES}
+        for existing in existing_tasks_map.values():
+            existing.is_current_owner = False
+        for remote in msx_tasks:
+            task_id = remote["task_id"]
+            stored = existing_tasks_map.get(task_id)
+            if stored is None:
+                stored = MsxTask(msx_task_id=task_id, subject=remote.get("subject") or "")
+                db.session.add(stored)
+                existing_tasks_map[task_id] = stored
+                result["tasks_created"] += 1
+            else:
+                result["tasks_updated"] += 1
+            category_code = remote.get("task_category")
+            category = cat_lookup.get(category_code, {})
+            regarding_id = (remote.get("milestone_msx_id") or "").lower()
+            stored.subject = remote.get("subject") or stored.subject
+            stored.description = remote.get("description")
+            stored.task_category = category_code or 0
+            stored.task_category_name = category.get("label")
+            stored.is_hva = category.get("is_hva", False)
+            stored.duration_minutes = remote.get("duration_minutes") or stored.duration_minutes or 60
+            stored.due_date = _parse_msx_date(remote.get("due_date"))
+            stored.msx_created_on = _parse_msx_date(remote.get("created_on"))
+            stored.actual_end = _parse_msx_date(remote.get("actual_end"))
+            stored.statecode = remote.get("statecode")
+            stored.statuscode = remote.get("statuscode")
+            stored.msx_task_url = remote.get("task_url") or stored.msx_task_url
+            stored.milestone_id = ms_id_map.get(regarding_id)
+            stored.is_current_owner = True
+            stored.msx_regarding_id = regarding_id or None
+            stored.msx_regarding_type = remote.get("regarding_type")
+            stored.msx_regarding_name = remote.get("regarding_name")
+        SyncStatus.mark_completed('owned_tasks', success=True, items_synced=len(msx_tasks))
         result["success"] = True
-    except Exception as e:
+    except Exception as exc:
         db.session.rollback()
-        result["error"] = f"Database error saving tasks: {str(e)}"
-        logger.exception("Error saving batched tasks")
-
+        result.update(tasks_created=0, tasks_updated=0, error=f"Error saving MSX tasks: {exc}")
+        logger.exception("Error saving owned-task inventory")
+        yield (1, 1, result["error"], 'error')
+        return result
+    yield (1, 1, f"Owned tasks synced ({result['tasks_created']} new, "
+           f"{result['tasks_updated']} updated)", 'ok')
     return result
 
 
@@ -1502,6 +1409,12 @@ def _sync_customer_tasks(
             db.session.add(new_task)
             existing_tasks_map[task_id] = new_task
             result["tasks_created"] += 1
+
+        stored = existing_tasks_map[task_id]
+        stored.is_current_owner = True
+        stored.msx_regarding_id = milestone_msx_id or None
+        stored.msx_regarding_type = t.get("regarding_type")
+        stored.msx_regarding_name = t.get("regarding_name")
 
     try:
         db.session.commit()

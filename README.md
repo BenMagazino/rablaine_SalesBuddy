@@ -130,6 +130,28 @@ user-data directory, outside the installation and notes database. The developmen
 shell uses its separate profile. Start-minimized and tray behavior are unchanged.
 This requires the updated Electron shell; a browser reload does not apply it.
 
+The desktop shell keeps a small, local input-focus diagnostic history for the
+intermittent issue where text fields stop accepting typing. If it happens, note
+the time, try Alt+Tab away and back, then choose **Help > Save Input Focus
+Diagnostics...** before restarting or updating. The export records focus,
+input-event counts, window state, and responsiveness, never typed keys, field
+values, note text, customer names, or page URLs. It is not uploaded automatically.
+The rolling history uses at most three 2 MiB files in the app's `logs` folder;
+save promptly because older entries are overwritten. This requires a shell
+rebuild and does not change focus or attempt automatic recovery. See the
+[input-focus investigation plan](docs/PLAN_ELECTRON_INPUT_FOCUS.md) for details.
+
+For intermittent navbar clicks that close a menu without navigating, open the
+**Help and keyboard shortcuts (?)** window and choose **Download navbar diagnostics**.
+This works in Chrome and Electron without a shell rebuild. Download promptly after
+the failure, before closing the tab or restarting the app. A rolling history of
+at most 256 metadata events stays in that tab's session storage across page changes;
+it is not uploaded. It records menu-close reasons, focus regions, click cancellation,
+and navigation start/abort events, never note text, field values, customer names,
+record IDs or URLs. If browser storage is blocked, Help reports that only the current
+page's history is available. This is diagnostic capture, not a fix for the
+intermittent failure.
+
 For desktop shell development, start the live backend with `scripts\dev.ps1 start`,
 then run `electron\node_modules\electron\dist\electron.exe electron --dev-client`.
 Client-only mode connects to port 5000 with a separate shell profile. It leaves
@@ -151,6 +173,24 @@ standalone UI iterations using entirely fictional data. See the
 - **Opportunity detail** - native standalone and MSX Workspace previews share complete cached/fresh details, linked milestones and original forecast editors. Read-only opening updates the local MSX-detail cache, not remote team or business records. Milestone headings sort raw values; Back retains reading and sorting. Comment/team/favorite writes remain explicit, with protected drafts, pending guards and honest failures.
 - **Notes directory** - a native chronological stream keeps original customer identity, local call dates, excerpts and every relationship link. All/Customer/General filters retain seller scope; page size is remembered locally and pagination preserves scope. Commands, displayed range and total stay visible, and Back restores reading position. Shared previews retain the canonical rich note body.
 - **Native note workspace** - customer and general editors retain Quill, calendar imports, linked work and explicit saving. Edit drafts use separate note keys, and unchanged editor navigation does not replace creation drafts. Nonmodal context drawers work alongside SalesIQ; both dock below the navbar's measured position, including desktop title and menu bars. Flyout bodies scroll independently while their headers remain visible; nested reviews remain modal above the application. Standalone reading uses the shared wider frame while previews stay shell-free.
+- **Refresh note milestones** - use Refresh milestones beside the note's milestone picker
+  when a seller creates a milestone during your call. It reads fresh choices through the
+  shared sync worker without saving the note or changing selected milestones or task fields.
+  A spinner shows work in progress, a check confirms completion for one second, and failures
+  offer Retry refresh. Customers without an MSX link still use the inline linking workflow.
+- **HVA inventory** - Browse > Work > HVAs lists your owned high-value MSX tasks across
+  all dates, including completed, canceled and unknown-status activities. Filter by
+  status, category, customer, text or an inclusive UTC created/due/completed date
+  window. Counts cover all matches; sorting covers every page. Activity dates display
+  in local time and missing MSX dates stay unknown instead of using the import date.
+  Refresh MSX tasks reuses Activity Coverage's existing durable activity reconciliation
+  job, not a new sync or schedule. The shared task stage now pulls every owned task,
+  including tasks with no matching local milestone, and follows all MSX pages before
+  replacing ownership membership. A verified SQLite backup precedes the one-time
+  task-table migration, preserving existing IDs, links, indexes and triggers.
+  Complete open or unknown-status HVAs directly from their row with an inline
+  confirmation. Completion updates MSX and retains the local activity and its
+  links; completed and canceled activities have no completion action.
 - **Fill My Day** - select a date and explicitly fetch external meetings, customer matches, WorkIQ summaries and AI enrichment. The native review keeps note HTML, topic toggles, matched milestone context, task fields and per-note saves. Task creation writes to MSX immediately; note saving remains separate. Back restores the review without repeating requests, unmatched meetings sort in their disclosure, and failed requests retain review entries for retry.
 - **Note Templates** - create and edit reusable rich-text content in native manual forms with persistent formatting and save commands. Original name/content fields, formatting and Settings/default associations remain intact. Cancel protects drafts, Back restores content and editor context, and failed saves retain entries for retry. Note insertion still supports Replace or Add to top; executable markup is removed at display boundaries without rewriting saved template HTML.
 - **Search Notes** - persistent native controls keep the original note-content substring search and customer, seller, territory and any-selected-topic filters. Results retain seller/customer grouping, excerpts and links; empty searches retain recent history, and Back restores controls and reading position. Search submits explicitly by GET, Clear Filters preserves seller-mode scope, and no date filters, relevance ranking, paging or exports are added.

@@ -31,6 +31,8 @@ CONSOLE_OPTION_HELP = {
     'customer-milestones': {
         'customer_id': 'Required positive integer: the local customer ID from the customer page '
                        'URL, not its TPID. The customer must have an MSX account link.',
+        'picker_only': 'Set true to reload all milestone choices for the note editor without '
+                       'importing customer data. Leave false for the full customer milestone sync.',
     },
     'customer-data': {
         'customer_id': 'Required positive integer: the local customer ID from the customer page '

@@ -45,7 +45,6 @@ from app.services.msx_api import (
     lookup_account_by_tpid,
     get_milestones_by_account,
     get_opportunities_by_account,
-    get_my_milestone_team_ids,
     extract_account_id_from_url,
     create_task,
     close_task as close_msx_task,
@@ -365,12 +364,13 @@ def get_milestones(account_id: str):
     return jsonify(result)
 
 
-@msx_bp.route('/milestones-for-customer/<int:customer_id>')
+@msx_bp.route('/milestones-for-customer/<int:customer_id>', methods=['GET', 'POST'])
 def get_milestones_for_customer(customer_id: int):
     """
-    Get all milestones for a customer using their TPID URL.
+    Read customer milestone choices, or queue a fresh picker read in the shared worker.
     
-    Extracts the account ID from the customer's tpid_url and fetches milestones.
+    GET retains compatibility with existing pickers. The note editor uses POST
+    for both its initial load and manual refresh, with persisted job observation.
     """
     customer = db.session.get(Customer, customer_id)
     if not customer:
@@ -383,48 +383,14 @@ def get_milestones_for_customer(customer_id: int):
             "needs_tpid": True
         })
     
-    # Extract account ID from the tpid_url
-    account_id = extract_account_id_from_url(customer.tpid_url)
-    if not account_id:
-        return jsonify({
-            "success": False,
-            "error": "Could not extract account ID from customer's MSX URL"
+    if request.method == 'POST':
+        from app.routes.jobs import start_response
+        return start_response('customer-milestones', {
+            'customer_id': customer_id, 'picker_only': True,
         })
-    
-    # Get milestones
-    result = get_milestones_by_account(account_id)
-    
-    if not result.get("success"):
-        return jsonify(result)
-    
-    # Get live team membership from MSX (best-effort, fall back to local DB)
-    my_team_ids: set = set()
-    try:
-        team_result = get_my_milestone_team_ids()
-        if team_result.get("success"):
-            my_team_ids = team_result.get("milestone_ids", set())
-    except Exception:
-        logger.debug("Could not fetch live team membership, falling back to local DB")
-    
-    # Enrich milestones with local metadata and team membership
-    milestones = result.get("milestones", [])
-    for milestone_data in milestones:
-        msx_milestone_id = milestone_data.get("id")
-        if msx_milestone_id:
-            existing = Milestone.query.filter_by(msx_milestone_id=msx_milestone_id).first()
-            if existing and existing.notes:
-                milestone_data["used_in_notes"] = len(existing.notes)
-                milestone_data["local_milestone_id"] = existing.id
-            else:
-                milestone_data["used_in_notes"] = 0
-                milestone_data["local_milestone_id"] = existing.id if existing else None
-            # Use live MSX team membership if available, fall back to local record
-            if my_team_ids:
-                milestone_data["on_my_team"] = msx_milestone_id.lower() in my_team_ids
-            else:
-                milestone_data["on_my_team"] = existing.on_my_team if existing else False
-    
-    return jsonify(result)
+
+    from app.services.milestone_picker import get_customer_milestone_choices
+    return jsonify(get_customer_milestone_choices(customer))
 
 
 @msx_bp.route('/opportunities-for-customer/<int:customer_id>')

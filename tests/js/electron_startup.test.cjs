@@ -23,6 +23,7 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
   const dialogs = [];
   const errors = [];
   const relaunches = [];
+  const focusDiagnostics = [];
   let accelerationDisabled = false;
   let ready = false;
   let quitCount = 0;
@@ -50,6 +51,7 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
         return {response: restartChoice};
       },
       showErrorBox: (title, message) => errors.push({title, message}),
+      showSaveDialog: async () => ({canceled: false, filePath: 'chosen.jsonl'}),
     },
     BrowserWindow: function (options) {
       const win = electron.nextWindow || fakeWindow();
@@ -80,6 +82,14 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
       if (name === './shell-theme') return require('../../electron/shell-theme');
       if (name === './shell-menu') return require('../../electron/shell-menu');
       if (name === './window-state') return require('../../electron/window-state');
+      if (name === './input-focus') return {
+        createInputFocusDiagnostics: () => ({
+          attach: win => focusDiagnostics.push({event: 'attach', win}),
+          markIncident: () => focusDiagnostics.push({event: 'incident'}),
+          save: file => focusDiagnostics.push({event: 'save', file}),
+          shutdown: () => focusDiagnostics.push({event: 'shutdown'}),
+        }),
+      };
       if (name === 'fs') return {
         readFileSync: file => {
           if (file.endsWith('state.json')) {
@@ -162,11 +172,24 @@ function shellHarness({ boot = false, minimized = false, cachedTheme = null,
   return {
     api: context.api, requests, logs, timers, tick, electron, openedWindows, stdout,
     renderingWrites, renderingRenames, dialogs, errors, relaunches, windowWrites, appEvents, exits,
+    focusDiagnostics,
     accelerationDisabled: () => accelerationDisabled,
     quitCount: () => quitCount,
     boot: () => { ready = true; return bootCallback(); },
   };
 }
+
+test('focus diagnostics start with the shell, attach to windows and export from Help', async () => {
+  const h = shellHarness({boot: true, devClient: true});
+  h.boot();
+  assert.ok(h.focusDiagnostics.some(entry => entry.event === 'attach'));
+  const help = h.electron.menuTemplates.at(-1).find(item => item.role === 'help');
+  await help.submenu.find(item => item.label === 'Save Input Focus Diagnostics...').click();
+  assert.ok(h.focusDiagnostics.some(entry => entry.event === 'incident'));
+  assert.ok(h.focusDiagnostics.some(entry => entry.event === 'save' && entry.file === 'chosen.jsonl'));
+  h.appEvents.emit('before-quit');
+  assert.ok(h.focusDiagnostics.some(entry => entry.event === 'shutdown'));
+});
 
 function renderingItem(harness) {
   harness.api.buildAppMenu();

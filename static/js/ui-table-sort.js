@@ -112,6 +112,7 @@
         try {
             if (!table?.matches?.(selector)) throw new Error('An opt-in table is required.');
             const key = table.getAttribute('data-sb-sort-key');
+            const server = table.hasAttribute('data-sb-sort-server');
             if (!key || !key.trim() || key !== key.trim()) {
                 throw new Error('A stable, nonempty data-sb-sort-key is required.');
             }
@@ -218,7 +219,7 @@
             function apply(next, save = false) {
                 try {
                     next = validateState(next);
-                    const changes = plan(next).filter(({body, rows}) =>
+                    const changes = (server ? [] : plan(next)).filter(({body, rows}) =>
                         rows.some((row, index) => row !== items(body)[index]));
                     if (save) persist(key, next);
                     const focused = document.activeElement;
@@ -254,7 +255,7 @@
             }
 
             validateState(defaultState);
-            const initial = validateState(savedState(key, defaultState));
+            const initial = validateState(server ? defaultState : savedState(key, defaultState));
             plan(initial);
             for (const column of columns) {
                 const button = document.createElement('button');
@@ -268,18 +269,26 @@
                 column.header.appendChild(button);
                 column.button = button;
                 column.icon = icon;
-                button.addEventListener('click', () => apply({
-                    column: column.index,
-                    direction: state?.column === column.index && state.direction === 'ascending' ?
-                        'descending' : 'ascending',
-                }, true));
+                button.addEventListener('click', () => {
+                    const next = {
+                        column: column.index,
+                        direction: state?.column === column.index && state.direction === 'ascending' ?
+                            'descending' : 'ascending',
+                    };
+                    if (server) {
+                        table.dispatchEvent(new CustomEvent('sb:table-sort', {detail: next}));
+                    } else {
+                        apply(next, true);
+                    }
+                });
             }
             const api = {
                 get state() { return state ? {...state} : null; },
                 restore(next) { apply(next); },
             };
             apply(initial);
-            instances.set(table, {api, restoreHistory: () => apply(savedState(key, defaultState))});
+            instances.set(table, {api, restoreHistory: () =>
+                apply(server ? defaultState : savedState(key, defaultState))});
             return api;
         } catch (error) {
             fail(table, error);

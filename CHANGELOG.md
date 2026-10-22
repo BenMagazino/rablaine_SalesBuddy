@@ -8,6 +8,15 @@ brought the change into `main`, so the admin Updates card can show
 Format: `## M/D/YYYY - <merge-short-sha>`. See
 `scripts/tag-changelog.ps1` for the helper that fills this in.
 
+## 10/21/2026
+
+- Contact photos in the note editor open in a compact window without an empty right half.
+- Calendar refreshes accept repeated copies of the same WorkIQ result, avoiding false errors on days without matching customer meetings.
+- *Electron Shell Update* - Capture private, local input-focus diagnostics through Help when text fields stop responding, so we can investigate without recording what you type.
+- Refresh milestone choices while writing a note, without saving it or losing your selections.
+- Browse your owned HVAs under Browse > Work, with counts, status, activity dates and inline completion for open or unknown-status activities. The existing activity refresh now includes tasks outside milestones already in Sales Buddy.
+- Download local navbar diagnostics from Help when a menu closes without navigating, in Chrome or the desktop app.
+
 ## 10/21/2026 - d2ece58e
 
 - Get an editable FY27 Data Motions dashboard automatically on upgrade, with ten report-backed widgets for Fabric acquisition, modernization, expansion, trials and RTI, database whitespace and growth, P-to-F renewals, and SQL motions. Add another copy anytime from dashboard templates and follow each widget to its full report.

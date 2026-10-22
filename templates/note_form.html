@@ -358,6 +358,11 @@
                                 <div id="milestone_loading" class="sb-nf-text-muted sb-nf-small" style="display: none;">
                                     <span class="sb-nf-spinner-border sb-nf-spinner-border-sm sb-nf-me-1"></span> Loading milestones...
                                 </div>
+                                <button type="button" class="sb-nf-btn sb-nf-btn-sm sb-nf-btn-outline-secondary" id="refreshMilestonesBtn"
+                                        disabled aria-label="Refresh milestones from MSX" aria-busy="false"
+                                        aria-describedby="milestone_help_text" onclick="loadMilestonesForCustomer(currentCustomerId, true)">
+                                    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> <span>Refresh milestones</span>
+                                </button>
                                 <button type="button" class="sb-nf-btn sb-nf-btn-sm sb-nf-btn-outline-info" id="aiMatchMilestoneBtn" style="display: none;" onclick="aiMatchMilestone()">
                                     <i class="bi bi-stars"></i> <span id="aiMatchMilestoneBtnText">Match Milestone</span>
                                 </button>
@@ -366,7 +371,7 @@
                         <input type="text" class="sb-nf-form-control" id="milestone_search"
                                placeholder="Search milestones..." autocomplete="off" disabled>
                         <div id="milestone_dropdown" class="sb-nf-list-group sb-nf-mt-1" style="display: none; position: absolute; z-index: 1000; max-height: 300px; overflow-y: auto; width: calc(100% - 24px);"></div>
-                        <div class="sb-nf-form-text" id="milestone_help_text">Select a customer to load milestones from MSX</div>
+                        <div class="sb-nf-form-text" id="milestone_help_text" role="status" aria-live="polite">Select a customer to load milestones from MSX</div>
                         
                         <!-- Engagement milestone suggestion banner -->
                         <div id="engagement_milestone_suggest" class="sb-nf-mt-2" style="display: none;"></div>
@@ -1068,8 +1073,8 @@
 {% endif %}
 
 <!-- Contact Photo Modal (for flyout contacts) -->
-<dialog class="sb-dialog sb-nf-modal" id="contactPhotoModal" tabindex="-1" aria-labelledby="contactPhotoModalLabel" style="z-index: 1060;">
-    <div class="sb-nf-modal-dialog sb-nf-modal-dialog-centered sb-nf-modal-sm">
+<dialog class="sb-dialog sb-nf-modal sb-nf-modal-sm" id="contactPhotoModal" tabindex="-1" aria-labelledby="contactPhotoModalLabel" style="z-index: 1060;">
+    <div class="sb-nf-modal-dialog sb-nf-modal-dialog-centered">
         <div class="sb-nf-modal-content">
             <div class="sb-nf-modal-header sb-nf-py-2">
                 <h6 class="sb-nf-modal-title" id="contactPhotoModalLabel"><i class="bi bi-camera"></i> Contact Photo</h6>
@@ -4673,11 +4678,51 @@ function populateTaskCategories() {
 
 // Load milestones when customer is selected
 let currentCustomerId = null;
+let milestoneRequestVersion = 0;
+let milestoneLoadPending = false;
+let milestoneResetTimer = null;
+let loadedMilestoneCustomerId = null;
+const refreshMilestonesBtn = document.getElementById('refreshMilestonesBtn');
 
-function loadMilestonesForCustomer(customerId) {
+function setMilestoneRefreshState(state) {
+    if (!refreshMilestonesBtn) return;
+    const states = {
+        idle: ['bi bi-arrow-clockwise', 'Refresh milestones'],
+        working: ['sb-nf-spinner-border sb-nf-spinner-border-sm', 'Refreshing...'],
+        success: ['bi bi-check-circle', 'Refreshed'],
+        error: ['bi bi-arrow-clockwise', 'Retry refresh'],
+    };
+    const [icon, label] = states[state];
+    refreshMilestonesBtn.dataset.state = state;
+    refreshMilestonesBtn.querySelector('i').className = icon;
+    refreshMilestonesBtn.querySelector('span').textContent = label;
+    refreshMilestonesBtn.disabled = !currentCustomerId || milestoneLoadPending
+        || state === 'success';
+    refreshMilestonesBtn.setAttribute('aria-busy', String(milestoneLoadPending));
+}
+
+async function loadMilestonesForCustomer(customerId, manualRefresh = false) {
+    if (!_hasMilestoneUI) return;
+    customerId = customerId ? String(customerId) : null;
+    if (customerId === currentCustomerId && milestoneLoadPending) return;
+    const requestVersion = ++milestoneRequestVersion;
+    const sameCustomer = customerId === loadedMilestoneCustomerId;
     currentCustomerId = customerId;
+    clearTimeout(milestoneResetTimer);
+    milestoneLoadPending = false;
+    setMilestoneRefreshState('idle');
     const inlineTpidSection = document.getElementById('inline_tpid_link');
-    
+    const matchBtn = document.getElementById('aiMatchMilestoneBtn');
+    milestoneLoading.style.display = 'none';
+    milestoneDropdown.style.display = 'none';
+    currentMilestoneMatches = [];
+    selectedMilestoneIndex = -1;
+    if (!sameCustomer) {
+        allMilestones = [];
+        loadedMilestoneCustomerId = null;
+        if (matchBtn) matchBtn.style.display = 'none';
+    }
+
     if (!customerId) {
         allMilestones = [];
         milestoneSearch.disabled = true;
@@ -4690,66 +4735,85 @@ function loadMilestonesForCustomer(customerId) {
     // Hide inline TPID section initially
     inlineTpidSection.style.display = 'none';
     
-    // Show loading
-    milestoneLoading.style.display = 'inline';
+    milestoneLoadPending = true;
+    setMilestoneRefreshState(manualRefresh ? 'working' : 'idle');
+    milestoneLoading.style.display = manualRefresh ? 'none' : 'inline';
     milestoneSearch.disabled = true;
     milestoneSearch.placeholder = 'Loading milestones...';
     milestoneHelpText.textContent = 'Fetching milestones from MSX...';
-    
-    fetch(`/api/msx/milestones-for-customer/${customerId}`)
-        .then(response => response.json())
-        .then(data => {
-            milestoneLoading.style.display = 'none';
-            const matchBtn = document.getElementById('aiMatchMilestoneBtn');
-            
-            if (data.success && data.milestones) {
-                allMilestones = data.milestones;
-                milestoneSearch.disabled = false;
-                if (allMilestones.length <= 10) {
-                    milestoneSearch.placeholder = `${allMilestones.length} milestone${allMilestones.length !== 1 ? 's' : ''} — click to browse`;
-                } else {
-                    milestoneSearch.placeholder = `Search ${allMilestones.length} milestones (or * to list all)...`;
+
+    try {
+        const response = await fetch(`/api/msx/milestones-for-customer/${customerId}`, {
+            method: 'POST',
+            onJobProgress: job => {
+                if (requestVersion === milestoneRequestVersion) {
+                    milestoneHelpText.textContent = window.SBJobs.message(job);
                 }
-                milestoneHelpText.textContent = `Found ${allMilestones.length} milestone${allMilestones.length !== 1 ? 's' : ''} for this customer`;
-                inlineTpidSection.style.display = 'none';
-                // Show AI match button if milestones loaded
-                if (matchBtn && allMilestones.length > 0) {
-                    matchBtn.style.display = 'inline-block';
-                }
-                // Auto-select milestone if pre-specified via query param
-                if (window._preselectMilestoneId && allMilestones.length > 0) {
-                    const target = allMilestones.find(m => m.local_milestone_id == window._preselectMilestoneId);
-                    if (target) {
-                        selectMilestone(target);
-                    }
-                    window._preselectMilestoneId = null;  // Only auto-select once
-                }
-            } else if (data.needs_tpid) {
-                milestoneSearch.placeholder = 'Link customer to MSX first';
-                milestoneHelpText.innerHTML = '<span class="sb-nf-text-warning"><i class="bi bi-exclamation-triangle"></i> Customer has no MSX account linked</span>';
-                if (matchBtn) matchBtn.style.display = 'none';
-                
-                // Show inline TPID link section
-                const customer = customerData[customerId];
-                if (customer) {
-                    document.getElementById('inline_tpid_value').textContent = customer.tpid || 'Not set';
-                    document.getElementById('inline_tpid_url').value = '';
-                    document.getElementById('inline_lookup_result').innerHTML = '';
-                    document.getElementById('inline_save_btn').style.display = 'none';
-                    document.getElementById('inline_tpid_url').readOnly = true;
-                    inlineTpidSection.style.display = 'block';
-                }
-            } else {
-                milestoneSearch.placeholder = 'Could not load milestones';
-                milestoneHelpText.innerHTML = `<span class="sb-nf-text-danger">${data.error || 'Unknown error'}</span>`;
-            }
-        })
-        .catch(error => {
-            console.error('Failed to load milestones:', error);
-            milestoneLoading.style.display = 'none';
-            milestoneSearch.placeholder = 'Error loading milestones';
-            milestoneHelpText.innerHTML = '<span class="sb-nf-text-danger">Failed to connect to MSX</span>';
+            },
         });
+        const data = await response.json();
+        if (requestVersion !== milestoneRequestVersion) return;
+        milestoneLoadPending = false;
+        milestoneLoading.style.display = 'none';
+
+        if (response.ok && data.success && Array.isArray(data.milestones)) {
+            allMilestones = data.milestones;
+            loadedMilestoneCustomerId = customerId;
+            milestoneSearch.disabled = false;
+            if (allMilestones.length <= 10) {
+                milestoneSearch.placeholder = `${allMilestones.length} milestone${allMilestones.length !== 1 ? 's' : ''} - click to browse`;
+            } else {
+                milestoneSearch.placeholder = `Search ${allMilestones.length} milestones (or * to list all)...`;
+            }
+            milestoneHelpText.textContent = `Found ${allMilestones.length} milestone${allMilestones.length !== 1 ? 's' : ''} for this customer`;
+            inlineTpidSection.style.display = 'none';
+            if (matchBtn) matchBtn.style.display = allMilestones.length ? 'inline-block' : 'none';
+            if (milestoneSearch.value.trim()) {
+                milestoneSearch.dispatchEvent(new Event('input'));
+            }
+            // Auto-select milestone if pre-specified via query param
+            if (window._preselectMilestoneId && allMilestones.length > 0) {
+                const target = allMilestones.find(m => m.local_milestone_id == window._preselectMilestoneId);
+                if (target) selectMilestone(target);
+                window._preselectMilestoneId = null;
+            }
+            setMilestoneRefreshState(manualRefresh ? 'success' : 'idle');
+            if (manualRefresh) {
+                milestoneHelpText.textContent = `Refreshed. ${milestoneHelpText.textContent}`;
+                milestoneResetTimer = setTimeout(() => {
+                    if (requestVersion === milestoneRequestVersion) {
+                        setMilestoneRefreshState('idle');
+                    }
+                }, 1000);
+            }
+        } else if (data.needs_tpid) {
+            setMilestoneRefreshState('idle');
+            refreshMilestonesBtn.disabled = true;
+            milestoneSearch.placeholder = 'Link customer to MSX first';
+            milestoneHelpText.innerHTML = '<span class="sb-nf-text-warning"><i class="bi bi-exclamation-triangle"></i> Customer has no MSX account linked</span>';
+            if (matchBtn) matchBtn.style.display = 'none';
+            const customer = customerData[customerId];
+            if (customer) {
+                document.getElementById('inline_tpid_value').textContent = customer.tpid || 'Not set';
+                document.getElementById('inline_tpid_url').value = '';
+                document.getElementById('inline_lookup_result').innerHTML = '';
+                document.getElementById('inline_save_btn').style.display = 'none';
+                document.getElementById('inline_tpid_url').readOnly = true;
+                inlineTpidSection.style.display = 'block';
+            }
+        } else {
+            throw new Error(data.error || 'MSX did not return milestone choices.');
+        }
+    } catch (error) {
+        if (requestVersion !== milestoneRequestVersion) return;
+        console.error('Failed to load milestones:', error);
+        milestoneLoadPending = false;
+        milestoneLoading.style.display = 'none';
+        milestoneSearch.disabled = !sameCustomer;
+        milestoneSearch.placeholder = sameCustomer ? 'Search milestones...' : 'Could not load milestones';
+        milestoneHelpText.textContent = `Could not refresh milestones: ${error.message} Click Retry refresh to try again.`;
+        setMilestoneRefreshState('error');
+    }
 }
 
 // Inline TPID lookup

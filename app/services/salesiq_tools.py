@@ -1335,6 +1335,49 @@ def report_connect_goals() -> dict:
 
 
 @tool(
+    'report_hvas',
+    'List your owned MSX HVA tasks across all dates and milestone scopes, including completed '
+    'tasks. Returns filtered totals by status, creation/due/completion dates and paged records.',
+    {
+        'type': 'object',
+        'properties': {
+            'search': {'type': 'string', 'description': 'Task, customer, category or related work.'},
+            'status': {'type': 'string', 'enum': ['', 'open', 'completed', 'canceled', 'unknown']},
+            'customer_id': {'type': 'integer', 'minimum': 1},
+            'category': {'type': 'integer', 'description': 'MSX HVA category code.'},
+            'date_field': {'type': 'string', 'enum': ['created', 'due', 'completed']},
+            'date_from': {'type': 'string', 'description': 'Inclusive UTC date, YYYY-MM-DD.'},
+            'date_to': {'type': 'string', 'description': 'Inclusive UTC date, YYYY-MM-DD.'},
+            'page': {'type': 'integer', 'minimum': 1},
+            'per_page': {'type': 'integer', 'minimum': 1, 'maximum': 100},
+        },
+    },
+)
+def report_hvas(
+    search: str = '', status: str = '', customer_id: int | None = None,
+    category: int | None = None, date_field: str = 'created',
+    date_from: str | None = None, date_to: str | None = None,
+    page: int = 1, per_page: int = 50,
+) -> dict:
+    """Use the same owned-task inventory as Browse > Work > HVAs, without remote reads."""
+    from urllib.parse import urlencode
+    from app.services.hva_inventory import get_hva_inventory
+
+    options = {
+        'search': search, 'status': status, 'customer_id': customer_id, 'category': category,
+        'date_field': date_field, 'date_from': date_from, 'date_to': date_to,
+        'page': page, 'per_page': per_page,
+    }
+    data = get_hva_inventory(
+        search=search, status=status, customer_id=customer_id, category=category,
+        date_field=date_field, date_from=date_from, date_to=date_to,
+        page=page, per_page=per_page,
+    )
+    params = urlencode({key: value for key, value in options.items() if value is not None})
+    return {'url': f'{_BASE}/reports/hvas?{params}', **data}
+
+
+@tool(
     'report_activity_coverage',
     'Get fiscal-year meeting and on-team milestone HVA activity coverage.',
     {

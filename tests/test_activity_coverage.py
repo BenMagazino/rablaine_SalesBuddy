@@ -857,6 +857,26 @@ def test_link_existing_activity(app, client, coverage_data):
         db.session.commit()
 
 
+def test_unlinked_owned_task_needs_a_local_milestone_before_linking(
+    app, client, coverage_data,
+):
+    """Owner-wide imports stay visible in HVAs without breaking meeting candidate/link flows."""
+    with app.app_context():
+        task = MsxTask(
+            msx_task_id='outside-local-milestones', subject='Owned outside task',
+            task_category=861980002, is_hva=True,
+        )
+        db.session.add(task)
+        db.session.commit()
+        report = activity_coverage.get_report_data()
+        row = next(item for item in report['meetings']
+                   if item['id'] == coverage_data['meeting_id'])
+        assert task.id not in {candidate['id'] for candidate in row['candidate_tasks']}
+        with pytest.raises(ValueError, match='locally synced milestone'):
+            activity_coverage.link_existing_activity(coverage_data['meeting_id'], task.id)
+        assert task.meeting_id is None
+
+
 def test_link_activity_endpoint_returns_inline_render_fields(
     app, client, coverage_data,
 ):

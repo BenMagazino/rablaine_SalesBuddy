@@ -61,6 +61,7 @@
 .sb-nf-form-control.is-invalid {border-color:var(--sb-ui-danger);}
 .sb-nf-form-control.is-invalid + .sb-nf-invalid-feedback {display:block;}
 .sb-nf-modal {padding:0;width:min(800px,calc(100vw - 80px));max-height:calc(100dvh - 100px);}
+.sb-nf-modal.sb-nf-modal-sm {width:min(400px,calc(100vw - 80px));}
 .sb-nf-modal .sb-nf-modal-content {max-height:calc(100dvh - 104px);}
 .sb-nf-drawer {
     position:fixed;z-index:1045;

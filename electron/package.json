@@ -28,6 +28,8 @@
       "preload.js",
       "shell-theme.js",
       "shell-menu.js",
+      "input-focus.js",
+      "input-focus.ps1",
       "window-state.js",
       "status-screen.js",
       "status.html",
@@ -37,6 +39,7 @@
       "package.json"
     ],
     "asar": true,
+    "asarUnpack": ["input-focus.ps1"],
     "win": {
       "target": [
         {

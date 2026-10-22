@@ -16,6 +16,7 @@ const { statusScreenUrl: renderStatusScreen } = require('./status-screen');
 const { TITLE_BAR_HEIGHT, attachShellTheme, readShellTheme } = require('./shell-theme');
 const { menuSnapshot, attachShellMenu } = require('./shell-menu');
 const { createWindowState } = require('./window-state');
+const { createInputFocusDiagnostics } = require('./input-focus');
 const { spawn, execFile, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -83,6 +84,7 @@ let isUpdating = false;
 let isBooting = true;
 let restartTimer = null;
 let updateStatus = {};
+let inputFocusDiagnostics = null;
 
 // Launch flags. --startup = an automatic launch (login autostart / installer
 // warm-up): honor the start-minimized preference. --minimized = force hidden
@@ -143,6 +145,7 @@ const windowState = createWindowState({
 });
 
 function exitShell() {
+  inputFocusDiagnostics?.shutdown();
   windowState.shutdown();
   app.exit(0);
 }
@@ -878,6 +881,7 @@ function ensureWindow() {
 // the close-to-tray-on-last-window rule.
 function configureWindow(win) {
   const wc = win.webContents;
+  inputFocusDiagnostics?.attach(win);
   function notifyLoading(loading) {
     if (win.isDestroyed() || wc.isDestroyed()) return;
     try {
@@ -1124,6 +1128,7 @@ function buildAppMenu() {
       role: 'help',
       submenu: [
         { label: 'Open Logs Folder', click: () => shell.openPath(LOG_DIR) },
+        { label: 'Save Input Focus Diagnostics...', click: saveInputFocusDiagnostics },
         { label: 'Open App Folder', click: () => shell.openPath(REPO_ROOT) },
         { type: 'separator' },
         { label: 'About Sales Buddy', click: showAbout },
@@ -1148,6 +1153,29 @@ function buildAppMenu() {
     for (const win of windows) {
       if (!win.isDestroyed()) win.webContents.send('shell:menu-state', menuSnapshot(menu));
     }
+  }
+}
+
+async function saveInputFocusDiagnostics() {
+  try {
+    if (!inputFocusDiagnostics) throw new Error('Input focus diagnostics are not running.');
+    inputFocusDiagnostics.markIncident();
+    const options = {
+      title: 'Save Input Focus Diagnostics',
+      defaultPath: path.join(app.getPath('documents'),
+        `SalesBuddy-input-focus-${new Date().toISOString().replace(/[:.]/g, '-')}.jsonl`),
+      filters: [{name: 'Diagnostic log', extensions: ['jsonl']}],
+    };
+    const win = activeWindow();
+    const result = win ? await dialog.showSaveDialog(win, options)
+      : await dialog.showSaveDialog(options);
+    if (result.canceled) return;
+    if (!result.filePath) throw new Error('No diagnostic file destination was selected.');
+    inputFocusDiagnostics.save(result.filePath);
+  } catch (error) {
+    log(`Could not save input focus diagnostics: ${error.message}`);
+    dialog.showErrorBox('Could not save input focus diagnostics',
+      `${error.message}\nThe original logs remain in Help > Open Logs Folder.`);
   }
 }
 
@@ -1221,6 +1249,9 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     log(`Electron ready (v${APP_VERSION}, packaged=${app.isPackaged}, repo=${REPO_ROOT})`);
+    inputFocusDiagnostics = createInputFocusDiagnostics({
+      app, port: PORT, logDir: LOG_DIR, log, gpuRendering: GPU_RENDERING_AT_STARTUP,
+    });
     windowState.watchDisplays();
     // Group under one taskbar icon and identify our notifications on Windows.
     if (IS_WIN) app.setAppUserModelId('com.salesbuddy.desktop');
@@ -1262,6 +1293,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('before-quit', () => {
+    inputFocusDiagnostics?.shutdown();
     windowState.shutdown();
     isQuitting = true;
     if (!DEV_CLIENT) stopStack();

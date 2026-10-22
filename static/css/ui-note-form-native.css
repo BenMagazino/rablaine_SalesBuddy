@@ -92,7 +92,6 @@
 .sb-nf-collapse{display:none}
 .sb-nf-modal-dialog{margin:0;width:100%}
 .sb-nf-modal-lg{width:min(800px,100%)}
-.sb-nf-modal-sm{width:min(400px,100%)}
 .sb-nf-modal-dialog-centered{}
 .sb-nf-modal-dialog-scrollable{}
 .sb-nf-modal-content{display:flex;flex-direction:column}

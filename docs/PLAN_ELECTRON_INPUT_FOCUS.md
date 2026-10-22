@@ -1,7 +1,7 @@
 # Plan: Diagnose Intermittent Electron Input Focus Loss
 
-**Status:** Investigation planned
-**Last updated:** 2026-09-22
+**Status:** Phase 1 implemented and validated in dev; production incident capture pending
+**Last updated:** 2026-10-21
 
 ## Goal
 
@@ -23,6 +23,30 @@ shell or Windows focus integration rather than adding page-specific workarounds.
   immediately during a confirmed episode.
 - The confirmed episode occurred in the production Electron application, not the
   browser-based development server.
+- Ben reports that it happens more often while filling out **Create Task on
+  Milestone**, after leaving the customer note's main text editor. Alt+Tab away
+  and back restores typing in those episodes too.
+
+## October 21 implementation checkpoint
+
+- Phase 1 is implemented. The updated shell records a dedicated, bounded
+  incident history without changing focus, input handling, or recovery behavior.
+- The packaged development shell was built unsigned and exercised against the
+  live port-5000 backend. Production installation/restaging is still pending.
+- Phase 2 is next: capture an actual failure in a rebuilt production shell.
+  A healthy smoke test does not establish the cause or resolve the original bug.
+- Treat the note editor to milestone-task transition as the priority reproduction
+  path, while retaining coverage for unrelated pages affected previously.
+- Trace clicking out of Quill and, separately, pressing Escape to leave it.
+  The note editor explicitly calls `quill.blur()` for Escape. This is a path to
+  observe, not evidence that Quill causes the Electron-wide failure.
+- Observe the task title (`task_subject`), description (`task_description`),
+  category, and due date alongside the note editor. Record focus transitions,
+  editable/enabled state, and whether input events reach each target, never
+  field values, editor contents, or the actual keys typed.
+- Do not treat a healthy browser-dev check as reproducing or ruling out the
+  intermittent production Electron problem. Capture a failing shell episode
+  before choosing a recovery change.
 
 ## Findings so far
 
@@ -59,12 +83,13 @@ Immediately after recovery, the production application showed:
 - Normal hidden `Default IME` and `MSCTFIME UI` windows associated with the
   Electron process.
 
-The current production shell does not record enough focus or renderer state to
-distinguish among the remaining causes.
+Previously deployed shells do not record enough focus or renderer state to
+distinguish among the remaining causes. The new instrumentation requires a
+shell rebuild before it can capture a production episode.
 
 ## Investigation plan
 
-### Phase 1: Add production diagnostics
+### Phase 1: Add production diagnostics (implemented)
 
 Instrument the Electron shell without changing normal user behavior.
 
@@ -83,12 +108,55 @@ In `electron/preload.js`, maintain a bounded diagnostic record containing:
 
 - `document.hasFocus()` and `document.visibilityState`.
 - The active element tag, ID, name, and input type.
+- Whether the active element is contenteditable, disabled, or read-only, including
+  transitions between Quill and the milestone task fields.
 - `focus`, `blur`, `focusin`, `focusout`, `pointerdown`, and `keydown` events.
+  Record event types and target metadata, not typed keys or input values.
 - A lightweight heartbeat that records the largest event-loop delay.
 
 Send diagnostic events to the main process through a narrowly scoped IPC
 channel. Do not expose general IPC access to page JavaScript. Write diagnostics
 to a dedicated rotating log so normal logs do not grow without bounds.
+
+#### Implemented capture contract
+
+- `electron/input-focus.js` owns window/app events, validated per-window IPC,
+  native input-routing counts, incident snapshots, and log rotation.
+- `electron/preload.js` captures only the top-level document. It buffers at most
+  64 events and flushes at most once per second during normal activity.
+  `keydown`, `beforeinput`, and `input` activity is aggregated by target/type,
+  rather than logging each keystroke. An explicit incident snapshot can flush
+  immediately. Dropped-event counts are retained if a burst exceeds the buffer.
+- Renderer and main-process heartbeats are recorded every 15 seconds. The
+  renderer samples its event loop every second and reports the largest delay.
+  Visibility, minimized state, and the age of the last renderer batch accompany
+  the evidence needed to distinguish an inactive page from a stalled one.
+- The receiver accepts only the matching local main frame, limits each window
+  to four batches per second, and reconstructs an allowlisted schema. Element
+  IDs/names are retained only for fixed editor, task, find, and menu controls.
+  Other controls still contribute tag/type and editable/enabled metadata.
+- No typed keys, input data or values, note text, labels, customer names, page
+  URLs, query strings, or external window titles are recorded. No diagnostics
+  are uploaded automatically.
+- On Windows, one hidden persistent PowerShell helper calls `GetForegroundWindow`,
+  `IsWindowEnabled`, `GetWindow` (owner), and `GetWindowThreadProcessId`.
+  Snapshots include request/capture timestamps, handles, and the foreground PID,
+  not process names or titles. Native lookup runs asynchronously on focus/blur
+  and incident capture, never synchronously on the Electron main thread.
+- The helper is unpacked alongside the packaged ASAR so PowerShell can read it.
+  Failed launches, invalid responses, timeouts, and process exits are reported;
+  other diagnostic capture and the app continue without native snapshots.
+- The active file is `logs/electron-input-focus.jsonl`, with
+  `electron-input-focus.1.jsonl` and `electron-input-focus.2.jsonl` as archives.
+  Each file is at most 2 MiB, for a 6 MiB rolling history. Oldest entries are
+  overwritten, so preserve the log promptly after an incident.
+- **Help > Save Input Focus Diagnostics...** marks the incident, requests fresh
+  snapshots from every app window, and exports the retained files in time order
+  to a user-selected destination. Save failures are surfaced explicitly.
+  User-requested exports are separate from the rolling log.
+- Window closure and app shutdown release listeners, timers, and the native
+  helper. Page teardown stops renderer timers; history-cache restoration
+  restarts capture without duplicate listeners.
 
 ### Phase 2: Capture the next incident
 
@@ -97,13 +165,17 @@ When the issue occurs:
 1. Attempt one click and a short text entry in the affected field.
 2. Record the approximate time.
 3. Alt+Tab away and back once.
-4. Preserve the Electron diagnostic log before restarting or updating the app.
+4. Choose **Help > Save Input Focus Diagnostics...** and save the export before
+   restarting or updating. If the menu is also unresponsive, recover with Alt+Tab
+   first. The retained history includes the activity preceding the export.
 5. Correlate the episode with Windows Application, System, WER, and watchdog
    records.
 
 Classify the result:
 
-- Heartbeat gap: renderer event loop or process stall.
+- Heartbeat gap while visible and active: possible renderer event loop or process
+  stall. Hidden/minimized timer throttling or system sleep alone is not evidence
+  of this bug.
 - Heartbeat healthy, no pointer or keyboard events: native window activation or
   input routing failure.
 - Pointer events arrive but focus does not change: Chromium focus or DOM issue.
@@ -133,13 +205,30 @@ focus from other applications.
 
 ## Validation
 
+Completed during implementation:
+
+- Focused Node tests cover IPC trust/privacy, bounded buffering, input
+  aggregation, loop delays, log rotation/export/failure, native probe
+  failure/timeout, and lifecycle cleanup, alongside existing shell regressions.
+  The startup pytest wrapper also runs the new diagnostic tests.
+- An unsigned packaged build ran against the existing live development backend
+  and data, using the separate dev-shell profile with dark mode unchanged.
+- The live check exercised note-editor to task-title input, Escape from the
+  editor followed by task-description input, an app modal, Find, additional
+  windows, minimize/restore, Windows foreground/owner snapshots, and the real
+  Help export handler. A known typed sentinel was absent from the export.
+- Rotation limits and chronological export were verified using repeated writes;
+  a representative multi-day production trial has not yet occurred.
+
+Remaining release and incident checks:
+
 - Verify focus, typing, modal dialogs, the find bar, multiple Sales Buddy
   windows, tray hide/show, startup minimized, and external-link navigation.
 - Confirm diagnostics do not log typed text, note contents, customer data, or
   other sensitive values.
 - Confirm diagnostic logging remains bounded during a multi-day run.
 - Run the existing Electron build and shell validation commands.
-- Rebuild and restage the Electron shell for a controlled production trial.
+- Restage the rebuilt Electron shell for a controlled production trial.
 - Consider the issue resolved only after the user completes a representative
   trial period without another incident, or after a captured incident recovers
   through a targeted and explainable fix.

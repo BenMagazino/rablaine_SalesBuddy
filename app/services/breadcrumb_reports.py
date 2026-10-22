@@ -11,6 +11,7 @@ from app.services.breadcrumb_types import (
 REPORT_ENDPOINTS = {
     "reports.report_manager_one_on_one",
     "reports.report_activity_coverage",
+    "reports.report_hvas",
     "reports.report_one_on_one",
     "reports.report_workload",
     "reports.report_hygiene",
